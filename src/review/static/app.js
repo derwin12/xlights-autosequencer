@@ -2,11 +2,35 @@
 
 // ── State ────────────────────────────────────────────────────────────────────
 
-let tracks = [];       // [{name, element_type, quality_score, mark_count, avg_interval_ms, marks_ms, selected, isHighDensity}]
+let tracks = [];        // [{name, element_type, quality_score, mark_count, avg_interval_ms, marks_ms, selected, isHighDensity}]
 let phonemeLayers = []; // [{name, type, marks}] where marks = [{label, start_ms, end_ms}]
                         // type: 'words' | 'phonemes'
+let songSegments = [];  // [{label, start_ms, end_ms}] from song_structure
 let durationMs = 0;
-let focusIndex = null; // int | null
+let focusIndex = null;  // int | null
+
+const SEGMENT_FILL = {
+  'intro':        'rgba(60,  180,  80, 0.10)',
+  'verse':        'rgba(80,  140, 220, 0.10)',
+  'pre-chorus':   'rgba(160,  80, 220, 0.10)',
+  'chorus':       'rgba(220,  70,  70, 0.14)',
+  'bridge':       'rgba(220, 160,  40, 0.12)',
+  'outro':        'rgba(120, 120, 120, 0.10)',
+  'instrumental': 'rgba( 40, 200, 200, 0.10)',
+  'break':        'rgba(200, 200,  40, 0.10)',
+  'silence':      'rgba( 40,  40,  40, 0.08)',
+};
+const SEGMENT_LABEL_COLOR = {
+  'intro':        '#3b6',
+  'verse':        '#58d',
+  'pre-chorus':   '#a5d',
+  'chorus':       '#d55',
+  'bridge':       '#da4',
+  'outro':        '#888',
+  'instrumental': '#4cc',
+  'break':        '#cc4',
+  'silence':      '#555',
+};
 
 const player = document.getElementById('player');
 const bgCanvas = document.getElementById('bg-canvas');
@@ -82,6 +106,29 @@ function drawBackground() {
     bgCtx.fillText(fmtTime(t), x + 2, AXIS_H / 2);
   }
 
+  // Song structure segments — colored bands behind track lanes
+  if (songSegments.length > 0) {
+    const tracksH = tracks.length * LANE_H + phonemeLayers.length * PHONEME_LANE_H;
+    songSegments.forEach(seg => {
+      const x1 = timeToX(seg.start_ms);
+      const x2 = timeToX(seg.end_ms);
+      bgCtx.fillStyle = SEGMENT_FILL[seg.label] || 'rgba(255,255,255,0.05)';
+      bgCtx.fillRect(x1, AXIS_H, x2 - x1, tracksH);
+
+      // Segment label on time axis
+      bgCtx.fillStyle = SEGMENT_LABEL_COLOR[seg.label] || '#888';
+      bgCtx.font = 'bold 9px system-ui';
+      bgCtx.textBaseline = 'top';
+      bgCtx.fillText(seg.label, x1 + 3, 3);
+
+      // Dividing line at segment start
+      bgCtx.fillStyle = SEGMENT_LABEL_COLOR[seg.label] || '#555';
+      bgCtx.globalAlpha = 0.4;
+      bgCtx.fillRect(x1, AXIS_H, 1, tracksH);
+      bgCtx.globalAlpha = 1.0;
+    });
+  }
+
   // Track lanes
   tracks.forEach((track, i) => {
     const y = AXIS_H + i * LANE_H;
@@ -143,53 +190,68 @@ function drawBackground() {
       }
     });
   });
-}
 
-// ── Foreground canvas (playhead + focus overlay) ──────────────────────────────
-
-function drawForeground() {
-  const w = canvasWidth();
-  const h = canvasHeight();
-  fgCtx.clearRect(0, 0, w, h);
-
-  // Focus dimming overlay
+  // Focus dimming — drawn here because it only changes on user action, not every frame
   if (focusIndex !== null) {
     tracks.forEach((_, i) => {
       if (i !== focusIndex) {
         const y = AXIS_H + i * LANE_H;
-        fgCtx.fillStyle = 'rgba(0,0,0,0.65)';
-        fgCtx.fillRect(0, y, w, LANE_H);
+        bgCtx.fillStyle = 'rgba(0,0,0,0.65)';
+        bgCtx.fillRect(0, y, w, LANE_H);
       }
     });
-    // Focused lane highlight border
     const focusY = AXIS_H + focusIndex * LANE_H;
-    fgCtx.strokeStyle = '#4af';
-    fgCtx.lineWidth = 2;
-    fgCtx.strokeRect(1, focusY + 1, w - 2, LANE_H - 2);
+    bgCtx.strokeStyle = '#4af';
+    bgCtx.lineWidth = 2;
+    bgCtx.strokeRect(1, focusY + 1, w - 2, LANE_H - 2);
   }
+}
 
-  // Highlight active word/phoneme marks at current playhead position
-  if (player.duration && isFinite(player.duration)) {
-    const currentMs = player.currentTime * 1000;
-    phonemeLayers.forEach((layer, i) => {
-      const y = phonemeLayerY(i);
-      const active = layer.marks.find(
-        m => currentMs >= m.start_ms && currentMs < m.end_ms
-      );
-      if (active) {
-        const x1 = timeToX(active.start_ms);
-        const x2 = timeToX(active.end_ms);
+// ── Foreground canvas (playhead only — viewport-sized for performance) ────────
+//
+// fg-canvas is kept the same width as the visible viewport, not the full song
+// width. Its `left` CSS property is updated to match canvasWrap.scrollLeft so
+// it always overlays the visible portion. This means clearing and redrawing
+// only ~1400×viewportWidth pixels per frame instead of ~1400×21000px.
+
+function drawForeground() {
+  const vw = canvasWrap.clientWidth;
+  const h = canvasHeight();
+  const scrollLeft = canvasWrap.scrollLeft;
+
+  // Resize only when dimensions actually change (avoids clearing the canvas unnecessarily)
+  if (fgCanvas.width !== vw)  fgCanvas.width  = vw;
+  if (fgCanvas.height !== h)  fgCanvas.height = h;
+
+  // Slide fg-canvas to cover the currently visible strip of the bg-canvas
+  fgCanvas.style.left = scrollLeft + 'px';
+
+  fgCtx.clearRect(0, 0, vw, h);
+
+  if (!player.duration || !isFinite(player.duration)) return;
+
+  const totalW = canvasWidth();
+  const currentMs = player.currentTime * 1000;
+
+  // Highlight active word/phoneme mark at playhead position
+  phonemeLayers.forEach((layer, i) => {
+    const y = phonemeLayerY(i);
+    const active = layer.marks.find(m => currentMs >= m.start_ms && currentMs < m.end_ms);
+    if (active) {
+      const x1 = timeToX(active.start_ms) - scrollLeft;
+      const x2 = timeToX(active.end_ms) - scrollLeft;
+      if (x2 > 0 && x1 < vw) {
         fgCtx.fillStyle = 'rgba(255,220,80,0.35)';
-        fgCtx.fillRect(x1, y + 1, Math.max(2, x2 - x1), PHONEME_LANE_H - 2);
+        fgCtx.fillRect(Math.max(0, x1), y + 1, Math.max(2, x2 - x1), PHONEME_LANE_H - 2);
       }
-    });
-  }
+    }
+  });
 
   // Playhead
-  if (player.duration && isFinite(player.duration)) {
-    const x = (player.currentTime / player.duration) * w;
+  const x = (player.currentTime / player.duration) * totalW - scrollLeft;
+  if (x >= 0 && x <= vw) {
     fgCtx.fillStyle = '#f44';
-    fgCtx.fillRect(x, 0, 1, h);
+    fgCtx.fillRect(Math.floor(x), 0, 1, h);
   }
 }
 
@@ -281,6 +343,7 @@ function setFocus(i) {
   focusIndex = i;
   focusLabel.textContent = `Focus: ${tracks[i].name}`;
   updatePanelClasses();
+  drawBackground();
   drawForeground();
   scheduleFlashes();
 }
@@ -289,6 +352,7 @@ function clearFocus() {
   focusIndex = null;
   focusLabel.textContent = '';
   updatePanelClasses();
+  drawBackground();
   drawForeground();
   scheduleFlashes();
 }
@@ -485,7 +549,10 @@ async function doExport(overwrite = false) {
 
 btnExport.addEventListener('click', () => doExport(false));
 
-// ── Resize handling ───────────────────────────────────────────────────────────
+// ── Scroll / resize handling ──────────────────────────────────────────────────
+
+// Reposition the viewport-sized fg-canvas when the user scrolls
+canvasWrap.addEventListener('scroll', drawForeground);
 
 window.addEventListener('resize', () => {
   drawBackground();
@@ -522,6 +589,12 @@ async function init() {
     if (btnPhonemes && data.phoneme_result) {
       btnPhonemes.disabled = false;
       btnPhonemes.title = '';
+    }
+
+    // Load song structure segments
+    songSegments = [];
+    if (data.song_structure && data.song_structure.segments) {
+      songSegments = data.song_structure.segments;
     }
 
     // Build phoneme layers from phoneme_result (if present)

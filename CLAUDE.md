@@ -9,6 +9,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-22
 - JSON files + `.xtiming` XML files (local filesystem) (009-vocal-phoneme-tracks)
 - Python 3.11+ + click 8+, Flask 3+ (existing); no new dependencies (010-analysis-cache-library)
 - JSON files — `_analysis.json` (existing, extended with `source_hash`); `~/.xlight/library.json` (new) (010-analysis-cache-library)
+- Python 3.11+ + numpy (scoring math), tomllib (TOML config parsing, stdlib in 3.11+), click 8+ (CLI), pytest (testing) (011-quality-score-config)
+- TOML files (scoring configs/profiles), JSON files (analysis output with score breakdowns) (011-quality-score-config)
 - Python 3.11+ + vamp, numpy, click 8+ (all existing — no new deps) (005-vamp-parameter-tuning)
 - JSON files (local filesystem); new `~/.xlight/sweep_configs/` directory (005-vamp-parameter-tuning)
 
@@ -85,6 +87,7 @@ pytest tests/ -v
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
+- 011-quality-score-config: Added Python 3.11+ + numpy (scoring math), tomllib (TOML config parsing, stdlib in 3.11+), click 8+ (CLI), pytest (testing)
 - 005-vamp-parameter-tuning: Added Python 3.11+ + vamp, numpy, click 8+ (all existing — no new deps)
 - 010-analysis-cache-library: Added Python 3.11+ + click 8+, Flask 3+ (existing); no new dependencies
 - 009-vocal-phoneme-tracks: Added Python 3.11+ + whisperx (faster-whisper + wav2vec2), nltk cmudict, existing deps (vamp, librosa, madmom, demucs, click, Flask)

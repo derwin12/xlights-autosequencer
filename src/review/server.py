@@ -16,12 +16,13 @@ from werkzeug.utils import secure_filename
 class AnalysisJob:
     """State for a single upload-triggered analysis run."""
 
-    def __init__(self, mp3_path: str, include_vamp: bool, include_madmom: bool, use_stems: bool = False, use_phonemes: bool = False) -> None:
+    def __init__(self, mp3_path: str, include_vamp: bool, include_madmom: bool, use_stems: bool = False, use_phonemes: bool = False, use_structure: bool = False) -> None:
         self.mp3_path = mp3_path
         self.include_vamp = include_vamp
         self.include_madmom = include_madmom
         self.use_stems = use_stems
         self.use_phonemes = use_phonemes
+        self.use_structure = use_structure
         self.status: str = "running"  # "running" | "done" | "error"
         self.events: list[dict] = []
         self.total: int = 0
@@ -91,6 +92,10 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
                     job.error_message = "All algorithms failed — no tracks produced"
                 return
 
+            # Apply category-aware scoring with breakdowns
+            from src.analyzer.scorer import score_all_tracks
+            score_all_tracks(result.timing_tracks, result.duration_ms)
+
             # Optional phoneme analysis — must run before save so it's in the JSON
             if job.use_phonemes:
                 try:
@@ -112,6 +117,16 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
                         XTimingWriter().write(phoneme_result, xtiming_path)
                 except Exception as exc:
                     job.record_warning(f"Phoneme analysis failed: {exc}")
+
+            # Optional structure analysis — must run before save
+            if job.use_structure:
+                try:
+                    from src.analyzer.structure import StructureAnalyzer
+                    song_structure = StructureAnalyzer().analyze(job.mp3_path)
+                    if song_structure.segments:
+                        result.song_structure = song_structure
+                except Exception as exc:
+                    job.record_warning(f"Structure analysis failed: {exc}")
 
             out_path = os.path.join(
                 os.path.dirname(job.mp3_path),
@@ -340,6 +355,7 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
             include_madmom = request.form.get("madmom", "true").lower() == "true"
             use_phonemes = request.form.get("phonemes", "false").lower() == "true"
             use_stems = request.form.get("stems", "false").lower() == "true" or use_phonemes
+            use_structure = request.form.get("structure", "false").lower() == "true"
 
             job = AnalysisJob(
                 mp3_path=save_path,
@@ -347,6 +363,7 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
                 include_madmom=include_madmom,
                 use_stems=use_stems,
                 use_phonemes=use_phonemes,
+                use_structure=use_structure,
             )
 
             with _job_lock:

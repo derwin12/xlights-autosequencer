@@ -50,7 +50,20 @@ Vamp plugins provide ~14 high-quality timing tracks. Without them you still get 
    pip install vamp
    ```
 
-### 4. whisperx (optional, for phoneme/lyric analysis)
+### 4. Vamp + madmom venv (optional, for full track count)
+
+The Vamp Python bindings (`vampyhost`) and `madmom` were compiled against NumPy 1.x and cannot run in the same environment as `whisperx` (which requires NumPy ≥ 2). The solution is a separate virtual environment used only for those algorithms.
+
+```bash
+python3.12 -m venv .venv-vamp
+source .venv-vamp/bin/activate
+pip install "numpy<2" vamp madmom librosa soundfile
+deactivate
+```
+
+When `.venv-vamp/bin/python` exists, the analyzer automatically routes Vamp and madmom algorithms through it as a subprocess. Without it, those ~14 tracks are silently skipped and only librosa tracks are produced.
+
+### 5. whisperx (optional, for phoneme/lyric analysis)
 
 whisperx transcribes vocals and generates word/phoneme timing tracks. It requires a specific install sequence because of PyTorch dependencies:
 

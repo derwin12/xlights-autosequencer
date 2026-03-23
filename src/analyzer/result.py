@@ -6,6 +6,88 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from src.analyzer.phonemes import PhonemeResult
+    from src.analyzer.structure import SongStructure
+
+
+@dataclass
+class CriterionResult:
+    """A single criterion's measurement and score for one track."""
+
+    name: str
+    label: str
+    measured_value: float
+    target_min: float
+    target_max: float
+    weight: float
+    score: float
+    contribution: float
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "label": self.label,
+            "measured_value": round(self.measured_value, 4),
+            "target_min": round(self.target_min, 4),
+            "target_max": round(self.target_max, 4),
+            "weight": round(self.weight, 4),
+            "score": round(self.score, 4),
+            "contribution": round(self.contribution, 4),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "CriterionResult":
+        return cls(
+            name=d["name"],
+            label=d["label"],
+            measured_value=d["measured_value"],
+            target_min=d["target_min"],
+            target_max=d["target_max"],
+            weight=d["weight"],
+            score=d["score"],
+            contribution=d["contribution"],
+        )
+
+
+@dataclass
+class ScoreBreakdown:
+    """The complete scoring result for a single track."""
+
+    track_name: str
+    algorithm_name: str
+    category: str
+    overall_score: float
+    criteria: list[CriterionResult]
+    passed_thresholds: bool = True
+    threshold_failures: list[str] = field(default_factory=list)
+    skipped_as_duplicate: bool = False
+    duplicate_of: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "track_name": self.track_name,
+            "algorithm_name": self.algorithm_name,
+            "category": self.category,
+            "overall_score": round(self.overall_score, 4),
+            "criteria": [c.to_dict() for c in self.criteria],
+            "passed_thresholds": self.passed_thresholds,
+            "threshold_failures": self.threshold_failures,
+            "skipped_as_duplicate": self.skipped_as_duplicate,
+            "duplicate_of": self.duplicate_of,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ScoreBreakdown":
+        return cls(
+            track_name=d["track_name"],
+            algorithm_name=d["algorithm_name"],
+            category=d["category"],
+            overall_score=d["overall_score"],
+            criteria=[CriterionResult.from_dict(c) for c in d.get("criteria", [])],
+            passed_thresholds=d.get("passed_thresholds", True),
+            threshold_failures=d.get("threshold_failures", []),
+            skipped_as_duplicate=d.get("skipped_as_duplicate", False),
+            duplicate_of=d.get("duplicate_of"),
+        )
 
 
 @dataclass
@@ -59,6 +141,7 @@ class TimingTrack:
     marks: list[TimingMark]
     quality_score: float
     stem_source: str = "full_mix"
+    score_breakdown: Optional["ScoreBreakdown"] = None
 
     def __post_init__(self) -> None:
         # Marks are always sorted ascending by time_ms.
@@ -79,7 +162,7 @@ class TimingTrack:
         return round(sum(intervals) / len(intervals))
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "name": self.name,
             "algorithm_name": self.algorithm_name,
             "element_type": self.element_type,
@@ -92,6 +175,9 @@ class TimingTrack:
                 for m in self.marks
             ],
         }
+        if self.score_breakdown is not None:
+            d["score_breakdown"] = self.score_breakdown.to_dict()
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "TimingTrack":
@@ -99,6 +185,8 @@ class TimingTrack:
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"))
             for m in d.get("marks", [])
         ]
+        bd_data = d.get("score_breakdown")
+        breakdown = ScoreBreakdown.from_dict(bd_data) if bd_data else None
         return cls(
             name=d["name"],
             algorithm_name=d["algorithm_name"],
@@ -106,6 +194,7 @@ class TimingTrack:
             marks=marks,
             quality_score=d.get("quality_score", 0.0),
             stem_source=d.get("stem_source", "full_mix"),
+            score_breakdown=breakdown,
         )
 
 
@@ -125,10 +214,10 @@ class AnalysisResult:
     stem_separation: bool = False
     stem_cache: Optional[str] = None
     phoneme_result: Optional["PhonemeResult"] = None
+    song_structure: Optional["SongStructure"] = None
     source_hash: Optional[str] = None
 
     def to_dict(self) -> dict:
-        from src.analyzer.phonemes import PhonemeResult as _PR
         d: dict = {
             "schema_version": self.schema_version,
             "source_file": self.source_file,
@@ -143,14 +232,18 @@ class AnalysisResult:
             "algorithms": [a.to_dict() for a in self.algorithms],
             "timing_tracks": [t.to_dict() for t in self.timing_tracks],
             "phoneme_result": self.phoneme_result.to_dict() if self.phoneme_result else None,
+            "song_structure": self.song_structure.to_dict() if self.song_structure else None,
         }
         return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "AnalysisResult":
         from src.analyzer.phonemes import PhonemeResult as _PR
+        from src.analyzer.structure import SongStructure as _SS
         pr_data = d.get("phoneme_result")
+        ss_data = d.get("song_structure")
         phoneme_result = _PR.from_dict(pr_data) if pr_data else None
+        song_structure = _SS.from_dict(ss_data) if ss_data else None
         return cls(
             schema_version=d["schema_version"],
             source_file=d["source_file"],
@@ -164,5 +257,6 @@ class AnalysisResult:
             stem_separation=d.get("stem_separation", False),
             stem_cache=d.get("stem_cache", None),
             phoneme_result=phoneme_result,
+            song_structure=song_structure,
             source_hash=d.get("source_hash"),
         )

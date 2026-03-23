@@ -1,6 +1,8 @@
 """T016: AnalysisRunner — orchestrates all algorithm runs for a single audio file."""
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,10 +16,27 @@ from src.analyzer.result import AnalysisAlgorithm, AnalysisResult, TimingTrack
 from src.analyzer.scorer import score_track
 from src.analyzer.stems import StemSet
 
+# Libraries whose compiled extensions require numpy<2 and must run in a
+# subprocess using the .venv-vamp virtual environment.
+_SUBPROCESS_LIBS: frozenset[str] = frozenset({"vamp", "madmom"})
+
+# Path to the repo root (src/analyzer/runner.py → ../../)
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_VAMP_PYTHON = _REPO_ROOT / ".venv-vamp" / "bin" / "python"
+_VAMP_RUNNER = Path(__file__).with_name("vamp_runner.py")
+
+
+def _vamp_venv_available() -> bool:
+    return _VAMP_PYTHON.exists()
+
 
 class AnalysisRunner:
     """
     Runs a list of Algorithm instances against a single audio file.
+
+    Algorithms whose `library` is "vamp" or "madmom" are dispatched to a
+    subprocess running in .venv-vamp (numpy<2) to avoid ABI conflicts with
+    the main environment (numpy>=2, required by whisperx/pyannote).
 
     Usage:
         runner = AnalysisRunner(algorithms=default_algorithms())
@@ -54,8 +73,12 @@ class AnalysisRunner:
         used_algorithms: list[AnalysisAlgorithm] = []
         total = len(self._algorithms)
 
-        for idx, algo in enumerate(self._algorithms):
-            # Route to stem audio when stems are available
+        # Split algorithms into in-process (librosa) and subprocess (vamp/madmom)
+        local_algos = [a for a in self._algorithms if a.library not in _SUBPROCESS_LIBS]
+        sub_algos   = [a for a in self._algorithms if a.library in _SUBPROCESS_LIBS]
+
+        # ── In-process algorithms (librosa) ──────────────────────────────────
+        for idx, algo in enumerate(local_algos):
             algo_audio, algo_sr = _select_audio(algo, audio, sr, stems)
             track = algo.run(algo_audio, algo_sr)
             if track is not None:
@@ -63,18 +86,36 @@ class AnalysisRunner:
                 track.stem_source = algo.preferred_stem if stems is not None else "full_mix"
                 tracks.append(track)
                 used_algorithms.append(algo.metadata())
-
             if progress_callback:
-                progress_callback(
-                    idx + 1,
-                    total,
-                    algo.name,
-                    track.mark_count if track else 0,
+                progress_callback(idx + 1, total, algo.name,
+                                  track.mark_count if track else 0)
+
+        # ── Subprocess algorithms (vamp / madmom) ─────────────────────────────
+        if sub_algos:
+            sub_offset = len(local_algos)
+            if _vamp_venv_available():
+                sub_tracks, sub_algos_meta = _run_subprocess_batch(
+                    audio_path=audio_path,
+                    stems=stems,
+                    algorithms=sub_algos,
+                    offset=sub_offset,
+                    total=total,
+                    progress_callback=progress_callback,
                 )
+                tracks.extend(sub_tracks)
+                used_algorithms.extend(sub_algos_meta)
+            else:
+                print(
+                    "INFO: .venv-vamp not found — vamp/madmom algorithms skipped. "
+                    "See README for setup instructions.",
+                    file=sys.stderr,
+                )
+                for i, algo in enumerate(sub_algos):
+                    if progress_callback:
+                        progress_callback(sub_offset + i + 1, total, algo.name, 0)
 
         stem_cache_str: str | None = None
         if stems is not None:
-            # Record stem cache path relative to source file if possible
             stems_dir = Path(meta.path).parent / ".stems"
             if stems_dir.exists():
                 stem_cache_str = str(stems_dir)
@@ -92,6 +133,94 @@ class AnalysisRunner:
             stem_separation=stems is not None,
             stem_cache=stem_cache_str,
         )
+
+
+def _run_subprocess_batch(
+    audio_path: str,
+    stems: StemSet | None,
+    algorithms: list[Algorithm],
+    offset: int,
+    total: int,
+    progress_callback,
+) -> tuple[list[TimingTrack], list[AnalysisAlgorithm]]:
+    """
+    Invoke vamp_runner.py in .venv-vamp, stream NDJSON progress, return tracks.
+    """
+    # Build stem_paths dict for algorithms that prefer a specific stem
+    stem_paths: dict[str, str] = {}
+    if stems is not None:
+        stems_dir = Path(audio_path).parent / "stems"
+        if not stems_dir.exists():
+            stems_dir = Path(audio_path).parent / ".stems"
+        for stem_name in ("drums", "bass", "vocals", "guitar", "piano", "other"):
+            p = stems_dir / f"{stem_name}.mp3"
+            if p.exists():
+                stem_paths[stem_name] = str(p)
+
+    request = {
+        "audio_path": audio_path,
+        "stem_paths": stem_paths,
+        "algorithms": [a.name for a in algorithms],
+    }
+
+    try:
+        proc = subprocess.Popen(
+            [str(_VAMP_PYTHON), str(_VAMP_RUNNER)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        proc.stdin.write(json.dumps(request) + "\n")
+        proc.stdin.close()
+    except Exception as exc:
+        print(f"WARNING: Failed to start vamp subprocess: {exc}", file=sys.stderr)
+        return [], []
+
+    tracks: list[TimingTrack] = []
+    algo_meta: list[AnalysisAlgorithm] = []
+    proc_idx = 0
+
+    for line in proc.stdout:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        event = msg.get("event")
+
+        if event == "progress":
+            proc_idx += 1
+            if progress_callback:
+                progress_callback(
+                    offset + proc_idx,
+                    total,
+                    msg.get("name", ""),
+                    msg.get("mark_count", 0),
+                )
+
+        elif event == "warn":
+            print(f"WARNING: {msg.get('name', '')}: {msg.get('message', '')}", file=sys.stderr)
+
+        elif event == "done":
+            for t_dict in msg.get("tracks", []):
+                tracks.append(TimingTrack.from_dict(t_dict))
+            for a_dict in msg.get("algorithms", []):
+                algo_meta.append(AnalysisAlgorithm.from_dict(a_dict))
+
+        elif event == "error":
+            print(f"WARNING: vamp subprocess error: {msg.get('message', '')}", file=sys.stderr)
+
+    proc.wait()
+    if proc.returncode != 0:
+        stderr_out = proc.stderr.read()
+        if stderr_out:
+            print(f"WARNING: vamp subprocess stderr: {stderr_out[:500]}", file=sys.stderr)
+
+    return tracks, algo_meta
 
 
 def _select_audio(

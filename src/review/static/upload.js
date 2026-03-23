@@ -8,8 +8,9 @@ const fileNameEl = document.getElementById('file-name');
 const fileErrorEl= document.getElementById('file-error');
 const chkVamp     = document.getElementById('chk-vamp');
 const chkMadmom   = document.getElementById('chk-madmom');
-const chkStems    = document.getElementById('chk-stems');
-const chkPhonemes = document.getElementById('chk-phonemes');
+const chkStems     = document.getElementById('chk-stems');
+const chkPhonemes  = document.getElementById('chk-phonemes');
+const chkStructure = document.getElementById('chk-structure');
 
 // Phonemes requires stems — keep them in sync
 if (chkPhonemes) {
@@ -100,8 +101,9 @@ btnAnalyze.addEventListener('click', async () => {
   formData.append('mp3', selectedFile, selectedFile.name);
   formData.append('vamp',     chkVamp.checked             ? 'true' : 'false');
   formData.append('madmom',   chkMadmom.checked           ? 'true' : 'false');
-  formData.append('stems',    chkStems    && chkStems.checked    ? 'true' : 'false');
-  formData.append('phonemes', chkPhonemes && chkPhonemes.checked ? 'true' : 'false');
+  formData.append('stems',     chkStems     && chkStems.checked     ? 'true' : 'false');
+  formData.append('phonemes',  chkPhonemes  && chkPhonemes.checked  ? 'true' : 'false');
+  formData.append('structure', chkStructure && chkStructure.checked ? 'true' : 'false');
 
   // Update status hint
   const families = [];

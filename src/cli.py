@@ -31,11 +31,40 @@ def _print_summary_table(tracks, *, limit: int | None = None) -> None:
     click.echo(f"  {'SCORE':<6}  {'NAME':<20} {'TYPE':<12} {'STEM':<10} {'MARKS':>6}   AVG INTERVAL")
     for t in sorted_tracks:
         stem = getattr(t, "stem_source", "full_mix") or "full_mix"
+        bd = getattr(t, "score_breakdown", None)
+        skip_note = ""
+        if bd and bd.skipped_as_duplicate and bd.duplicate_of:
+            skip_note = f"  [SKIPPED: near-identical to {bd.duplicate_of}]"
         flag = "  ** HIGH DENSITY" if t.avg_interval_ms > 0 and t.avg_interval_ms < 200 else ""
         click.echo(
             f"  {t.quality_score:<6.2f}  {t.name:<20} {t.element_type:<12} "
-            f"{stem:<10} {t.mark_count:>6}      {t.avg_interval_ms:>4} ms{flag}"
+            f"{stem:<10} {t.mark_count:>6}      {t.avg_interval_ms:>4} ms{flag}{skip_note}"
         )
+
+
+def _print_breakdown(tracks) -> None:
+    """Print per-criterion score breakdowns for each track."""
+    sorted_tracks = sorted(tracks, key=lambda t: t.quality_score, reverse=True)
+    for t in sorted_tracks:
+        bd = getattr(t, "score_breakdown", None)
+        if bd is None:
+            click.echo(f"\nTrack: {t.name} — no breakdown available")
+            continue
+        thresh_status = "PASS" if bd.passed_thresholds else f"FAIL ({', '.join(bd.threshold_failures)})"
+        if bd.skipped_as_duplicate and bd.duplicate_of:
+            skip_pct = ""
+            click.echo(f"\nTrack: {t.name} (category: {bd.category})")
+            click.echo(f"  Score: {bd.overall_score:.4f} | Thresholds: {thresh_status}")
+            click.echo(f"  SKIPPED: near-identical to {bd.duplicate_of}")
+        else:
+            click.echo(f"\nTrack: {t.name} (category: {bd.category})")
+            click.echo(f"  Score: {bd.overall_score:.4f} | Thresholds: {thresh_status}")
+            for crit in bd.criteria:
+                click.echo(
+                    f"  {crit.name:<12} {crit.score:.2f}  "
+                    f"({crit.measured_value:.3f}, target {crit.target_min:.2f}\u2013{crit.target_max:.2f}, "
+                    f"weight {crit.weight:.2f}, contribution {crit.contribution:.4f})"
+                )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -80,8 +109,21 @@ def cli() -> None:
     show_default=True,
 )
 @click.option(
+    "--structure/--no-structure", "use_structure", default=False,
+    help="Detect song structure (intro/verse/chorus/bridge/outro) using All-in-One (allin1)",
+)
+@click.option(
     "--no-cache", "no_cache", is_flag=True, default=False,
     help="Re-run analysis even if a cached result exists for this file",
+)
+@click.option(
+    "--scoring-config", "scoring_config_path", default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to a TOML scoring configuration file",
+)
+@click.option(
+    "--scoring-profile", "scoring_profile_name", default=None,
+    help="Name of a saved scoring profile",
 )
 def analyze_cmd(
     mp3_file: str,
@@ -94,13 +136,40 @@ def analyze_cmd(
     use_phonemes: bool,
     lyrics_path: str | None,
     phoneme_model: str,
+    use_structure: bool,
     no_cache: bool,
+    scoring_config_path: str | None,
+    scoring_profile_name: str | None,
 ) -> None:
     """Run all analysis algorithms on MP3_FILE and write a JSON result."""
     from src.analyzer.runner import AnalysisRunner, default_algorithms
+    from src.analyzer.scorer import score_all_tracks
+    from src.analyzer.scoring_config import ScoringConfig, load_profile
     from src.cache import AnalysisCache
     from src.library import Library, LibraryEntry
     import time
+
+    # Load scoring configuration
+    if scoring_config_path and scoring_profile_name:
+        click.echo("ERROR: Cannot use both --scoring-config and --scoring-profile", err=True)
+        sys.exit(6)
+
+    scoring_config: ScoringConfig | None = None
+    if scoring_config_path:
+        try:
+            scoring_config = ScoringConfig.from_toml(Path(scoring_config_path))
+        except (ValueError, Exception) as exc:
+            click.echo(f"ERROR: Invalid scoring config: {exc}", err=True)
+            sys.exit(6)
+    elif scoring_profile_name:
+        try:
+            scoring_config = load_profile(scoring_profile_name)
+        except FileNotFoundError as exc:
+            click.echo(f"ERROR: {exc}", err=True)
+            sys.exit(7)
+        except (ValueError, Exception) as exc:
+            click.echo(f"ERROR: Invalid scoring profile: {exc}", err=True)
+            sys.exit(6)
 
     audio_path = Path(mp3_file)
 
@@ -134,6 +203,9 @@ def analyze_cmd(
             f"Analysis cache: hit ({(result.source_hash or '')[:8]}) — skipping algorithms."
         )
         if not (use_phonemes and result.phoneme_result is None):
+            from src.analyzer.scorer import score_all_tracks
+            from src.analyzer.scoring_config import ScoringConfig, load_profile
+            score_all_tracks(result.timing_tracks, result.duration_ms, scoring_config)
             click.echo(f"Output: {out_path}")
             _print_summary_table(result.timing_tracks)
             return
@@ -212,6 +284,9 @@ def analyze_cmd(
             click.echo("ERROR: All algorithms failed — no output written.", err=True)
             sys.exit(2)
 
+    # Apply category-aware scoring with breakdowns
+    score_all_tracks(result.timing_tracks, result.duration_ms, scoring_config)
+
     # Phoneme analysis (optional, requires whisperx)
     xtiming_path: str | None = None
     if use_phonemes:
@@ -276,6 +351,24 @@ def analyze_cmd(
         except Exception as exc:
             click.echo(f"WARNING: Phoneme analysis failed: {exc}", err=True)
 
+    # Structure analysis (optional, requires allin1)
+    if use_structure:
+        try:
+            from src.analyzer.structure import StructureAnalyzer
+            click.echo("Structure analysis:")
+            click.echo("  → Detecting segments (intro/verse/chorus/bridge/outro)...")
+            song_structure = StructureAnalyzer().analyze(str(audio_path))
+            if song_structure.segments:
+                result.song_structure = song_structure
+                labels = [s.label for s in song_structure.segments]
+                click.echo(f"  → Found {len(labels)} segments: {', '.join(labels)}")
+            else:
+                click.echo("  → Warning: No segments detected.")
+        except RuntimeError as exc:
+            click.echo(f"WARNING: Structure analysis failed: {exc}", err=True)
+        except Exception as exc:
+            click.echo(f"WARNING: Structure analysis failed: {exc}", err=True)
+
     try:
         cache.save(result)
     except OSError as exc:
@@ -306,11 +399,22 @@ def analyze_cmd(
     _print_summary_table(result.timing_tracks)
 
     if top_n is not None:
-        click.echo(f"\nAuto-selecting top {top_n} tracks by quality score...")
+        click.echo(f"\nAuto-selecting top {top_n} tracks by quality score (with diversity filter)...")
         top_path = str(audio_path.parent / f"{audio_path.stem}_top{top_n}.json")
-        sorted_tracks = sorted(
-            result.timing_tracks, key=lambda t: t.quality_score, reverse=True
-        )[:top_n]
+
+        from src.analyzer.diversity import DiversityFilter
+        cfg = scoring_config or __import__("src.analyzer.scoring_config", fromlist=["ScoringConfig"]).ScoringConfig.default()
+        flt = DiversityFilter(
+            tolerance_ms=cfg.diversity_tolerance_ms,
+            threshold=cfg.diversity_threshold,
+        )
+        selected_tracks, skipped_tracks = flt.filter(result.timing_tracks, n=top_n)
+
+        for t in skipped_tracks:
+            bd = t.score_breakdown
+            if bd and bd.duplicate_of:
+                click.echo(f"  SKIPPED {t.name}: near-identical to {bd.duplicate_of}")
+
         top_result = AnalysisResult(
             schema_version=result.schema_version,
             source_file=result.source_file,
@@ -321,9 +425,9 @@ def analyze_cmd(
             run_timestamp=result.run_timestamp,
             algorithms=[
                 a for a in result.algorithms
-                if a.name in {t.algorithm_name for t in sorted_tracks}
+                if a.name in {t.algorithm_name for t in selected_tracks}
             ],
-            timing_tracks=sorted_tracks,
+            timing_tracks=selected_tracks,
         )
         export_mod.write(top_result, top_path)
         click.echo(f"Output: {top_path}")
@@ -338,7 +442,9 @@ def analyze_cmd(
 @cli.command("summary")
 @click.argument("analysis_json", type=click.Path(exists=True, dir_okay=False))
 @click.option("--top", "top_n", default=None, type=int, help="Show only top N tracks")
-def summary_cmd(analysis_json: str, top_n: int | None) -> None:
+@click.option("--breakdown", "show_breakdown", is_flag=True, default=False,
+              help="Show per-criterion score breakdown for each track")
+def summary_cmd(analysis_json: str, top_n: int | None, show_breakdown: bool) -> None:
     """Print the scored summary table from an existing analysis JSON."""
     try:
         result = export_mod.read(analysis_json)
@@ -363,7 +469,14 @@ def summary_cmd(analysis_json: str, top_n: int | None) -> None:
             f"| Language: {lang} | Model: {model}"
         )
 
-    _print_summary_table(result.timing_tracks, limit=top_n)
+    tracks = result.timing_tracks
+    if top_n is not None:
+        tracks = sorted(tracks, key=lambda t: t.quality_score, reverse=True)[:top_n]
+
+    _print_summary_table(tracks)
+
+    if show_breakdown:
+        _print_breakdown(tracks)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -541,6 +654,80 @@ def review_cmd(audio_or_json: str | None) -> None:
             )
             sys.exit(5)
         raise
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# scoring subcommand group
+# ──────────────────────────────────────────────────────────────────────────────
+
+@cli.group("scoring")
+def scoring_cmd() -> None:
+    """Manage scoring configurations and profiles."""
+
+
+@scoring_cmd.command("list")
+def scoring_list_cmd() -> None:
+    """List all available scoring profiles (project-local and user-global)."""
+    from src.analyzer.scoring_config import list_profiles
+
+    profiles = list_profiles()
+    if not profiles:
+        click.echo("No scoring profiles found.")
+        click.echo("Use 'xlight-analyze scoring save <name> --from <config.toml>' to create one.")
+        click.echo("Use 'xlight-analyze scoring defaults' to see the default configuration.")
+        return
+
+    click.echo("Scoring Profiles:")
+    click.echo(f"  {'NAME':<20} {'SOURCE':<10}")
+    for p in profiles:
+        click.echo(f"  {p['name']:<20} {p['source']:<10}")
+    click.echo("\n  (default)            built-in     Standard scoring weights")
+
+
+@scoring_cmd.command("show")
+@click.argument("name")
+def scoring_show_cmd(name: str) -> None:
+    """Display a scoring profile's configuration."""
+    from src.analyzer.scoring_config import get_profile_path, ScoringConfig
+
+    path = get_profile_path(name)
+    if path is None:
+        click.echo(f"ERROR: Profile '{name}' not found.", err=True)
+        sys.exit(7)
+
+    click.echo(f"Profile: {name} ({path})")
+    click.echo(path.read_text(encoding="utf-8"))
+
+
+@scoring_cmd.command("save")
+@click.argument("name")
+@click.option("--from", "source_path", required=True,
+              type=click.Path(exists=True, dir_okay=False),
+              help="Path to the TOML config file to save as a profile")
+@click.option("--scope", default="project",
+              type=click.Choice(["project", "user"], case_sensitive=False),
+              help="Save to project-local (.scoring/) or user-global (~/.config/xlight/scoring/)")
+def scoring_save_cmd(name: str, source_path: str, scope: str) -> None:
+    """Save a TOML config file as a named scoring profile."""
+    from src.analyzer.scoring_config import save_profile, ScoringConfig
+
+    # Validate the config first
+    try:
+        ScoringConfig.from_toml(Path(source_path))
+    except (ValueError, Exception) as exc:
+        click.echo(f"ERROR: Invalid scoring config: {exc}", err=True)
+        sys.exit(6)
+
+    dest = save_profile(name, Path(source_path), scope=scope)
+    click.echo(f"Saved profile '{name}' to {dest}")
+
+
+@scoring_cmd.command("defaults")
+def scoring_defaults_cmd() -> None:
+    """Print the built-in default scoring configuration as TOML."""
+    from src.analyzer.scoring_config import generate_default_toml
+
+    click.echo(generate_default_toml(), nl=False)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
