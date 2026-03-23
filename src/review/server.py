@@ -134,7 +134,49 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
             job = _current_job
             if job is not None and job.status == "done":
                 return send_from_directory(app.static_folder, "index.html")
-            return send_from_directory(app.static_folder, "upload.html")
+            return send_from_directory(app.static_folder, "library.html")
+
+        @app.route("/library")
+        def library_index():
+            from src.library import Library
+            lib = Library()
+            entries = lib.all_entries()
+            result = {
+                "version": "1.0",
+                "entries": [
+                    {
+                        **e.__dict__,
+                        "source_file_exists": Path(e.source_file).exists(),
+                    }
+                    for e in entries
+                ],
+            }
+            return jsonify(result)
+
+        @app.route("/open-from-library", methods=["POST"])
+        def open_from_library():
+            global _current_job
+            hash_param = request.args.get("hash", "")
+            if not hash_param:
+                return jsonify({"error": "hash query param required"}), 400
+            from src.library import Library
+            entry = Library().find_by_hash(hash_param)
+            if entry is None:
+                return jsonify({"error": f"No analysis found for hash {hash_param}"}), 404
+            # Construct a minimal completed job pointing at the library entry.
+            job = AnalysisJob.__new__(AnalysisJob)
+            job.mp3_path = entry.source_file
+            job.include_vamp = True
+            job.include_madmom = True
+            job.status = "done"
+            job.result_path = entry.analysis_path
+            job.events = []
+            job.total = 0
+            job.error_message = None
+            job.lock = threading.Lock()
+            with _job_lock:
+                _current_job = job
+            return jsonify({"ok": True}), 200
 
         @app.route("/upload", methods=["POST"])
         def upload():
@@ -218,6 +260,18 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
 
         @app.route("/analysis")
         def analysis_upload():
+            hash_param = request.args.get("hash")
+            if hash_param:
+                from src.library import Library
+                entry = Library().find_by_hash(hash_param)
+                if entry is None:
+                    return jsonify({"error": f"No analysis found for hash {hash_param}"}), 404
+                try:
+                    with open(entry.analysis_path, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                except (OSError, json.JSONDecodeError) as exc:
+                    return jsonify({"error": f"Cannot read analysis: {exc}"}), 500
+                return jsonify(data)
             job = _current_job
             if job is None or job.result_path is None:
                 return jsonify({"error": "No analysis available"}), 404

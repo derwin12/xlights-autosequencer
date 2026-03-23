@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>xlight-analyze — Library</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Library table ──────────────────────────────────────────────────────── */
+
+    #library-section { margin-bottom: 3rem; }
+
+    #library-section h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #bbb;
+      margin-bottom: 1rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+    }
+
+    #library-empty {
+      color: #555;
+      font-size: 0.9rem;
+      padding: 1.5rem 0;
+    }
+
+    #library-loading {
+      color: #555;
+      font-size: 0.9rem;
+      padding: 1rem 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      text-align: left;
+      color: #888;
+      font-weight: 500;
+      padding: 0.4rem 0.75rem;
+      border-bottom: 1px solid #333;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    tbody tr:hover { background: #242424; }
+
+    tbody td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid #222;
+      color: #ccc;
+      white-space: nowrap;
+    }
+
+    .col-filename { color: #e0e0e0; font-weight: 500; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+    .col-bpm { color: #7ec8e3; }
+    .col-date { color: #777; font-size: 0.82rem; }
+
+    .badge-warn {
+      display: inline-block;
+      margin-left: 0.4rem;
+      font-size: 0.75rem;
+      background: #5a3a00;
+      color: #f0a030;
+      border-radius: 3px;
+      padding: 0 0.3rem;
+      vertical-align: middle;
+    }
+
+    .badge-stems {
+      display: inline-block;
+      font-size: 0.72rem;
+      background: #1a3a1a;
+      color: #5fba5f;
+      border-radius: 3px;
+      padding: 0 0.3rem;
+    }
+
+    /* ── Upload section ─────────────────────────────────────────────────────── */
+
+    #upload-section h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #bbb;
+      margin-bottom: 1rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #upload-form {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #drop-zone {
+      border: 2px dashed #555;
+      border-radius: 8px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: #242424;
+    }
+    #drop-zone:hover,
+    #drop-zone.drag-over {
+      border-color: #4a9eff;
+      background: #1e2d40;
+    }
+    #drop-zone p { color: #888; font-size: 0.9rem; margin-top: 0.5rem; }
+
+    #file-name { font-size: 0.85rem; color: #7ec8e3; font-weight: 500; min-height: 1.2em; }
+    #file-error { font-size: 0.82rem; color: #ff6b6b; min-height: 1.2em; }
+
+    #btn-browse {
+      padding: 0.45rem 1.1rem;
+      background: #333;
+      color: #ccc;
+      border: 1px solid #555;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    #btn-browse:hover { background: #3a3a3a; border-color: #4a9eff; color: #fff; }
+
+    .options {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.88rem;
+    }
+    .options label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      color: #bbb;
+    }
+    .options input[type="checkbox"] {
+      accent-color: #4a9eff;
+      width: 15px;
+      height: 15px;
+    }
+
+    #btn-analyze {
+      padding: 0.6rem 1.4rem;
+      background: #4a9eff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      align-self: flex-start;
+    }
+    #btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
+    #btn-analyze:not(:disabled):hover { background: #2d82e0; }
+
+    /* ── Progress section ───────────────────────────────────────────────────── */
+
+    #progress-section {
+      display: none;
+      width: 100%;
+      max-width: 480px;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #status-line { font-size: 0.9rem; color: #bbb; }
+
+    .progress-bar-wrap {
+      background: #333;
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #4a9eff;
+      transition: width 0.25s ease;
+      border-radius: 4px;
+    }
+
+    #algo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-height: 320px;
+      overflow-y: auto;
+      font-size: 0.82rem;
+    }
+    .algo-row { display: flex; align-items: center; gap: 0.5rem; color: #ccc; padding: 0.1rem 0; }
+    .algo-row .ok  { color: #4caf50; }
+    .algo-row .err { color: #ff6b6b; }
+    .algo-row .marks { color: #888; font-size: 0.78rem; }
+
+    #error-block { display: none; flex-direction: column; gap: 0.75rem; }
+    #error-message { color: #ff6b6b; font-size: 0.9rem; }
+    #btn-retry {
+      padding: 0.5rem 1.2rem;
+      background: #555;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      align-self: flex-start;
+    }
+    #btn-retry:hover { background: #666; }
+  </style>
+</head>
+<body>
+  <h1>xlight-analyze</h1>
+  <p class="subtitle">Analysis cache &amp; song library</p>
+
+  <!-- ── Library section ────────────────────────────────────────────────── -->
+  <div id="library-section">
+    <h2>Song Library</h2>
+    <div id="library-loading">Loading library…</div>
+    <div id="library-empty" style="display:none">No analyzed songs yet. Use the form below to analyze your first file.</div>
+    <table id="library-table" style="display:none">
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Duration</th>
+          <th>BPM</th>
+          <th>Tracks</th>
+          <th>Stems</th>
+          <th>Analyzed</th>
+        </tr>
+      </thead>
+      <tbody id="library-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── Upload / Analyze section ───────────────────────────────────────── -->
+  <div id="upload-section">
+    <h2>Analyze New File</h2>
+
+    <div id="upload-form">
+      <div id="drop-zone">
+        <strong>Drop an MP3 here</strong>
+        <p id="file-name"></p>
+        <p id="file-error"></p>
+      </div>
+      <input type="file" id="file-input" accept=".mp3" style="display:none" />
+      <button type="button" id="btn-browse">Browse for file…</button>
+
+      <div class="options">
+        <label>
+          <input type="checkbox" id="chk-vamp" checked />
+          Vamp plugins (~14 tracks)
+        </label>
+        <label>
+          <input type="checkbox" id="chk-madmom" checked />
+          madmom (~2 tracks)
+        </label>
+      </div>
+
+      <button id="btn-analyze" disabled>Analyze</button>
+    </div>
+
+    <div id="progress-section">
+      <div id="status-line">Analyzing…</div>
+      <div class="progress-bar-wrap">
+        <div id="progress-bar"></div>
+      </div>
+      <div id="algo-list"></div>
+      <div id="error-block">
+        <div id="error-message"></div>
+        <button id="btn-retry">Try again</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="library.js"></script>
+  <script src="upload.js"></script>
+</body>
+</html>

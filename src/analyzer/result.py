@@ -125,12 +125,14 @@ class AnalysisResult:
     stem_separation: bool = False
     stem_cache: Optional[str] = None
     phoneme_result: Optional["PhonemeResult"] = None
+    source_hash: Optional[str] = None
 
     def to_dict(self) -> dict:
         from src.analyzer.phonemes import PhonemeResult as _PR
         d: dict = {
             "schema_version": self.schema_version,
             "source_file": self.source_file,
+            "source_hash": self.source_hash,
             "filename": self.filename,
             "duration_ms": self.duration_ms,
             "sample_rate": self.sample_rate,
@@ -162,4 +164,5 @@ class AnalysisResult:
             stem_separation=d.get("stem_separation", False),
             stem_cache=d.get("stem_cache", None),
             phoneme_result=phoneme_result,
+            source_hash=d.get("source_hash"),
         )

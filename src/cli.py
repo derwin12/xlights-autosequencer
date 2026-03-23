@@ -73,6 +73,10 @@ def cli() -> None:
     "--lyrics", "lyrics_path", default=None, type=click.Path(dir_okay=False),
     help="Lyrics text file for improved word alignment (requires --phonemes)",
 )
+@click.option(
+    "--no-cache", "no_cache", is_flag=True, default=False,
+    help="Re-run analysis even if a cached result exists for this file",
+)
 def analyze_cmd(
     mp3_file: str,
     output: str | None,
@@ -83,9 +87,13 @@ def analyze_cmd(
     use_stems: bool,
     use_phonemes: bool,
     lyrics_path: str | None,
+    no_cache: bool,
 ) -> None:
     """Run all analysis algorithms on MP3_FILE and write a JSON result."""
     from src.analyzer.runner import AnalysisRunner, default_algorithms
+    from src.cache import AnalysisCache
+    from src.library import Library, LibraryEntry
+    import time
 
     audio_path = Path(mp3_file)
 
@@ -106,6 +114,20 @@ def analyze_cmd(
         out_path = str(audio_path.parent / (audio_path.stem + "_analysis.json"))
     else:
         out_path = output
+
+    # ── Cache hit check ───────────────────────────────────────────────────────
+    cache = AnalysisCache(audio_path, Path(out_path))
+    if not no_cache and cache.is_valid():
+        result = cache.load()
+        click.echo(f"Loading audio: {audio_path.name}")
+        click.echo(
+            f"Analysis cache: hit ({(result.source_hash or '')[:8]}) — skipping algorithms."
+        )
+        click.echo(f"Output: {out_path}")
+        _print_summary_table(result.timing_tracks)
+        return
+
+    # ── Full analysis run ─────────────────────────────────────────────────────
 
     # Check output is writable
     try:
@@ -147,8 +169,9 @@ def analyze_cmd(
         except Exception:
             bpm = 0.0
         click.echo(
-            f"Analyzing: {audio_path} ({_format_duration(meta.duration_ms)}) | BPM: ~{bpm:.1f}"
+            f"Loading audio: {audio_path.name} ({_format_duration(meta.duration_ms)}) | BPM: ~{bpm:.1f}"
         )
+        click.echo("Analysis cache: miss — running algorithms...")
     except Exception as exc:
         click.echo(f"ERROR: Cannot load {mp3_file}: {exc}", err=True)
         sys.exit(1)
@@ -223,10 +246,27 @@ def analyze_cmd(
             click.echo(f"WARNING: Phoneme analysis failed: {exc}", err=True)
 
     try:
-        export_mod.write(result, out_path)
+        cache.save(result)
     except OSError as exc:
         click.echo(f"ERROR: Cannot write output: {exc}", err=True)
         sys.exit(3)
+
+    # ── Library registration ──────────────────────────────────────────────────
+    try:
+        lib_entry = LibraryEntry(
+            source_hash=result.source_hash or "",
+            source_file=str(audio_path.resolve()),
+            filename=audio_path.name,
+            analysis_path=str(Path(out_path).resolve()),
+            duration_ms=result.duration_ms,
+            estimated_tempo_bpm=result.estimated_tempo_bpm,
+            track_count=len(result.timing_tracks),
+            stem_separation=result.stem_separation,
+            analyzed_at=int(time.time() * 1000),
+        )
+        Library().upsert(lib_entry)
+    except Exception:
+        pass  # library registration is best-effort; never block analysis output
 
     if xtiming_path:
         click.echo(f"\nAnalysis complete: {out_path} + {Path(xtiming_path).name}")
@@ -376,15 +416,20 @@ def export_cmd(
 # ──────────────────────────────────────────────────────────────────────────────
 
 @cli.command("review")
-@click.argument("analysis_json", required=False, default=None, type=click.Path(dir_okay=False))
-def review_cmd(analysis_json: str | None) -> None:
-    """Launch the track review UI in the default browser."""
+@click.argument("audio_or_json", required=False, default=None, type=click.Path(dir_okay=False))
+def review_cmd(audio_or_json: str | None) -> None:
+    """Launch the track review UI in the default browser.
+
+    AUDIO_OR_JSON can be a previously generated analysis JSON, an audio file
+    path (resolved via the song library), or omitted to open the library home
+    page.
+    """
     from src.review.server import create_app
 
-    if analysis_json is None:
+    if audio_or_json is None:
         app = create_app()
         url = "http://127.0.0.1:5173/"
-        click.echo(f"Starting upload UI at {url}")
+        click.echo(f"Starting review UI at {url}")
         click.echo("Press Ctrl-C to stop.")
         threading.Timer(0.5, webbrowser.open, args=[url]).start()
         try:
@@ -400,28 +445,53 @@ def review_cmd(analysis_json: str | None) -> None:
             raise
         return
 
-    analysis_path = Path(analysis_json)
-    if not analysis_path.exists():
-        click.echo(f"ERROR: Analysis file not found: {analysis_json}", err=True)
-        sys.exit(4)
+    given_path = Path(audio_or_json)
 
-    try:
-        with open(analysis_path, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except (OSError, json.JSONDecodeError) as exc:
-        click.echo(f"ERROR: Cannot read {analysis_json}: {exc}", err=True)
-        sys.exit(4)
+    # ── Audio file path: look up via library ──────────────────────────────────
+    if given_path.suffix.lower() != ".json":
+        import hashlib
+        from src.library import Library
+        if not given_path.exists():
+            click.echo(f"ERROR: File not found: {audio_or_json}", err=True)
+            sys.exit(4)
+        h = hashlib.md5()
+        with open(given_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(65536), b""):
+                h.update(chunk)
+        md5 = h.hexdigest()
+        entry = Library().find_by_hash(md5)
+        if entry is None:
+            click.echo(
+                f"ERROR: No cached analysis found for {given_path.name}.\n"
+                f"Run 'xlight-analyze analyze {audio_or_json}' first.",
+                err=True,
+            )
+            sys.exit(4)
+        analysis_json_path = entry.analysis_path
+        audio_path_str = entry.source_file
+    else:
+        # ── JSON path: existing behaviour ─────────────────────────────────────
+        analysis_path = given_path
+        if not analysis_path.exists():
+            click.echo(f"ERROR: Analysis file not found: {audio_or_json}", err=True)
+            sys.exit(4)
+        try:
+            with open(analysis_path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, json.JSONDecodeError) as exc:
+            click.echo(f"ERROR: Cannot read {audio_or_json}: {exc}", err=True)
+            sys.exit(4)
+        audio_path_str = data.get("source_file", "")
+        if not audio_path_str or not Path(audio_path_str).exists():
+            click.echo(
+                f"ERROR: Audio file not found: {audio_path_str!r}\n"
+                "The analysis JSON's 'source_file' path does not exist on this machine.",
+                err=True,
+            )
+            sys.exit(3)
+        analysis_json_path = str(analysis_path.resolve())
 
-    audio_path_str = data.get("source_file", "")
-    if not audio_path_str or not Path(audio_path_str).exists():
-        click.echo(
-            f"ERROR: Audio file not found: {audio_path_str!r}\n"
-            "The analysis JSON's 'source_file' path does not exist on this machine.",
-            err=True,
-        )
-        sys.exit(3)
-
-    app = create_app(str(analysis_path.resolve()), audio_path_str)
+    app = create_app(analysis_json_path, audio_path_str)
 
     url = "http://127.0.0.1:5173/"
     click.echo(f"Starting review UI at {url}")
