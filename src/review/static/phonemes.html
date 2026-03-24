@@ -61,8 +61,9 @@
     .word.active { background: #4a9eff; color: #fff; }
     .word.past { color: #444; }
 
-    /* fg-canvas needs to receive clicks for seeking */
-    #fg-canvas { pointer-events: auto !important; cursor: pointer; }
+    /* bg-canvas handles word dragging, fg-canvas handles seeking */
+    #bg-canvas { pointer-events: auto !important; }
+    #fg-canvas { pointer-events: none !important; }
   </style>
 </head>
 <body>
@@ -76,10 +77,23 @@
     </div>
     <button id="btn-play">Play</button>
     <span id="time-display">0:00 / 0:00</span>
+    <span class="toolbar-sep"></span>
+    <button id="btn-zoom-out" title="Zoom out (Ctrl+-)">&#8722;</button>
+    <span id="zoom-level">100%</span>
+    <button id="btn-zoom-in" title="Zoom in (Ctrl++)">+</button>
+    <span class="toolbar-sep"></span>
+    <button id="btn-sync-earlier" title="Words are late — shift earlier">&#9664; Sync</button>
+    <span id="sync-offset" style="font-size:11px;color:#888;min-width:45px;text-align:center;">+0ms</span>
+    <button id="btn-sync-later" title="Words are early — shift later">Sync &#9654;</button>
+    <span class="toolbar-sep"></span>
+    <button id="btn-save" disabled title="Save word timing edits (Ctrl+S)">Save</button>
   </div>
 
   <div id="lyrics-section">
-    <div id="lyrics-wrap"></div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <canvas id="face-canvas" width="100" height="100" title="Phoneme preview"></canvas>
+      <div id="lyrics-wrap" style="flex:1;"></div>
+    </div>
   </div>
 
   <div id="main">
@@ -92,6 +106,29 @@
 
   <audio id="player" preload="auto"></audio>
   <div id="status">Loading phoneme data…</div>
+
+  <!-- Context menu for word editing -->
+  <div id="word-menu" style="display:none; position:fixed; z-index:100; background:#2a2a2a; border:1px solid #555; border-radius:4px; padding:4px 0; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+    <div class="menu-item" id="menu-edit">Edit word</div>
+    <div class="menu-item" id="menu-add-before">Add word before</div>
+    <div class="menu-item" id="menu-add-after">Add word after</div>
+    <div class="menu-sep"></div>
+    <div class="menu-item menu-danger" id="menu-delete">Delete word</div>
+  </div>
+
+  <style>
+    #face-canvas {
+      background: #1a1a1a;
+      border-radius: 6px;
+      border: 1px solid #333;
+      flex-shrink: 0;
+    }
+    .menu-item { padding: 6px 14px; cursor: pointer; font-size: 13px; color: #ccc; }
+    .menu-item:hover { background: #3a3a4a; }
+    .menu-danger { color: #e55; }
+    .menu-danger:hover { background: #4a2020; }
+    .menu-sep { height: 1px; background: #444; margin: 4px 0; }
+  </style>
 
   <script src="/phonemes.js"></script>
 </body>

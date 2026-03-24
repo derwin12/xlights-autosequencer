@@ -26,6 +26,7 @@ class QMOnsetComplexAlgorithm(Algorithm):
     parameters = {"dftype": 3}  # 3 = Complex Domain
     vamp_output = "onsets"
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
@@ -55,6 +56,7 @@ class QMOnsetHFCAlgorithm(Algorithm):
     parameters = {"dftype": 0}  # 0 = High-Frequency Content
     vamp_output = "onsets"
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
@@ -84,6 +86,7 @@ class QMOnsetPhaseAlgorithm(Algorithm):
     parameters = {"dftype": 2}  # 2 = Phase Deviation
     vamp_output = "onsets"
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp

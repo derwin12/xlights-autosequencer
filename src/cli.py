@@ -147,12 +147,19 @@ def analyze_cmd(
     scoring_profile_name: str | None,
 ) -> None:
     """Run all analysis algorithms on MP3_FILE and write a JSON result."""
+    from src.log import get_logger
+    log = get_logger("xlight.cli")
+
     from src.analyzer.runner import AnalysisRunner, default_algorithms
     from src.analyzer.scorer import score_all_tracks
     from src.analyzer.scoring_config import ScoringConfig, load_profile
     from src.cache import AnalysisCache
     from src.library import Library, LibraryEntry
     import time
+
+    log.info("=" * 72)
+    log.info("analyze_cmd: file=%s stems=%s phonemes=%s genius=%s no_cache=%s",
+             mp3_file, use_stems, use_phonemes, use_genius, no_cache)
 
     # Load scoring configuration
     if scoring_config_path and scoring_profile_name:
@@ -263,10 +270,7 @@ def analyze_cmd(
         if no_madmom:
             click.echo("INFO: --no-madmom specified — madmom algorithms skipped.", err=True)
 
-        def progress(idx, total, name, mark_count):
-            click.echo(f"  [{idx:>2}/{total}] {name:<35} ... done ({mark_count} marks)")
-
-        # Quick load to show duration/BPM header before running
+        # Load audio once — shared by display header and analysis runner
         try:
             from src.analyzer.audio import load
             import librosa, numpy as np
@@ -287,19 +291,47 @@ def analyze_cmd(
         # Stem separation (optional, requires demucs)
         if use_stems:
             try:
-                from src.analyzer.stems import StemSeparator
+                from src.analyzer.stems import StemSeparator, StemCache
                 sep = StemSeparator()
                 stems = sep.separate(audio_path)
+                sc = StemCache(audio_path)
+                log.info("Stem dir: %s (exists=%s)", sc.stem_dir, sc.stem_dir.exists())
+                vocals_mp3 = sc.stem_dir / "vocals.mp3"
+                log.info("Vocals stem: %s (exists=%s)", vocals_mp3, vocals_mp3.exists())
             except Exception as exc:
                 click.echo(
                     f"WARNING: Stem separation failed ({exc}). Falling back to full-mix analysis.",
                     err=True,
                 )
 
-        runner = AnalysisRunner(algo_list)
+        # T032: use ParallelRunner (runs local algorithms concurrently)
+        from src.analyzer.parallel import ParallelRunner
+
+        total = len(algo_list)
+
+        # Backward-compat progress wrapper: new contract is (step_name, status, detail)
+        _progress_idx = [0]
+
+        def progress(step_name: str, status: str, detail: dict) -> None:
+            if status == "done":
+                _progress_idx[0] += 1
+                mark_count = detail.get("mark_count", 0)
+                click.echo(
+                    f"  [{_progress_idx[0]:>2}/{total}] {step_name:<35} ... done ({mark_count} marks)"
+                )
+
+        runner = ParallelRunner(algorithms=algo_list)
 
         try:
-            result = runner.run(str(audio_path), progress_callback=progress, stems=stems)
+            result = runner.run(
+                audio_path=str(audio_path),
+                audio=audio,
+                sample_rate=sr,
+                stems=stems,
+                progress_callback=progress,
+                use_stems=use_stems,
+                use_phonemes=use_phonemes,
+            )
         except Exception as exc:
             click.echo(f"ERROR: Analysis failed: {exc}", err=True)
             sys.exit(2)
@@ -312,8 +344,10 @@ def analyze_cmd(
     score_all_tracks(result.timing_tracks, result.duration_ms, scoring_config)
 
     # Phoneme analysis (optional, requires whisperx)
+    # Skip standalone phonemes when Genius is enabled — Genius does its own
+    # WhisperX alignment with verified lyrics, so running it twice is wasteful.
     xtiming_path: str | None = None
-    if use_phonemes:
+    if use_phonemes and not use_genius:
         try:
             from src.analyzer.phonemes import PhonemeAnalyzer
             from src.analyzer.xtiming import XTimingWriter
@@ -461,7 +495,22 @@ def analyze_cmd(
                 if genius_phoneme_result is not None:
                     result.phoneme_result = genius_phoneme_result
                     word_count = len(genius_phoneme_result.word_track.marks)
+                    phoneme_count = len(genius_phoneme_result.phoneme_track.marks)
                     click.echo(f"  → Genius word track: {word_count} words aligned")
+
+                    # Write .xtiming (normally done by the phonemes step, but
+                    # we skipped it when Genius is enabled)
+                    if use_phonemes:
+                        try:
+                            from src.analyzer.xtiming import XTimingWriter
+                            xtiming_path = str(analysis_dir / (audio_path.stem + ".xtiming"))
+                            XTimingWriter().write(genius_phoneme_result, xtiming_path)
+                            click.echo(
+                                f"  → Writing {audio_path.stem}.xtiming "
+                                f"(3 layers: lyrics, {word_count} words, {phoneme_count} phonemes)"
+                            )
+                        except Exception as exc:
+                            click.echo(f"  → Warning: Failed to write .xtiming: {exc}")
 
     try:
         cache.save(result)
@@ -590,6 +639,199 @@ def full_cmd(
         scoring_config_path=scoring_config_path,
         scoring_profile_name=scoring_profile_name,
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# wizard command (FR-014)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _run_analysis_from_config(
+    ctx: click.Context,
+    config: "WizardConfig",
+    audio_path: Path,
+    output: str | None = None,
+    scoring_config_path: str | None = None,
+    scoring_profile_name: str | None = None,
+) -> None:
+    """Bridge WizardConfig selections → analyze_cmd (FR-014 flag parity, T020)."""
+    from src.wizard import WizardConfig  # noqa: F401 — type reference
+
+    # T020: use_existing → load cached result directly, skip analysis
+    if config.cache_strategy == "use_existing":
+        from src.cache import AnalysisCache, CacheStatus
+        status = CacheStatus.from_audio_path(audio_path, Path(output) if output else None)
+        if status.exists and status.is_valid and status.cache_path:
+            cache = AnalysisCache(audio_path, status.cache_path)
+            try:
+                result = cache.load()
+            except Exception as exc:
+                click.echo(f"ERROR: Cannot load cache: {exc}", err=True)
+                sys.exit(1)
+            click.echo(f"\nLoaded from cache: {status.cache_path}")
+            _print_summary_table(result.timing_tracks)
+            return
+        else:
+            click.echo("Cache is no longer valid — running fresh analysis.", err=True)
+            config.cache_strategy = "regenerate"
+
+    # T025: offline guard — check network if phonemes requested with an uncached model
+    if config.use_phonemes:
+        from src.wizard import whisper_model_list
+        model_info = {m.name: m for m in whisper_model_list()}
+        chosen = model_info.get(config.whisper_model)
+        if chosen and not chosen.is_cached:
+            import socket
+            reachable = False
+            try:
+                socket.setdefaulttimeout(3)
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(
+                    ("huggingface.co", 443)
+                )
+                reachable = True
+            except (OSError, socket.error):
+                reachable = False
+            if not reachable:
+                click.echo(
+                    f"ERROR: Model '{config.whisper_model}' is not cached locally "
+                    "and no network is available. Select a cached model or connect "
+                    "to the internet.",
+                    err=True,
+                )
+                sys.exit(1)
+
+    kwargs = config.to_analyze_kwargs()
+    ctx.invoke(
+        analyze_cmd,
+        mp3_file=str(audio_path),
+        output=output,
+        algorithms="all",
+        no_vamp=not kwargs["include_vamp"],
+        no_madmom=not kwargs["include_madmom"],
+        top_n=None,
+        use_stems=kwargs["use_stems"],
+        use_phonemes=kwargs["use_phonemes"],
+        lyrics_path=None,
+        phoneme_model=kwargs["phoneme_model"],
+        use_structure=kwargs["use_structure"],
+        use_genius=kwargs["genius"],
+        no_cache=kwargs["no_cache"],
+        scoring_config_path=scoring_config_path,
+        scoring_profile_name=scoring_profile_name,
+    )
+
+
+@cli.command("wizard")
+@click.argument("audio_file", type=click.Path(dir_okay=False))
+@click.option("--output", default=None, help="Output JSON path (default: auto)")
+@click.option(
+    "--non-interactive", "non_interactive", is_flag=True, default=False,
+    help="Skip interactive prompts; apply flag defaults",
+)
+@click.option("--use-cache", "use_cache", is_flag=True, default=False,
+              help="Use existing cache without prompting")
+@click.option("--no-cache", "no_cache", is_flag=True, default=False,
+              help="Re-run analysis, ignoring any cached result")
+@click.option("--skip-cache-write", "skip_cache_write", is_flag=True, default=False,
+              help="Run fresh analysis but do not persist result to cache")
+@click.option("--no-vamp", "no_vamp", is_flag=True, default=False,
+              help="Exclude Vamp plugin algorithms")
+@click.option("--no-madmom", "no_madmom", is_flag=True, default=False,
+              help="Exclude madmom algorithms")
+@click.option("--stems/--no-stems", "use_stems", default=True,
+              help="Enable/disable stem separation")
+@click.option("--phonemes/--no-phonemes", "use_phonemes", default=True,
+              help="Enable/disable vocal phoneme analysis")
+@click.option(
+    "--phoneme-model", "phoneme_model", default="base",
+    type=click.Choice(["tiny", "base", "small", "medium", "large-v2"], case_sensitive=False),
+    help="Whisper model size for phoneme transcription",
+    show_default=True,
+)
+@click.option("--structure/--no-structure", "use_structure", default=True,
+              help="Enable/disable song structure detection")
+@click.option("--genius/--no-genius", "use_genius", is_flag=True, default=False,
+              help="Enable/disable Genius lyrics fetch")
+@click.option("--scoring-config", "scoring_config_path", default=None,
+              type=click.Path(exists=True, dir_okay=False),
+              help="Path to a TOML scoring configuration file")
+@click.option("--scoring-profile", "scoring_profile_name", default=None,
+              help="Name of a saved scoring profile")
+@click.pass_context
+def wizard_cmd(
+    ctx: click.Context,
+    audio_file: str,
+    output: str | None,
+    non_interactive: bool,
+    use_cache: bool,
+    no_cache: bool,
+    skip_cache_write: bool,
+    no_vamp: bool,
+    no_madmom: bool,
+    use_stems: bool,
+    use_phonemes: bool,
+    phoneme_model: str,
+    use_structure: bool,
+    use_genius: bool,
+    scoring_config_path: str | None,
+    scoring_profile_name: str | None,
+) -> None:
+    """Interactive wizard for configuring and launching analysis.
+
+    AUDIO_FILE is the input MP3 (or WAV) to analyse.  In a TTY the wizard
+    walks you through cache, scope, and Whisper-model selection with
+    arrow-key menus.  Pass --non-interactive (or pipe stdin) to apply flag
+    defaults and skip all prompts.
+    """
+    from src.wizard import WizardRunner
+
+    # T010: validate file existence before launching wizard
+    audio_path = Path(audio_file)
+    if not audio_path.exists() or not audio_path.is_file():
+        click.echo(f"ERROR: File not found: {audio_file}", err=True)
+        sys.exit(1)
+
+    flags = {
+        "non_interactive": non_interactive,
+        "use_cache": use_cache,
+        "no_cache": no_cache,
+        "skip_cache_write": skip_cache_write,
+        "include_vamp": not no_vamp,
+        "include_madmom": not no_madmom,
+        "use_stems": use_stems,
+        "use_phonemes": use_phonemes,
+        "phoneme_model": phoneme_model,
+        "use_structure": use_structure,
+        "genius": use_genius,
+    }
+
+    runner = WizardRunner(flags=flags)
+    config = runner.run(audio_path)
+
+    if config is None:
+        sys.exit(130)  # user cancelled (Ctrl-C or Esc)
+
+    _run_analysis_from_config(ctx, config, audio_path, output, scoring_config_path, scoring_profile_name)
+
+    # Offer to launch the review UI after analysis completes
+    if sys.stdin.isatty() and not non_interactive:
+        try:
+            import questionary
+            launch = questionary.confirm(
+                "Open the review UI in your browser?", default=True
+            ).ask()
+        except (KeyboardInterrupt, EOFError):
+            launch = False
+        if launch:
+            # Resolve the analysis JSON path the same way analyze_cmd does
+            resolved = audio_path.resolve()
+            analysis_dir = resolved.parent / "analysis"
+            if not analysis_dir.is_dir():
+                analysis_dir = resolved.parent / resolved.stem
+            if output:
+                json_path = str(Path(output).resolve())
+            else:
+                json_path = str(analysis_dir / (resolved.stem + "_analysis.json"))
+            ctx.invoke(review_cmd, audio_or_json=json_path)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -792,7 +1034,12 @@ def review_cmd(audio_or_json: str | None) -> None:
             click.echo(f"ERROR: Cannot read {audio_or_json}: {exc}", err=True)
             sys.exit(4)
         audio_path_str = data.get("source_file", "")
-        if not audio_path_str or not Path(audio_path_str).exists():
+        # Resolve relative paths against the analysis JSON's directory
+        audio_resolved = Path(audio_path_str)
+        if not audio_resolved.is_absolute():
+            audio_resolved = (analysis_path.parent / audio_resolved).resolve()
+        audio_path_str = str(audio_resolved)
+        if not audio_resolved.exists():
             click.echo(
                 f"ERROR: Audio file not found: {audio_path_str!r}\n"
                 "The analysis JSON's 'source_file' path does not exist on this machine.",

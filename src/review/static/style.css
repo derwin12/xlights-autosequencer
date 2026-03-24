@@ -39,6 +39,21 @@ body {
 #toolbar button:disabled { opacity: 0.4; cursor: default; }
 #toolbar button.active { background: #2a5; color: #fff; border-color: #2a5; }
 
+.toolbar-sep { width: 1px; height: 20px; background: #444; margin: 0 4px; }
+#zoom-level {
+  font-size: 11px;
+  color: #888;
+  min-width: 38px;
+  text-align: center;
+  user-select: none;
+}
+#btn-zoom-in, #btn-zoom-out {
+  min-width: 28px;
+  padding: 4px 6px !important;
+  font-size: 15px !important;
+  font-weight: bold;
+}
+
 #time-display {
   font-variant-numeric: tabular-nums;
   color: #aaa;

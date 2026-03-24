@@ -6,6 +6,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+try:
+    import whisperx
+except ImportError:
+    whisperx = None  # type: ignore[assignment]
+
+from src.log import get_logger
+
+log = get_logger("xlight.genius")
+
 
 # ── Data classes ───────────────────────────────────────────────────────────────
 
@@ -118,9 +127,16 @@ def parse_sections(lyrics: str) -> list[LyricSegment]:
         idx = label_counts.get(label, 0)
         label_counts[label] = idx + 1
 
+        is_instr = is_instrumental_section(label)
+        preview = text_body[:60].replace("\n", " ") if text_body else "(empty)"
+        log.debug(
+            "parse_sections: [%s] occ=%d instrumental=%s text=%r",
+            label, idx, is_instr, preview,
+        )
         segments.append(LyricSegment(label=label, text=text_body, occurrence_index=idx))
         i += 2
 
+    log.info("parse_sections: %d sections parsed", len(segments))
     return segments
 
 
@@ -218,6 +234,12 @@ def align_sections(
         )
 
         for section in sections:
+            if is_instrumental_section(section.label):
+                log.info("align_sections: SKIP instrumental [%s]", section.label)
+                warnings.append(
+                    f"Section [{section.label}] is instrumental — skipping alignment."
+                )
+                continue
             if not section.text:
                 warnings.append(
                     f"Section [{section.label}] (occurrence {section.occurrence_index}) "
@@ -244,7 +266,12 @@ def align_sections(
                         "no words could be aligned — skipping."
                     )
                     continue
-                results.append((section, int(round(start_s * 1000))))
+                start_ms = int(round(start_s * 1000))
+                log.info(
+                    "align_sections: [%s] occ=%d → start=%dms (%d words aligned)",
+                    section.label, section.occurrence_index, start_ms, len(word_segments),
+                )
+                results.append((section, start_ms))
 
             except Exception as exc:
                 warnings.append(
@@ -262,6 +289,19 @@ def align_sections(
     results_with_warnings.warnings = warnings
     results_with_warnings.word_marks = []  # word timing now handled by PhonemeAnalyzer
     return results_with_warnings
+
+
+# Labels that indicate instrumental sections with no vocals.
+# Matched case-insensitively against the section label from Genius.
+_INSTRUMENTAL_LABELS = re.compile(
+    r"(?i)^(guitar\s*solo|solo|instrumental|interlude|outro\s*solo|intro\s*solo|"
+    r"sax\s*solo|piano\s*solo|drum\s*solo|organ\s*solo|break)$"
+)
+
+
+def is_instrumental_section(label: str) -> bool:
+    """Return True if a Genius section label indicates an instrumental (no lyrics)."""
+    return bool(_INSTRUMENTAL_LABELS.match(label.strip()))
 
 
 class _AnnotatedList(list):
@@ -325,6 +365,7 @@ class GeniusSegmentAnalyzer:
 
         # ── Sanitize title ────────────────────────────────────────────────────
         clean_title = sanitize_title(title)
+        log.info("Genius lookup: artist=%r title=%r clean_title=%r", artist, title, clean_title)
 
         # ── Fetch lyrics from Genius ──────────────────────────────────────────
         try:
@@ -351,6 +392,7 @@ class GeniusSegmentAnalyzer:
 
         # ── Strip boilerplate and parse sections ──────────────────────────────
         clean_lyrics = strip_boilerplate(match.raw_lyrics)
+        log.debug("Genius raw lyrics (%d chars):\n%s", len(clean_lyrics), clean_lyrics[:2000])
         sections = parse_sections(clean_lyrics)
 
         if not sections:
@@ -362,11 +404,13 @@ class GeniusSegmentAnalyzer:
 
         # ── Discover vocals stem ──────────────────────────────────────────────
         vocals_path: Optional[str] = None
+        log.info("Vocals stem discovery: stem_dir=%s", stem_dir)
         if stem_dir is not None:
             for candidate in [
                 stem_dir / "vocals.mp3",
                 stem_dir / "vocals.wav",
             ]:
+                log.debug("  checking %s → exists=%s", candidate, candidate.exists())
                 if candidate.exists():
                     vocals_path = str(candidate)
                     break
@@ -376,6 +420,7 @@ class GeniusSegmentAnalyzer:
             for stem_subdir in [audio_p.parent / "stems", audio_p.parent / ".stems"]:
                 for ext in ["mp3", "wav"]:
                     candidate = stem_subdir / f"vocals.{ext}"
+                    log.debug("  checking %s → exists=%s", candidate, candidate.exists())
                     if candidate.exists():
                         vocals_path = str(candidate)
                         break
@@ -383,83 +428,263 @@ class GeniusSegmentAnalyzer:
                     break
 
         if vocals_path is None:
+            log.warning("Vocals stem NOT FOUND — will use full mix (guitar solo will leak)")
             warnings.append(
                 "Vocals stem not found — using full mix for alignment. "
                 "Run with --stems for better accuracy."
             )
+        else:
+            log.info("Vocals stem found: %s", vocals_path)
 
-        # ── Align sections ────────────────────────────────────────────────────
+        # ── Build word-level PhonemeResult ─────────────────────────────────
+        # Strategy: single-pass alignment of all Genius lyrics as one block
+        # (gives WhisperX full context for best word timing), then use a
+        # quick transcription to detect vocal regions and filter out any
+        # words that land in instrumental gaps (e.g. guitar solos).
         duration_s = duration_ms / 1000.0 if duration_ms > 0 else 0.0
-        # Estimate duration from audio if not provided
         if duration_s <= 0:
             try:
                 import librosa
                 duration_s = float(librosa.get_duration(path=audio_path))
             except Exception:
-                duration_s = 300.0  # 5-minute fallback
+                duration_s = 300.0
 
-        aligned = align_sections(sections, audio_path, duration_s, vocals_path, device)
-        warnings.extend(getattr(aligned, "warnings", []))
+        align_audio = vocals_path if vocals_path else audio_path
+        log.info("WhisperX alignment audio: %s (vocals_path=%s, audio_path=%s)",
+                 align_audio, vocals_path, audio_path)
 
-        if not aligned:
-            warnings.append(
-                "No sections could be aligned. No song_structure will be written."
-            )
-            return None, None, warnings
-
-        # ── Compute boundaries: end_ms of section N = start_ms of section N+1 ─
-        song_duration_ms = duration_ms if duration_ms > 0 else int(duration_s * 1000)
-        aligned_sorted = sorted(aligned, key=lambda pair: pair[1])
-
-        segments: list[StructureSegment] = []
-        for i, (section, start_ms) in enumerate(aligned_sorted):
-            if i + 1 < len(aligned_sorted):
-                end_ms = aligned_sorted[i + 1][1]
-            else:
-                end_ms = song_duration_ms
-            segments.append(
-                StructureSegment(
-                    label=section.label,
-                    start_ms=start_ms,
-                    end_ms=max(end_ms, start_ms + 1),
-                )
-            )
-
-        song_structure = SongStructure(segments=segments, source="genius")
-
-        # ── Build word-level PhonemeResult using PhonemeAnalyzer ─────────────
-        # Concatenate all section texts into one lyrics block and force-align
-        # against the audio in a single pass (the same path as --phonemes --lyrics).
-        # This gives WhisperX full-song context so every word gets a timestamp.
         phoneme_result: Optional["PhonemeResult"] = None
-        full_lyrics_text = "\n".join(s.text for s in sections if s.text)
-        if full_lyrics_text.strip():
-            import os
-            import tempfile
-            tmp_path: Optional[str] = None
+        vocal_sections = [
+            s for s in sections
+            if s.text and s.text.strip() and not is_instrumental_section(s.label)
+        ]
+        if not vocal_sections:
+            warnings.append("No vocal sections found in Genius lyrics.")
+        else:
             try:
-                from src.analyzer.phonemes import PhonemeAnalyzer
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".txt", delete=False, encoding="utf-8"
-                ) as tf:
-                    tf.write(full_lyrics_text)
-                    tmp_path = tf.name
-
-                align_audio = vocals_path if vocals_path else audio_path
-                phoneme_analyzer = PhonemeAnalyzer(device=device)
-                phoneme_result = phoneme_analyzer.analyze(
-                    audio_path=align_audio,
-                    source_file=audio_path,
-                    lyrics_path=tmp_path,
+                from src.analyzer.phonemes import (
+                    PhonemeResult, WordTrack, WordMark,
+                    PhonemeTrack, LyricsBlock, PhonemeMark,
+                    word_to_papagayo, distribute_phoneme_timing,
                 )
-                if phoneme_result is not None:
-                    phoneme_result.word_track.lyrics_source = "genius"
-                    phoneme_result.word_track.name = "genius-words"
-                warnings.extend(getattr(phoneme_analyzer, "warnings", []))
+                import nltk
+                nltk.download("cmudict", quiet=True)
+                from nltk.corpus import cmudict as _cmudict
+                cmu_dict = _cmudict.dict()
+
+                audio = whisperx.load_audio(align_audio)
+
+                # Step 1: Quick transcribe to discover vocal regions
+                log.info("Step 1: transcribing vocals stem to find vocal regions...")
+                model = whisperx.load_model("base", device, compute_type="float32", language="en")
+                transcribed = model.transcribe(audio, batch_size=8)
+                raw_segments = transcribed.get("segments", [])
+                log.info("Transcription found %d raw segments", len(raw_segments))
+                for seg in raw_segments:
+                    log.debug("  transcribed: %.1fs–%.1fs %r",
+                              seg.get("start", 0), seg.get("end", 0),
+                              seg.get("text", "")[:60])
+
+                # Build vocal regions (groups of segments with gaps < 4s)
+                vocal_regions: list[tuple[float, float]] = []
+                if raw_segments:
+                    r_start = raw_segments[0]["start"]
+                    r_end = raw_segments[0]["end"]
+                    for seg in raw_segments[1:]:
+                        if seg["start"] - r_end > 4.0:
+                            vocal_regions.append((r_start, r_end))
+                            r_start = seg["start"]
+                        r_end = seg["end"]
+                    vocal_regions.append((r_start, r_end))
+
+                log.info("Step 1: found %d vocal regions", len(vocal_regions))
+                for i, (rs, re_) in enumerate(vocal_regions):
+                    log.info("  vocal region %d: %.1fs–%.1fs (%.1fs)", i, rs, re_, re_ - rs)
+
+                # Step 2: Single-pass alignment — all lyrics as one block
+                full_lyrics = " ".join(
+                    " ".join(re.sub(r"[^a-zA-Z\s']", " ", s.text).split())
+                    for s in vocal_sections
+                )
+                log.info("Step 2: aligning %d words as single block (%.1fs duration)",
+                         len(full_lyrics.split()), duration_s)
+
+                align_model, metadata = whisperx.load_align_model(
+                    language_code="en", device=device
+                )
+                aligned = whisperx.align(
+                    [{"text": full_lyrics, "start": 0.0, "end": duration_s}],
+                    align_model, metadata, audio, device,
+                )
+                word_segments = aligned.get("word_segments", [])
+                log.info("Step 2: alignment returned %d word_segments", len(word_segments))
+
+                # Build word marks
+                word_marks = []
+                for ws in word_segments:
+                    word = ws.get("word", "").strip()
+                    start = ws.get("start")
+                    end = ws.get("end")
+                    if not word or start is None or end is None:
+                        continue
+                    word_marks.append(WordMark(
+                        label=word.upper(),
+                        start_ms=int(round(start * 1000)),
+                        end_ms=int(round(end * 1000)),
+                    ))
+
+                # Step 3: Filter out words in instrumental gaps
+                # A word is kept if it overlaps any vocal region.
+                def in_vocal_region(wm: WordMark) -> bool:
+                    mid_s = (wm.start_ms + wm.end_ms) / 2000.0
+                    return any(rs <= mid_s <= re_ for rs, re_ in vocal_regions)
+
+                before = len(word_marks)
+                word_marks = [wm for wm in word_marks if in_vocal_region(wm)]
+                filtered = before - len(word_marks)
+                if filtered:
+                    log.info("Step 3: filtered %d words in instrumental gaps (%d → %d)",
+                             filtered, before, len(word_marks))
+                else:
+                    log.info("Step 3: no words filtered (all in vocal regions)")
+
+                if word_marks:
+                    phoneme_marks: list[PhonemeMark] = []
+                    for wm in word_marks:
+                        papagayo = word_to_papagayo(wm.label, cmu_dict)
+                        phoneme_marks.extend(
+                            distribute_phoneme_timing(papagayo, wm.start_ms, wm.end_ms)
+                        )
+
+                    lyrics_text = " ".join(wm.label for wm in word_marks)
+                    phoneme_result = PhonemeResult(
+                        lyrics_block=LyricsBlock(
+                            text=lyrics_text,
+                            start_ms=word_marks[0].start_ms,
+                            end_ms=word_marks[-1].end_ms,
+                        ),
+                        word_track=WordTrack(
+                            name="genius-words",
+                            marks=word_marks,
+                            lyrics_source="genius",
+                        ),
+                        phoneme_track=PhonemeTrack(
+                            name="whisperx-phonemes",
+                            marks=phoneme_marks,
+                        ),
+                        source_file=audio_path,
+                        language="en",
+                        model_name="base",
+                    )
+                    log.info("Genius alignment complete: %d words, %d phonemes",
+                             len(word_marks), len(phoneme_marks))
+                else:
+                    warnings.append("Genius word alignment produced no word marks")
             except Exception as exc:
+                log.error("Genius word alignment failed: %s", exc, exc_info=True)
                 warnings.append(f"Genius word alignment failed: {exc}")
-            finally:
-                if tmp_path and os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
+
+        # ── Derive section boundaries from word-level timestamps ─────────
+        # Match each section's first few words against the aligned word marks
+        # to find where each section starts in the audio.
+        song_structure: Optional["SongStructure"] = None
+        if phoneme_result is not None:
+            song_duration_ms = duration_ms if duration_ms > 0 else int(
+                (duration_s if duration_s > 0 else 300.0) * 1000
+            )
+            word_marks = phoneme_result.word_track.marks
+            # Build a list of (word_upper, start_ms) for matching
+            wm_words = [(wm.label.upper(), wm.start_ms) for wm in word_marks]
+
+            section_starts: list[tuple["LyricSegment", int]] = []
+            search_offset = 0  # advance through words as we match sections
+
+            for section in sections:
+                if is_instrumental_section(section.label):
+                    # Instrumental: place it after the last matched section
+                    section_starts.append((section, -1))  # placeholder
+                    continue
+                if not section.text:
+                    continue
+
+                # Extract first 3 words of the section for matching
+                sec_words = re.sub(r"[^a-zA-Z\s']", " ", section.text).upper().split()[:3]
+                if not sec_words:
+                    continue
+
+                # Scan forward in aligned words to find this section
+                matched_ms = None
+                for j in range(search_offset, len(wm_words)):
+                    if wm_words[j][0].startswith(sec_words[0][:4]):
+                        matched_ms = wm_words[j][1]
+                        search_offset = j + 1
+                        break
+
+                if matched_ms is not None:
+                    log.info("Section boundary: [%s] occ=%d → %dms (matched word %r)",
+                             section.label, section.occurrence_index, matched_ms, sec_words[0])
+                    section_starts.append((section, matched_ms))
+                else:
+                    log.warning("Section boundary: [%s] occ=%d — could not match words %s",
+                                section.label, section.occurrence_index, sec_words)
+
+            # Fill in instrumental section timestamps (midpoint between neighbors)
+            filled: list[tuple["LyricSegment", int]] = []
+            for i, (sec, ms) in enumerate(section_starts):
+                if ms == -1:
+                    prev_ms = filled[-1][1] if filled else 0
+                    next_ms = song_duration_ms
+                    for _, nms in section_starts[i + 1:]:
+                        if nms >= 0:
+                            next_ms = nms
+                            break
+                    ms = (prev_ms + next_ms) // 2
+                    log.info("Section boundary: [%s] (instrumental) → %dms (interpolated)", sec.label, ms)
+                filled.append((sec, ms))
+
+            if filled:
+                segments: list[StructureSegment] = []
+                for i, (sec, start_ms) in enumerate(filled):
+                    end_ms = filled[i + 1][1] if i + 1 < len(filled) else song_duration_ms
+                    segments.append(StructureSegment(
+                        label=sec.label,
+                        start_ms=start_ms,
+                        end_ms=max(end_ms, start_ms + 1),
+                    ))
+                song_structure = SongStructure(segments=segments, source="genius")
+                log.info("Song structure: %d segments built from word timestamps",
+                         len(segments))
+
+                # Remove words that fall inside instrumental sections
+                # (WhisperX can't distinguish guitar from vocals)
+                instrumental_ranges = [
+                    (seg.start_ms, seg.end_ms) for seg in segments
+                    if is_instrumental_section(seg.label)
+                ]
+                if instrumental_ranges and phoneme_result is not None:
+                    before_count = len(phoneme_result.word_track.marks)
+                    phoneme_result.word_track.marks = [
+                        wm for wm in phoneme_result.word_track.marks
+                        if not any(r_start <= wm.start_ms < r_end
+                                   for r_start, r_end in instrumental_ranges)
+                    ]
+                    removed = before_count - len(phoneme_result.word_track.marks)
+                    if removed:
+                        log.info("Removed %d words from instrumental sections: %s",
+                                 removed, [(f"{r[0]/1000:.1f}s-{r[1]/1000:.1f}s") for r in instrumental_ranges])
+                        # Also rebuild phonemes for remaining words
+                        new_phonemes: list = []
+                        for wm in phoneme_result.word_track.marks:
+                            from src.analyzer.phonemes import word_to_papagayo, distribute_phoneme_timing
+                            pap = word_to_papagayo(wm.label, cmu_dict)
+                            new_phonemes.extend(
+                                distribute_phoneme_timing(pap, wm.start_ms, wm.end_ms)
+                            )
+                        phoneme_result.phoneme_track.marks = new_phonemes
+                        phoneme_result.lyrics_block.text = " ".join(
+                            wm.label for wm in phoneme_result.word_track.marks
+                        )
+                        log.info("After instrumental filter: %d words, %d phonemes",
+                                 len(phoneme_result.word_track.marks), len(new_phonemes))
 
         return song_structure, phoneme_result, warnings

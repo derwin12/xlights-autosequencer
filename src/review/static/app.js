@@ -57,7 +57,10 @@ const LANE_H = 60;
 const PHONEME_LANE_H = 40;
 const AXIS_H = 24;
 const QUEUE_DIVIDER_H = 20; // canvas height of the export-queue / available divider
-const PX_PER_SEC = 100;
+let pxPerSec = 100;
+const ZOOM_MIN = 20;
+const ZOOM_MAX = 500;
+const ZOOM_DEFAULT = 100;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,8 +71,66 @@ function fmtTime(sec) {
 }
 
 function canvasWidth() {
-  return Math.max(canvasWrap.clientWidth, Math.ceil((durationMs / 1000) * PX_PER_SEC));
+  return Math.max(canvasWrap.clientWidth, Math.ceil((durationMs / 1000) * pxPerSec));
 }
+
+// ── Zoom ──────────────────────────────────────────────────────────────────
+
+const zoomLabel = document.getElementById('zoom-level');
+const btnZoomIn = document.getElementById('btn-zoom-in');
+const btnZoomOut = document.getElementById('btn-zoom-out');
+
+function setZoom(newPxPerSec, anchorFraction) {
+  // anchorFraction: the fraction of the visible viewport to keep stable
+  // (0 = left edge, 0.5 = center). Default to center of viewport.
+  if (anchorFraction === undefined) anchorFraction = 0.5;
+
+  const oldPx = pxPerSec;
+  pxPerSec = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(newPxPerSec)));
+  if (pxPerSec === oldPx) return;
+
+  // Preserve the time position under the anchor point
+  const viewW = canvasWrap.clientWidth;
+  const oldScroll = canvasWrap.scrollLeft;
+  const anchorX = oldScroll + viewW * anchorFraction;
+  const anchorTime = anchorX / ((durationMs / 1000) * oldPx);
+
+  drawBackground();
+  buildPanel();
+
+  const newAnchorX = anchorTime * (durationMs / 1000) * pxPerSec;
+  canvasWrap.scrollLeft = Math.max(0, newAnchorX - viewW * anchorFraction);
+
+  zoomLabel.textContent = Math.round((pxPerSec / ZOOM_DEFAULT) * 100) + '%';
+}
+
+if (btnZoomIn) btnZoomIn.addEventListener('click', () => setZoom(pxPerSec * 1.3));
+if (btnZoomOut) btnZoomOut.addEventListener('click', () => setZoom(pxPerSec / 1.3));
+
+// Ctrl+scroll or pinch-to-zoom on the canvas
+canvasWrap.addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    const rect = canvasWrap.getBoundingClientRect();
+    const anchorFrac = (e.clientX - rect.left) / rect.width;
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    setZoom(pxPerSec * factor, anchorFrac);
+  }
+}, { passive: false });
+
+// Keyboard shortcuts: Ctrl+ / Ctrl- / Ctrl+0
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+    e.preventDefault();
+    setZoom(pxPerSec * 1.3);
+  } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+    e.preventDefault();
+    setZoom(pxPerSec / 1.3);
+  } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+    e.preventDefault();
+    setZoom(ZOOM_DEFAULT);
+  }
+});
 
 // Returns the tracks to display: selected (all stems) first, then unselected
 // filtered by activeStemFilter.

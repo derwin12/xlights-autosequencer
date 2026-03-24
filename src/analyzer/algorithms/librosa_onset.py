@@ -17,6 +17,7 @@ class LibrosaOnsetAlgorithm(Algorithm):
     library = "librosa"
     plugin_key = None
     parameters = {"hop_length": 512}
+    depends_on = ["audio_load"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import librosa

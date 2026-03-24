@@ -16,6 +16,7 @@ class MadmomBeatAlgorithm(Algorithm):
     plugin_key = None
     parameters = {}
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         from madmom.features.beats import RNNBeatProcessor, BeatTrackingProcessor
@@ -45,6 +46,7 @@ class MadmomDownbeatAlgorithm(Algorithm):
     plugin_key = None
     parameters = {}
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         from madmom.features.downbeats import RNNDownBeatProcessor, DBNDownBeatTrackingProcessor

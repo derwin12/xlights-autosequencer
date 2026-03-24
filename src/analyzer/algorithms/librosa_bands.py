@@ -48,6 +48,7 @@ class LibrosaBassAlgorithm(Algorithm):
     library = "librosa"
     plugin_key = None
     parameters = {"fmin": 20, "fmax": 250}
+    depends_on = ["audio_load"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         times = _band_onsets(audio, sample_rate, fmin=20.0, fmax=250.0)
@@ -71,6 +72,7 @@ class LibrosaMidAlgorithm(Algorithm):
     library = "librosa"
     plugin_key = None
     parameters = {"fmin": 250, "fmax": 4000}
+    depends_on = ["audio_load"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         times = _band_onsets(audio, sample_rate, fmin=250.0, fmax=4000.0)
@@ -94,6 +96,7 @@ class LibrosaTrebleAlgorithm(Algorithm):
     library = "librosa"
     plugin_key = None
     parameters = {"fmin": 4000, "fmax": 20000}
+    depends_on = ["audio_load"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         times = _band_onsets(audio, sample_rate, fmin=4000.0, fmax=20000.0)

@@ -16,6 +16,7 @@ class LibrosaBeatAlgorithm(Algorithm):
     plugin_key = None
     parameters = {"hop_length": 512}
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import librosa
@@ -46,6 +47,7 @@ class LibrosaBarAlgorithm(Algorithm):
     plugin_key = None
     parameters = {"hop_length": 512, "beats_per_bar": 4}
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import librosa

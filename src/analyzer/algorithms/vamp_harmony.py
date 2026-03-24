@@ -26,6 +26,7 @@ class ChordinoAlgorithm(Algorithm):
     parameters = {}
     vamp_output = "simplechord"
     preferred_stem = "piano"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
@@ -55,6 +56,7 @@ class NNLSChromaAlgorithm(Algorithm):
     parameters = {}
     vamp_output = "chroma"
     preferred_stem = "piano"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp

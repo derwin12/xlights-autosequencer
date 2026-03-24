@@ -529,10 +529,149 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
             audio_path = Path(app.config["AUDIO_PATH"])
             stem_file = audio_path.parent / "stems" / f"{stem_name}.mp3"
             if not stem_name or not stem_file.exists():
+                # Try .stems fallback
+                stem_file = audio_path.parent / ".stems" / f"{stem_name}.mp3"
+            if not stem_file.exists():
                 return jsonify({"error": f"Stem {stem_name} not found"}), 404
             resp = send_file(str(stem_file), mimetype="audio/mpeg", conditional=True)
             resp.headers["Accept-Ranges"] = "bytes"
             return resp
+
+        @app.route("/vocal-audio")
+        def vocal_audio():
+            audio_path = Path(app.config["AUDIO_PATH"])
+            for stem_dir in [audio_path.parent / "stems", audio_path.parent / ".stems"]:
+                vocals = stem_dir / "vocals.mp3"
+                if vocals.exists():
+                    resp = send_file(str(vocals), mimetype="audio/mpeg", conditional=True)
+                    resp.headers["Accept-Ranges"] = "bytes"
+                    return resp
+            return jsonify({"error": "Vocals stem not found"}), 404
+
+        @app.route("/phonemes-view")
+        def phonemes_view():
+            return send_from_directory(app.static_folder, "phonemes.html")
+
+        @app.route("/phonemes")
+        def phonemes():
+            with open(app.config["ANALYSIS_PATH"], "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            pr = data.get("phoneme_result")
+            if not pr:
+                return jsonify({"error": "No phoneme data in this analysis"}), 404
+            audio_path = Path(app.config["AUDIO_PATH"])
+            has_vocals = any(
+                (audio_path.parent / d / "vocals.mp3").exists()
+                for d in ["stems", ".stems"]
+            )
+            pr["duration_ms"] = data.get("duration_ms", 0)
+            pr["filename"] = data.get("filename", "")
+            pr["has_vocals_audio"] = has_vocals
+            # Detect MP3 encoder padding so the UI can compensate
+            try:
+                import subprocess
+                probe = subprocess.run(
+                    ["ffprobe", "-v", "quiet", "-print_format", "json",
+                     "-show_format", str(audio_path)],
+                    capture_output=True, text=True,
+                )
+                import json as _json
+                fmt = _json.loads(probe.stdout).get("format", {})
+                pr["audio_offset_ms"] = round(float(fmt.get("start_time", 0)) * 1000)
+            except Exception:
+                pr["audio_offset_ms"] = 0
+            return jsonify(pr)
+
+        @app.route("/phonemize", methods=["POST"])
+        def phonemize():
+            """Generate Papagayo phonemes for a word using cmudict."""
+            body = request.get_json(force=True)
+            word = body.get("word", "").strip()
+            start_ms = body.get("start_ms", 0)
+            end_ms = body.get("end_ms", 100)
+            if not word:
+                return jsonify({"error": "No word provided"}), 400
+            try:
+                from src.analyzer.phonemes import word_to_papagayo, distribute_phoneme_timing
+                import nltk
+                nltk.download("cmudict", quiet=True)
+                from nltk.corpus import cmudict as _cmudict
+                cmu_dict = _cmudict.dict()
+                papagayo = word_to_papagayo(word.upper(), cmu_dict)
+                marks = distribute_phoneme_timing(papagayo, start_ms, end_ms)
+                return jsonify({
+                    "phonemes": [{"label": m.label, "start_ms": m.start_ms, "end_ms": m.end_ms} for m in marks],
+                    "papagayo": papagayo,
+                })
+            except Exception as exc:
+                return jsonify({"error": str(exc)}), 500
+
+        @app.route("/waveform")
+        def waveform():
+            """Return downsampled waveform amplitude data as JSON."""
+            stem = request.args.get("stem", "")
+            audio_src = Path(app.config["AUDIO_PATH"])
+            if stem:
+                stem_file = audio_src.parent / "stems" / f"{stem}.mp3"
+                if not stem_file.exists():
+                    stem_file = audio_src.parent / ".stems" / f"{stem}.mp3"
+                if stem_file.exists():
+                    audio_src = stem_file
+
+            samples_per_pixel = int(request.args.get("spp", 512))
+            try:
+                import librosa
+                import numpy as np
+                y, sr = librosa.load(str(audio_src), sr=22050, mono=True)
+                # Downsample: compute max amplitude per chunk
+                n_chunks = len(y) // samples_per_pixel
+                if n_chunks == 0:
+                    return jsonify({"samples": [], "sample_rate": sr, "samples_per_pixel": samples_per_pixel})
+                trimmed = y[:n_chunks * samples_per_pixel]
+                chunks = trimmed.reshape(n_chunks, samples_per_pixel)
+                peaks = np.abs(chunks).max(axis=1)
+                # Normalize to 0-1
+                peak_max = peaks.max()
+                if peak_max > 0:
+                    peaks = peaks / peak_max
+                return jsonify({
+                    "samples": [round(float(v), 3) for v in peaks],
+                    "sample_rate": sr,
+                    "samples_per_pixel": samples_per_pixel,
+                    "duration_s": len(y) / sr,
+                })
+            except Exception as exc:
+                return jsonify({"error": str(exc)}), 500
+
+        @app.route("/save-words", methods=["POST"])
+        def save_words():
+            """Persist edited word and phoneme timing back to the analysis JSON."""
+            body = request.get_json(force=True)
+            new_word_marks = body.get("word_marks", [])
+            new_phoneme_marks = body.get("phoneme_marks")  # optional
+
+            if not new_word_marks:
+                return jsonify({"error": "No word marks provided"}), 400
+
+            try:
+                with open(app.config["ANALYSIS_PATH"], "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                pr = data.get("phoneme_result")
+                if pr:
+                    if "word_track" in pr:
+                        pr["word_track"]["marks"] = new_word_marks
+                    if new_phoneme_marks is not None and "phoneme_track" in pr:
+                        pr["phoneme_track"]["marks"] = new_phoneme_marks
+                    # Update lyrics block text
+                    if "lyrics_block" in pr:
+                        pr["lyrics_block"]["text"] = " ".join(
+                            m.get("label", "") for m in new_word_marks
+                        )
+                with open(app.config["ANALYSIS_PATH"], "w", encoding="utf-8") as fh:
+                    json.dump(data, fh, indent=2, ensure_ascii=False)
+                return jsonify({"ok": True, "count": len(new_word_marks)})
+            except Exception as exc:
+                return jsonify({"error": str(exc)}), 500
 
         @app.route("/export", methods=["POST"])
         def export():

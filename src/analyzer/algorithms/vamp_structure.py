@@ -25,6 +25,7 @@ class QMSegmenterAlgorithm(Algorithm):
     plugin_key = "qm-vamp-plugins:qm-segmenter"
     parameters = {}
     vamp_output = "segmentation"
+    depends_on = ["audio_load"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
@@ -53,6 +54,7 @@ class QMTempoAlgorithm(Algorithm):
     plugin_key = "qm-vamp-plugins:qm-tempotracker"
     parameters = {}
     vamp_output = "tempo"
+    depends_on = ["audio_load"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp

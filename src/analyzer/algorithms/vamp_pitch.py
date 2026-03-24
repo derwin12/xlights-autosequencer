@@ -26,6 +26,7 @@ class PYINNotesAlgorithm(Algorithm):
     parameters = {}
     vamp_output = "notes"
     preferred_stem = "vocals"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
@@ -55,6 +56,7 @@ class PYINPitchChangesAlgorithm(Algorithm):
     parameters = {}
     vamp_output = "smoothedpitchtrack"
     preferred_stem = "vocals"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp

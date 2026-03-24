@@ -579,6 +579,7 @@ class AnalysisResult:
     source_hash: Optional[str] = None
     interaction_result: Optional[InteractionResult] = None
     sweep_tracks: list[dict] = field(default_factory=list)
+    pipeline_stats: Optional[dict] = None  # T038: wall_clock_ms, cpu_ms, parallelism_ratio, step_timings
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -598,6 +599,7 @@ class AnalysisResult:
             "phoneme_result": self.phoneme_result.to_dict() if self.phoneme_result else None,
             "song_structure": self.song_structure.to_dict() if self.song_structure else None,
             "interaction_result": self.interaction_result.to_dict() if self.interaction_result else None,
+            "pipeline_stats": self.pipeline_stats,
         }
         return d
 
@@ -628,4 +630,5 @@ class AnalysisResult:
             source_hash=d.get("source_hash"),
             interaction_result=interaction_result,
             sweep_tracks=d.get("sweep_tracks", []),
+            pipeline_stats=d.get("pipeline_stats"),
         )

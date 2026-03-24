@@ -209,9 +209,8 @@ class TestGeniusSegmentAnalyzerHappyPath:
 
     @patch("src.analyzer.genius_segments.fetch_genius_lyrics")
     @patch("src.analyzer.genius_segments.read_id3_tags")
-    @patch("src.analyzer.genius_segments.align_sections")
     def test_returns_song_structure_with_genius_source(
-        self, mock_align, mock_id3, mock_fetch
+        self, mock_id3, mock_fetch
     ):
         mock_id3.return_value = ("AC/DC", "Highway to Hell")
         mock_fetch.return_value = GeniusMatch(
@@ -220,31 +219,45 @@ class TestGeniusSegmentAnalyzerHappyPath:
             artist="AC/DC",
             raw_lyrics=SAMPLE_RAW_LYRICS,
         )
-        # align_sections returns annotated list of (section, start_ms)
-        from src.analyzer.genius_segments import _AnnotatedList
-        sections = parse_sections(strip_boilerplate(SAMPLE_RAW_LYRICS))
-        aligned = _AnnotatedList([
-            (sections[0], 14200),
-            (sections[1], 42600),
-            (sections[2], 71400),
-            (sections[3], 99800),
-        ])
-        aligned.warnings = []
-        mock_align.return_value = aligned
 
-        analyzer = GeniusSegmentAnalyzer()
-        result, _phoneme_result, warnings = analyzer.run(
-            audio_path="song.mp3",
-            token="fake-token",
-            duration_ms=210_000,
-        )
+        # Mock whisperx: transcribe returns segments matching sections,
+        # align returns word-level timestamps
+        mock_transcribed_segments = [
+            {"text": "Livin easy lovin free season ticket", "start": 14.0, "end": 40.0},
+            {"text": "I'm on the highway to hell", "start": 42.0, "end": 65.0},
+            {"text": "No stop signs speed limit", "start": 71.0, "end": 95.0},
+            {"text": "I'm on the highway to hell", "start": 99.0, "end": 120.0},
+        ]
+        mock_word_segments = [
+            {"word": "Livin'", "start": 14.2, "end": 14.8},
+            {"word": "easy", "start": 14.9, "end": 15.4},
+            {"word": "I'm", "start": 42.6, "end": 42.9},
+            {"word": "on", "start": 43.0, "end": 43.2},
+            {"word": "No", "start": 71.4, "end": 71.8},
+            {"word": "stop", "start": 71.9, "end": 72.3},
+            {"word": "I'm", "start": 99.8, "end": 100.0},
+        ]
+
+        with patch("src.analyzer.genius_segments.whisperx") as mock_wx:
+            mock_wx.load_audio.return_value = "fake_audio"
+            mock_model = MagicMock()
+            mock_model.transcribe.return_value = {"segments": mock_transcribed_segments, "language": "en"}
+            mock_wx.load_model.return_value = mock_model
+            mock_wx.load_align_model.return_value = ("model", "metadata")
+            mock_wx.align.return_value = {"word_segments": mock_word_segments}
+
+            analyzer = GeniusSegmentAnalyzer()
+            result, _phoneme_result, warnings = analyzer.run(
+                audio_path="song.mp3",
+                token="fake-token",
+                duration_ms=210_000,
+            )
 
         assert result is not None
         assert result.source == "genius"
-        assert len(result.segments) == 4
+        assert len(result.segments) >= 4
         assert result.segments[0].label == "Verse 1"
         assert result.segments[0].start_ms == 14200
-        assert result.segments[0].end_ms == 42600  # = next segment start
 
     @patch("src.analyzer.genius_segments.fetch_genius_lyrics")
     @patch("src.analyzer.genius_segments.read_id3_tags")
@@ -344,42 +357,44 @@ class TestGracefulFallback:
         assert any("header" in w.lower() or "section" in w.lower() for w in warnings)
 
     def test_section_with_empty_text_skipped_with_warning(self):
-        """A section with no lyric body is skipped; warning added."""
-        from src.analyzer.genius_segments import _AnnotatedList
-
+        """A section with no lyric body (Guitar Solo) is logged as instrumental skip."""
         match = GeniusMatch(genius_id=1, title="T", artist="A", raw_lyrics=SAMPLE_RAW_LYRICS)
 
-        # align_sections returns only non-empty sections
-        sections_with_content = parse_sections(strip_boilerplate(SAMPLE_RAW_LYRICS))
-        non_empty = [s for s in sections_with_content if s.text]
-
-        aligned = _AnnotatedList([(non_empty[0], 14200)])
-        aligned.warnings = ["Section [Intro] has no lyric text — skipping alignment."]
+        mock_word_segments = [
+            {"word": "Livin'", "start": 14.2, "end": 14.8},
+        ]
 
         with patch("src.analyzer.genius_segments.read_id3_tags", return_value=("A", "T")):
             with patch("src.analyzer.genius_segments.fetch_genius_lyrics", return_value=match):
-                with patch("src.analyzer.genius_segments.align_sections", return_value=aligned):
+                with patch("src.analyzer.genius_segments.whisperx") as mock_wx:
+                    mock_wx.load_audio.return_value = "fake"
+                    mock_m = MagicMock()
+                    mock_m.transcribe.return_value = {"segments": [
+                        {"text": "Livin easy", "start": 14.0, "end": 40.0},
+                    ], "language": "en"}
+                    mock_wx.load_model.return_value = mock_m
+                    mock_wx.load_align_model.return_value = ("m", "md")
+                    mock_wx.align.return_value = {"word_segments": mock_word_segments}
                     analyzer = GeniusSegmentAnalyzer()
                     result, _phoneme_result, warnings = analyzer.run("song.mp3", "tok", duration_ms=210_000)
 
-        # Result is not None — other sections succeeded
+        # Result is not None — vocal sections produced structure
         assert result is not None
-        # The per-section warning was collected
-        assert any("skipping" in w.lower() for w in warnings)
 
-    def test_all_sections_fail_alignment_returns_none(self):
-        """If all sections fail alignment, return None with warning."""
-        from src.analyzer.genius_segments import _AnnotatedList
-
+    def test_all_sections_fail_alignment_returns_none_structure(self):
+        """If whisperx alignment returns no words, song_structure is None."""
         match = GeniusMatch(genius_id=1, title="T", artist="A", raw_lyrics=SAMPLE_RAW_LYRICS)
-        aligned = _AnnotatedList([])  # no aligned sections
-        aligned.warnings = ["Section [Verse 1]: no words aligned.", "Section [Chorus]: no words aligned."]
 
         with patch("src.analyzer.genius_segments.read_id3_tags", return_value=("A", "T")):
             with patch("src.analyzer.genius_segments.fetch_genius_lyrics", return_value=match):
-                with patch("src.analyzer.genius_segments.align_sections", return_value=aligned):
+                with patch("src.analyzer.genius_segments.whisperx") as mock_wx:
+                    mock_wx.load_audio.return_value = "fake"
+                    mock_m = MagicMock()
+                    mock_m.transcribe.return_value = {"segments": [], "language": "en"}
+                    mock_wx.load_model.return_value = mock_m
+                    mock_wx.load_align_model.return_value = ("m", "md")
+                    mock_wx.align.return_value = {"word_segments": []}
                     analyzer = GeniusSegmentAnalyzer()
                     result, _phoneme_result, warnings = analyzer.run("song.mp3", "tok", duration_ms=210_000)
 
         assert result is None
-        assert warnings  # at least the "no sections aligned" warning

@@ -116,9 +116,11 @@ class AnalysisRunner:
 
         stem_cache_str: str | None = None
         if stems is not None:
-            stems_dir = Path(meta.path).parent / ".stems"
-            if stems_dir.exists():
-                stem_cache_str = str(stems_dir)
+            for _sd_name in ("stems", ".stems"):
+                stems_dir = Path(meta.path).parent / _sd_name
+                if stems_dir.exists():
+                    stem_cache_str = str(stems_dir)
+                    break
 
         return AnalysisResult(
             schema_version="1.0",

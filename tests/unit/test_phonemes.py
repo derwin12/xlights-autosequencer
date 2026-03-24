@@ -26,7 +26,7 @@ from src.analyzer.phonemes import (
 class TestArpabetToPapagayo:
     def test_all_arpabet_codes_mapped(self):
         """Every key in the mapping table maps to a valid Papagayo label."""
-        valid = {"AI", "E", "O", "WQ", "L", "MBP", "FV", "etc"}
+        valid = {"AI", "E", "O", "U", "WQ", "L", "MBP", "FV", "etc", "rest"}
         for code, label in _ARPABET_TO_PAPAGAYO.items():
             assert label in valid, f"{code} maps to unknown label {label!r}"
 
@@ -94,7 +94,7 @@ class TestWordToPapagayo:
         result = word_to_papagayo("XYZFOO", cmu_dict)
         assert isinstance(result, list)
         assert len(result) > 0
-        valid = {"AI", "E", "O", "WQ", "L", "MBP", "FV", "etc"}
+        valid = {"AI", "E", "O", "U", "WQ", "L", "MBP", "FV", "etc", "rest"}
         for lbl in result:
             assert lbl in valid
 
@@ -131,11 +131,11 @@ class TestDistributePhoneme:
         for a, b in zip(marks, marks[1:]):
             assert a.end_ms == b.start_ms
 
-    def test_transitions_inserted_between_vowel_consonant(self):
-        # AI (vowel) → L (consonant): should insert an etc between them
+    def test_no_transitions_inserted(self):
+        # No transition phonemes — just the actual mouth shapes
         marks = distribute_phoneme_timing(["AI", "L"], 0, 1000)
         labels = [m.label for m in marks]
-        assert labels == ["AI", "etc", "L"]
+        assert labels == ["AI", "L"]
 
     def test_no_transition_between_same_category(self):
         # Two vowels: AI → E, no transition
@@ -243,7 +243,7 @@ class TestPhonemeAnalyzer:
         assert len(result.phoneme_track.marks) > 0
 
     def test_phoneme_track_valid_labels(self, analyzer):
-        valid = {"AI", "E", "O", "WQ", "L", "MBP", "FV", "etc"}
+        valid = {"AI", "E", "O", "U", "WQ", "L", "MBP", "FV", "etc", "rest"}
         a, mock_wx = analyzer
         with patch.dict("sys.modules", {"whisperx": mock_wx}):
             result = a.analyze("/fake/vocals.wav", "/fake/song.mp3")

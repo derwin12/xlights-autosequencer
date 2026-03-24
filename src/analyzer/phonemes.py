@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from src.log import get_logger
+
+log = get_logger("xlight.phonemes")
+
 
 # ── Data Classes ──────────────────────────────────────────────────────────────
 
@@ -149,32 +153,36 @@ class PhonemeResult:
 
 # ── ARPAbet → Papagayo mapping ────────────────────────────────────────────────
 
-# Maps ARPAbet phoneme codes (without stress digits) to Papagayo labels.
+# Maps ARPAbet phoneme codes (without stress digits) to Preston Blair
+# phoneme set, matching xLights' phoneme_mapping file exactly.
+# Reference: github.com/xLightsSequencer/xLights/blob/master/bin/phoneme_mapping
 _ARPABET_TO_PAPAGAYO: dict[str, str] = {
-    # AI — wide open vowel sounds
-    "AA": "AI", "AE": "AI", "AH": "AI", "AY": "AI", "AW": "AI",
-    # E — mid open vowel sounds
-    "EH": "E", "ER": "E", "EY": "E",
-    # O — round vowel sounds
-    "AO": "O", "OW": "O", "OY": "O", "UH": "O",
-    # WQ — pursed lip sounds
-    "W": "WQ", "UW": "WQ",
-    # L — tongue forward
+    # AI — wide open vowel sounds (odd, at, hut, hide, it)
+    "AA": "AI", "AE": "AI", "AH": "AI", "AY": "AI", "IH": "AI",
+    # E — mid open vowel sounds (Ed, hurt, ate, eat)
+    "EH": "E", "ER": "E", "EY": "E", "IY": "E",
+    # O — round vowel sounds (ought, oat, cow)
+    "AO": "O", "OW": "O", "AW": "O",
+    # U — rounded closed vowel sounds (hood, two)
+    "UH": "U", "UW": "U",
+    # WQ — pursed lip sounds (we, toy)
+    "W": "WQ", "OY": "WQ",
+    # L — tongue forward (lee)
     "L": "L",
-    # MBP — closed lips
+    # MBP — closed lips (be, me, pee)
     "M": "MBP", "B": "MBP", "P": "MBP",
-    # FV — teeth on lip
+    # FV — teeth on lip (fee, vee)
     "F": "FV", "V": "FV",
-    # etc — neutral/rest: all other consonants
+    # etc — CDGKNRSThYZ: all other consonants
     "CH": "etc", "D": "etc", "DH": "etc", "G": "etc", "HH": "etc",
     "JH": "etc", "K": "etc", "N": "etc", "NG": "etc", "R": "etc",
     "S": "etc", "SH": "etc", "T": "etc", "TH": "etc", "Y": "etc",
     "Z": "etc", "ZH": "etc",
-    # Silence marker sometimes present in cmudict variants
-    "SIL": "etc", "SP": "etc",
+    # Silence / xLights bug-fix phonemes
+    "SIL": "rest", "SP": "rest", "E21": "E",
 }
 
-_VOWEL_LABELS: frozenset[str] = frozenset({"AI", "E", "O"})
+_VOWEL_LABELS: frozenset[str] = frozenset({"AI", "E", "O", "U"})
 _VOWEL_LETTERS: frozenset[str] = frozenset("aeiouAEIOU")
 
 
@@ -227,56 +235,38 @@ def distribute_phoneme_timing(
     """
     Distribute phoneme durations across [start_ms, end_ms].
 
-    Inserts 50 ms 'etc' transitions between vowel/consonant category changes.
-    Vowels (AI, E, O) get 1.5× weight; consonants get 0.75× weight.
+    Vowels (AI, E, O, U) get 1.5× weight; consonants get 0.75× weight.
+    Consecutive identical labels are merged first.
     """
     duration = end_ms - start_ms
     if not papagayo_phonemes or duration <= 0:
         return []
 
-    # Build tagged sequence: (label, is_transition)
-    tagged: list[tuple[str, bool]] = [(papagayo_phonemes[0], False)]
-    for prev, curr in zip(papagayo_phonemes, papagayo_phonemes[1:]):
-        prev_vowel = prev in _VOWEL_LABELS
-        curr_vowel = curr in _VOWEL_LABELS
-        if prev_vowel != curr_vowel:
-            tagged.append(("etc", True))
-        tagged.append((curr, False))
+    # Merge consecutive identical labels (e.g. etc, etc, etc → single etc)
+    merged: list[str] = [papagayo_phonemes[0]]
+    for p in papagayo_phonemes[1:]:
+        if p != merged[-1]:
+            merged.append(p)
 
-    n_transitions = sum(1 for _, is_t in tagged if is_t)
-    transition_budget = min(n_transitions * _TRANSITION_MS, duration - n_transitions)
-    transition_budget = max(0, transition_budget)
-    available = duration - transition_budget
-
-    # Weights for non-transition phonemes
     weights = [
         _VOWEL_WEIGHT if lbl in _VOWEL_LABELS else _CONSONANT_WEIGHT
-        for lbl, is_t in tagged
-        if not is_t
+        for lbl in merged
     ]
     total_weight = sum(weights) or 1.0
 
-    # Compute individual durations
     durations: list[int] = []
-    w_idx = 0
-    for _, is_t in tagged:
-        if is_t:
-            actual_t = transition_budget // n_transitions if n_transitions else 0
-            durations.append(actual_t)
-        else:
-            d = round((weights[w_idx] / total_weight) * available)
-            durations.append(max(1, d))
-            w_idx += 1
+    for w in weights:
+        d = round((w / total_weight) * duration)
+        durations.append(max(1, d))
 
-    # Correct rounding drift on last phoneme
+    # Correct rounding drift
     total = sum(durations)
     if durations and total != duration:
         durations[-1] = max(1, durations[-1] + (duration - total))
 
-    # Build PhonemeMark list
     marks: list[PhonemeMark] = []
     t = start_ms
-    for (lbl, _), d in zip(tagged, durations):
+    for lbl, d in zip(merged, durations):
         marks.append(PhonemeMark(label=lbl, start_ms=t, end_ms=t + d))
         t += d
 
@@ -295,9 +285,10 @@ class PhonemeAnalyzer:
         result = analyzer.analyze(vocal_stem_path, source_file)
     """
 
-    def __init__(self, model_name: str = "base", device: str = "cpu") -> None:
+    def __init__(self, model_name: str = "base", device: str = "cpu", language: str = "en") -> None:
         self.model_name = model_name
         self.device = device
+        self.language = language
         self._cmu_dict: dict | None = None
 
     def _get_cmu_dict(self) -> dict:
@@ -335,9 +326,11 @@ class PhonemeAnalyzer:
 
         cmu_dict = self._get_cmu_dict()
 
-        # Load whisperx model
+        # Load whisperx model — pass language hint to skip auto-detection
+        load_lang = self.language if self.language != "auto" else None
         model = whisperx.load_model(
-            self.model_name, self.device, compute_type="float32"
+            self.model_name, self.device, compute_type="float32",
+            language=load_lang,
         )
 
         audio = whisperx.load_audio(audio_path)
@@ -375,6 +368,16 @@ class PhonemeAnalyzer:
         if not word_marks:
             warnings.append("No vocals detected in audio. Skipping phoneme analysis.")
             return None
+
+        log.info("WhisperX aligned %d words, time range %dms–%dms",
+                 len(word_marks), word_marks[0].start_ms, word_marks[-1].end_ms)
+        # Log words in the 2:00–2:30 range to debug guitar solo hallucination
+        solo_words = [wm for wm in word_marks if 120_000 <= wm.start_ms <= 150_000]
+        if solo_words:
+            log.warning(
+                "Words in 2:00-2:30 range (potential guitar solo): %s",
+                [(wm.label, wm.start_ms, wm.end_ms) for wm in solo_words],
+            )
 
         # Decompose words into phonemes
         phoneme_marks: list[PhonemeMark] = []
@@ -453,13 +456,21 @@ class PhonemeAnalyzer:
         # Normalize lyrics: strip punctuation, uppercase, flatten to one line
         normalized = re.sub(r"[^a-zA-Z\s']", " ", raw).strip()
         words = normalized.split()
+        log.info("_align_with_lyrics: %d words from lyrics file, duration=%.1fs",
+                 len(words), duration_s)
+        log.debug("_align_with_lyrics: first 20 words: %s", words[:20])
         if not words:
             warnings.append("Lyrics file is empty. Falling back to audio-only.")
             return self._transcribe_and_align(audio, audio_path, model, warnings)
 
-        # Run quick transcription to get language
-        quick_result = model.transcribe(audio, batch_size=4)
-        language = quick_result.get("language", "en")
+        # Use pre-set language (default "en") — avoids a full transcription
+        # pass just to detect language.  Set language="auto" to force detection.
+        language = self.language
+        if language == "auto":
+            log.info("_align_with_lyrics: detecting language via transcription...")
+            quick_result = model.transcribe(audio, batch_size=4)
+            language = quick_result.get("language", "en")
+        log.info("_align_with_lyrics: using language=%s", language)
 
         # Create synthetic segment spanning full audio
         lyrics_text = " ".join(words)
@@ -470,6 +481,7 @@ class PhonemeAnalyzer:
         )
         aligned = whisperx.align(segments, align_model, metadata, audio, self.device)
         word_segments = aligned.get("word_segments", [])
+        log.info("_align_with_lyrics: WhisperX returned %d word_segments", len(word_segments))
 
         # Mismatch detection: require >= 50% of provided words aligned
         aligned_count = sum(
@@ -478,6 +490,8 @@ class PhonemeAnalyzer:
         )
         coverage = aligned_count / max(len(words), 1)
 
+        log.info("_align_with_lyrics: coverage=%.1f%% (%d/%d words aligned)",
+                 coverage * 100, aligned_count, len(words))
         if coverage < 0.5:
             pct = int(coverage * 100)
             warnings.append(

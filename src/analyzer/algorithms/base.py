@@ -27,6 +27,9 @@ class Algorithm(ABC):
     parameters: dict = {}
     preferred_stem: str = "full_mix"
     vamp_output: str | None = None
+    # T034: explicit dependency declaration for pipeline ordering.
+    # full_mix algorithms use ["audio_load"]; stem algorithms use ["stem_separation"].
+    depends_on: list[str] = []
 
     @abstractmethod
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:

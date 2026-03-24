@@ -27,6 +27,7 @@ class QMBeatAlgorithm(Algorithm):
     parameters = {}
     vamp_output = "beats"
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
@@ -56,6 +57,7 @@ class QMBarAlgorithm(Algorithm):
     parameters = {}
     vamp_output = "bars"
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
@@ -85,6 +87,7 @@ class BeatRootAlgorithm(Algorithm):
     parameters = {}
     vamp_output = "beats"
     preferred_stem = "drums"
+    depends_on = ["stem_separation"]
 
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp

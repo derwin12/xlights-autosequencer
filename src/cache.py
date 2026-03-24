@@ -2,10 +2,74 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import time
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from src import export as export_mod
 from src.analyzer.result import AnalysisResult
+
+
+@dataclass
+class CacheStatus:
+    """Snapshot of cache state for a given audio file, used by the wizard UI."""
+
+    exists: bool
+    is_valid: bool
+    age_seconds: Optional[float]
+    cache_path: Optional[Path]
+    track_count: int
+
+    @classmethod
+    def from_audio_path(
+        cls,
+        audio_path: Path,
+        output_path: Optional[Path] = None,
+    ) -> "CacheStatus":
+        """Return a CacheStatus snapshot for *audio_path*.
+
+        If *output_path* is omitted the default cache path is derived the same
+        way as :class:`AnalysisCache` (``<audio_dir>/analysis/<stem>_analysis.json``
+        or ``<audio_dir>/<stem>_analysis.json``).
+        """
+        if output_path is None:
+            # Mirror the default output path used by analyze_cmd
+            analysis_dir = audio_path.parent / "analysis"
+            if analysis_dir.is_dir():
+                candidate = analysis_dir / f"{audio_path.stem}_analysis.json"
+            else:
+                candidate = audio_path.parent / f"{audio_path.stem}_analysis.json"
+            output_path = candidate
+
+        if not output_path.exists():
+            return cls(
+                exists=False,
+                is_valid=False,
+                age_seconds=None,
+                cache_path=None,
+                track_count=0,
+            )
+
+        age = time.time() - output_path.stat().st_mtime
+        cache = AnalysisCache(audio_path, output_path)
+        valid = cache.is_valid()
+        track_count = 0
+        if valid:
+            try:
+                result = cache.load()
+                track_count = len(result.timing_tracks)
+            except Exception:
+                pass
+
+        return cls(
+            exists=True,
+            is_valid=valid,
+            age_seconds=age,
+            cache_path=output_path,
+            track_count=track_count,
+        )
 
 
 class AnalysisCache:
