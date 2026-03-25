@@ -552,6 +552,24 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
         def phonemes_view():
             return send_from_directory(app.static_folder, "phonemes.html")
 
+        @app.route("/sweep-view")
+        def sweep_view():
+            return send_from_directory(app.static_folder, "sweep.html")
+
+        @app.route("/sweep-report")
+        def sweep_report():
+            """Return the sweep report JSON for the current song."""
+            audio_path = Path(app.config["AUDIO_PATH"])
+            # Check song folder convention: <stem>/sweep/ or <parent>/sweep/
+            for sweep_dir in [audio_path.parent / "sweep",
+                              audio_path.parent / audio_path.stem / "sweep",
+                              audio_path.parent / "analysis" / "sweep"]:
+                report_path = sweep_dir / "sweep_report.json"
+                if report_path.exists():
+                    with open(report_path, "r", encoding="utf-8") as fh:
+                        return jsonify(json.load(fh))
+            return jsonify({"error": "No sweep results found. Run sweep-matrix first."}), 404
+
         @app.route("/phonemes")
         def phonemes():
             with open(app.config["ANALYSIS_PATH"], "r", encoding="utf-8") as fh:

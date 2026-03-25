@@ -51,7 +51,13 @@ class StemCache:
 
     def __init__(self, source_path: Path, cache_root: Path | None = None) -> None:
         self.source_path = source_path.resolve()
-        self._cache_root = cache_root or (source_path.parent / "stems")
+        # Follow project convention: store under song folder
+        if cache_root:
+            self._cache_root = cache_root
+        elif source_path.parent.name == source_path.stem:
+            self._cache_root = source_path.parent / "stems"
+        else:
+            self._cache_root = source_path.parent / source_path.stem / "stems"
         self.source_hash = _md5_file(self.source_path)
         self.stem_dir = self._cache_root
 

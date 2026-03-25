@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sweep Results — xlight-analyze</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    #sweep-toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #222; border-bottom: 1px solid #333; }
+    #sweep-toolbar button { padding: 4px 12px; background: #333; color: #ccc; border: 1px solid #444; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    #sweep-toolbar button:hover { background: #444; }
+    #filter-input { padding: 4px 8px; background: #1a1a1a; color: #ccc; border: 1px solid #444; border-radius: 4px; width: 200px; font-size: 13px; }
+    #results-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #results-table th { background: #2a2a2a; color: #aaa; padding: 6px 10px; cursor: pointer; text-align: left; border-bottom: 1px solid #444; user-select: none; }
+    #results-table th:hover { background: #333; color: #fff; }
+    #results-table td { padding: 5px 10px; border-bottom: 1px solid #2a2a2a; color: #ccc; }
+    #results-table tr:hover { background: #1e2a3a; }
+    #results-table tr.selected { background: #1a3a5a; }
+    #results-table .score { color: #4a9; font-weight: bold; }
+    #table-wrap { flex: 1; overflow: auto; padding: 0 12px; }
+    #compare-bar { display: none; padding: 8px 12px; background: #1a3a1a; border-top: 1px solid #3a5; color: #adb; font-size: 13px; }
+    #compare-bar button { background: #2a5; color: #fff; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; }
+    .check-col { width: 30px; text-align: center; }
+    input[type="checkbox"] { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="sweep-toolbar">
+    <button onclick="window.location.href='/'">&#8592; Timeline</button>
+    <span style="color:#888;">Sweep Results</span>
+    <input id="filter-input" type="text" placeholder="Filter by algorithm, stem...">
+    <span id="result-count" style="color:#666; font-size:12px;"></span>
+  </div>
+
+  <div id="table-wrap">
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th class="check-col"></th>
+          <th data-col="rank">#</th>
+          <th data-col="quality_score">Score</th>
+          <th data-col="result_type">Type</th>
+          <th data-col="algorithm">Algorithm</th>
+          <th data-col="stem">Stem</th>
+          <th data-col="mark_count">Marks</th>
+          <th data-col="avg_interval_ms">Avg Int</th>
+          <th data-col="parameters">Parameters</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+
+  <div id="compare-bar">
+    <span id="compare-info"></span>
+    <button id="btn-compare" onclick="openCompare()">Compare Selected</button>
+    <button onclick="clearSelection()" style="background:#555;">Clear</button>
+  </div>
+
+  <div id="status">Loading sweep results...</div>
+
+  <script src="/sweep.js"></script>
+</body>
+</html>

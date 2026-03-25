@@ -93,9 +93,9 @@ pytest tests/ -v
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
+- 015-sweep-matrix: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 014-cli-wizard-pipeline: Added Python 3.11+ + click 8+ (CLI), questionary 2+ (interactive prompts, new), rich 13+ (progress display, new), concurrent.futures (stdlib, parallelism)
 - 013-genius-lyric-segments: Added Python 3.11+ + `lyricsgenius` (new optional dep), `mutagen` (new lightweight dep),
-- 012-intelligent-stem-sweep: Added Python 3.11+ + numpy (signal processing, cross-correlation), librosa 0.10+ (audio features, onset detection), vamp (plugin host), click 8+ (CLI), xml.etree.ElementTree (stdlib, xLights XML export)
   `htdemucs_6s` separates audio into 6 stems (drums, bass, vocals, guitar, piano, other).
   Algorithms route to their preferred stem via `Algorithm.preferred_stem` class attribute.
   Stems are MD5-cached in `.stems/<hash>/` adjacent to the source file. Each `TimingTrack`

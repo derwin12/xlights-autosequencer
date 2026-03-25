@@ -326,6 +326,36 @@ def default_algorithms(
                 ChordinoAlgorithm(),
                 NNLSChromaAlgorithm(),
             ]
+
+            # New Vamp algorithms (015-sweep-matrix)
+            from src.analyzer.algorithms.vamp_aubio import (
+                AubioOnsetAlgorithm, AubioTempoAlgorithm, AubioNotesAlgorithm,
+            )
+            from src.analyzer.algorithms.vamp_bbc import (
+                BBCEnergyAlgorithm, BBCSpectralFluxAlgorithm,
+                BBCPeaksAlgorithm, BBCRhythmAlgorithm,
+            )
+            from src.analyzer.algorithms.vamp_segmentation import SegmentinoAlgorithm
+            from src.analyzer.algorithms.vamp_extra import (
+                QMKeyAlgorithm, QMTranscriptionAlgorithm, SilvetNotesAlgorithm,
+                PercussionOnsetsAlgorithm, AmplitudeFollowerAlgorithm, TempogramAlgorithm,
+            )
+            algorithms += [
+                AubioOnsetAlgorithm(),
+                AubioTempoAlgorithm(),
+                AubioNotesAlgorithm(),
+                BBCEnergyAlgorithm(),
+                BBCSpectralFluxAlgorithm(),
+                BBCPeaksAlgorithm(),
+                BBCRhythmAlgorithm(),
+                SegmentinoAlgorithm(),
+                QMKeyAlgorithm(),
+                QMTranscriptionAlgorithm(),
+                SilvetNotesAlgorithm(),
+                PercussionOnsetsAlgorithm(),
+                AmplitudeFollowerAlgorithm(),
+                TempogramAlgorithm(),
+            ]
         except ImportError:
             print(
                 "INFO: vamp Python package not available — Vamp plugin algorithms skipped.",

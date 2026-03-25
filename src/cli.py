@@ -1671,5 +1671,238 @@ def export_xlights_cmd(analysis_json: str, output_dir: str | None) -> None:
     click.echo(f"Wrote manifest → {manifest_path}")
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# sweep-matrix command (015)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@cli.command("sweep-matrix")
+@click.argument("audio_file", type=click.Path(exists=True, dir_okay=False))
+@click.option("--algorithms", default=None, help="Comma-separated algorithm names (default: all)")
+@click.option("--stems", "stems_filter", default=None, help="Comma-separated stem names (overrides affinity)")
+@click.option("--max-permutations", "max_perm", default=500, type=int, show_default=True,
+              help="Safety cap — warn if matrix exceeds this count")
+@click.option("--dry-run", "dry_run", is_flag=True, default=False, help="Show matrix without running")
+@click.option("--config", "config_path", default=None, type=click.Path(exists=True, dir_okay=False),
+              help="TOML sweep configuration file")
+@click.option("--output-dir", default=None, type=click.Path(file_okay=False), help="Output directory for results")
+@click.option("--sample-start", "sample_start", default=None, type=int, help="Segment start (ms)")
+@click.option("--sample-duration", "sample_duration", default=30000, type=int, show_default=True,
+              help="Sample segment duration (ms)")
+@click.option("--yes", "skip_confirm", is_flag=True, default=False, help="Skip confirmation prompts")
+def sweep_matrix_cmd(
+    audio_file: str,
+    algorithms: str | None,
+    stems_filter: str | None,
+    max_perm: int,
+    dry_run: bool,
+    config_path: str | None,
+    output_dir: str | None,
+    sample_start: int | None,
+    sample_duration: int,
+    skip_confirm: bool,
+) -> None:
+    """Run a comprehensive parameter sweep across all algorithms and stems."""
+    from pathlib import Path as _Path
+    from src.analyzer.sweep_matrix import SweepMatrixConfig, MatrixSweepRunner
+    from src.analyzer.segment_selector import select_representative_segment
+    from src.analyzer.stem_inspector import inspect_stems
+
+    audio_path = _Path(audio_file)
+
+    # Discover available stems
+    click.echo(f"Inspecting stems for {audio_path.name}...")
+    try:
+        metrics = inspect_stems(str(audio_path))
+        available = {m.name for m in metrics if m.verdict in ("keep", "review")}
+        available.add("full_mix")
+        click.echo(f"  Available stems: {', '.join(sorted(available))}")
+    except Exception:
+        available = {"full_mix"}
+        click.echo("  No stems found — using full_mix only.")
+
+    # Build config
+    if config_path:
+        config = SweepMatrixConfig.from_toml(config_path, available_stems=available)
+        click.echo(f"  Loaded config from {config_path}")
+    else:
+        algo_list = None
+        if algorithms:
+            algo_list = [a.strip() for a in algorithms.split(",")]
+        if stems_filter:
+            stem_set = {s.strip() for s in stems_filter.split(",")}
+            stem_set.add("full_mix")
+            available = available & stem_set | {"full_mix"}
+
+        config = SweepMatrixConfig(
+            algorithms=algo_list or list(
+                __import__("src.analyzer.stem_affinity", fromlist=["AFFINITY_TABLE"]).AFFINITY_TABLE.keys()
+            ),
+            available_stems=available,
+            max_permutations=max_perm,
+            sample_duration_s=sample_duration / 1000,
+        )
+
+    # Build matrix
+    matrix = config.build_matrix()
+    click.echo(f"\nSweep matrix: {matrix.total_count} permutations")
+
+    if dry_run:
+        click.echo(f"\n  {'ALGORITHM':<25} {'STEM':<12} {'PARAMS'}")
+        click.echo("  " + "-" * 60)
+        for p in matrix.permutations:
+            param_str = ", ".join(f"{k}={v}" for k, v in p.parameters.items()) or "(none)"
+            click.echo(f"  {p.algorithm:<25} {p.stem:<12} {param_str}")
+        click.echo(f"\nTotal: {matrix.total_count} permutations (dry run — nothing executed)")
+        return
+
+    if matrix.exceeds_cap and not skip_confirm:
+        click.echo(f"\n⚠️  Matrix exceeds safety cap ({matrix.total_count} > {matrix.cap}). Proceed? [y/N]: ", nl=False)
+        answer = click.getchar()
+        click.echo(answer)
+        if answer.lower() != "y":
+            click.echo("Cancelled.")
+            sys.exit(130)
+
+    # Select representative segment
+    if sample_start is not None:
+        seg_start = sample_start
+        seg_end = sample_start + sample_duration
+    else:
+        click.echo("Selecting representative audio segment...")
+        seg_start, seg_end = select_representative_segment(str(audio_path), config.sample_duration_s)
+    click.echo(f"  Segment: {seg_start}ms – {seg_end}ms ({(seg_end - seg_start) / 1000:.0f}s)")
+
+    # Run sweep
+    click.echo(f"\nRunning {matrix.total_count} permutations...")
+
+    def progress(idx, total, perm, result):
+        status = click.style("✓", fg="green") if result.status == "success" else click.style("✗", fg="red")
+        param_str = ", ".join(f"{k}={v}" for k, v in perm.parameters.items()) or ""
+        click.echo(
+            f"  [{idx:>3}/{total}] {status} {perm.algorithm:<25} {perm.stem:<12} "
+            f"score={result.quality_score:.2f}  {param_str}"
+        )
+
+    runner = MatrixSweepRunner(
+        audio_path=str(audio_path),
+        matrix=matrix,
+        output_dir=output_dir,
+        sample_start_ms=seg_start,
+        sample_end_ms=seg_end,
+    )
+    results = runner.run(progress_callback=progress)
+
+    # Summary
+    from src.analyzer.sweep_matrix import auto_select_best
+    success = sum(1 for r in results if r.status == "success")
+    failed = sum(1 for r in results if r.status == "failed")
+    click.echo(f"\nSweep complete: {success} succeeded, {failed} failed")
+
+    best = auto_select_best(results)
+    if best:
+        click.echo(f"\nBest per algorithm:")
+        click.echo(f"  {'ALGORITHM':<25} {'STEM':<12} {'SCORE':<7} {'MARKS':<7} PARAMS")
+        for algo, r in sorted(best.items()):
+            param_str = ", ".join(f"{k}={v}" for k, v in r.parameters.items()) or "(none)"
+            marks = str(r.mark_count) if r.result_type == "timing" else f"{r.sample_count} samples"
+            click.echo(f"  {algo:<25} {r.stem:<12} {r.quality_score:<7.2f} {marks:<7} {param_str}")
+
+    if output_dir:
+        out_dir = output_dir
+    elif audio_path.parent.name == audio_path.stem:
+        out_dir = str(audio_path.parent / "sweep")
+    else:
+        out_dir = str(audio_path.parent / audio_path.stem / "sweep")
+    click.echo(f"\nResults: {out_dir}/sweep_report.json")
+
+    # Offer to re-run winners on full song and export
+    if best and sys.stdin.isatty() and not skip_confirm:
+        click.echo("")
+        if click.confirm("Re-run winners on full song and export?", default=True):
+            from src.analyzer.sweep_matrix import rerun_winners_full_song
+            click.echo("Re-running winners on full song...")
+            full_results = rerun_winners_full_song(
+                str(audio_path), best, out_dir,
+            )
+            click.echo(f"\nExported {len(full_results)} winners to {out_dir}/winners/")
+            for algo, r in sorted(full_results.items()):
+                click.echo(f"  ✓ {algo}_{r.stem} — score {r.quality_score:.2f}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# sweep-results command (015)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@cli.command("sweep-results")
+@click.argument("sweep_report", type=click.Path(exists=True, dir_okay=False))
+@click.option("--algorithm", default=None, help="Filter by algorithm name")
+@click.option("--stem", default=None, help="Filter by stem name")
+@click.option("--best", "show_best", is_flag=True, default=False, help="Show only best result per algorithm")
+@click.option("--top", "top_n", default=None, type=int, help="Show only top N results globally")
+@click.option("--type", "result_type", default=None, type=click.Choice(["timing", "value_curve"]),
+              help="Filter by result type")
+def sweep_results_cmd(
+    sweep_report: str,
+    algorithm: str | None,
+    stem: str | None,
+    show_best: bool,
+    top_n: int | None,
+    result_type: str | None,
+) -> None:
+    """Display ranked sweep results from a sweep report."""
+    import json
+
+    with open(sweep_report, "r", encoding="utf-8") as fh:
+        report = json.load(fh)
+
+    results = report.get("results", [])
+
+    # Filter
+    if algorithm:
+        results = [r for r in results if r["algorithm"] == algorithm]
+    if stem:
+        results = [r for r in results if r["stem"] == stem]
+    if result_type:
+        results = [r for r in results if r["result_type"] == result_type]
+
+    # Only successful
+    results = [r for r in results if r.get("status") == "success"]
+
+    # Sort by quality score descending
+    results.sort(key=lambda r: r.get("quality_score", 0), reverse=True)
+
+    if show_best:
+        # One per algorithm
+        seen = set()
+        filtered = []
+        for r in results:
+            if r["algorithm"] not in seen:
+                seen.add(r["algorithm"])
+                filtered.append(r)
+        results = filtered
+
+    if top_n is not None:
+        results = results[:top_n]
+
+    if not results:
+        click.echo("No results match the filters.")
+        return
+
+    # Display table
+    click.echo(f"\n  {'RANK':<5} {'SCORE':<7} {'TYPE':<12} {'ALGORITHM':<25} {'STEM':<12} {'MARKS':<7} {'AVG INT':<9} PARAMETERS")
+    click.echo("  " + "-" * 90)
+    for i, r in enumerate(results):
+        param_str = ", ".join(f"{k}={v}" for k, v in r.get("parameters", {}).items()) or "(none)"
+        rtype = r.get("result_type", "timing")
+        marks = str(r.get("mark_count", 0)) if rtype == "timing" else f"{r.get('sample_count', 0)}s"
+        avg_int = f"{r.get('avg_interval_ms', 0)}ms" if rtype == "timing" else "–"
+        click.echo(
+            f"  {i + 1:<5} {r.get('quality_score', 0):<7.2f} {rtype:<12} "
+            f"{r['algorithm']:<25} {r['stem']:<12} {marks:<7} {avg_int:<9} {param_str}"
+        )
+
+    click.echo(f"\n  {len(results)} results shown from {sweep_report}")
+
+
 def main() -> None:
     cli()
