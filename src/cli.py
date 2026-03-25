@@ -1841,6 +1841,8 @@ def sweep_matrix_cmd(
 @click.option("--top", "top_n", default=None, type=int, help="Show only top N results globally")
 @click.option("--type", "result_type", default=None, type=click.Choice(["timing", "value_curve"]),
               help="Filter by result type")
+@click.option("--export", "do_export", is_flag=True, default=False,
+              help="Re-run displayed results on full song and export as .xtiming/.xvc")
 def sweep_results_cmd(
     sweep_report: str,
     algorithm: str | None,
@@ -1848,6 +1850,7 @@ def sweep_results_cmd(
     show_best: bool,
     top_n: int | None,
     result_type: str | None,
+    do_export: bool,
 ) -> None:
     """Display ranked sweep results from a sweep report."""
     import json
@@ -1902,6 +1905,35 @@ def sweep_results_cmd(
         )
 
     click.echo(f"\n  {len(results)} results shown from {sweep_report}")
+
+    if do_export and results:
+        # Find audio path from the report
+        audio_path = report.get("audio_path", "")
+        if not audio_path or not Path(audio_path).exists():
+            click.echo("ERROR: Cannot find audio file for full-song re-run.", err=True)
+            sys.exit(1)
+
+        # Build winners dict from displayed results (best per algorithm)
+        from src.analyzer.sweep_matrix import PermutationResult, rerun_winners_full_song
+        winners = {}
+        for r in results:
+            algo = r["algorithm"]
+            if algo not in winners:
+                winners[algo] = PermutationResult(
+                    algorithm=algo,
+                    stem=r["stem"],
+                    parameters=r.get("parameters", {}),
+                    result_type=r.get("result_type", "timing"),
+                    quality_score=r.get("quality_score", 0),
+                    mark_count=r.get("mark_count", 0),
+                )
+
+        sweep_dir = str(Path(sweep_report).parent)
+        click.echo(f"\nRe-running {len(winners)} winners on full song...")
+        full_results = rerun_winners_full_song(audio_path, winners, sweep_dir)
+        click.echo(f"Exported {len(full_results)} winners to {sweep_dir}/winners/")
+        for algo, r in sorted(full_results.items()):
+            click.echo(f"  ✓ {algo}_{r.stem} — score {r.quality_score:.2f}")
 
 
 def main() -> None:

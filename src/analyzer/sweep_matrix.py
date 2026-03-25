@@ -223,9 +223,15 @@ def rerun_winners_full_song(
 
     log = get_logger("xlight.sweep_matrix")
     y, sr = librosa.load(audio_path, sr=None, mono=True)
-    stems_dir = Path(audio_path).parent / "stems"
-    if not stems_dir.exists():
-        stems_dir = Path(audio_path).parent / ".stems"
+    audio_p = Path(audio_path)
+    stems_dir = None
+    for cand in [audio_p.parent / "stems", audio_p.parent / audio_p.stem / "stems",
+                 audio_p.parent / ".stems"]:
+        if cand.exists():
+            stems_dir = cand
+            break
+    if stems_dir is None:
+        stems_dir = audio_p.parent / "stems"
 
     out = Path(output_dir) / "winners"
     out.mkdir(parents=True, exist_ok=True)
@@ -233,6 +239,7 @@ def rerun_winners_full_song(
     from src.analyzer.runner import default_algorithms
     algo_map = {a.name: a for a in default_algorithms()}
     full_results: dict[str, PermutationResult] = {}
+    winners_data: list[dict] = []  # full marks for winners.json
 
     for algo_name, winner in winners.items():
         algo = algo_map.get(algo_name)
@@ -297,6 +304,21 @@ def rerun_winners_full_song(
                 log.warning("Failed to export .xtiming for %s: %s", algo_name, exc)
 
         full_results[algo_name] = result
+
+        # Collect full-song marks for winners.json
+        entry = result.to_dict()
+        entry["marks"] = [{"time_ms": m.time_ms} for m in track.marks]
+        if hasattr(track, "value_curve"):
+            entry["value_curve"] = track.value_curve
+        winners_data.append(entry)
+
+    # Write winners.json with full marks for the UI
+    winners_json_path = out / "winners.json"
+    winners_json_path.write_text(json.dumps({
+        "audio_path": str(Path(audio_path).resolve()),
+        "results": winners_data,
+    }, indent=2), encoding="utf-8")
+    log.info("Wrote winners.json with %d full-song results", len(winners_data))
 
     return full_results
 
@@ -397,15 +419,60 @@ class MatrixSweepRunner:
                 else:
                     stem_cache[stem_name] = stem_y
 
-        # Pre-load algorithm instances
+        # Pre-load algorithm instances (local only — vamp runs via subprocess)
         from src.analyzer.runner import default_algorithms
         algo_map = {a.name: a for a in default_algorithms()}
+
+        # Determine which algorithms need the vamp subprocess
+        from src.analyzer.stem_affinity import AFFINITY_TABLE
+        _VAMP_ALGOS = {
+            name for name, entry in AFFINITY_TABLE.items()
+            if name not in algo_map  # not available in main venv = needs subprocess
+        }
+        log.info("Vamp subprocess algorithms: %s", sorted(_VAMP_ALGOS))
+        log.info("Local algorithms: %d available", len(algo_map))
+
+        # Vamp subprocess setup
+        _REPO_ROOT = Path(__file__).resolve().parents[2]
+        _VAMP_PYTHON = _REPO_ROOT / ".venv-vamp" / "bin" / "python"
+        _VAMP_RUNNER = Path(__file__).with_name("vamp_runner.py")
+        vamp_available = _VAMP_PYTHON.exists()
 
         total = self._matrix.total_count
         results: list[PermutationResult] = []
         algo_results: dict[str, list[dict]] = {}
         lock = threading.Lock()
         completed_count = [0]
+
+        def _run_vamp_subprocess(perm, audio_path_for_stem, params):
+            """Run a single vamp algorithm via the .venv-vamp subprocess."""
+            import subprocess as _sp
+            request = {
+                "audio_path": audio_path_for_stem,
+                "stem_paths": {},
+                "algorithms": [perm.algorithm],
+            }
+            if params:
+                request["parameters"] = {perm.algorithm: params}
+
+            try:
+                proc = _sp.run(
+                    [str(_VAMP_PYTHON), str(_VAMP_RUNNER)],
+                    input=json.dumps(request) + "\n",
+                    capture_output=True, text=True, timeout=120,
+                )
+                for line in proc.stdout.strip().split("\n"):
+                    if not line:
+                        continue
+                    msg = json.loads(line)
+                    if msg.get("event") == "done":
+                        tracks = msg.get("tracks", [])
+                        if tracks:
+                            return tracks[0]  # first (only) track
+                return None
+            except Exception as exc:
+                log.warning("Vamp subprocess for %s failed: %s", perm.algorithm, exc)
+                return None
 
         def _run_one(perm: Permutation) -> tuple[Permutation, PermutationResult, dict | None]:
             t0 = time.perf_counter()
@@ -416,25 +483,58 @@ class MatrixSweepRunner:
             full_entry = None
 
             try:
-                audio = stem_cache.get(perm.stem)
-                if audio is None:
-                    result.status = "skipped"
-                    result.error = f"Stem {perm.stem} not available"
-                    return perm, result, None
+                # Determine audio source
+                if perm.algorithm in _VAMP_ALGOS:
+                    # Vamp algorithm — run via subprocess with audio file path
+                    if not vamp_available:
+                        result.status = "skipped"
+                        result.error = ".venv-vamp not available"
+                        return perm, result, None
 
-                algo = algo_map.get(perm.algorithm)
-                if algo is None:
-                    result.status = "skipped"
-                    result.error = f"Algorithm {perm.algorithm} not found"
-                    return perm, result, None
+                    # Get the audio file path for this stem
+                    if perm.stem == "full_mix":
+                        audio_file = self._audio_path
+                    else:
+                        stem_file = stems_dir / f"{perm.stem}.mp3"
+                        if not stem_file.exists():
+                            result.status = "skipped"
+                            result.error = f"Stem {perm.stem} not found"
+                            return perm, result, None
+                        audio_file = str(stem_file)
 
-                # Clone parameters to avoid thread conflicts
-                import copy
-                algo_copy = copy.copy(algo)
-                if perm.parameters:
-                    algo_copy.parameters = dict(perm.parameters)
+                    track_data = _run_vamp_subprocess(perm, audio_file, perm.parameters)
+                    if track_data is not None:
+                        from src.analyzer.result import TimingMark, TimingTrack
+                        marks = [TimingMark(time_ms=m["time_ms"], confidence=None)
+                                 for m in track_data.get("marks", [])]
+                        track = TimingTrack(
+                            name=perm.algorithm,
+                            algorithm_name=perm.algorithm,
+                            element_type=track_data.get("element_type", "onset"),
+                            marks=marks,
+                            quality_score=0.0,
+                        )
+                    else:
+                        track = None
+                else:
+                    # Local algorithm — run in-process
+                    audio = stem_cache.get(perm.stem)
+                    if audio is None:
+                        result.status = "skipped"
+                        result.error = f"Stem {perm.stem} not available"
+                        return perm, result, None
 
-                track = algo_copy.run(audio, sr)
+                    algo = algo_map.get(perm.algorithm)
+                    if algo is None:
+                        result.status = "skipped"
+                        result.error = f"Algorithm {perm.algorithm} not found"
+                        return perm, result, None
+
+                    import copy
+                    algo_copy = copy.copy(algo)
+                    if perm.parameters:
+                        algo_copy.parameters = dict(perm.parameters)
+                    track = algo_copy.run(audio, sr)
 
                 if track is not None:
                     if perm.result_type == "value_curve" and hasattr(track, "value_curve"):

@@ -114,8 +114,10 @@ def inspect_stems(
         for candidate in [
             audio_path_p.parent / "stems",
             audio_path_p.parent / ".stems",
+            audio_path_p.parent / audio_path_p.stem / "stems",   # song folder convention
+            audio_path_p.parent / audio_path_p.stem / ".stems",
         ]:
-            if (candidate / "manifest.json").exists():
+            if candidate.exists() and any(candidate.glob("*.mp3")):
                 stem_dir = candidate
                 break
 

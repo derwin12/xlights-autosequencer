@@ -109,6 +109,59 @@ def _build_algo_map() -> dict:
     except Exception as exc:
         print(f"WARNING: madmom unavailable: {exc}", file=sys.stderr)
 
+    # ── New algorithms (015-sweep-matrix) ────────────────────────────────────
+    try:
+        from src.analyzer.algorithms.vamp_aubio import (
+            AubioOnsetAlgorithm, AubioTempoAlgorithm, AubioNotesAlgorithm,
+        )
+        algo_map.update({
+            "aubio_onset": AubioOnsetAlgorithm,
+            "aubio_tempo": AubioTempoAlgorithm,
+            "aubio_notes": AubioNotesAlgorithm,
+        })
+    except Exception as exc:
+        print(f"WARNING: vamp_aubio unavailable: {exc}", file=sys.stderr)
+
+    try:
+        from src.analyzer.algorithms.vamp_bbc import (
+            BBCEnergyAlgorithm, BBCSpectralFluxAlgorithm,
+            BBCPeaksAlgorithm, BBCRhythmAlgorithm,
+        )
+        algo_map.update({
+            "bbc_energy": BBCEnergyAlgorithm,
+            "bbc_spectral_flux": BBCSpectralFluxAlgorithm,
+            "bbc_peaks": BBCPeaksAlgorithm,
+            "bbc_rhythm": BBCRhythmAlgorithm,
+        })
+    except Exception as exc:
+        print(f"WARNING: vamp_bbc unavailable: {exc}", file=sys.stderr)
+
+    try:
+        from src.analyzer.algorithms.vamp_segmentation import SegmentinoAlgorithm
+        algo_map["segmentino"] = SegmentinoAlgorithm
+    except Exception as exc:
+        print(f"WARNING: vamp_segmentation unavailable: {exc}", file=sys.stderr)
+
+    try:
+        from src.analyzer.algorithms.vamp_extra import (
+            QMKeyAlgorithm, QMTranscriptionAlgorithm, SilvetNotesAlgorithm,
+            PercussionOnsetsAlgorithm, AmplitudeFollowerAlgorithm, TempogramAlgorithm,
+        )
+        algo_map.update({
+            "qm_key": QMKeyAlgorithm,
+            "qm_transcription": QMTranscriptionAlgorithm,
+            "silvet_notes": SilvetNotesAlgorithm,
+            "percussion_onsets": PercussionOnsetsAlgorithm,
+            "amplitude_follower": AmplitudeFollowerAlgorithm,
+            "tempogram": TempogramAlgorithm,
+        })
+    except Exception as exc:
+        print(f"WARNING: vamp_extra unavailable: {exc}", file=sys.stderr)
+
+    # Fix beatroot name alias
+    if "beatroot" in algo_map:
+        algo_map["beatroot_beats"] = algo_map["beatroot"]
+
     return algo_map
 
 
