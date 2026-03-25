@@ -7,12 +7,17 @@ from src.analyzer.algorithms.base import Algorithm
 from src.analyzer.result import TimingMark, TimingTrack
 
 
-def _vamp_outputs_to_marks(outputs: list) -> list[TimingMark]:
+def _vamp_outputs_to_marks(outputs: list, extract_label: bool = False) -> list[TimingMark]:
     marks = []
     for output in outputs:
         t = output["timestamp"]
         t_sec = t.to_float() if hasattr(t, "to_float") else float(t)
-        marks.append(TimingMark(time_ms=int(round(t_sec * 1000)), confidence=None))
+        label: str | None = None
+        if extract_label:
+            raw = output.get("label")
+            if raw is not None:
+                label = str(raw).strip() or None
+        marks.append(TimingMark(time_ms=int(round(t_sec * 1000)), confidence=None, label=label))
     return marks
 
 
@@ -36,7 +41,7 @@ class ChordinoAlgorithm(Algorithm):
             output=self.vamp_output,
             parameters=self.parameters,
         )
-        marks = _vamp_outputs_to_marks(outputs.get("list", []))
+        marks = _vamp_outputs_to_marks(outputs.get("list", []), extract_label=True)
         return TimingTrack(
             name=self.name,
             algorithm_name=self.name,

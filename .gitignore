@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 .venv/
+.venv-vamp/
 venv/
 env/
 dist/
@@ -33,6 +34,15 @@ htmlcov/
 # Exception: keep fixture generation script output notes
 !tests/fixtures/README.md
 !tests/fixtures/*.json
+
+# Generated hierarchy output inside fixture dirs
+tests/fixtures/**/*_hierarchy.json
+tests/fixtures/**/*.xtiming
+tests/fixtures/**/stems/
+
+# Local working/scratch directories
+analysis/
+highway/
 
 # macOS
 .DS_Store

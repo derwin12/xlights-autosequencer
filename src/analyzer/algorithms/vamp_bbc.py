@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 from src.analyzer.algorithms.base import Algorithm
-from src.analyzer.result import TimingMark, TimingTrack
+from src.analyzer.result import TimingMark, TimingTrack, ValueCurve
 
 __all__ = [
     "BBCEnergyAlgorithm",
@@ -63,14 +63,15 @@ class BBCEnergyAlgorithm(Algorithm):
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
         duration_ms = int(len(audio) / sample_rate * 1000)
-        curve = _vamp_vector_to_curve(outputs, duration_ms)
-        # Store curve data as marks with time_ms = index for now
-        marks = [TimingMark(time_ms=i * 50, confidence=None) for i in range(len(curve))]
+        values = _vamp_vector_to_curve(outputs, duration_ms)
+        fps = round(len(values) * 1000 / duration_ms) if duration_ms > 0 and values else 20
+        stem = getattr(self, "_stem_source", self.preferred_stem)
         track = TimingTrack(
             name=self.name, algorithm_name=self.name,
-            element_type=self.element_type, marks=marks, quality_score=0.0,
+            element_type=self.element_type, marks=[], quality_score=0.0,
+            stem_source=stem,
         )
-        track.value_curve = curve  # attach curve data
+        track.value_curve = ValueCurve(name=self.name, stem_source=stem, fps=fps, values=values)
         return track
 
 
@@ -89,13 +90,15 @@ class BBCSpectralFluxAlgorithm(Algorithm):
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
         duration_ms = int(len(audio) / sample_rate * 1000)
-        curve = _vamp_vector_to_curve(outputs, duration_ms)
-        marks = [TimingMark(time_ms=i * 50, confidence=None) for i in range(len(curve))]
+        values = _vamp_vector_to_curve(outputs, duration_ms)
+        fps = round(len(values) * 1000 / duration_ms) if duration_ms > 0 and values else 20
+        stem = getattr(self, "_stem_source", self.preferred_stem)
         track = TimingTrack(
             name=self.name, algorithm_name=self.name,
-            element_type=self.element_type, marks=marks, quality_score=0.0,
+            element_type=self.element_type, marks=[], quality_score=0.0,
+            stem_source=stem,
         )
-        track.value_curve = curve
+        track.value_curve = ValueCurve(name=self.name, stem_source=stem, fps=fps, values=values)
         return track
 
 
@@ -114,13 +117,15 @@ class BBCPeaksAlgorithm(Algorithm):
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
         duration_ms = int(len(audio) / sample_rate * 1000)
-        curve = _vamp_vector_to_curve(outputs, duration_ms)
-        marks = [TimingMark(time_ms=i * 50, confidence=None) for i in range(len(curve))]
+        values = _vamp_vector_to_curve(outputs, duration_ms)
+        fps = round(len(values) * 1000 / duration_ms) if duration_ms > 0 and values else 20
+        stem = getattr(self, "_stem_source", self.preferred_stem)
         track = TimingTrack(
             name=self.name, algorithm_name=self.name,
-            element_type=self.element_type, marks=marks, quality_score=0.0,
+            element_type=self.element_type, marks=[], quality_score=0.0,
+            stem_source=stem,
         )
-        track.value_curve = curve
+        track.value_curve = ValueCurve(name=self.name, stem_source=stem, fps=fps, values=values)
         return track
 
 

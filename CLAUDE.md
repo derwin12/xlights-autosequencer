@@ -1,6 +1,6 @@
 # XLight AutoSequencer Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-24
+Auto-generated from all feature plans. Last updated: 2026-03-25
 
 ## Active Technologies
 - Python 3.11+ + demucs (new), vamp, librosa, madmom, click, Flask (008-stem-separation)
@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-24
 - JSON files — existing MD5-keyed `_analysis.json` cache; `song_structure` field (013-genius-lyric-segments)
 - Python 3.11+ + click 8+ (CLI), questionary 2+ (interactive prompts, new), rich 13+ (progress display, new), concurrent.futures (stdlib, parallelism) (014-cli-wizard-pipeline)
 - JSON files (existing `_analysis.json` cache, `~/.xlight/library.json`) (014-cli-wizard-pipeline)
+- Python 3.11+ + librosa 0.10+, vamp (optional), madmom 0.16+ (optional), demucs/torch (optional), click 8+ (CLI), numpy (016-hierarchy-orchestrator)
+- JSON files (hierarchy result), XML files (.xtiming export), WAV stems cached in `.stems/<md5>/` (016-hierarchy-orchestrator)
 
 - **Language**: Python 3.11+
 - **Audio analysis**: vamp (Python host), librosa 0.10+, madmom 0.16+
@@ -93,9 +95,9 @@ pytest tests/ -v
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
+- 016-hierarchy-orchestrator: Added Python 3.11+ + librosa 0.10+, vamp (optional), madmom 0.16+ (optional), demucs/torch (optional), click 8+ (CLI), numpy
 - 015-sweep-matrix: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 014-cli-wizard-pipeline: Added Python 3.11+ + click 8+ (CLI), questionary 2+ (interactive prompts, new), rich 13+ (progress display, new), concurrent.futures (stdlib, parallelism)
-- 013-genius-lyric-segments: Added Python 3.11+ + `lyricsgenius` (new optional dep), `mutagen` (new lightweight dep),
   `htdemucs_6s` separates audio into 6 stems (drums, bass, vocals, guitar, piano, other).
   Algorithms route to their preferred stem via `Algorithm.preferred_stem` class attribute.
   Stems are MD5-cached in `.stems/<hash>/` adjacent to the source file. Each `TimingTrack`

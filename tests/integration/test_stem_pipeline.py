@@ -1,5 +1,12 @@
-"""Integration tests: --stems analysis pipeline end-to-end."""
+"""Integration tests: --stems analysis pipeline end-to-end.
+
+SKIPPED: These tests use the old --stems CLI flag. The analyze command was
+replaced by the zero-flag orchestrator in feature 016-hierarchy-orchestrator.
+"""
 from __future__ import annotations
+
+import pytest
+pytestmark = pytest.mark.skip(reason="Old --stems flag replaced by auto-stem orchestrator (016)")
 
 import json
 from pathlib import Path

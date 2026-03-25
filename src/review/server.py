@@ -11,26 +11,94 @@ from flask import Flask, Response, jsonify, request, send_file, send_from_direct
 from werkzeug.utils import secure_filename
 
 
+# ── UI adaptation ─────────────────────────────────────────────────────────────
+
+def _adapt_hierarchy_for_ui(data: dict) -> dict:
+    """Convert HierarchyResult (schema 2.0.0) to a format the review UI can display.
+
+    The existing JS UI expects a flat ``timing_tracks`` list.  This function
+    assembles one from all hierarchy levels so the timeline still renders.
+    Non-2.0.0 data is returned unchanged.
+    """
+    if data.get("schema_version") != "2.0.0":
+        return data
+
+    tracks = []
+
+    def _push(track_dict):
+        if track_dict:
+            tracks.append(track_dict)
+
+    # L2 bars, L3 beats
+    _push(data.get("bars"))
+    _push(data.get("beats"))
+
+    # L1 sections → synthetic track
+    sections = data.get("sections") or []
+    if sections:
+        tracks.append({
+            "name": "sections",
+            "algorithm_name": "segmentino",
+            "element_type": "structure",
+            "marks": sections,
+            "quality_score": 0.9,
+            "stem_source": "full_mix",
+        })
+
+    # L4 events (per stem)
+    for track_dict in (data.get("events") or {}).values():
+        _push(track_dict)
+
+    # L6 harmony
+    _push(data.get("chords"))
+    _push(data.get("key_changes"))
+
+    # L0 derived marks as synthetic tracks
+    for level_name, element_type in [
+        ("energy_impacts", "onset"),
+        ("energy_drops", "onset"),
+        ("gaps", "gap"),
+    ]:
+        marks = data.get(level_name) or []
+        if marks:
+            tracks.append({
+                "name": level_name,
+                "algorithm_name": level_name,
+                "element_type": element_type,
+                "marks": marks,
+                "quality_score": 0.8,
+                "stem_source": "full_mix",
+            })
+
+    return {
+        "schema_version": data.get("schema_version"),
+        "filename": Path(data.get("source_file", "")).name,
+        "duration_ms": data.get("duration_ms", 0),
+        "estimated_tempo_bpm": data.get("estimated_bpm"),
+        "timing_tracks": tracks,
+        "stems_available": data.get("stems_available", []),
+        "capabilities": data.get("capabilities", {}),
+        "warnings": data.get("warnings", []),
+        # Preserve full hierarchy for any new UI features
+        "hierarchy": data,
+    }
+
+
 # ── Upload-mode shared state ──────────────────────────────────────────────────
 
 class AnalysisJob:
     """State for a single upload-triggered analysis run."""
 
-    def __init__(self, mp3_path: str, include_vamp: bool, include_madmom: bool, use_stems: bool = False, use_phonemes: bool = False, use_structure: bool = False) -> None:
+    def __init__(self, mp3_path: str) -> None:
         self.mp3_path = mp3_path
-        self.include_vamp = include_vamp
-        self.include_madmom = include_madmom
-        self.use_stems = use_stems
-        self.use_phonemes = use_phonemes
-        self.use_structure = use_structure
         self.status: str = "running"  # "running" | "done" | "error"
         self.events: list[dict] = []
-        self.total: int = 0
+        self.total: int = 6  # orchestrator has ~6 stages
         self.result_path: str | None = None
         self.error_message: str | None = None
         self.lock = threading.Lock()
 
-    def record_progress(self, idx: int, total: int, name: str, mark_count: int) -> None:
+    def record_progress(self, idx: int, total: int, name: str, mark_count: int = 0) -> None:
         with self.lock:
             self.total = total
             self.events.append({
@@ -50,108 +118,39 @@ _job_lock = threading.Lock()
 
 
 def _run_analysis(app: Flask, job: AnalysisJob) -> None:
-    """Background thread: run analysis pipeline and update job state."""
-    global _current_job
+    """Background thread: run orchestrator pipeline and update job state."""
     with app.app_context():
         try:
-            import time
-            from src.analyzer.runner import AnalysisRunner, default_algorithms
-            from src.cache import AnalysisCache
-            from src.library import Library, LibraryEntry
+            from src.analyzer.orchestrator import run_orchestrator, _hierarchy_json_path
 
-            algo_list = default_algorithms(
-                include_vamp=job.include_vamp,
-                include_madmom=job.include_madmom,
-            )
-            with job.lock:
-                job.total = len(algo_list)
+            stage_idx = 0
 
-            # Optional stem separation
-            stems = None
-            stems_dir = Path(job.mp3_path).parent / "stems"
-            if job.use_stems:
-                try:
-                    from src.analyzer.stems import StemSeparator
-                    stems = StemSeparator(cache_dir=stems_dir).separate(Path(job.mp3_path))
-                except Exception as exc:
-                    import traceback
-                    job.record_warning(
-                        f"Stem separation failed: {type(exc).__name__}: {exc}\n"
-                        + traceback.format_exc()
-                    )
+            def _progress(msg: str) -> None:
+                nonlocal stage_idx
+                stage_idx += 1
+                job.record_progress(stage_idx, 6, msg)
 
-            result = AnalysisRunner(algo_list).run(
+            result = run_orchestrator(
                 job.mp3_path,
-                progress_callback=job.record_progress,
-                stems=stems,
+                fresh=True,
+                progress_callback=_progress,
             )
 
-            if not result.timing_tracks:
-                with job.lock:
-                    job.status = "error"
-                    job.error_message = "All algorithms failed — no tracks produced"
-                return
-
-            # Apply category-aware scoring with breakdowns
-            from src.analyzer.scorer import score_all_tracks
-            score_all_tracks(result.timing_tracks, result.duration_ms)
-
-            # Optional phoneme analysis — must run before save so it's in the JSON
-            if job.use_phonemes:
-                try:
-                    from src.analyzer.phonemes import PhonemeAnalyzer
-                    from src.analyzer.xtiming import XTimingWriter
-
-                    vocal_path = job.mp3_path
-                    stem_vocal = stems_dir / "vocals.mp3"
-                    if stem_vocal.exists():
-                        vocal_path = str(stem_vocal)
-
-                    analyzer = PhonemeAnalyzer(model_name="base")
-                    phoneme_result = analyzer.analyze(vocal_path, job.mp3_path)
-                    if phoneme_result is not None:
-                        result.phoneme_result = phoneme_result
-                        xtiming_path = str(
-                            Path(job.mp3_path).parent / (Path(job.mp3_path).stem + ".xtiming")
-                        )
-                        XTimingWriter().write(phoneme_result, xtiming_path)
-                except Exception as exc:
-                    job.record_warning(f"Phoneme analysis failed: {exc}")
-
-            # Optional structure analysis — must run before save
-            if job.use_structure:
-                try:
-                    from src.analyzer.structure import StructureAnalyzer
-                    song_structure = StructureAnalyzer().analyze(job.mp3_path)
-                    if song_structure.segments:
-                        result.song_structure = song_structure
-                except Exception as exc:
-                    job.record_warning(f"Structure analysis failed: {exc}")
-
-            out_path = os.path.join(
-                os.path.dirname(job.mp3_path),
-                Path(job.mp3_path).stem + "_analysis.json",
-            )
-            try:
-                cache = AnalysisCache(Path(job.mp3_path), Path(out_path))
-                cache.save(result)
-            except OSError as exc:
-                with job.lock:
-                    job.status = "error"
-                    job.error_message = f"Failed to write result: {exc}"
-                return
+            mp3 = Path(job.mp3_path)
+            out_path = str(_hierarchy_json_path(mp3))
 
             # Register in library (best-effort)
             try:
+                from src.library import Library, LibraryEntry
                 lib_entry = LibraryEntry(
-                    source_hash=result.source_hash or "",
-                    source_file=str(Path(job.mp3_path).resolve()),
-                    filename=Path(job.mp3_path).name,
+                    source_hash=result.source_hash,
+                    source_file=str(mp3.resolve()),
+                    filename=mp3.name,
                     analysis_path=str(Path(out_path).resolve()),
                     duration_ms=result.duration_ms,
-                    estimated_tempo_bpm=result.estimated_tempo_bpm,
-                    track_count=len(result.timing_tracks),
-                    stem_separation=result.stem_separation,
+                    estimated_tempo_bpm=result.estimated_bpm,
+                    track_count=len(result.beats.marks) if result.beats else 0,
+                    stem_separation=bool(result.stems_available),
                     analyzed_at=int(time.time() * 1000),
                 )
                 Library().upsert(lib_entry)
@@ -364,20 +363,7 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
             except OSError as exc:
                 return jsonify({"error": f"Failed to save file: {exc}"}), 500
 
-            include_vamp = request.form.get("vamp", "true").lower() == "true"
-            include_madmom = request.form.get("madmom", "true").lower() == "true"
-            use_phonemes = request.form.get("phonemes", "false").lower() == "true"
-            use_stems = request.form.get("stems", "false").lower() == "true" or use_phonemes
-            use_structure = request.form.get("structure", "false").lower() == "true"
-
-            job = AnalysisJob(
-                mp3_path=save_path,
-                include_vamp=include_vamp,
-                include_madmom=include_madmom,
-                use_stems=use_stems,
-                use_phonemes=use_phonemes,
-                use_structure=use_structure,
-            )
+            job = AnalysisJob(mp3_path=save_path)
 
             with _job_lock:
                 _current_job = job
@@ -385,17 +371,10 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
             t = threading.Thread(target=_run_analysis, args=(app, job), daemon=True)
             t.start()
 
-            # Estimate total for UI (actual total set in thread before first callback)
-            from src.analyzer.runner import default_algorithms
-            estimated_total = len(default_algorithms(
-                include_vamp=include_vamp,
-                include_madmom=include_madmom,
-            ))
-
             return jsonify({
                 "status": "started",
                 "filename": filename,
-                "total": estimated_total,
+                "total": 6,
             }), 202
 
         @app.route("/progress")
@@ -439,13 +418,13 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
                         data = json.load(fh)
                 except (OSError, json.JSONDecodeError) as exc:
                     return jsonify({"error": f"Cannot read analysis: {exc}"}), 500
-                return jsonify(data)
+                return jsonify(_adapt_hierarchy_for_ui(data))
             job = _current_job
             if job is None or job.result_path is None:
                 return jsonify({"error": "No analysis available"}), 404
             with open(job.result_path, "r", encoding="utf-8") as fh:
                 data = json.load(fh)
-            return jsonify(data)
+            return jsonify(_adapt_hierarchy_for_ui(data))
 
         @app.route("/audio")
         def audio_upload():
@@ -511,7 +490,7 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
         def analysis():
             with open(app.config["ANALYSIS_PATH"], "r", encoding="utf-8") as fh:
                 data = json.load(fh)
-            return jsonify(data)
+            return jsonify(_adapt_hierarchy_for_ui(data))
 
         @app.route("/audio")
         def audio():

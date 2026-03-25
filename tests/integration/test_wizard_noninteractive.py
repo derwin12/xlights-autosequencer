@@ -1,11 +1,15 @@
-"""T041/T042: Integration tests for wizard non-interactive and non-TTY modes."""
+"""T041/T042: Integration tests for wizard non-interactive and non-TTY modes.
+
+SKIPPED: These tests use the old wizard CLI command with flags replaced by the
+zero-flag orchestrator in feature 016-hierarchy-orchestrator.
+"""
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-from click.testing import CliRunner
+pytestmark = pytest.mark.skip(reason="Old wizard CLI replaced by zero-flag orchestrator (016)")
 
+from pathlib import Path
+from click.testing import CliRunner
 from src.cli import cli
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "beat_120bpm_10s.wav"

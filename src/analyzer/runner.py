@@ -148,12 +148,21 @@ def _run_subprocess_batch(
     """
     Invoke vamp_runner.py in .venv-vamp, stream NDJSON progress, return tracks.
     """
-    # Build stem_paths dict for algorithms that prefer a specific stem
+    # Build stem_paths dict for algorithms that prefer a specific stem.
+    # Match StemCache convention: {parent}/{stem}/stems/ (primary),
+    # falling back to {parent}/stems/ and {parent}/.stems/ for legacy layouts.
     stem_paths: dict[str, str] = {}
     if stems is not None:
-        stems_dir = Path(audio_path).parent / "stems"
+        audio_p = Path(audio_path)
+        if audio_p.parent.name == audio_p.stem:
+            # MP3 is already inside its own folder (e.g. songs/MySong/MySong.mp3)
+            stems_dir = audio_p.parent / "stems"
+        else:
+            stems_dir = audio_p.parent / audio_p.stem / "stems"
         if not stems_dir.exists():
-            stems_dir = Path(audio_path).parent / ".stems"
+            stems_dir = audio_p.parent / "stems"
+        if not stems_dir.exists():
+            stems_dir = audio_p.parent / ".stems"
         for stem_name in ("drums", "bass", "vocals", "guitar", "piano", "other"):
             p = stems_dir / f"{stem_name}.mp3"
             if p.exists():

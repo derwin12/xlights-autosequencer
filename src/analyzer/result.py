@@ -96,9 +96,13 @@ class TimingMark:
 
     time_ms: int
     confidence: Optional[float]
+    label: Optional[str] = None
+    duration_ms: Optional[int] = None
 
     def __post_init__(self) -> None:
         self.time_ms = int(self.time_ms)
+        if self.duration_ms is not None:
+            self.duration_ms = int(self.duration_ms)
 
 
 @dataclass
@@ -171,23 +175,37 @@ class TimingTrack:
             "quality_score": round(self.quality_score, 4),
             "stem_source": self.stem_source,
             "marks": [
-                {"time_ms": m.time_ms, "confidence": m.confidence}
+                {k: v for k, v in {
+                    "time_ms": m.time_ms,
+                    "confidence": m.confidence,
+                    "label": m.label,
+                    "duration_ms": m.duration_ms,
+                }.items() if v is not None}
                 for m in self.marks
             ],
         }
         if self.score_breakdown is not None:
             d["score_breakdown"] = self.score_breakdown.to_dict()
+        # Serialize value_curve if attached (e.g. bbc_energy algorithms)
+        vc = getattr(self, "value_curve", None)
+        if vc is not None and hasattr(vc, "to_dict"):
+            d["value_curve"] = vc.to_dict()
         return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "TimingTrack":
         marks = [
-            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"))
+            TimingMark(
+                time_ms=m["time_ms"],
+                confidence=m.get("confidence"),
+                label=m.get("label"),
+                duration_ms=m.get("duration_ms"),
+            )
             for m in d.get("marks", [])
         ]
         bd_data = d.get("score_breakdown")
         breakdown = ScoreBreakdown.from_dict(bd_data) if bd_data else None
-        return cls(
+        track = cls(
             name=d["name"],
             algorithm_name=d["algorithm_name"],
             element_type=d["element_type"],
@@ -196,6 +214,13 @@ class TimingTrack:
             stem_source=d.get("stem_source", "full_mix"),
             score_breakdown=breakdown,
         )
+        # Restore value_curve if serialized (ValueCurve defined later in this module)
+        vc_data = d.get("value_curve")
+        if vc_data is not None:
+            _vc_cls = globals().get("ValueCurve")
+            if _vc_cls is not None:
+                track.value_curve = _vc_cls.from_dict(vc_data)
+        return track
 
 
 # ── Interaction analysis result types ─────────────────────────────────────────
@@ -381,6 +406,188 @@ class InteractionResult:
             handoffs=[HandoffEvent.from_dict(h) for h in d.get("handoffs", [])],
             other_stem_class=d.get("other_stem_class"),
         )
+
+
+# ── ValueCurve ─────────────────────────────────────────────────────────────────
+
+@dataclass
+class ValueCurve:
+    """Continuous time-series of normalized energy values (0-100 per frame).
+
+    Replaces the fake TimingMark lists previously used by bbc_energy et al.
+    """
+
+    name: str
+    stem_source: str
+    fps: int
+    values: list[int]
+
+    @property
+    def duration_ms(self) -> int:
+        if self.fps <= 0:
+            return 0
+        return int(len(self.values) * 1000 / self.fps)
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "stem_source": self.stem_source,
+            "fps": self.fps,
+            "values": self.values,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ValueCurve":
+        return cls(
+            name=d["name"],
+            stem_source=d["stem_source"],
+            fps=d["fps"],
+            values=d["values"],
+        )
+
+
+# ── HierarchyResult ────────────────────────────────────────────────────────────
+
+@dataclass
+class HierarchyResult:
+    """Structured output of the hierarchy orchestrator (schema_version 2.0.0).
+
+    Replaces AnalysisResult as the primary output for the new zero-flag pipeline.
+    One field per hierarchy level (L0–L6) plus metadata.
+    """
+
+    schema_version: str                          # "2.0.0"
+    source_file: str
+    source_hash: str                             # MD5 of file content (cache key)
+    duration_ms: int
+    estimated_bpm: float
+
+    # L0: Special Moments
+    energy_impacts: list[TimingMark] = field(default_factory=list)
+    energy_drops: list[TimingMark] = field(default_factory=list)
+    gaps: list[TimingMark] = field(default_factory=list)
+
+    # L1: Structure
+    sections: list[TimingMark] = field(default_factory=list)
+
+    # L2: Bars (single best track)
+    bars: Optional["TimingTrack"] = None
+
+    # L3: Beats (single best track)
+    beats: Optional["TimingTrack"] = None
+
+    # L4: Events (stem_name → onset track)
+    events: dict[str, "TimingTrack"] = field(default_factory=dict)
+
+    # L5: Energy curves (stem_name → ValueCurve)
+    energy_curves: dict[str, ValueCurve] = field(default_factory=dict)
+    spectral_flux: Optional[ValueCurve] = None
+
+    # L6: Harmony
+    chords: Optional["TimingTrack"] = None
+    key_changes: Optional["TimingTrack"] = None
+
+    # Interactions
+    interactions: Optional["InteractionResult"] = None
+
+    # Metadata
+    stems_available: list[str] = field(default_factory=list)
+    capabilities: dict[str, bool] = field(default_factory=dict)
+    algorithms_run: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    validation: dict = field(default_factory=dict)
+
+    def _mark_to_dict(self, m: TimingMark) -> dict:
+        return {k: v for k, v in {
+            "time_ms": m.time_ms,
+            "confidence": m.confidence,
+            "label": m.label,
+            "duration_ms": m.duration_ms,
+        }.items() if v is not None}
+
+    def _mark_from_dict(self, d: dict) -> TimingMark:
+        return TimingMark(
+            time_ms=d["time_ms"],
+            confidence=d.get("confidence"),
+            label=d.get("label"),
+            duration_ms=d.get("duration_ms"),
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "schema_version": self.schema_version,
+            "source_file": self.source_file,
+            "source_hash": self.source_hash,
+            "duration_ms": self.duration_ms,
+            "estimated_bpm": self.estimated_bpm,
+            "energy_impacts": [self._mark_to_dict(m) for m in self.energy_impacts],
+            "energy_drops": [self._mark_to_dict(m) for m in self.energy_drops],
+            "gaps": [self._mark_to_dict(m) for m in self.gaps],
+            "sections": [self._mark_to_dict(m) for m in self.sections],
+            "bars": self.bars.to_dict() if self.bars else None,
+            "beats": self.beats.to_dict() if self.beats else None,
+            "events": {k: v.to_dict() for k, v in self.events.items()},
+            "energy_curves": {k: v.to_dict() for k, v in self.energy_curves.items()},
+            "spectral_flux": self.spectral_flux.to_dict() if self.spectral_flux else None,
+            "chords": self.chords.to_dict() if self.chords else None,
+            "key_changes": self.key_changes.to_dict() if self.key_changes else None,
+            "interactions": self.interactions.to_dict() if self.interactions else None,
+            "stems_available": self.stems_available,
+            "capabilities": self.capabilities,
+            "algorithms_run": self.algorithms_run,
+            "warnings": self.warnings,
+            "validation": self.validation,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "HierarchyResult":
+        obj = cls(
+            schema_version=d["schema_version"],
+            source_file=d["source_file"],
+            source_hash=d["source_hash"],
+            duration_ms=d["duration_ms"],
+            estimated_bpm=d["estimated_bpm"],
+        )
+        obj.energy_impacts = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("energy_impacts", [])
+        ]
+        obj.energy_drops = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("energy_drops", [])
+        ]
+        obj.gaps = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("gaps", [])
+        ]
+        obj.sections = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("sections", [])
+        ]
+        bars_data = d.get("bars")
+        obj.bars = TimingTrack.from_dict(bars_data) if bars_data else None
+        beats_data = d.get("beats")
+        obj.beats = TimingTrack.from_dict(beats_data) if beats_data else None
+        obj.events = {k: TimingTrack.from_dict(v) for k, v in d.get("events", {}).items()}
+        obj.energy_curves = {k: ValueCurve.from_dict(v) for k, v in d.get("energy_curves", {}).items()}
+        sf_data = d.get("spectral_flux")
+        obj.spectral_flux = ValueCurve.from_dict(sf_data) if sf_data else None
+        chords_data = d.get("chords")
+        obj.chords = TimingTrack.from_dict(chords_data) if chords_data else None
+        key_data = d.get("key_changes")
+        obj.key_changes = TimingTrack.from_dict(key_data) if key_data else None
+        ir_data = d.get("interactions")
+        obj.interactions = InteractionResult.from_dict(ir_data) if ir_data else None
+        obj.stems_available = d.get("stems_available", [])
+        obj.capabilities = d.get("capabilities", {})
+        obj.algorithms_run = d.get("algorithms_run", [])
+        obj.warnings = d.get("warnings", [])
+        obj.validation = d.get("validation", {})
+        return obj
 
 
 # ── Stem selection ─────────────────────────────────────────────────────────────

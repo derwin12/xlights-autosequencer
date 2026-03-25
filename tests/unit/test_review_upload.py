@@ -94,21 +94,19 @@ class TestUpload:
         _upload(client, filename="song.mp3")
         assert server_mod._current_job is not None
 
-    def test_vamp_false_passes_through(self, client, monkeypatch):
+    def test_upload_creates_job_with_mp3_path(self, client, monkeypatch):
         captured = {}
 
         def fake_run(app, job):
-            captured["include_vamp"] = job.include_vamp
-            captured["include_madmom"] = job.include_madmom
+            captured["mp3_path"] = job.mp3_path
 
         monkeypatch.setattr("src.review.server._run_analysis", fake_run)
         client.post(
             "/upload",
-            data={"mp3": (io.BytesIO(_mp3_bytes()), "song.mp3"), "vamp": "false", "madmom": "false"},
+            data={"mp3": (io.BytesIO(_mp3_bytes()), "song.mp3")},
             content_type="multipart/form-data",
         )
-        assert captured.get("include_vamp") is False
-        assert captured.get("include_madmom") is False
+        assert "song.mp3" in captured.get("mp3_path", "")
 
 
 # ── GET /job-status ────────────────────────────────────────────────────────
@@ -120,7 +118,7 @@ class TestJobStatus:
         assert resp.get_json()["status"] == "idle"
 
     def test_running_fields_when_job_active(self, client):
-        job = AnalysisJob("fake.mp3", include_vamp=True, include_madmom=True)
+        job = AnalysisJob("fake.mp3")
         job.total = 5
         job.record_progress(0, 5, "librosa_beats", 120)
         server_mod._current_job = job
@@ -134,7 +132,7 @@ class TestJobStatus:
         assert body["error"] is None
 
     def test_done_fields_when_job_complete(self, client):
-        job = AnalysisJob("fake.mp3", include_vamp=True, include_madmom=True)
+        job = AnalysisJob("fake.mp3")
         job.status = "done"
         job.result_path = "/some/path.json"
         job.total = 3
@@ -163,7 +161,7 @@ class TestProgress:
         assert any("error" in e for e in events)
 
     def test_completed_job_replays_all_events_then_done(self, client):
-        job = AnalysisJob("fake.mp3", include_vamp=True, include_madmom=True)
+        job = AnalysisJob("fake.mp3")
         job.total = 2
         job.record_progress(0, 2, "librosa_beats", 110)
         job.record_progress(1, 2, "librosa_hpss", 85)
@@ -182,7 +180,7 @@ class TestProgress:
         assert done_events[0]["result_path"] == "/some/out.json"
 
     def test_error_job_sends_terminal_error(self, client):
-        job = AnalysisJob("fake.mp3", include_vamp=True, include_madmom=True)
+        job = AnalysisJob("fake.mp3")
         job.status = "error"
         job.error_message = "All algorithms failed — no tracks produced"
         server_mod._current_job = job

@@ -1,15 +1,13 @@
 """Integration tests for the analysis cache pipeline (T016).
 
-These tests exercise the full cache lifecycle using synthetic fixture WAVs:
-- source_hash is written on the first analysis run
-- second run is a cache hit (no algorithm output)
-- --no-cache forces a fresh run
-- library entry is present and correct after each run
-
-NOTE: These tests run real algorithms against fixture audio. They are slower
-than unit tests and require librosa (and optionally vamp/madmom) to be installed.
+SKIPPED: These tests exercise the old AnalysisResult CLI interface (--output,
+--no-vamp, --no-madmom, --no-cache flags). The analyze command was replaced by
+the zero-flag orchestrator in feature 016-hierarchy-orchestrator. New cache
+tests will be written for the HierarchyResult pipeline.
 """
 from __future__ import annotations
+import pytest
+pytestmark = pytest.mark.skip(reason="Old analyze CLI replaced by orchestrator (016)")
 
 import hashlib
 import json

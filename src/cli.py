@@ -81,501 +81,63 @@ def cli() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 @cli.command("analyze")
-@click.argument("mp3_file", type=click.Path(exists=True, dir_okay=False))
-@click.option("--output", default=None, help="Output JSON path (default: <input>_analysis.json)")
-@click.option(
-    "--algorithms", default="all",
-    help="Comma-separated algorithm names, or 'all'",
-)
-@click.option("--no-vamp", is_flag=True, default=False, help="Skip Vamp plugin algorithms")
-@click.option("--no-madmom", is_flag=True, default=False, help="Skip madmom algorithms")
-@click.option("--top", "top_n", default=None, type=int, help="Auto-export top N tracks")
-@click.option(
-    "--stems/--no-stems", "use_stems", default=False,
-    help="Run stem separation before analysis (requires demucs)",
-)
-@click.option(
-    "--phonemes/--no-phonemes", "use_phonemes", default=False,
-    help="Run vocal phoneme analysis and write .xtiming file (implies --stems)",
-)
-@click.option(
-    "--lyrics", "lyrics_path", default=None, type=click.Path(dir_okay=False),
-    help="Lyrics text file for improved word alignment (requires --phonemes)",
-)
-@click.option(
-    "--phoneme-model", "phoneme_model", default="base",
-    type=click.Choice(["tiny", "base", "small", "medium", "large-v2"], case_sensitive=False),
-    help="Whisper model size for phoneme transcription (larger = more accurate, slower)",
-    show_default=True,
-)
-@click.option(
-    "--structure/--no-structure", "use_structure", default=False,
-    help="Detect song structure (intro/verse/chorus/bridge/outro) using All-in-One (allin1)",
-)
-@click.option(
-    "--genius", "use_genius", is_flag=True, default=False,
-    help="Fetch section headers from Genius and align to audio timestamps (requires GENIUS_API_TOKEN env var)",
-)
-@click.option(
-    "--no-cache", "no_cache", is_flag=True, default=False,
-    help="Re-run analysis even if a cached result exists for this file",
-)
-@click.option(
-    "--scoring-config", "scoring_config_path", default=None,
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to a TOML scoring configuration file",
-)
-@click.option(
-    "--scoring-profile", "scoring_profile_name", default=None,
-    help="Name of a saved scoring profile",
-)
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--fresh", is_flag=True, default=False, help="Ignore cache and re-run analysis")
+@click.option("--dry-run", is_flag=True, default=False, help="Show what would run without executing")
 def analyze_cmd(
-    mp3_file: str,
-    output: str | None,
-    algorithms: str,
-    no_vamp: bool,
-    no_madmom: bool,
-    top_n: int | None,
-    use_stems: bool,
-    use_phonemes: bool,
-    lyrics_path: str | None,
-    phoneme_model: str,
-    use_structure: bool,
-    use_genius: bool,
-    no_cache: bool,
-    scoring_config_path: str | None,
-    scoring_profile_name: str | None,
+    path: str,
+    fresh: bool,
+    dry_run: bool,
 ) -> None:
-    """Run all analysis algorithms on MP3_FILE and write a JSON result."""
-    from src.log import get_logger
-    log = get_logger("xlight.cli")
+    """Run hierarchical analysis on an MP3 file or directory of MP3s."""
 
-    from src.analyzer.runner import AnalysisRunner, default_algorithms
-    from src.analyzer.scorer import score_all_tracks
-    from src.analyzer.scoring_config import ScoringConfig, load_profile
-    from src.cache import AnalysisCache
-    from src.library import Library, LibraryEntry
-    import time
+    from src.analyzer.orchestrator import run_orchestrator
 
-    log.info("=" * 72)
-    log.info("analyze_cmd: file=%s stems=%s phonemes=%s genius=%s no_cache=%s",
-             mp3_file, use_stems, use_phonemes, use_genius, no_cache)
+    input_path = Path(path)
 
-    # Load scoring configuration
-    if scoring_config_path and scoring_profile_name:
-        click.echo("ERROR: Cannot use both --scoring-config and --scoring-profile", err=True)
-        sys.exit(6)
-
-    scoring_config: ScoringConfig | None = None
-    if scoring_config_path:
-        try:
-            scoring_config = ScoringConfig.from_toml(Path(scoring_config_path))
-        except (ValueError, Exception) as exc:
-            click.echo(f"ERROR: Invalid scoring config: {exc}", err=True)
-            sys.exit(6)
-    elif scoring_profile_name:
-        try:
-            scoring_config = load_profile(scoring_profile_name)
-        except FileNotFoundError as exc:
-            click.echo(f"ERROR: {exc}", err=True)
-            sys.exit(7)
-        except (ValueError, Exception) as exc:
-            click.echo(f"ERROR: Invalid scoring profile: {exc}", err=True)
-            sys.exit(6)
-
-    audio_path = Path(mp3_file)
-
-    # --phonemes implies --stems
-    if use_phonemes:
-        use_stems = True
-
-    # Warn if --lyrics used without --phonemes
-    if lyrics_path is not None and not use_phonemes:
-        click.echo(
-            "WARNING: --lyrics is ignored without --phonemes. "
-            "Add --phonemes to enable phoneme analysis.",
-            err=True,
-        )
-
-    # Determine output path
-    # Song folder: named after the audio stem, adjacent to the MP3.
-    # If the MP3 is already inside a folder with the same name (e.g. songs/MySong/MySong.mp3),
-    # use that folder directly to avoid double-nesting.
-    if audio_path.parent.name == audio_path.stem:
-        analysis_dir = audio_path.parent
-    else:
-        analysis_dir = audio_path.parent / audio_path.stem
-    if output is None:
-        out_path = str(analysis_dir / (audio_path.stem + "_analysis.json"))
-    else:
-        out_path = output
-
-    # ── Cache hit check ───────────────────────────────────────────────────────
-    cache = AnalysisCache(audio_path, Path(out_path))
-    result = None
-    from_cache = False
-    if not no_cache and cache.is_valid():
-        result = cache.load()
-        from_cache = True
-        click.echo(f"Loading audio: {audio_path.name}")
-        click.echo(
-            f"Analysis cache: hit ({(result.source_hash or '')[:8]}) — skipping algorithms."
-        )
-        genius_cached = (
-            result.song_structure is not None
-            and result.song_structure.source == "genius"
-            and result.phoneme_result is not None
-            and getattr(result.phoneme_result.word_track, "lyrics_source", "") == "genius"
-        )
-        needs_more = (use_phonemes and result.phoneme_result is None) or (
-            use_genius and not genius_cached
-        )
-        if not needs_more:
-            from src.analyzer.scorer import score_all_tracks
-            from src.analyzer.scoring_config import ScoringConfig, load_profile
-            score_all_tracks(result.timing_tracks, result.duration_ms, scoring_config)
-            click.echo(f"Output: {out_path}")
-            _print_summary_table(result.timing_tracks)
-            return
-        if use_phonemes and result.phoneme_result is None:
-            click.echo("Phoneme data missing from cache — running phoneme analysis...")
-        if use_genius and not genius_cached:
-            click.echo("Genius data missing from cache — running Genius alignment...")
-
-    # ── Full analysis run ─────────────────────────────────────────────────────
-
-    # Check output is writable
-    try:
-        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(out_path).touch()
-    except OSError as exc:
-        click.echo(f"ERROR: Cannot write to {out_path}: {exc}", err=True)
-        sys.exit(3)
-
-    stems = None
-    if not from_cache:
-        # Build algorithm list
-        algo_list = default_algorithms(
-            include_vamp=not no_vamp,
-            include_madmom=not no_madmom,
-        )
-
-        # Optional algorithm filter
-        if algorithms.strip().lower() != "all":
-            names = {n.strip() for n in algorithms.split(",")}
-            algo_list = [a for a in algo_list if a.name in names]
-
-        if no_vamp:
-            click.echo("INFO: --no-vamp specified — Vamp algorithms skipped.", err=True)
-        if no_madmom:
-            click.echo("INFO: --no-madmom specified — madmom algorithms skipped.", err=True)
-
-        # Load audio once — shared by display header and analysis runner
-        try:
-            from src.analyzer.audio import load
-            import librosa, numpy as np
-            audio, sr, meta = load(str(audio_path))
-            try:
-                tempo_arr, _ = librosa.beat.beat_track(y=audio, sr=sr, hop_length=512)
-                bpm = float(np.atleast_1d(tempo_arr)[0])
-            except Exception:
-                bpm = 0.0
-            click.echo(
-                f"Loading audio: {audio_path.name} ({_format_duration(meta.duration_ms)}) | BPM: ~{bpm:.1f}"
-            )
-            click.echo("Analysis cache: miss — running algorithms...")
-        except Exception as exc:
-            click.echo(f"ERROR: Cannot load {mp3_file}: {exc}", err=True)
+    # ── Directory mode (batch) ────────────────────────────────────────────────
+    if input_path.is_dir():
+        mp3s = sorted(input_path.glob("*.mp3"))
+        if not mp3s:
+            click.echo(f"ERROR: No MP3 files found in {path}", err=True)
             sys.exit(1)
-
-        # Stem separation (optional, requires demucs)
-        if use_stems:
+        click.echo(f"Batch: {len(mp3s)} MP3 files found")
+        succeeded, failed = 0, 0
+        for i, mp3 in enumerate(mp3s, 1):
+            click.echo(f"[{i}/{len(mp3s)}] {mp3.name}...", nl=False)
             try:
-                from src.analyzer.stems import StemSeparator, StemCache
-                sep = StemSeparator()
-                stems = sep.separate(audio_path)
-                sc = StemCache(audio_path)
-                log.info("Stem dir: %s (exists=%s)", sc.stem_dir, sc.stem_dir.exists())
-                vocals_mp3 = sc.stem_dir / "vocals.mp3"
-                log.info("Vocals stem: %s (exists=%s)", vocals_mp3, vocals_mp3.exists())
+                result = run_orchestrator(str(mp3), fresh=fresh, dry_run=dry_run)
+                # Check if it was cached
+                click.echo(" done")
+                succeeded += 1
+            except SystemExit:
+                raise
             except Exception as exc:
-                click.echo(
-                    f"WARNING: Stem separation failed ({exc}). Falling back to full-mix analysis.",
-                    err=True,
-                )
+                click.echo(f" FAILED: {exc}")
+                failed += 1
+        click.echo(f"\nComplete: {succeeded}/{len(mp3s)} succeeded, {failed} failed")
+        if failed:
+            sys.exit(4)
+        return
 
-        # T032: use ParallelRunner (runs local algorithms concurrently)
-        from src.analyzer.parallel import ParallelRunner
-
-        total = len(algo_list)
-
-        # Backward-compat progress wrapper: new contract is (step_name, status, detail)
-        _progress_idx = [0]
-
-        def progress(step_name: str, status: str, detail: dict) -> None:
-            if status == "done":
-                _progress_idx[0] += 1
-                mark_count = detail.get("mark_count", 0)
-                click.echo(
-                    f"  [{_progress_idx[0]:>2}/{total}] {step_name:<35} ... done ({mark_count} marks)"
-                )
-
-        runner = ParallelRunner(algorithms=algo_list)
-
-        try:
-            result = runner.run(
-                audio_path=str(audio_path),
-                audio=audio,
-                sample_rate=sr,
-                stems=stems,
-                progress_callback=progress,
-                use_stems=use_stems,
-                use_phonemes=use_phonemes,
-            )
-        except Exception as exc:
-            click.echo(f"ERROR: Analysis failed: {exc}", err=True)
-            sys.exit(2)
-
-        if not result.timing_tracks:
-            click.echo("ERROR: All algorithms failed — no output written.", err=True)
-            sys.exit(2)
-
-    # Apply category-aware scoring with breakdowns
-    score_all_tracks(result.timing_tracks, result.duration_ms, scoring_config)
-
-    # Phoneme analysis (optional, requires whisperx)
-    # Skip standalone phonemes when Genius is enabled — Genius does its own
-    # WhisperX alignment with verified lyrics, so running it twice is wasteful.
-    xtiming_path: str | None = None
-    if use_phonemes and not use_genius:
-        try:
-            from src.analyzer.phonemes import PhonemeAnalyzer
-            from src.analyzer.xtiming import XTimingWriter
-
-            vocal_stem_path = str(audio_path)
-            from src.analyzer.stems import StemCache
-            vocals_file = StemCache(audio_path).stem_dir / "vocals.mp3"
-            if vocals_file.exists():
-                vocal_stem_path = str(vocals_file)
-
-            click.echo("Phoneme analysis:")
-            click.echo(f"  → Transcribing vocals (whisper {phoneme_model} model)...")
-
-            analyzer = PhonemeAnalyzer(model_name=phoneme_model)
-            phoneme_result = analyzer.analyze(
-                vocal_stem_path, str(audio_path), lyrics_path=lyrics_path
-            )
-
-            for warning in getattr(analyzer, "warnings", []):
-                click.echo(f"  → Warning: {warning}")
-
-            if phoneme_result is not None:
-                word_count = len(phoneme_result.word_track.marks)
-                phoneme_count = len(phoneme_result.phoneme_track.marks)
-                xtiming_path = str(analysis_dir / (audio_path.stem + ".xtiming"))
-                click.echo(
-                    f"  → Writing {audio_path.stem}.xtiming "
-                    f"(3 layers: lyrics, {word_count} words, {phoneme_count} phonemes)"
-                )
-                XTimingWriter().write(phoneme_result, xtiming_path)
-                result.phoneme_result = phoneme_result
-
-                # Write lyrics file if auto-transcribed and file not already present
-                if phoneme_result.word_track.lyrics_source == "auto" and lyrics_path is None:
-                    lyrics_out = analysis_dir / (audio_path.stem + ".lyrics.txt")
-                    if not lyrics_out.exists():
-                        marks = phoneme_result.word_track.marks
-                        lines: list[str] = []
-                        current_line: list[str] = []
-                        for i, wm in enumerate(marks):
-                            current_line.append(wm.label)
-                            if i + 1 < len(marks) and marks[i + 1].start_ms - wm.end_ms > 500:
-                                lines.append(" ".join(current_line))
-                                current_line = []
-                        if current_line:
-                            lines.append(" ".join(current_line))
-                        lyrics_out.write_text("\n".join(lines) + "\n", encoding="utf-8")
-                        click.echo(
-                            f"  → Wrote {lyrics_out.name} — edit and rerun with "
-                            f"--phonemes --lyrics {lyrics_out.name}"
-                        )
-                    else:
-                        click.echo(f"  → {lyrics_out.name} already exists — not overwritten.")
-            else:
-                click.echo("  → Warning: No vocals detected in audio. Skipping phoneme analysis.")
-
-        except RuntimeError as exc:
-            click.echo(f"WARNING: Phoneme analysis failed: {exc}", err=True)
-        except Exception as exc:
-            click.echo(f"WARNING: Phoneme analysis failed: {exc}", err=True)
-
-    # Structure analysis
-    if use_structure:
-        try:
-            from src.analyzer.structure import StructureAnalyzer
-            click.echo("Structure analysis:")
-            lyric_hint = " + lyrics" if result.phoneme_result is not None else ""
-            click.echo(f"  → Detecting segments (intro/verse/chorus/bridge/outro){lyric_hint}...")
-            song_structure = StructureAnalyzer().analyze(
-                str(audio_path),
-                phoneme_result=result.phoneme_result,
-            )
-            if song_structure.segments:
-                result.song_structure = song_structure
-                labels = [s.label for s in song_structure.segments]
-                click.echo(f"  → Found {len(labels)} segments: {', '.join(labels)}")
-            else:
-                click.echo("  → Warning: No segments detected.")
-        except RuntimeError as exc:
-            click.echo(f"WARNING: Structure analysis failed: {exc}", err=True)
-        except Exception as exc:
-            click.echo(f"WARNING: Structure analysis failed: {exc}", err=True)
-
-    # Genius lyric segment detection (optional, requires lyricsgenius + mutagen)
-    if use_genius:
-        import os
-        genius_token = os.environ.get("GENIUS_API_TOKEN", "")
-        if not genius_token:
-            click.echo(
-                "WARNING: GENIUS_API_TOKEN is not set. Obtain a token at "
-                "genius.com/api-clients and set: export GENIUS_API_TOKEN=\"<your-token>\". "
-                "Skipping Genius segment detection.",
-                err=True,
-            )
-        else:
-            genius_cached = (
-                result.song_structure is not None
-                and result.song_structure.source == "genius"
-                and result.phoneme_result is not None
-                and getattr(result.phoneme_result.word_track, "lyrics_source", "") == "genius"
-            )
-            if genius_cached and not no_cache:
-                seg_count = len(result.song_structure.segments)
-                click.echo(
-                    f"Genius segments: cache hit — {seg_count} segments loaded."
-                )
-            else:
-                from src.analyzer.genius_segments import GeniusSegmentAnalyzer
-                from pathlib import Path as _Path
-
-                click.echo("Genius segment detection:")
-                click.echo("  → Fetching lyrics and aligning sections...")
-
-                stem_dir: Path | None = None
-                try:
-                    from src.analyzer.stems import StemCache
-                    sc = StemCache(audio_path)
-                    if sc.stem_dir.exists():
-                        stem_dir = sc.stem_dir
-                except Exception:
-                    pass
-
-                genius_analyzer = GeniusSegmentAnalyzer()
-                song_structure, genius_phoneme_result, genius_warnings = genius_analyzer.run(
-                    audio_path=str(audio_path),
-                    token=genius_token,
-                    stem_dir=stem_dir,
-                    duration_ms=result.duration_ms,
-                )
-
-                for w in genius_warnings:
-                    click.echo(f"  → Warning: {w}")
-
-                if song_structure is not None and song_structure.segments:
-                    result.song_structure = song_structure
-                    labels = [s.label for s in song_structure.segments]
-                    click.echo(
-                        f"  → Found {len(labels)} segments: {', '.join(labels)}"
-                    )
-                else:
-                    click.echo("  → No Genius segments produced. See warnings above.")
-
-                # Genius word-level alignment replaces auto-transcription —
-                # verified lyrics text with WhisperX-derived timestamps
-                if genius_phoneme_result is not None:
-                    result.phoneme_result = genius_phoneme_result
-                    word_count = len(genius_phoneme_result.word_track.marks)
-                    phoneme_count = len(genius_phoneme_result.phoneme_track.marks)
-                    click.echo(f"  → Genius word track: {word_count} words aligned")
-
-                    # Write .xtiming (normally done by the phonemes step, but
-                    # we skipped it when Genius is enabled)
-                    if use_phonemes:
-                        try:
-                            from src.analyzer.xtiming import XTimingWriter
-                            xtiming_path = str(analysis_dir / (audio_path.stem + ".xtiming"))
-                            XTimingWriter().write(genius_phoneme_result, xtiming_path)
-                            click.echo(
-                                f"  → Writing {audio_path.stem}.xtiming "
-                                f"(3 layers: lyrics, {word_count} words, {phoneme_count} phonemes)"
-                            )
-                        except Exception as exc:
-                            click.echo(f"  → Warning: Failed to write .xtiming: {exc}")
+    # ── Single file mode ──────────────────────────────────────────────────────
+    if not input_path.suffix.lower() == ".mp3":
+        # Accept non-.mp3 files too (e.g. WAV) but warn
+        click.echo(f"WARNING: {input_path.name} is not an MP3 — attempting analysis anyway", err=True)
 
     try:
-        cache.save(result)
-    except OSError as exc:
+        run_orchestrator(str(input_path), fresh=fresh, dry_run=dry_run)
+    except SystemExit:
+        raise
+    except FileNotFoundError as exc:
+        click.echo(f"ERROR: {exc}", err=True)
+        sys.exit(1)
+    except PermissionError as exc:
         click.echo(f"ERROR: Cannot write output: {exc}", err=True)
         sys.exit(3)
-
-    # ── Library registration ──────────────────────────────────────────────────
-    try:
-        lib_entry = LibraryEntry(
-            source_hash=result.source_hash or "",
-            source_file=str(audio_path.resolve()),
-            filename=audio_path.name,
-            analysis_path=str(Path(out_path).resolve()),
-            duration_ms=result.duration_ms,
-            estimated_tempo_bpm=result.estimated_tempo_bpm,
-            track_count=len(result.timing_tracks),
-            stem_separation=result.stem_separation,
-            analyzed_at=int(time.time() * 1000),
-        )
-        Library().upsert(lib_entry)
-    except Exception:
-        pass  # library registration is best-effort; never block analysis output
-
-    if xtiming_path:
-        click.echo(f"\nAnalysis complete: {out_path} + {Path(xtiming_path).name}")
-    else:
-        click.echo(f"\nAnalysis complete. Output: {out_path}")
-    _print_summary_table(result.timing_tracks)
-
-    if top_n is not None:
-        click.echo(f"\nAuto-selecting top {top_n} tracks by quality score (with diversity filter)...")
-        top_path = str(analysis_dir / f"{audio_path.stem}_top{top_n}.json")
-
-        from src.analyzer.diversity import DiversityFilter
-        cfg = scoring_config or __import__("src.analyzer.scoring_config", fromlist=["ScoringConfig"]).ScoringConfig.default()
-        flt = DiversityFilter(
-            tolerance_ms=cfg.diversity_tolerance_ms,
-            threshold=cfg.diversity_threshold,
-        )
-        selected_tracks, skipped_tracks = flt.filter(result.timing_tracks, n=top_n)
-
-        for t in skipped_tracks:
-            bd = t.score_breakdown
-            if bd and bd.duplicate_of:
-                click.echo(f"  SKIPPED {t.name}: near-identical to {bd.duplicate_of}")
-
-        top_result = AnalysisResult(
-            schema_version=result.schema_version,
-            source_file=result.source_file,
-            filename=result.filename,
-            duration_ms=result.duration_ms,
-            sample_rate=result.sample_rate,
-            estimated_tempo_bpm=result.estimated_tempo_bpm,
-            run_timestamp=result.run_timestamp,
-            algorithms=[
-                a for a in result.algorithms
-                if a.name in {t.algorithm_name for t in selected_tracks}
-            ],
-            timing_tracks=selected_tracks,
-        )
-        export_mod.write(top_result, top_path)
-        click.echo(f"Output: {top_path}")
-    else:
-        click.echo("\nUse --top N or 'xlight-analyze export' to select tracks.")
+    except Exception as exc:
+        click.echo(f"ERROR: Analysis failed: {exc}", err=True)
+        sys.exit(2)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -622,22 +184,13 @@ def full_cmd(
     scoring_profile_name: str | None,
 ) -> None:
     """Run a full analysis: all algorithms + stems + phonemes + song structure."""
+    # Delegate to the new zero-flag orchestrator.
+    # Phoneme/structure analysis are now separate optional steps.
     ctx.invoke(
         analyze_cmd,
-        mp3_file=mp3_file,
-        output=output,
-        algorithms="all",
-        no_vamp=False,
-        no_madmom=False,
-        top_n=top_n,
-        use_stems=True,
-        use_phonemes=True,
-        lyrics_path=lyrics_path,
-        phoneme_model=phoneme_model,
-        use_structure=True,
-        no_cache=no_cache,
-        scoring_config_path=scoring_config_path,
-        scoring_profile_name=scoring_profile_name,
+        path=mp3_file,
+        fresh=no_cache,
+        dry_run=False,
     )
 
 

@@ -202,15 +202,26 @@ def main() -> None:
     algorithms_meta: list[dict] = []
     total = len(algo_names)
 
-    for idx, name in enumerate(algo_names):
+    for idx, raw_name in enumerate(algo_names):
+        # Support "algo_name:stem_override" format for per-stem runs
+        if ":" in raw_name:
+            name, stem_override = raw_name.split(":", 1)
+        else:
+            name, stem_override = raw_name, None
+
         algo_cls = algo_map.get(name)
         if algo_cls is None:
-            _emit({"event": "warn", "name": name, "message": f"Unknown algorithm: {name}"})
+            _emit({"event": "warn", "name": raw_name, "message": f"Unknown algorithm: {name}"})
             _emit({"event": "progress", "idx": idx + 1, "total": total,
-                   "name": name, "mark_count": 0})
+                   "name": raw_name, "mark_count": 0})
             continue
 
         algo = algo_cls()
+
+        # Apply stem override if specified (e.g. "bbc_energy:drums")
+        if stem_override:
+            algo.preferred_stem = stem_override
+            algo.name = f"{name}_{stem_override}"
 
         # Use stem audio when available and preferred
         use_audio = audio
@@ -222,6 +233,10 @@ def main() -> None:
         if track is not None:
             from src.analyzer.scorer import score_track
             track.quality_score = score_track(track)
+            if stem_override:
+                track.stem_source = stem_override
+                if hasattr(track, "value_curve") and track.value_curve is not None:
+                    track.value_curve.stem_source = stem_override
             tracks.append(track.to_dict())
             algorithms_meta.append(algo.metadata().to_dict())
 
@@ -229,7 +244,7 @@ def main() -> None:
             "event": "progress",
             "idx": idx + 1,
             "total": total,
-            "name": name,
+            "name": raw_name,
             "mark_count": track.mark_count if track else 0,
         })
 
