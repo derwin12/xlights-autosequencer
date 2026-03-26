@@ -1,0 +1,257 @@
+{
+  "schema_version": "1.0.0",
+  "target_xlights_version": "2024.x",
+  "effects": {
+    "On": {
+      "name": "On",
+      "xlights_id": "eff_ON",
+      "category": "utility",
+      "description": "Sets all pixels to a solid color at a given intensity",
+      "intent": "Basic building block for solid color blocks, used everywhere",
+      "parameters": [
+        {
+          "name": "On_Transparency",
+          "storage_name": "E_TEXTCTRL_Eff_On_Transparency",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Transparency of the solid color (0=opaque, 100=invisible)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "On_Cycles",
+          "storage_name": "E_TEXTCTRL_Eff_On_Cycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Number of palette color cycles during the effect duration",
+          "supports_value_curve": false
+        },
+        {
+          "name": "On_Shimmer",
+          "storage_name": "E_CHECKBOX_On_Shimmer",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable shimmer (rapid on/off) on the solid color",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": []
+    },
+    "Fire": {
+      "name": "Fire",
+      "xlights_id": "eff_FIRE",
+      "category": "nature",
+      "description": "Simulates rising flame animation with heat mapping",
+      "intent": "Use for aggressive, high-energy sections \u2014 hot colors rising from bottom",
+      "parameters": [
+        {
+          "name": "Fire_Height",
+          "storage_name": "E_SLIDER_Fire_Height",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Height of the flames as percentage of model height",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fire_HueShift",
+          "storage_name": "E_SLIDER_Fire_HueShift",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Shifts the color hue of the flames",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fire_GrowthCycles",
+          "storage_name": "E_VALUECURVE_Fire_GrowthCycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 0.0,
+          "min": 0.0,
+          "max": 20.0,
+          "choices": null,
+          "description": "Number of grow/shrink cycles during the effect",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fire_GrowWithMusic",
+          "storage_name": "E_CHECKBOX_Fire_GrowWithMusic",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable music-reactive fire height (responds to audio levels)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Fire_Location",
+          "storage_name": "E_CHOICE_Fire_Location",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Bottom",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Bottom",
+            "Top",
+            "Left",
+            "Right"
+          ],
+          "description": "Direction from which flames originate",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "possible",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Fire_Height",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.bass",
+          "mapping_type": "direct",
+          "description": "Bass energy drives flame height \u2014 louder bass = taller flames"
+        },
+        {
+          "parameter": "Fire_GrowWithMusic",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "threshold_trigger",
+          "description": "Enable GrowWithMusic when overall energy is above 50%"
+        }
+      ]
+    },
+    "Bars": {
+      "name": "Bars",
+      "xlights_id": "eff_BARS",
+      "category": "pattern",
+      "description": "Renders horizontal or vertical color bars that move across the model",
+      "intent": "Versatile pattern effect for rhythmic movement and transitions",
+      "parameters": [
+        {
+          "name": "Bars_BarCount",
+          "storage_name": "E_SLIDER_Bars_BarCount",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of color bars visible at once",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Bars_Cycles",
+          "storage_name": "E_TEXTCTRL_Bars_Cycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 100.0,
+          "choices": null,
+          "description": "Number of complete bar movement cycles",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Bars_Direction",
+          "storage_name": "E_CHOICE_Bars_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "up",
+          "min": null,
+          "max": null,
+          "choices": [
+            "up",
+            "down",
+            "expand",
+            "compress",
+            "Left",
+            "Right",
+            "H-expand",
+            "H-compress",
+            "Alternate Up",
+            "Alternate Down",
+            "Alternate Left",
+            "Alternate Right"
+          ],
+          "description": "Direction of bar movement",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Bars_Highlight",
+          "storage_name": "E_CHECKBOX_Bars_Highlight",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Highlight the leading edge of moving bars",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Bars_3D",
+          "storage_name": "E_CHECKBOX_Bars_3D",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Apply 3D shading to bars for depth effect",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "good",
+        "radial": "possible"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Bars_BarCount",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "Higher BPM = more bars visible for denser rhythmic patterns"
+        }
+      ]
+    }
+  }
+}

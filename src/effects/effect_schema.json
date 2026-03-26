@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "xLights Effect Library",
+  "type": "object",
+  "required": ["schema_version", "target_xlights_version", "effects"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "target_xlights_version": { "type": "string" },
+    "effects": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/EffectDefinition" }
+    }
+  },
+  "$defs": {
+    "EffectDefinition": {
+      "type": "object",
+      "required": ["name", "category", "description", "intent", "parameters", "prop_suitability"],
+      "properties": {
+        "name": { "type": "string" },
+        "xlights_id": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": ["color_wash", "pattern", "nature", "movement", "audio_reactive", "media", "utility"]
+        },
+        "description": { "type": "string" },
+        "intent": { "type": "string" },
+        "parameters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EffectParameter" }
+        },
+        "prop_suitability": { "$ref": "#/$defs/PropSuitability" },
+        "analysis_mappings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AnalysisMapping" },
+          "default": []
+        }
+      }
+    },
+    "EffectParameter": {
+      "type": "object",
+      "required": ["name", "storage_name", "widget_type", "value_type", "default", "description"],
+      "properties": {
+        "name": { "type": "string" },
+        "storage_name": { "type": "string" },
+        "widget_type": {
+          "type": "string",
+          "enum": ["slider", "checkbox", "choice", "textctrl"]
+        },
+        "value_type": {
+          "type": "string",
+          "enum": ["int", "float", "bool", "choice"]
+        },
+        "default": {},
+        "min": { "type": ["number", "null"], "default": null },
+        "max": { "type": ["number", "null"], "default": null },
+        "choices": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "default": null
+        },
+        "description": { "type": "string" },
+        "supports_value_curve": { "type": "boolean", "default": false }
+      }
+    },
+    "AnalysisMapping": {
+      "type": "object",
+      "required": ["parameter", "analysis_level", "analysis_field", "mapping_type", "description"],
+      "properties": {
+        "parameter": { "type": "string" },
+        "analysis_level": {
+          "type": "string",
+          "enum": ["L0", "L1", "L2", "L3", "L4", "L5", "L6"]
+        },
+        "analysis_field": { "type": "string" },
+        "mapping_type": {
+          "type": "string",
+          "enum": ["direct", "inverted", "threshold_trigger"]
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "PropSuitability": {
+      "type": "object",
+      "required": ["matrix", "outline", "arch", "vertical", "tree", "radial"],
+      "properties": {
+        "matrix": { "$ref": "#/$defs/SuitabilityRating" },
+        "outline": { "$ref": "#/$defs/SuitabilityRating" },
+        "arch": { "$ref": "#/$defs/SuitabilityRating" },
+        "vertical": { "$ref": "#/$defs/SuitabilityRating" },
+        "tree": { "$ref": "#/$defs/SuitabilityRating" },
+        "radial": { "$ref": "#/$defs/SuitabilityRating" }
+      }
+    },
+    "SuitabilityRating": {
+      "type": "string",
+      "enum": ["ideal", "good", "possible", "not_recommended"]
+    }
+  }
+}

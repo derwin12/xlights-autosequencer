@@ -1,0 +1,3576 @@
+{
+  "schema_version": "1.0.0",
+  "target_xlights_version": "2024.x",
+  "effects": {
+    "On": {
+      "name": "On",
+      "xlights_id": "eff_ON",
+      "category": "utility",
+      "description": "Sets all pixels to a solid color at a given intensity",
+      "intent": "Basic building block for solid color blocks, used everywhere as the most common effect",
+      "parameters": [
+        {
+          "name": "On_Transparency",
+          "storage_name": "E_TEXTCTRL_Eff_On_Transparency",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Transparency of the solid color (0=opaque, 100=invisible)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "On_Cycles",
+          "storage_name": "E_TEXTCTRL_Eff_On_Cycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Number of palette color cycles during the effect duration",
+          "supports_value_curve": false
+        },
+        {
+          "name": "On_Shimmer",
+          "storage_name": "E_CHECKBOX_On_Shimmer",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable shimmer (rapid on/off) on the solid color",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "On_Transparency",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "inverted",
+          "description": "Higher energy = lower transparency (more visible) for intensity-driven blocks",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Off": {
+      "name": "Off",
+      "xlights_id": "eff_OFF",
+      "category": "utility",
+      "description": "Turns all pixels off (black)",
+      "intent": "Used for blank gaps, transitions, and blackout moments",
+      "parameters": [
+        {
+          "name": "Off_Transparent",
+          "storage_name": "E_CHECKBOX_Off_Transparent",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Make the off effect transparent instead of black (allows layers below to show)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Off_Transparency",
+          "storage_name": "E_TEXTCTRL_Off_Transparency",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Transparency level when transparent mode is enabled",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Off_FadeOut",
+          "storage_name": "E_CHECKBOX_Off_FadeOut",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Fade to off over the effect duration instead of instant blackout",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Color Wash": {
+      "name": "Color Wash",
+      "xlights_id": "eff_COLORWASH",
+      "category": "color_wash",
+      "description": "Washes palette colors across the model with configurable direction and speed",
+      "intent": "Smooth ambient color transitions for verses, intros, and low-energy sections",
+      "parameters": [
+        {
+          "name": "ColorWash_Count",
+          "storage_name": "E_SLIDER_ColorWash_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of color bands visible simultaneously",
+          "supports_value_curve": true
+        },
+        {
+          "name": "ColorWash_Cycles",
+          "storage_name": "E_TEXTCTRL_ColorWash_Cycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 100.0,
+          "choices": null,
+          "description": "Number of complete color wash cycles",
+          "supports_value_curve": true
+        },
+        {
+          "name": "ColorWash_HFade",
+          "storage_name": "E_CHECKBOX_ColorWash_HFade",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Apply horizontal fade across the model",
+          "supports_value_curve": false
+        },
+        {
+          "name": "ColorWash_VFade",
+          "storage_name": "E_CHECKBOX_ColorWash_VFade",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Apply vertical fade across the model",
+          "supports_value_curve": false
+        },
+        {
+          "name": "ColorWash_Shimmer",
+          "storage_name": "E_CHECKBOX_ColorWash_Shimmer",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable shimmer overlay on the color wash",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "ColorWash_Cycles",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "Faster BPM = more wash cycles for rhythmic color movement",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "ColorWash_Count",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Higher energy = more color bands for visual density",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Fill": {
+      "name": "Fill",
+      "xlights_id": "eff_FILL",
+      "category": "color_wash",
+      "description": "Fills the model with color from a configurable position and direction",
+      "intent": "Build-up and reveal effects, great for crescendos and transitions",
+      "parameters": [
+        {
+          "name": "Fill_Position",
+          "storage_name": "E_SLIDER_Fill_Position",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Fill position as percentage (0=empty, 100=full)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fill_Band_Size",
+          "storage_name": "E_SLIDER_Fill_Band_Size",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Size of the color band (0=solid fill)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fill_Offset",
+          "storage_name": "E_SLIDER_Fill_Offset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Offset of the fill starting position",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fill_Direction",
+          "storage_name": "E_CHOICE_Fill_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Up",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Up",
+            "Down",
+            "Left",
+            "Right"
+          ],
+          "description": "Direction of the fill movement",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "good",
+        "radial": "possible"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Fill_Position",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy level directly drives fill percentage for build-up effects",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "either",
+      "duration_type": "section"
+    },
+    "Shimmer": {
+      "name": "Shimmer",
+      "xlights_id": "eff_SHIMMER",
+      "category": "color_wash",
+      "description": "Rapid on/off cycling of palette colors creating a shimmering effect",
+      "intent": "Add sparkle and movement to static color blocks, good for sustained notes",
+      "parameters": [
+        {
+          "name": "Shimmer_Duty_Factor",
+          "storage_name": "E_SLIDER_Shimmer_Duty_Factor",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Duty cycle percentage (higher = more on-time vs off-time)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shimmer_Cycles",
+          "storage_name": "E_TEXTCTRL_Shimmer_Cycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 100.0,
+          "choices": null,
+          "description": "Number of shimmer on/off cycles during the effect",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shimmer_Use_All_Colors",
+          "storage_name": "E_CHECKBOX_Shimmer_Use_All_Colors",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Cycle through all palette colors instead of just the first",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Shimmer_Cycles",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives shimmer rate for beat-synchronized flashing",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "either",
+      "duration_type": "section"
+    },
+    "Strobe": {
+      "name": "Strobe",
+      "xlights_id": "eff_STROBE",
+      "category": "color_wash",
+      "description": "Sharp on/off strobe flashing at configurable speed",
+      "intent": "High-energy accents, drum hits, and climax moments",
+      "parameters": [
+        {
+          "name": "Strobe_Number",
+          "storage_name": "E_SLIDER_Number_Strobes",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 300,
+          "choices": null,
+          "description": "Number of strobe flashes during the effect",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Strobe_StrobeDuration",
+          "storage_name": "E_SLIDER_Strobe_Duration",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Duration of each flash in milliseconds-equivalent units",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Strobe_Type",
+          "storage_name": "E_CHOICE_Strobe_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "From Middle",
+          "min": null,
+          "max": null,
+          "choices": [
+            "From Middle",
+            "From Ends",
+            "Random"
+          ],
+          "description": "Pattern of the strobe flash across the model",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Strobe_Number",
+          "analysis_level": "L4",
+          "analysis_field": "onsets.count",
+          "mapping_type": "direct",
+          "description": "Number of onsets drives strobe flash count",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Strobe_StrobeDuration",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Higher energy = longer flash duration for more intensity",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "either",
+      "duration_type": "trigger"
+    },
+    "Twinkle": {
+      "name": "Twinkle",
+      "xlights_id": "eff_TWINKLE",
+      "category": "color_wash",
+      "description": "Random pixels twinkle on and off like stars",
+      "intent": "Gentle ambient sparkle for quiet sections, intros, and night scenes",
+      "parameters": [
+        {
+          "name": "Twinkle_Count",
+          "storage_name": "E_SLIDER_Twinkle_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 2,
+          "max": 100,
+          "choices": null,
+          "description": "Number of simultaneously twinkling pixels",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Twinkle_Steps",
+          "storage_name": "E_SLIDER_Twinkle_Steps",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 30,
+          "min": 2,
+          "max": 200,
+          "choices": null,
+          "description": "Number of steps in each twinkle fade cycle",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Twinkle_Strobe",
+          "storage_name": "E_CHECKBOX_Twinkle_Strobe",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Use strobe (instant on/off) instead of gradual fade",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Twinkle_ReRandom",
+          "storage_name": "E_CHECKBOX_Twinkle_ReRandom",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Re-randomize twinkle positions each cycle",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Twinkle_Count",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.treble",
+          "mapping_type": "direct",
+          "description": "Treble energy drives twinkle density for sparkle in bright sections",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Bars": {
+      "name": "Bars",
+      "xlights_id": "eff_BARS",
+      "category": "pattern",
+      "description": "Renders horizontal or vertical color bars that move across the model",
+      "intent": "Versatile pattern effect for rhythmic movement and transitions",
+      "parameters": [
+        {
+          "name": "Bars_BarCount",
+          "storage_name": "E_SLIDER_Bars_BarCount",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of color bars visible at once",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Bars_Cycles",
+          "storage_name": "E_TEXTCTRL_Bars_Cycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 100.0,
+          "choices": null,
+          "description": "Number of complete bar movement cycles",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Bars_Direction",
+          "storage_name": "E_CHOICE_Bars_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "up",
+          "min": null,
+          "max": null,
+          "choices": [
+            "up",
+            "down",
+            "expand",
+            "compress",
+            "Left",
+            "Right",
+            "H-expand",
+            "H-compress",
+            "Alternate Up",
+            "Alternate Down",
+            "Alternate Left",
+            "Alternate Right"
+          ],
+          "description": "Direction of bar movement",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Bars_Highlight",
+          "storage_name": "E_CHECKBOX_Bars_Highlight",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Highlight the leading edge of moving bars",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Bars_3D",
+          "storage_name": "E_CHECKBOX_Bars_3D",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Apply 3D shading to bars for depth effect",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "good",
+        "radial": "possible"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Bars_BarCount",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "Higher BPM = more bars visible for denser rhythmic patterns",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Bars_Cycles",
+          "analysis_level": "L3",
+          "analysis_field": "beats.beat_times",
+          "mapping_type": "direct",
+          "description": "Sync bar cycles to beat count for rhythmic movement",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "bar"
+    },
+    "Butterfly": {
+      "name": "Butterfly",
+      "xlights_id": "eff_BUTTERFLY",
+      "category": "pattern",
+      "description": "Mathematical butterfly curve pattern with color cycling",
+      "intent": "Mesmerizing organic patterns for sustained musical passages",
+      "parameters": [
+        {
+          "name": "Butterfly_Colors",
+          "storage_name": "E_SLIDER_Butterfly_Colors",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 7,
+          "choices": null,
+          "description": "Number of palette colors used in the pattern",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Butterfly_Style",
+          "storage_name": "E_CHOICE_Butterfly_Style",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "1",
+          "min": null,
+          "max": null,
+          "choices": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "description": "Mathematical style variant of the butterfly pattern",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Butterfly_Chunks",
+          "storage_name": "E_SLIDER_Butterfly_Chunks",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Number of pattern chunks/repetitions",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Butterfly_Skip",
+          "storage_name": "E_SLIDER_Butterfly_Skip",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 2,
+          "min": 2,
+          "max": 10,
+          "choices": null,
+          "description": "Skip factor controlling pattern density",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Butterfly_Speed",
+          "storage_name": "E_SLIDER_Butterfly_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Animation speed of the butterfly pattern",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "possible",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Butterfly_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives pattern animation speed",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Circles": {
+      "name": "Circles",
+      "xlights_id": "eff_CIRCLES",
+      "category": "pattern",
+      "description": "Animated circles that bounce, collide, or radiate across the model",
+      "intent": "Playful bouncing patterns for upbeat sections",
+      "parameters": [
+        {
+          "name": "Circles_Count",
+          "storage_name": "E_SLIDER_Circles_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Number of circles on the model",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Circles_Size",
+          "storage_name": "E_SLIDER_Circles_Size",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 1,
+          "max": 20,
+          "choices": null,
+          "description": "Radius of each circle",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Circles_Bounce",
+          "storage_name": "E_CHECKBOX_Circles_Bounce",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": true,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable bouncing behavior when circles hit edges",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Circles_Radial",
+          "storage_name": "E_CHECKBOX_Circles_Radial",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Use radial mode (circles radiate outward from center)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Circles_Collide",
+          "storage_name": "E_CHECKBOX_Circles_Collide",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": true,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable collision detection between circles",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "possible",
+        "vertical": "possible",
+        "tree": "good",
+        "radial": "ideal"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Circles_Count",
+          "analysis_level": "L4",
+          "analysis_field": "onsets.count",
+          "mapping_type": "direct",
+          "description": "More onsets spawn more circles for visual density",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Circles_Size",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.bass",
+          "mapping_type": "direct",
+          "description": "Bass energy drives circle size",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Curtain": {
+      "name": "Curtain",
+      "xlights_id": "eff_CURTAIN",
+      "category": "pattern",
+      "description": "Opening/closing curtain effect that reveals or hides color",
+      "intent": "Dramatic reveals and transitions, great for song section changes",
+      "parameters": [
+        {
+          "name": "Curtain_Edge",
+          "storage_name": "E_CHOICE_Curtain_Edge",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "center",
+          "min": null,
+          "max": null,
+          "choices": [
+            "center",
+            "left",
+            "right",
+            "bottom",
+            "top"
+          ],
+          "description": "Edge from which the curtain opens",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Curtain_Effect",
+          "storage_name": "E_CHOICE_Curtain_Effect",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "open",
+          "min": null,
+          "max": null,
+          "choices": [
+            "open",
+            "close",
+            "open then close",
+            "close then open"
+          ],
+          "description": "Curtain movement behavior",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Curtain_Swag",
+          "storage_name": "E_SLIDER_Curtain_Swag",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 0,
+          "max": 10,
+          "choices": null,
+          "description": "Amount of swag (draping) in the curtain movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Curtain_Speed",
+          "storage_name": "E_TEXTCTRL_Curtain_Speed",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 10.0,
+          "choices": null,
+          "description": "Speed multiplier for the curtain animation",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Curtain_Repeat",
+          "storage_name": "E_CHECKBOX_Curtain_Repeat",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Repeat the curtain animation in a loop",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "possible"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Curtain_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives curtain speed for beat-synchronized reveals",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "either",
+      "duration_type": "section"
+    },
+    "Fan": {
+      "name": "Fan",
+      "xlights_id": "eff_FAN",
+      "category": "pattern",
+      "description": "Rotating fan blade pattern with configurable arms and speed",
+      "intent": "Spinning visual movement synchronized to beat, popular on trees and matrices",
+      "parameters": [
+        {
+          "name": "Fan_Num_Blades",
+          "storage_name": "E_SLIDER_Fan_Num_Blades",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 16,
+          "choices": null,
+          "description": "Number of fan blades",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Blade_Width",
+          "storage_name": "E_SLIDER_Fan_Blade_Width",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 5,
+          "max": 100,
+          "choices": null,
+          "description": "Width of each blade as percentage of sector",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Revolutions",
+          "storage_name": "E_TEXTCTRL_Fan_Revolutions",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 50.0,
+          "choices": null,
+          "description": "Number of complete rotations during the effect",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Radius1",
+          "storage_name": "E_SLIDER_Fan_Radius1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Inner radius of the fan blades",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Radius2",
+          "storage_name": "E_SLIDER_Fan_Radius2",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Outer radius of the fan blades",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "not_recommended",
+        "vertical": "possible",
+        "tree": "ideal",
+        "radial": "ideal"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Fan_Revolutions",
+          "analysis_level": "L3",
+          "analysis_field": "beats.beat_times",
+          "mapping_type": "direct",
+          "description": "Beat count drives revolution count for beat-synchronized spinning",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Fan_Blade_Width",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Higher energy = wider blades for more visual fill",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "bar"
+    },
+    "Marquee": {
+      "name": "Marquee",
+      "xlights_id": "eff_MARQUEE",
+      "category": "pattern",
+      "description": "Chase pattern of lit pixels moving around the model perimeter",
+      "intent": "Classic chase effect for outlines, arches, and borders",
+      "parameters": [
+        {
+          "name": "Marquee_Band_Size",
+          "storage_name": "E_SLIDER_Marquee_Band_Size",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of lit pixels in each chase band",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_Skip_Size",
+          "storage_name": "E_SLIDER_Marquee_Skip_Size",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Number of dark pixels between chase bands",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_Thickness",
+          "storage_name": "E_SLIDER_Marquee_Thickness",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Thickness of the marquee in pixels",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_Speed",
+          "storage_name": "E_SLIDER_Marquee_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of the chase movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_Reverse",
+          "storage_name": "E_CHECKBOX_Marquee_Reverse",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Reverse the direction of chase movement",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "good",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "possible"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Marquee_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives chase speed for rhythmic movement",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "bar"
+    },
+    "Pinwheel": {
+      "name": "Pinwheel",
+      "xlights_id": "eff_PINWHEEL",
+      "category": "pattern",
+      "description": "Rotating pinwheel with configurable arms, twist, and speed",
+      "intent": "Dramatic spinning patterns for high-energy sections, heavily used in real sequences",
+      "parameters": [
+        {
+          "name": "Pinwheel_Arms",
+          "storage_name": "E_SLIDER_Pinwheel_Arms",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 20,
+          "choices": null,
+          "description": "Number of pinwheel arms",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pinwheel_ArmSize",
+          "storage_name": "E_SLIDER_Pinwheel_ArmSize",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 400,
+          "choices": null,
+          "description": "Length/size of each arm",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pinwheel_Twist",
+          "storage_name": "E_SLIDER_Pinwheel_Twist",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -360,
+          "max": 360,
+          "choices": null,
+          "description": "Twist angle of the pinwheel arms",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pinwheel_Speed",
+          "storage_name": "E_SLIDER_Pinwheel_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Rotation speed of the pinwheel",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pinwheel_Thickness",
+          "storage_name": "E_SLIDER_Pinwheel_Thickness",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Thickness of each pinwheel arm",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pinwheel_3D",
+          "storage_name": "E_CHOICE_Pinwheel_3D",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "none",
+          "min": null,
+          "max": null,
+          "choices": [
+            "none",
+            "3D",
+            "3D Inverted",
+            "Sweep"
+          ],
+          "description": "3D shading style for the pinwheel",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "not_recommended",
+        "vertical": "possible",
+        "tree": "ideal",
+        "radial": "ideal"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Pinwheel_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives rotation speed for beat-synced spinning",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Pinwheel_ArmSize",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives arm size for dynamic intensity",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "bar"
+    },
+    "Plasma": {
+      "name": "Plasma",
+      "xlights_id": "eff_PLASMA",
+      "category": "pattern",
+      "description": "Animated plasma-like color fields using sine wave interference",
+      "intent": "Psychedelic flowing patterns for atmospheric and ambient sections",
+      "parameters": [
+        {
+          "name": "Plasma_Color",
+          "storage_name": "E_CHOICE_Plasma_Color",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Normal",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Normal",
+            "Preset 1",
+            "Preset 2",
+            "Preset 3",
+            "Preset 4"
+          ],
+          "description": "Color palette style for the plasma",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Plasma_Style",
+          "storage_name": "E_SLIDER_Plasma_Style",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Visual style variant of the plasma pattern",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Plasma_Line_Density",
+          "storage_name": "E_SLIDER_Plasma_Line_Density",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Density of the plasma lines/waves",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Plasma_Speed",
+          "storage_name": "E_SLIDER_Plasma_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Speed of the plasma animation",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "possible",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Plasma_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives plasma animation speed",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Ripple": {
+      "name": "Ripple",
+      "xlights_id": "eff_RIPPLE",
+      "category": "pattern",
+      "description": "Concentric ripples expanding outward from a center point",
+      "intent": "Impact visualization for drum hits and accents, used frequently in real sequences",
+      "parameters": [
+        {
+          "name": "Ripple_Movement",
+          "storage_name": "E_CHOICE_Ripple_Movement",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "None",
+          "min": null,
+          "max": null,
+          "choices": [
+            "None",
+            "Explode",
+            "Implode"
+          ],
+          "description": "Direction of ripple movement",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Ripple_Thickness",
+          "storage_name": "E_SLIDER_Ripple_Thickness",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Thickness of each ripple ring",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Cycles",
+          "storage_name": "E_TEXTCTRL_Ripple_Cycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 100.0,
+          "choices": null,
+          "description": "Number of complete ripple cycles",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Points",
+          "storage_name": "E_SLIDER_Ripple_Points",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 1,
+          "max": 25,
+          "choices": null,
+          "description": "Number of ripple origin points",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_3D",
+          "storage_name": "E_CHECKBOX_Ripple_3D",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable 3D depth shading on ripples",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "good",
+        "tree": "ideal",
+        "radial": "ideal"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Ripple_Cycles",
+          "analysis_level": "L4",
+          "analysis_field": "onsets.count",
+          "mapping_type": "direct",
+          "description": "Onset count drives ripple cycles for impact visualization",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Ripple_Points",
+          "analysis_level": "L0",
+          "analysis_field": "impacts.drum_hits",
+          "mapping_type": "threshold_trigger",
+          "description": "Drum impacts trigger new ripple origin points",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear",
+          "threshold": 50.0
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "beat"
+    },
+    "Shape": {
+      "name": "Shape",
+      "xlights_id": "eff_SHAPE",
+      "category": "pattern",
+      "description": "Renders geometric shapes (circles, stars, hearts, etc.) with animation",
+      "intent": "Decorative shape overlays, popular for themed sequences",
+      "parameters": [
+        {
+          "name": "Shape_ObjectToDraw",
+          "storage_name": "E_CHOICE_Shape_ObjectToDraw",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Circle",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Circle",
+            "Square",
+            "Triangle",
+            "Star",
+            "Pentagon",
+            "Hexagon",
+            "Heart",
+            "Tree",
+            "Snowflake",
+            "Candy Cane",
+            "Crucifix",
+            "Present"
+          ],
+          "description": "Shape to draw",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Shape_Count",
+          "storage_name": "E_SLIDER_Shape_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of shapes to display simultaneously",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shape_Thickness",
+          "storage_name": "E_SLIDER_Shape_Thickness",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Line thickness of the shape outlines",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shape_Growth",
+          "storage_name": "E_SLIDER_Shape_Growth",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Growth speed of shapes (0=static)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shape_Lifetime",
+          "storage_name": "E_SLIDER_Shape_Lifetime",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Lifetime of each shape before it fades",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "possible",
+        "vertical": "possible",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Shape_Count",
+          "analysis_level": "L4",
+          "analysis_field": "onsets.count",
+          "mapping_type": "direct",
+          "description": "Onset density drives shape count",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Shape_Growth",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy level drives shape growth rate",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "beat"
+    },
+    "Shockwave": {
+      "name": "Shockwave",
+      "xlights_id": "eff_SHOCKWAVE",
+      "category": "pattern",
+      "description": "Expanding shockwave ring from center \u2014 the #2 most-used effect in real sequences",
+      "intent": "Beat-sync staple for drum hits and musical impacts, extremely popular",
+      "parameters": [
+        {
+          "name": "Shockwave_CenterX",
+          "storage_name": "E_SLIDER_Shockwave_CenterX",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center position of the shockwave",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shockwave_CenterY",
+          "storage_name": "E_SLIDER_Shockwave_CenterY",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center position of the shockwave",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shockwave_Start_Radius",
+          "storage_name": "E_SLIDER_Shockwave_Start_Radius",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 250,
+          "choices": null,
+          "description": "Starting radius of the expanding ring",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shockwave_End_Radius",
+          "storage_name": "E_SLIDER_Shockwave_End_Radius",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 500,
+          "choices": null,
+          "description": "Ending radius of the expanding ring",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shockwave_Start_Width",
+          "storage_name": "E_SLIDER_Shockwave_Start_Width",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 0,
+          "max": 255,
+          "choices": null,
+          "description": "Starting line width of the ring",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shockwave_End_Width",
+          "storage_name": "E_SLIDER_Shockwave_End_Width",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 255,
+          "choices": null,
+          "description": "Ending line width of the ring as it expands",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shockwave_Accel",
+          "storage_name": "E_SLIDER_Shockwave_Accel",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -10,
+          "max": 10,
+          "choices": null,
+          "description": "Acceleration of the shockwave expansion (negative = decelerate)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Shockwave_Blend_Edges",
+          "storage_name": "E_CHECKBOX_Shockwave_Blend_Edges",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": true,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Blend/antialias the edges of the shockwave ring",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "good",
+        "tree": "ideal",
+        "radial": "ideal"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Shockwave_End_Radius",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.bass",
+          "mapping_type": "direct",
+          "description": "Bass energy drives shockwave expansion size",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Shockwave_Start_Width",
+          "analysis_level": "L0",
+          "analysis_field": "impacts.drum_hits",
+          "mapping_type": "threshold_trigger",
+          "description": "Drum impacts trigger thick shockwave rings",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear",
+          "threshold": 50.0
+        },
+        {
+          "parameter": "Shockwave_Accel",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy level drives expansion acceleration",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "trigger"
+    },
+    "Spirals": {
+      "name": "Spirals",
+      "xlights_id": "eff_SPIRALS",
+      "category": "pattern",
+      "description": "Spiraling color bands that rotate around the model, heavily used with value curves",
+      "intent": "Dynamic spinning patterns for energetic sections, 4th most-used effect",
+      "parameters": [
+        {
+          "name": "Spirals_Count",
+          "storage_name": "E_SLIDER_Spirals_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Number of spiral arms",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Spirals_Rotation",
+          "storage_name": "E_SLIDER_Spirals_Rotation",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 20,
+          "min": -300,
+          "max": 300,
+          "choices": null,
+          "description": "Rotation speed and direction of the spirals",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Spirals_Thickness",
+          "storage_name": "E_SLIDER_Spirals_Thickness",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Thickness of each spiral band as percentage",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Spirals_Direction",
+          "storage_name": "E_CHOICE_Spirals_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Up",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Up",
+            "Down"
+          ],
+          "description": "Vertical movement direction of the spirals",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Spirals_3D",
+          "storage_name": "E_CHECKBOX_Spirals_3D",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Apply 3D shading to spiral bands",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Spirals_Blend",
+          "storage_name": "E_CHECKBOX_Spirals_Blend",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Blend colors between spiral bands",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "ideal"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Spirals_Rotation",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives rotation speed for beat-synced spinning",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Spirals_Thickness",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives spiral thickness for visual intensity",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "bar"
+    },
+    "Wave": {
+      "name": "Wave",
+      "xlights_id": "eff_WAVE",
+      "category": "pattern",
+      "description": "Sinusoidal wave pattern moving across the model",
+      "intent": "Smooth flowing patterns for melodic passages and transitions",
+      "parameters": [
+        {
+          "name": "Wave_Type",
+          "storage_name": "E_CHOICE_Wave_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Sine",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Sine",
+            "Triangle",
+            "Square",
+            "Decaying Sine",
+            "Fractal/Ivy"
+          ],
+          "description": "Mathematical function for the wave shape",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Wave_FillColor",
+          "storage_name": "E_CHOICE_Wave_FillColor",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "None",
+          "min": null,
+          "max": null,
+          "choices": [
+            "None",
+            "Color 1",
+            "Color 2",
+            "Rainbow"
+          ],
+          "description": "Fill color beneath the wave",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Wave_Number",
+          "storage_name": "E_SLIDER_Wave_Number",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Number of simultaneous waves",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Wave_Thickness",
+          "storage_name": "E_SLIDER_Wave_Thickness",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Thickness of the wave line",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Wave_Speed",
+          "storage_name": "E_SLIDER_Wave_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of wave movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Wave_YOffset",
+          "storage_name": "E_SLIDER_Wave_YOffset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -250,
+          "max": 250,
+          "choices": null,
+          "description": "Vertical offset of the wave centerline",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Wave_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives wave speed for rhythmic flow",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Wave_YOffset",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.mid",
+          "mapping_type": "direct",
+          "description": "Mid energy drives wave position for melodic tracking",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "bar"
+    },
+    "Fire": {
+      "name": "Fire",
+      "xlights_id": "eff_FIRE",
+      "category": "nature",
+      "description": "Simulates rising flame animation with heat mapping",
+      "intent": "Use for aggressive, high-energy sections -- hot colors rising from bottom",
+      "parameters": [
+        {
+          "name": "Fire_Height",
+          "storage_name": "E_SLIDER_Fire_Height",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Height of the flames as percentage of model height",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fire_HueShift",
+          "storage_name": "E_SLIDER_Fire_HueShift",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Shifts the color hue of the flames",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fire_GrowthCycles",
+          "storage_name": "E_VALUECURVE_Fire_GrowthCycles",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 0.0,
+          "min": 0.0,
+          "max": 20.0,
+          "choices": null,
+          "description": "Number of grow/shrink cycles during the effect",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fire_GrowWithMusic",
+          "storage_name": "E_CHECKBOX_Fire_GrowWithMusic",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable music-reactive fire height (responds to audio levels)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Fire_Location",
+          "storage_name": "E_CHOICE_Fire_Location",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Bottom",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Bottom",
+            "Top",
+            "Left",
+            "Right"
+          ],
+          "description": "Direction from which flames originate",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "possible",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Fire_Height",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.bass",
+          "mapping_type": "direct",
+          "description": "Bass energy drives flame height -- louder bass = taller flames",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Fire_GrowWithMusic",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "threshold_trigger",
+          "description": "Enable GrowWithMusic when overall energy is above 50%",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear",
+          "threshold": 50.0
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Fireworks": {
+      "name": "Fireworks",
+      "xlights_id": "eff_FIREWORKS",
+      "category": "nature",
+      "description": "Firework bursts that explode outward from random or fixed positions",
+      "intent": "Celebratory explosive moments for climaxes, drops, and big impacts",
+      "parameters": [
+        {
+          "name": "Fireworks_Count",
+          "storage_name": "E_SLIDER_Fireworks_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of particles per firework burst",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_Velocity",
+          "storage_name": "E_SLIDER_Fireworks_Velocity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 2,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Initial velocity of firework particles",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_Fade",
+          "storage_name": "E_SLIDER_Fireworks_Fade",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Rate at which firework particles fade out",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_NumberExplosions",
+          "storage_name": "E_SLIDER_Fireworks_Number_Explosions",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 50,
+          "choices": null,
+          "description": "Number of simultaneous explosions",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_UseMusic",
+          "storage_name": "E_CHECKBOX_Fireworks_UseMusic",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Trigger fireworks from audio level (music reactive)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Fireworks_Gravity",
+          "storage_name": "E_SLIDER_Fireworks_Gravity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 10,
+          "choices": null,
+          "description": "Gravity pulling particles downward",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "possible",
+        "vertical": "good",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Fireworks_NumberExplosions",
+          "analysis_level": "L0",
+          "analysis_field": "impacts.drum_hits",
+          "mapping_type": "threshold_trigger",
+          "description": "Drum impacts trigger firework explosions",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear",
+          "threshold": 50.0
+        },
+        {
+          "parameter": "Fireworks_Count",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy level drives particle count for bigger explosions at high energy",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Fireworks_Velocity",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.bass",
+          "mapping_type": "direct",
+          "description": "Bass energy drives particle velocity",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "trigger"
+    },
+    "Liquid": {
+      "name": "Liquid",
+      "xlights_id": "eff_LIQUID",
+      "category": "nature",
+      "description": "Fluid dynamics simulation with particles flowing like liquid",
+      "intent": "Smooth flowing visual for ambient and atmospheric sections",
+      "parameters": [
+        {
+          "name": "Liquid_TopBarrier",
+          "storage_name": "E_CHOICE_Liquid_TopBarrier",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Wrap",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Wrap",
+            "Reflect",
+            "None"
+          ],
+          "description": "Behavior when particles hit the top edge",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_BottomBarrier",
+          "storage_name": "E_CHOICE_Liquid_BottomBarrier",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Wrap",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Wrap",
+            "Reflect",
+            "None"
+          ],
+          "description": "Behavior when particles hit the bottom edge",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_Particles",
+          "storage_name": "E_SLIDER_Liquid_Particles",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 200,
+          "choices": null,
+          "description": "Number of liquid particles in the simulation",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_Lifetime",
+          "storage_name": "E_SLIDER_Liquid_Lifetime",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Lifetime of each particle before it fades",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_Gravity",
+          "storage_name": "E_SLIDER_Liquid_Gravity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Gravity applied to liquid particles",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "possible",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Liquid_Particles",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives particle count for visual density",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Meteors": {
+      "name": "Meteors",
+      "xlights_id": "eff_METEORS",
+      "category": "nature",
+      "description": "Streaking meteor trails falling or shooting across the model",
+      "intent": "Fast movement effects for high-energy sections and falling patterns",
+      "parameters": [
+        {
+          "name": "Meteors_Count",
+          "storage_name": "E_SLIDER_Meteors_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of simultaneous meteors",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Meteors_Length",
+          "storage_name": "E_SLIDER_Meteors_Length",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 25,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Length of each meteor trail",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Meteors_Effect",
+          "storage_name": "E_CHOICE_Meteors_Effect",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Down",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Down",
+            "Up",
+            "Left",
+            "Right",
+            "Implode",
+            "Explode",
+            "Icicles",
+            "Icicles + bkg"
+          ],
+          "description": "Direction/style of meteor movement",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Meteors_Swirl_Intensity",
+          "storage_name": "E_SLIDER_Meteors_Swirl_Intensity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 20,
+          "choices": null,
+          "description": "Amount of swirling applied to meteor paths",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Meteors_Speed",
+          "storage_name": "E_SLIDER_Meteors_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 1,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of meteor movement",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Meteors_Count",
+          "analysis_level": "L4",
+          "analysis_field": "onsets.count",
+          "mapping_type": "direct",
+          "description": "Onset density drives meteor count",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Meteors_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives meteor speed for rhythmic falling",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Meteors_Length",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives trail length for visual intensity",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Snowflakes": {
+      "name": "Snowflakes",
+      "xlights_id": "eff_SNOWFLAKES",
+      "category": "nature",
+      "description": "Falling snowflake particles with various shapes and accumulation",
+      "intent": "Winter/holiday themed falling patterns, gentle ambient movement",
+      "parameters": [
+        {
+          "name": "Snowflakes_Count",
+          "storage_name": "E_SLIDER_Snowflakes_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Maximum number of snowflakes visible at once",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Snowflakes_Type",
+          "storage_name": "E_SLIDER_Snowflakes_Type",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 5,
+          "choices": null,
+          "description": "Snowflake shape type (0=simple dot, 5=complex crystal)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Snowflakes_Speed",
+          "storage_name": "E_SLIDER_Snowflakes_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Falling speed of snowflakes",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Snowflakes_Accumulate",
+          "storage_name": "E_CHECKBOX_Snowflakes_Accumulate",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Snowflakes accumulate at the bottom instead of disappearing",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Snowflakes_Count",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.treble",
+          "mapping_type": "direct",
+          "description": "Treble energy drives snowflake density",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Tree": {
+      "name": "Tree",
+      "xlights_id": "eff_TREE",
+      "category": "nature",
+      "description": "Christmas tree pattern with garland and star decorations",
+      "intent": "Holiday-themed tree shape overlay for Christmas sequences",
+      "parameters": [
+        {
+          "name": "Tree_Branches",
+          "storage_name": "E_SLIDER_Tree_Branches",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 20,
+          "choices": null,
+          "description": "Number of tree branch layers",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tree_Speed",
+          "storage_name": "E_SLIDER_Tree_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 1,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of the tree decoration animation",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tree_Style",
+          "storage_name": "E_CHOICE_Tree_Style",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "pointed",
+          "min": null,
+          "max": null,
+          "choices": [
+            "pointed",
+            "rounded"
+          ],
+          "description": "Visual style of the tree shape",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "not_recommended",
+        "vertical": "good",
+        "tree": "ideal",
+        "radial": "possible"
+      },
+      "analysis_mappings": [],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Tendril": {
+      "name": "Tendril",
+      "xlights_id": "eff_TENDRIL",
+      "category": "nature",
+      "description": "Organic flowing tendril/vine that moves with fluid dynamics",
+      "intent": "Organic flowing movement for melodic and ambient sections",
+      "parameters": [
+        {
+          "name": "Tendril_Movement",
+          "storage_name": "E_CHOICE_Tendril_Movement",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Random",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Random",
+            "Square",
+            "Circle",
+            "Horizontal Zig Zag",
+            "Horizontal",
+            "Vertical",
+            "Music Line",
+            "Music Circle"
+          ],
+          "description": "Movement pattern of the tendril",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Tendril_Thickness",
+          "storage_name": "E_SLIDER_Tendril_Thickness",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 20,
+          "choices": null,
+          "description": "Thickness of the tendril line",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tendril_Speed",
+          "storage_name": "E_SLIDER_Tendril_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of tendril movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tendril_ManualX",
+          "storage_name": "E_SLIDER_Tendril_ManualX",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Manual X position for the tendril head",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tendril_Length",
+          "storage_name": "E_SLIDER_Tendril_Length",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 60,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Length of the tendril trail",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Tendril_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives tendril movement speed",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Tendril_Thickness",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy level drives tendril thickness",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Single Strand": {
+      "name": "Single Strand",
+      "xlights_id": "eff_SINGLESTRAND",
+      "category": "movement",
+      "description": "The #1 most-used effect -- wraps WLED-style sub-effects (chase, comet, fireworks 1D, etc.)",
+      "intent": "Workhorse effect for all prop types, sub-mode selection enables enormous variety",
+      "parameters": [
+        {
+          "name": "SingleStrand_FX",
+          "storage_name": "E_CHOICE_SingleStrand_FX",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Color Chase",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Color Chase",
+            "Color Chase Rainbow",
+            "Color Sweep",
+            "Dual Color Sweep",
+            "Fireworks 1D",
+            "Skips 2-Color",
+            "Skips 3-Color"
+          ],
+          "description": "Sub-effect mode (wraps WLED-style presets)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "SingleStrand_Speed",
+          "storage_name": "E_SLIDER_SingleStrand_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of the chase/sweep movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "SingleStrand_Color_Mix1",
+          "storage_name": "E_SLIDER_SingleStrand_Color_Mix1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Color mix ratio for the first color",
+          "supports_value_curve": true
+        },
+        {
+          "name": "SingleStrand_Skips_BandSize",
+          "storage_name": "E_SLIDER_SingleStrand_Skips_BandSize",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Size of color bands in skip modes",
+          "supports_value_curve": true
+        },
+        {
+          "name": "SingleStrand_Skips_SkipSize",
+          "storage_name": "E_SLIDER_SingleStrand_Skips_SkipSize",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of pixels to skip between bands",
+          "supports_value_curve": true
+        },
+        {
+          "name": "SingleStrand_Colors",
+          "storage_name": "E_CHOICE_SingleStrand_Colors",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Palette",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Palette",
+            "Rainbow"
+          ],
+          "description": "Color source for the chase pattern",
+          "supports_value_curve": false
+        },
+        {
+          "name": "SingleStrand_FX_Palette",
+          "storage_name": "E_CHOICE_SingleStrand_FX_Palette",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "* Colors Only",
+          "min": null,
+          "max": null,
+          "choices": [
+            "* Colors Only",
+            "* Color Gradient"
+          ],
+          "description": "How palette colors are applied in FX sub-mode",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "good",
+        "outline": "ideal",
+        "arch": "ideal",
+        "vertical": "ideal",
+        "tree": "ideal",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "SingleStrand_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives chase speed for beat-synchronized movement",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "SingleStrand_Color_Mix1",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives color mix ratio for intensity variation",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "bar"
+    },
+    "Morph": {
+      "name": "Morph",
+      "xlights_id": "eff_MORPH",
+      "category": "movement",
+      "description": "Morphs a shape from one position/size to another across the model",
+      "intent": "Dramatic transitions and movement across the display",
+      "parameters": [
+        {
+          "name": "Morph_Start_X1",
+          "storage_name": "E_SLIDER_MorphStartX1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Starting X position of the first morph point",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_Start_Y1",
+          "storage_name": "E_SLIDER_MorphStartY1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Starting Y position of the first morph point",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_End_X1",
+          "storage_name": "E_SLIDER_MorphEndX1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Ending X position of the first morph point",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_End_Y1",
+          "storage_name": "E_SLIDER_MorphEndY1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Ending Y position of the first morph point",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_Stagger",
+          "storage_name": "E_SLIDER_Morph_Stagger",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Stagger amount for multi-pixel morph movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_Repeat_Count",
+          "storage_name": "E_SLIDER_Morph_Repeat_Count",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 250,
+          "choices": null,
+          "description": "Number of morph shape repetitions",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "possible"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Morph_Stagger",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives stagger amount for rhythmic spreading",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "either",
+      "duration_type": "bar"
+    },
+    "Warp": {
+      "name": "Warp",
+      "xlights_id": "eff_WARP",
+      "category": "movement",
+      "description": "Warps/distorts the underlying content with various transformation modes",
+      "intent": "Add dynamic distortion to existing effects for transitions and build-ups",
+      "parameters": [
+        {
+          "name": "Warp_Type",
+          "storage_name": "E_CHOICE_Warp_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "water drops",
+          "min": null,
+          "max": null,
+          "choices": [
+            "water drops",
+            "dissolve",
+            "circle reveal",
+            "band sweep",
+            "ripple",
+            "single water drop",
+            "circular swirl",
+            "drop"
+          ],
+          "description": "Type of warp distortion to apply",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Warp_Treatment",
+          "storage_name": "E_CHOICE_Warp_Treatment",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "constant",
+          "min": null,
+          "max": null,
+          "choices": [
+            "constant",
+            "in",
+            "out",
+            "in then out",
+            "out then in"
+          ],
+          "description": "How the warp effect progresses over time",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Warp_Cycle_Count",
+          "storage_name": "E_TEXTCTRL_Warp_Cycle_Count",
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 50.0,
+          "choices": null,
+          "description": "Number of warp animation cycles",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Warp_Speed",
+          "storage_name": "E_SLIDER_Warp_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 20,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Speed of the warp animation",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Warp_Frequency",
+          "storage_name": "E_SLIDER_Warp_Frequency",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 20,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Frequency of the warp distortion pattern",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "good",
+        "tree": "good",
+        "radial": "possible"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Warp_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives warp animation speed",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Warp_Frequency",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives warp distortion frequency",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "modifier",
+      "duration_type": "section"
+    },
+    "Music": {
+      "name": "Music",
+      "xlights_id": "eff_MUSIC",
+      "category": "audio_reactive",
+      "description": "Visualizes audio frequency spectrum as colored bars or lines",
+      "intent": "Direct audio visualization for music-reactive displays",
+      "parameters": [
+        {
+          "name": "Music_Bars",
+          "storage_name": "E_SLIDER_Music_Bars",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 20,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of frequency bars displayed",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Music_Type",
+          "storage_name": "E_CHOICE_Music_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Morph",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Morph",
+            "Collide",
+            "Separate",
+            "On"
+          ],
+          "description": "Visualization style for the audio bars",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Music_Sensitivity",
+          "storage_name": "E_SLIDER_Music_Sensitivity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Audio level sensitivity (higher = more reactive)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Music_Colour",
+          "storage_name": "E_CHECKBOX_Music_Colour",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Map frequency to color (heat map style)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Music_Scale",
+          "storage_name": "E_CHECKBOX_Music_Scale",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Scale bars to fit model width",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Music_Sensitivity",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Overall energy drives sensitivity for consistent reactivity",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Music_Bars",
+          "analysis_level": "L6",
+          "analysis_field": "harmony.spectral_complexity",
+          "mapping_type": "direct",
+          "description": "Spectral complexity drives bar count for visual frequency detail",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "VU Meter": {
+      "name": "VU Meter",
+      "xlights_id": "eff_VUMETER",
+      "category": "audio_reactive",
+      "description": "Audio level meter with multiple visualization styles, can reference timing tracks directly",
+      "intent": "Direct audio-reactive visualization, references timing tracks by name for precise sync",
+      "parameters": [
+        {
+          "name": "VUMeter_Bars",
+          "storage_name": "E_SLIDER_VUMeter_Bars",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 20,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of VU meter bars/segments",
+          "supports_value_curve": true
+        },
+        {
+          "name": "VUMeter_Type",
+          "storage_name": "E_CHOICE_VUMeter_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Pointed",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Pointed",
+            "Level Pulse",
+            "Level Shape",
+            "Level Bar",
+            "Level Color",
+            "Level Random",
+            "Level Sweep",
+            "Level Pulse Color",
+            "Volume Bars",
+            "On",
+            "Timing Event Spike",
+            "Timing Event Sweep",
+            "Timing Event Color",
+            "Timing Event Jump",
+            "Timing Event Pulse",
+            "Timing Event Bar",
+            "Note On",
+            "Note Level Pulse",
+            "Spectrogram",
+            "Spectrogram Peak"
+          ],
+          "description": "VU meter visualization type",
+          "supports_value_curve": false
+        },
+        {
+          "name": "VUMeter_Sensitivity",
+          "storage_name": "E_SLIDER_VUMeter_Sensitivity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 70,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Audio sensitivity threshold",
+          "supports_value_curve": true
+        },
+        {
+          "name": "VUMeter_TimingTrack",
+          "storage_name": "E_CHOICE_VUMeter_TimingTrack",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "",
+          "min": null,
+          "max": null,
+          "choices": [],
+          "description": "Name of the timing track to use for timing-based VU modes",
+          "supports_value_curve": false
+        },
+        {
+          "name": "VUMeter_Shape",
+          "storage_name": "E_CHOICE_VUMeter_Shape",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Circle",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Circle",
+            "Square",
+            "Diamond",
+            "Star",
+            "Tree",
+            "Crucifix",
+            "Heart",
+            "Snowflake",
+            "Candy Cane",
+            "Present"
+          ],
+          "description": "Shape used for shape-based VU modes",
+          "supports_value_curve": false
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "good",
+        "arch": "good",
+        "vertical": "ideal",
+        "tree": "good",
+        "radial": "good"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "VUMeter_Sensitivity",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives VU meter sensitivity for consistent audio response",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "VUMeter_TimingTrack",
+          "analysis_level": "L3",
+          "analysis_field": "beats.timing_track_name",
+          "mapping_type": "direct",
+          "description": "Analysis timing track name maps directly to VU Meter timing track reference",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Text": {
+      "name": "Text",
+      "xlights_id": "eff_TEXT",
+      "category": "media",
+      "description": "Renders scrolling or static text on the model",
+      "intent": "Display text messages, song lyrics, and countdown numbers",
+      "parameters": [
+        {
+          "name": "Text_Line1",
+          "storage_name": "E_TEXTCTRL_Text_Line1",
+          "widget_type": "textctrl",
+          "value_type": "string",
+          "default": "",
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "First line of text to display",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Text_Font",
+          "storage_name": "E_CHOICE_Text_Font",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Use OS Fonts",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Use OS Fonts",
+            "xLights 5x5",
+            "xLights 6x6",
+            "xLights 7x7"
+          ],
+          "description": "Font to use for rendering text",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Text_Dir",
+          "storage_name": "E_CHOICE_Text_Dir",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Left",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Left",
+            "Right",
+            "Up",
+            "Down",
+            "None",
+            "Wave Up",
+            "Wave Down"
+          ],
+          "description": "Text scroll direction",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Text_Speed",
+          "storage_name": "E_SLIDER_Text_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of text scrolling",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Text_YStart",
+          "storage_name": "E_SLIDER_Text_YStart",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -200,
+          "max": 200,
+          "choices": null,
+          "description": "Vertical starting position of the text",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "not_recommended",
+        "arch": "not_recommended",
+        "vertical": "possible",
+        "tree": "good",
+        "radial": "not_recommended"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Text_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives text scroll speed for rhythmic movement",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Pictures": {
+      "name": "Pictures",
+      "xlights_id": "eff_PICTURES",
+      "category": "media",
+      "description": "Displays an image file (BMP, PNG, GIF) on the model with movement options",
+      "intent": "Show static images, animated GIFs, or scrolling picture content",
+      "parameters": [
+        {
+          "name": "Pictures_Filename",
+          "storage_name": "E_FILEPICKER_Pictures_Filename",
+          "widget_type": "filepicker",
+          "value_type": "string",
+          "default": "",
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Path to the image file to display",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Pictures_Direction",
+          "storage_name": "E_CHOICE_Pictures_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "none",
+          "min": null,
+          "max": null,
+          "choices": [
+            "none",
+            "left",
+            "right",
+            "up",
+            "down",
+            "up-left",
+            "up-right",
+            "down-left",
+            "down-right",
+            "peekaboo 0",
+            "peekaboo 90",
+            "peekaboo 180",
+            "peekaboo 270",
+            "wiggle"
+          ],
+          "description": "Direction of image movement across the model",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Pictures_Speed",
+          "storage_name": "E_SLIDER_Pictures_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 20,
+          "choices": null,
+          "description": "Speed of image movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pictures_FrameRateAdj",
+          "storage_name": "E_SLIDER_Pictures_FrameRateAdj",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Frame rate adjustment for animated GIFs",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pictures_TransparentBlack",
+          "storage_name": "E_CHECKBOX_Pictures_TransparentBlack",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Make black pixels transparent",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Pictures_StartScale",
+          "storage_name": "E_SLIDER_Pictures_StartScale",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 1000,
+          "choices": null,
+          "description": "Starting scale percentage for the image",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pictures_EndScale",
+          "storage_name": "E_SLIDER_Pictures_EndScale",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 1000,
+          "choices": null,
+          "description": "Ending scale percentage for the image",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "not_recommended",
+        "arch": "not_recommended",
+        "vertical": "possible",
+        "tree": "good",
+        "radial": "not_recommended"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Pictures_Speed",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives image movement speed",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "standalone",
+      "duration_type": "section"
+    },
+    "Kaleidoscope": {
+      "name": "Kaleidoscope",
+      "xlights_id": "eff_KALEIDOSCOPE",
+      "category": "pattern",
+      "description": "Kaleidoscope mirror effect that reflects content in symmetric patterns",
+      "intent": "Add visual symmetry and complexity to underlying effects",
+      "parameters": [
+        {
+          "name": "Kaleidoscope_X",
+          "storage_name": "E_SLIDER_Kaleidoscope_X",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center position of the kaleidoscope",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Kaleidoscope_Y",
+          "storage_name": "E_SLIDER_Kaleidoscope_Y",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center position of the kaleidoscope",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Kaleidoscope_Size",
+          "storage_name": "E_SLIDER_Kaleidoscope_Size",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 2,
+          "max": 100,
+          "choices": null,
+          "description": "Size/scale of the kaleidoscope segments",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Kaleidoscope_Rotation",
+          "storage_name": "E_SLIDER_Kaleidoscope_Rotation",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 359,
+          "choices": null,
+          "description": "Rotation angle of the kaleidoscope pattern",
+          "supports_value_curve": true
+        }
+      ],
+      "prop_suitability": {
+        "matrix": "ideal",
+        "outline": "possible",
+        "arch": "not_recommended",
+        "vertical": "possible",
+        "tree": "good",
+        "radial": "ideal"
+      },
+      "analysis_mappings": [
+        {
+          "parameter": "Kaleidoscope_Rotation",
+          "analysis_level": "L3",
+          "analysis_field": "beats.bpm",
+          "mapping_type": "direct",
+          "description": "BPM drives kaleidoscope rotation for rhythmic symmetry changes",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Kaleidoscope_Size",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Energy drives segment size for visual complexity",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        }
+      ],
+      "layer_role": "modifier",
+      "duration_type": "section"
+    }
+  }
+}

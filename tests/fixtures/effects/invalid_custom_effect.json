@@ -1,0 +1,17 @@
+{
+  "name": "BrokenEffect",
+  "category": "nature",
+  "description": "This effect has validation errors",
+  "parameters": [
+    {
+      "name": "Bad_Param",
+      "storage_name": "E_SLIDER_Bad_Param",
+      "widget_type": "slider",
+      "value_type": "int",
+      "default": 50,
+      "min": 100,
+      "max": 0,
+      "description": "Invalid: min > max"
+    }
+  ]
+}
