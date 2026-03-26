@@ -473,11 +473,20 @@ class HierarchyResult:
     # L2: Bars (single best track)
     bars: Optional["TimingTrack"] = None
 
-    # L3: Beats (single best track)
+    # L3: Beats (single best track) — marks carry label="1"|"2"|"3"|"4" (beat position in bar)
     beats: Optional["TimingTrack"] = None
+
+    # L2.5: Half-bars — beats at positions 1 and 3 within each bar (2-beat grid)
+    half_bars: Optional["TimingTrack"] = None
+
+    # L3.5: Eighth notes — subdivided between beats (2× beat density)
+    eighth_notes: Optional["TimingTrack"] = None
 
     # L4: Events (stem_name → onset track)
     events: dict[str, "TimingTrack"] = field(default_factory=dict)
+
+    # Solos: stem_name → list of solo regions (TimingMark with duration_ms set)
+    solos: dict[str, list["TimingMark"]] = field(default_factory=dict)
 
     # L5: Energy curves (stem_name → ValueCurve)
     energy_curves: dict[str, ValueCurve] = field(default_factory=dict)
@@ -526,7 +535,10 @@ class HierarchyResult:
             "sections": [self._mark_to_dict(m) for m in self.sections],
             "bars": self.bars.to_dict() if self.bars else None,
             "beats": self.beats.to_dict() if self.beats else None,
+            "half_bars": self.half_bars.to_dict() if self.half_bars else None,
+            "eighth_notes": self.eighth_notes.to_dict() if self.eighth_notes else None,
             "events": {k: v.to_dict() for k, v in self.events.items()},
+            "solos": {k: [self._mark_to_dict(m) for m in v] for k, v in self.solos.items()},
             "energy_curves": {k: v.to_dict() for k, v in self.energy_curves.items()},
             "spectral_flux": self.spectral_flux.to_dict() if self.spectral_flux else None,
             "chords": self.chords.to_dict() if self.chords else None,
@@ -572,7 +584,17 @@ class HierarchyResult:
         obj.bars = TimingTrack.from_dict(bars_data) if bars_data else None
         beats_data = d.get("beats")
         obj.beats = TimingTrack.from_dict(beats_data) if beats_data else None
+        hb_data = d.get("half_bars")
+        obj.half_bars = TimingTrack.from_dict(hb_data) if hb_data else None
+        en_data = d.get("eighth_notes")
+        obj.eighth_notes = TimingTrack.from_dict(en_data) if en_data else None
         obj.events = {k: TimingTrack.from_dict(v) for k, v in d.get("events", {}).items()}
+        obj.solos = {
+            k: [TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                           label=m.get("label"), duration_ms=m.get("duration_ms"))
+                for m in v]
+            for k, v in d.get("solos", {}).items()
+        }
         obj.energy_curves = {k: ValueCurve.from_dict(v) for k, v in d.get("energy_curves", {}).items()}
         sf_data = d.get("spectral_flux")
         obj.spectral_flux = ValueCurve.from_dict(sf_data) if sf_data else None

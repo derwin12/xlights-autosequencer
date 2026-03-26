@@ -86,7 +86,7 @@ def _transient_rate(track: "TimingTrack", curve: "ValueCurve",
     n = len(values)
     fps = curve.fps
 
-    short_frames = max(1, int(40 * fps / 1000))          # 40 ms attack window
+    short_frames = max(3, int(60 * fps / 1000))           # 60 ms attack window (≥3 frames)
     broad_frames = max(2, int(window_ms * fps / 1000))   # ±window_ms context
 
     aligned = 0
@@ -265,11 +265,18 @@ def validate_hierarchy(result: "HierarchyResult") -> dict:
             report["sections"] = {"mark_count": len(result.sections), "bar_alignment_rate": None}
 
     # ── L4 Events ────────────────────────────────────────────────────────────
+    # Spectral flux captures rapid spectral changes better than RMS energy for
+    # short-attack instruments like drums.  Prefer it for drums stem.
+    spectral_flux_curve = getattr(result, "spectral_flux", None)
+
     report["events"] = {}
     for stem, track in result.events.items():
         if not track.marks:
             continue
-        stem_curve = result.energy_curves.get(stem) or full_mix_curve
+        if stem == "drums" and spectral_flux_curve:
+            stem_curve = spectral_flux_curve
+        else:
+            stem_curve = result.energy_curves.get(stem) or full_mix_curve
         tr = _transient_rate(track, stem_curve, window_ms=80) if stem_curve else 0.0
         report["events"][stem] = {
             "mark_count": len(track.marks),

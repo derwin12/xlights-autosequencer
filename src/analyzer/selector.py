@@ -90,6 +90,34 @@ def select_best_track(
     return max(candidates, key=_combined)
 
 
+def rank_tracks(
+    candidates: list["TimingTrack"],
+    onset_times_ms: list[int] | None = None,
+) -> list["TimingTrack"]:
+    """Return candidates sorted best-first by combined regularity + onset score."""
+    if not candidates:
+        return []
+    if len(candidates) == 1:
+        return list(candidates)
+
+    cvs = {id(t): _coefficient_of_variation(t) for t in candidates}
+
+    if onset_times_ms:
+        raw_corrs = {id(t): _onset_correlation(t, onset_times_ms) for t in candidates}
+        max_corr = max(raw_corrs.values()) or 1.0
+        norm_corrs = {k: v / max_corr for k, v in raw_corrs.items()}
+    else:
+        norm_corrs = {id(t): 0.0 for t in candidates}
+
+    def _combined(track: "TimingTrack") -> float:
+        cv = cvs[id(track)]
+        regularity = max(0.0, min(1.0, 1.0 - cv))
+        onset = norm_corrs[id(track)]
+        return 0.5 * regularity + 0.5 * onset
+
+    return sorted(candidates, key=_combined, reverse=True)
+
+
 def select_best_bar_track(
     candidates: list["TimingTrack"],
     onset_times_ms: list[int] | None = None,

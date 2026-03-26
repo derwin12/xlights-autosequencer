@@ -116,10 +116,10 @@ def _build_algorithm_list(caps: dict[str, bool], stems_available: list[str]):
             algos.append(BBCEnergyAlgorithm())
             # L5: bbc_spectral_flux on full_mix
             algos.append(BBCSpectralFluxAlgorithm())
-            # L5: bbc_energy per additional stem
+            # L5: bbc_energy per stem (guitar included for solo detection + L4 filtering)
             energy_stems = [s for s in stems_available if s not in ("full_mix",)]
-            for stem in energy_stems[:4]:  # drums, bass, vocals, other
-                if stem in ("drums", "bass", "vocals", "other"):
+            for stem in energy_stems[:5]:  # drums, bass, vocals, guitar, other
+                if stem in ("drums", "bass", "vocals", "guitar", "other"):
                     algos.append(_make_stem_algo(BBCEnergyAlgorithm, stem))
         except Exception as exc:
             print(f"WARNING: vamp_bbc unavailable: {exc}", file=sys.stderr)
@@ -202,9 +202,9 @@ def run_orchestrator(
     from src.analyzer.audio import load
     from src.analyzer.capabilities import detect_capabilities
     from src.analyzer.derived import derive_energy_drops, derive_energy_impacts, derive_gaps
-    from src.analyzer.result import HierarchyResult, TimingMark, ValueCurve
+    from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack, ValueCurve
     from src.analyzer.runner import AnalysisRunner
-    from src.analyzer.selector import select_best_bar_track, select_best_beat_track
+    from src.analyzer.selector import select_best_bar_track, select_best_beat_track, rank_tracks
 
     src_path = Path(audio_path).resolve()
 
@@ -349,10 +349,10 @@ def run_orchestrator(
     else:
         warnings.append("L2 Bars: no bar track produced")
 
-    # L3: select best beat track
+    # L3: select best beat track with BPM-range validation
     beat_algo_names = {"qm_beats", "librosa_beats", "madmom_beats", "beatroot_beats"}
     beat_candidates = [t for t in analysis.timing_tracks if t.algorithm_name in beat_algo_names]
-    beats = select_best_beat_track(beat_candidates, onset_times)
+    beats = _select_beat_with_bpm_check(beat_candidates, onset_times, estimated_bpm, meta.duration_ms)
     if beats:
         print(f"L3 Beats: {beats.mark_count} marks ({beats.algorithm_name}, "
               f"{beats.mark_count / (meta.duration_ms / 1000):.2f} Hz)")
@@ -377,14 +377,23 @@ def run_orchestrator(
     event_summary = ", ".join(f"{k} {v.mark_count}" for k, v in events.items())
     print(f"L4 Events: {event_summary or 'none'}")
 
-    # Filter L4 events to top-60% energy onsets per stem (removes ghost notes)
-    # Done before energy_curves is fully built, so pass what we have so far;
-    # the full-mix curve is available from bbc_energy tracks already processed above.
+    # Build early energy curves (needed for both dedup and energy filter below)
     _early_energy_curves: dict = {}
     for t in tracks_by_name.get("bbc_energy", []):
         vc = _get_value_curve(t)
         if vc:
             _early_energy_curves[t.stem_source or "full_mix"] = vc
+
+    # Dedup same-hit doublings (aubio minioi param is silently ignored by Vamp wrapper)
+    _early_sf: "ValueCurve | None" = None
+    for t in tracks_by_name.get("bbc_spectral_flux", []):
+        vc = _get_value_curve(t)
+        if vc:
+            _early_sf = vc
+            break
+    events = _deduplicate_events(events, _early_sf, _early_energy_curves)
+
+    # Filter L4 events to top-60% energy onsets per stem (removes ghost notes)
     events = _filter_events_by_energy(events, _early_energy_curves, energy_curve_full)
 
     # L5: energy curves per stem
@@ -420,6 +429,31 @@ def run_orchestrator(
     else:
         warnings.append("L6 Harmony: skipped — chordino/qm_key not available")
 
+    # ── Stage 7b: Beat position labels, half-bars, eighth notes ─────────────
+    half_bars: "TimingTrack | None" = None
+    eighth_notes: "TimingTrack | None" = None
+    if beats and bars:
+        import copy as _copy
+        _label_beats(beats, bars)
+
+        # Half-bars: beats at positions 1 and 3
+        hb_marks = [_copy.copy(m) for m in beats.marks if m.label in ("1", "3")]
+        if hb_marks:
+            half_bars = TimingTrack(
+                name="half_bars", algorithm_name="derived",
+                element_type="half_bar", marks=hb_marks, quality_score=0.0,
+            )
+            print(f"L2.5 Half-bars: {len(hb_marks)} marks")
+
+        # Eighth notes: midpoints between consecutive beats
+        en_marks = _derive_eighth_notes(beats)
+        if en_marks:
+            eighth_notes = TimingTrack(
+                name="eighth_notes", algorithm_name="derived",
+                element_type="eighth_note", marks=en_marks, quality_score=0.0,
+            )
+            print(f"L3.5 Eighth notes: {len(en_marks)} marks")
+
     # ── Stage 8: Derive L0 features ───────────────────────────────────────────
     impacts: list["TimingMark"] = []
     drops: list["TimingMark"] = []
@@ -451,6 +485,21 @@ def run_orchestrator(
             except Exception as exc:
                 warnings.append(f"Interaction analysis failed: {exc}")
 
+    # ── Stage 9b: Solo detection ──────────────────────────────────────────────
+    solos: dict = {}
+    if len(energy_curves) >= 2:
+        try:
+            from src.analyzer.solos import detect_solos
+            solos = detect_solos(energy_curves, meta.duration_ms)
+            if solos:
+                solo_summary = ", ".join(
+                    f"{stem} {len(marks)}×{sum(m.duration_ms or 0 for m in marks)//1000}s"
+                    for stem, marks in solos.items()
+                )
+                print(f"Solos: {solo_summary}")
+        except Exception as exc:
+            warnings.append(f"Solo detection failed: {exc}")
+
     # ── Stage 10: Assemble result ─────────────────────────────────────────────
     result = HierarchyResult(
         schema_version=SCHEMA_VERSION,
@@ -464,12 +513,15 @@ def run_orchestrator(
         sections=sections,
         bars=bars,
         beats=beats,
+        half_bars=half_bars,
+        eighth_notes=eighth_notes,
         events=events,
         energy_curves=energy_curves,
         spectral_flux=spectral_flux,
         chords=chords,
         key_changes=key_changes,
         interactions=interactions,
+        solos=solos,
         stems_available=stems_available,
         capabilities=caps,
         algorithms_run=[a.name for a in algos],
@@ -503,7 +555,9 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
 
     root = ET.Element("timings")
 
+    _add_mark_layer(root, "eighth_notes", result.eighth_notes)
     _add_mark_layer(root, "beats", result.beats)
+    _add_mark_layer(root, "half_bars", result.half_bars)
     _add_mark_layer(root, "bars", result.bars)
     _add_section_layer(root, "sections", result.sections)
 
@@ -644,6 +698,79 @@ def _snap_sections_to_bars(sections: list, bars: "TimingTrack") -> list:
     return result
 
 
+def _deduplicate_events(
+    events: dict,
+    spectral_flux: "ValueCurve | None",
+    energy_curves: dict,
+    min_gap_ms: int = 50,
+) -> dict:
+    """Remove same-hit doublings from L4 event tracks.
+
+    Aubio's Vamp wrapper ignores the minioi parameter, so multiple detections
+    of the same transient (typically 6–46 ms apart) slip through.  This groups
+    nearby marks into clusters and keeps whichever mark in each cluster sits at
+    the highest spectral-flux (or energy) value — the same judgement a human
+    engineer makes when looking at the waveform.
+
+    min_gap_ms=50 ms eliminates doublings while preserving 32nd notes at any
+    tempo ≥ 60 BPM (32nd note ≈ 63 ms at 60 BPM, 150 ms at 115 BPM).
+    """
+    import copy as _copy
+
+    # Choose the best available curve for picking within a cluster
+    flux = spectral_flux
+
+    result: dict = {}
+    total_before = total_removed = 0
+
+    for stem, track in events.items():
+        marks = sorted(track.marks, key=lambda m: m.time_ms)
+        if not marks:
+            result[stem] = track
+            continue
+
+        # Use stem energy or full_mix as fallback for peak-picking
+        curve = energy_curves.get(stem) or flux
+        values = curve.values if curve else None
+        fps = curve.fps if curve else 1
+
+        kept = []
+        cluster = [marks[0]]
+
+        def _peak_mark(cluster):
+            """Return mark with highest curve value, or first if no curve."""
+            if not values:
+                return cluster[0]
+            def score(m):
+                f = max(0, min(len(values) - 1, int(m.time_ms * fps / 1000)))
+                return values[f]
+            return max(cluster, key=score)
+
+        for mark in marks[1:]:
+            if mark.time_ms - cluster[-1].time_ms <= min_gap_ms:
+                cluster.append(mark)
+            else:
+                kept.append(_peak_mark(cluster))
+                cluster = [mark]
+        kept.append(_peak_mark(cluster))
+
+        removed = len(marks) - len(kept)
+        total_before += len(marks)
+        total_removed += removed
+
+        if removed:
+            new_track = _copy.copy(track)
+            new_track.marks = kept
+            result[stem] = new_track
+        else:
+            result[stem] = track
+
+    if total_removed:
+        print(f"  L4 dedup: removed {total_removed}/{total_before} same-hit doublings "
+              f"(min gap {min_gap_ms}ms)")
+    return result
+
+
 def _filter_events_by_energy(
     events: dict,
     energy_curves: dict,
@@ -700,6 +827,122 @@ def _filter_events_by_energy(
         print(f"  L4 energy filter: removed {removed}/{total_before} low-energy onsets "
               f"(bottom {percentile:.0f}%)")
     return filtered
+
+
+def _label_beats(beats: "TimingTrack", bars: "TimingTrack") -> None:
+    """Label each beat mark with its position within the bar (1, 2, 3, 4…).
+
+    Mutates beat marks in-place.  Beats before the first bar or after the last
+    bar are labelled by extrapolating the bar grid at the estimated beat interval.
+    """
+    if not beats or not beats.marks or not bars or not bars.marks:
+        return
+
+    bar_times = sorted(m.time_ms for m in bars.marks)
+    beat_marks = beats.marks  # already sorted
+
+    # Estimate beat interval from median inter-beat gap
+    if len(beat_marks) >= 2:
+        gaps_b = [beat_marks[i + 1].time_ms - beat_marks[i].time_ms
+                  for i in range(len(beat_marks) - 1)]
+        beat_interval = sorted(gaps_b)[len(gaps_b) // 2]
+    else:
+        beat_interval = 500
+
+    # For each bar, find the beats that fall within it and label them 1-N
+    for i, bar_start in enumerate(bar_times):
+        bar_end = bar_times[i + 1] if i + 1 < len(bar_times) else bar_start + beat_interval * 8
+        bar_beats = [m for m in beat_marks if bar_start <= m.time_ms < bar_end]
+        for pos, mark in enumerate(bar_beats, 1):
+            mark.label = str(pos)
+
+    # Label beats before the first bar by counting back from bar position 1
+    first_bar = bar_times[0]
+    pre_beats = sorted((m for m in beat_marks if m.time_ms < first_bar),
+                       key=lambda m: m.time_ms, reverse=True)
+    for i, mark in enumerate(pre_beats):
+        # Count backwards: if first bar beat is "1", beat before it is "4", etc.
+        pos = ((-(i + 1)) % 4) or 4
+        mark.label = str(pos)
+
+
+def _derive_eighth_notes(beats: "TimingTrack") -> "list":
+    """Derive eighth-note marks by inserting midpoints between consecutive beats.
+
+    Each midpoint is placed at the exact halfway point between two adjacent beat
+    marks.  The resulting track interleaves original beat positions (odd eighth
+    notes: "1e", "2e"…) with midpoints (even: "1&", "2&"…).
+
+    Returns a flat sorted list of TimingMark objects covering both on-beat and
+    off-beat eighth note positions.
+    """
+    from src.analyzer.result import TimingMark
+    import copy as _copy
+
+    marks = beats.marks
+    if len(marks) < 2:
+        return []
+
+    result = []
+    for i, mark in enumerate(marks):
+        # On-beat eighth note — copy the existing beat mark
+        on = _copy.copy(mark)
+        result.append(on)
+
+        if i + 1 < len(marks):
+            # Off-beat eighth note — midpoint between this beat and the next
+            mid_ms = (mark.time_ms + marks[i + 1].time_ms) // 2
+            off_label = None
+            if mark.label:
+                off_label = mark.label + "&"
+            result.append(TimingMark(time_ms=mid_ms, confidence=mark.confidence,
+                                     label=off_label))
+
+    return result
+
+
+def _select_beat_with_bpm_check(
+    candidates: list,
+    onset_times: list[int],
+    estimated_bpm: float,
+    duration_ms: int,
+    tolerance: float = 0.20,
+) -> "TimingTrack | None":
+    """Select best beat track, falling back through candidates if BPM range check fails.
+
+    After scoring all candidates by regularity + onset correlation, pick the
+    highest-scoring one whose Hz is within *tolerance* (±20%) of estimated_bpm/60.
+    If no candidate passes the check, return the highest-scoring one anyway so we
+    always produce a beat track.
+    """
+    from src.analyzer.selector import rank_tracks
+
+    ranked = rank_tracks(candidates, onset_times)
+    if not ranked:
+        return None
+
+    if estimated_bpm < 20:
+        # No reliable BPM estimate — just use best combined score
+        return ranked[0]
+
+    expected_hz = estimated_bpm / 60.0
+    duration_s = duration_ms / 1000.0
+
+    for track in ranked:
+        actual_hz = track.mark_count / duration_s if duration_s > 0 else 0
+        ratio = actual_hz / expected_hz if expected_hz > 0 else 1.0
+        # Accept within ±tolerance, or at 2× (double-time) or 0.5× (half-time) within tolerance
+        for multiplier in (1.0, 2.0, 0.5):
+            if abs(ratio / multiplier - 1.0) <= tolerance:
+                if multiplier != 1.0:
+                    print(f"  L3 BPM check: {track.algorithm_name} accepted at "
+                          f"{actual_hz:.2f} Hz ({multiplier:.0f}× of {expected_hz:.2f} Hz expected)")
+                return track
+
+    # No track passed — fall back to best combined score
+    print(f"  L3 BPM check: no candidate within ±{tolerance:.0%} of {expected_hz:.2f} Hz — "
+          f"using best-score fallback ({ranked[0].algorithm_name})")
+    return ranked[0]
 
 
 def _print_dry_run(algos) -> None:
