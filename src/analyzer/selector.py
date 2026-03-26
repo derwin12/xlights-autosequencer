@@ -51,11 +51,18 @@ def select_best_track(
     candidates: list["TimingTrack"],
     onset_times_ms: list[int] | None = None,
 ) -> "TimingTrack | None":
-    """Select the best track from candidates using CV, with onset correlation tiebreak.
+    """Select the best track from candidates using a combined regularity + onset score.
+
+    Scoring (per candidate):
+      regularity  = 1 - CV, clamped [0, 1]          weight 0.5
+      onset_corr  = normalised onset correlation      weight 0.5
+
+    Onset correlation is normalised across candidates so a single strong
+    algorithm doesn't dominate purely because it has more marks.
 
     Args:
         candidates: List of tracks to select from (same hierarchy level).
-        onset_times_ms: Optional onset timestamps for tiebreak correlation.
+        onset_times_ms: Optional onset timestamps for onset correlation signal.
 
     Returns:
         The best track, or None if candidates is empty.
@@ -65,20 +72,22 @@ def select_best_track(
     if len(candidates) == 1:
         return candidates[0]
 
-    scored = [(track, _coefficient_of_variation(track)) for track in candidates]
-    scored.sort(key=lambda x: x[1])
+    cvs = {id(t): _coefficient_of_variation(t) for t in candidates}
 
-    # If top two are close in CV (within 5%), use onset correlation as tiebreak
-    best_track, best_cv = scored[0]
-    if len(scored) > 1 and onset_times_ms:
-        second_track, second_cv = scored[1]
-        if best_cv > 0 and abs(best_cv - second_cv) / best_cv < 0.05:
-            corr_best = _onset_correlation(best_track, onset_times_ms)
-            corr_second = _onset_correlation(second_track, onset_times_ms)
-            if corr_second > corr_best:
-                return second_track
+    if onset_times_ms:
+        raw_corrs = {id(t): _onset_correlation(t, onset_times_ms) for t in candidates}
+        max_corr = max(raw_corrs.values()) or 1.0
+        norm_corrs = {k: v / max_corr for k, v in raw_corrs.items()}
+    else:
+        norm_corrs = {id(t): 0.0 for t in candidates}
 
-    return best_track
+    def _combined(track: "TimingTrack") -> float:
+        cv = cvs[id(track)]
+        regularity = max(0.0, min(1.0, 1.0 - cv))
+        onset = norm_corrs[id(track)]
+        return 0.5 * regularity + 0.5 * onset
+
+    return max(candidates, key=_combined)
 
 
 def select_best_bar_track(

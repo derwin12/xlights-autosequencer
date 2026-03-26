@@ -191,16 +191,49 @@ def _progress_generator(job: AnalysisJob):
 
 # ── App factory ────────────────────────────────────────────────────────────────
 
-def create_app(analysis_path: str | None = None, audio_path: str | None = None) -> Flask:
+def _hierarchy_summary_for_server(json_path: Path) -> dict | None:
+    """Load a _hierarchy.json and return a summary dict for the library API."""
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+        if data.get("schema_version") != "2.0.0":
+            return None
+        v = data.get("validation", {})
+        dur_ms = data.get("duration_ms", 0)
+        minutes, seconds = divmod(dur_ms // 1000, 60)
+        events = v.get("events", {})
+        l4_mean = (sum(e["transient_rate"] for e in events.values()) / len(events)
+                   if events else None)
+        return {
+            "json_path": str(json_path),
+            "source_file": data.get("source_file", ""),
+            "name": json_path.stem.replace("_hierarchy", ""),
+            "duration": f"{minutes}:{seconds:02d}",
+            "duration_ms": dur_ms,
+            "bpm": data.get("estimated_bpm", 0),
+            "stems": len(data.get("stems_available", ["full_mix"])),
+            "bars": v.get("bars", {}).get("score"),
+            "beats": v.get("beats", {}).get("score"),
+            "sections": v.get("sections", {}).get("bar_alignment_rate"),
+            "l4": l4_mean,
+            "overall": v.get("overall_score"),
+        }
+    except Exception:
+        return None
+
+
+def create_app(analysis_path: str | None = None, audio_path: str | None = None,
+               scan_dir: str | None = None) -> Flask:
     """
     Create the Flask application.
 
-    - analysis_path=None, audio_path=None  → upload mode (shows upload page)
+    - analysis_path=None, audio_path=None  → upload/library mode
     - Both provided                         → review mode (shows timeline)
+    - scan_dir provided                     → library mode scanning that directory
     """
     app = Flask(__name__, static_folder=str(Path(__file__).parent / "static"), static_url_path="")
     app.config["ANALYSIS_PATH"] = analysis_path
     app.config["AUDIO_PATH"] = audio_path
+    app.config["SCAN_DIR"] = scan_dir
 
     if analysis_path is None:
         # ── Upload mode ───────────────────────────────────────────────────────
@@ -332,6 +365,46 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None) 
             with _job_lock:
                 _current_job = job
             return jsonify({"ok": True}), 200
+
+        @app.route("/hierarchy-library")
+        def hierarchy_library():
+            scan_dir = app.config.get("SCAN_DIR")
+            if not scan_dir or not Path(scan_dir).is_dir():
+                return jsonify({"entries": [], "scan_dir": scan_dir})
+            entries = []
+            for json_path in sorted(Path(scan_dir).rglob("*_hierarchy.json")):
+                summary = _hierarchy_summary_for_server(json_path)
+                if summary:
+                    entries.append(summary)
+            entries.sort(key=lambda e: e.get("overall") or 0, reverse=True)
+            return jsonify({"entries": entries, "scan_dir": str(scan_dir)})
+
+        @app.route("/open-hierarchy", methods=["POST"])
+        def open_hierarchy():
+            global _current_job
+            body = request.get_json(force=True) or {}
+            json_path = body.get("json_path", "")
+            if not json_path or not Path(json_path).exists():
+                return jsonify({"error": "json_path not found"}), 400
+            try:
+                with open(json_path, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+            except Exception as exc:
+                return jsonify({"error": str(exc)}), 500
+            mp3_path = data.get("source_file", "")
+            if not mp3_path or not Path(mp3_path).exists():
+                return jsonify({"error": f"source_file not found: {mp3_path}"}), 404
+            job = AnalysisJob.__new__(AnalysisJob)
+            job.mp3_path = mp3_path
+            job.status = "done"
+            job.result_path = json_path
+            job.events = []
+            job.total = 0
+            job.error_message = None
+            job.lock = threading.Lock()
+            with _job_lock:
+                _current_job = job
+            return jsonify({"ok": True})
 
         @app.route("/upload", methods=["POST"])
         def upload():

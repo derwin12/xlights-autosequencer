@@ -521,13 +521,15 @@ def export_cmd(
 # ──────────────────────────────────────────────────────────────────────────────
 
 @cli.command("review")
-@click.argument("audio_or_json", required=False, default=None, type=click.Path(dir_okay=False))
+@click.argument("audio_or_json", required=False, default=None, type=click.Path())
 def review_cmd(audio_or_json: str | None) -> None:
     """Launch the track review UI in the default browser.
 
-    AUDIO_OR_JSON can be a previously generated analysis JSON, an audio file
-    path (resolved via the song library), or omitted to open the library home
-    page.
+    AUDIO_OR_JSON can be:
+      - A directory: scans for *_hierarchy.json files and shows a scored library
+      - A *_hierarchy.json file: opens the timeline directly for that song
+      - An audio (.mp3) file: looks up cached analysis via the library
+      - Omitted: opens the library home page
     """
     from src.review.server import create_app
 
@@ -551,6 +553,22 @@ def review_cmd(audio_or_json: str | None) -> None:
         return
 
     given_path = Path(audio_or_json)
+
+    # ── Directory: scan for hierarchy files and open library view ─────────────
+    if given_path.is_dir():
+        app = create_app(scan_dir=str(given_path.resolve()))
+        url = "http://127.0.0.1:5173/library-view"
+        click.echo(f"Starting library UI at {url} (scanning {given_path})")
+        click.echo("Press Ctrl-C to stop.")
+        threading.Timer(0.5, webbrowser.open, args=[url]).start()
+        try:
+            app.run(host="127.0.0.1", port=5173, use_reloader=False, debug=False)
+        except OSError as exc:
+            if exc.errno == errno.EADDRINUSE:
+                click.echo("ERROR: Port 5173 is already in use.", err=True)
+                sys.exit(5)
+            raise
+        return
 
     # ── Audio file path: look up via library ──────────────────────────────────
     if given_path.suffix.lower() != ".json":
@@ -1487,6 +1505,126 @@ def sweep_results_cmd(
         click.echo(f"Exported {len(full_results)} winners to {sweep_dir}/winners/")
         for algo, r in sorted(full_results.items()):
             click.echo(f"  ✓ {algo}_{r.stem} — score {r.quality_score:.2f}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# library command
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _bar(score: float, width: int = 8) -> str:
+    filled = int(round(score * width))
+    return "[" + "#" * filled + "." * (width - filled) + f"] {score:.2f}"
+
+
+def _load_hierarchy_summary(json_path: Path) -> dict | None:
+    """Load a _hierarchy.json and extract the summary fields needed for the library table."""
+    try:
+        import json as _json
+        data = _json.loads(json_path.read_text(encoding="utf-8"))
+        if data.get("schema_version") != "2.0.0":
+            return None
+        v = data.get("validation", {})
+        dur_ms = data.get("duration_ms", 0)
+        minutes, seconds = divmod(dur_ms // 1000, 60)
+
+        bars_score = v.get("bars", {}).get("score")
+        beats_score = v.get("beats", {}).get("score")
+        sections_rate = v.get("sections", {}).get("bar_alignment_rate")
+        events = v.get("events", {})
+        l4_mean = (sum(ev["transient_rate"] for ev in events.values()) / len(events)
+                   if events else None)
+        overall = v.get("overall_score")
+
+        return {
+            "path": json_path,
+            "name": json_path.stem.replace("_hierarchy", ""),
+            "duration": f"{minutes}:{seconds:02d}",
+            "bpm": data.get("estimated_bpm", 0),
+            "stems": len(data.get("stems_available", ["full_mix"])),
+            "bars": bars_score,
+            "beats": beats_score,
+            "sections": sections_rate,
+            "l4": l4_mean,
+            "overall": overall,
+        }
+    except Exception:
+        return None
+
+
+@cli.command("library")
+@click.argument("directory", default=".", type=click.Path(exists=True, file_okay=False))
+@click.option("--min-score", default=0.0, type=float, show_default=True,
+              help="Only show songs with overall_score >= this value")
+@click.option("--flag-below", default=0.6, type=float, show_default=True,
+              help="Flag songs with overall_score below this threshold")
+@click.option("--sort", "sort_by", default="overall",
+              type=click.Choice(["overall", "bars", "beats", "sections", "l4", "name"]),
+              show_default=True, help="Sort column")
+def library_cmd(directory: str, min_score: float, flag_below: float, sort_by: str) -> None:
+    """Scan a directory tree for analyzed songs and show a ranked quality table.
+
+    Finds all *_hierarchy.json files (schema 2.0.0) under DIRECTORY and prints
+    a table sorted by overall validation score.  Rows with a low score are
+    flagged with '!' to highlight songs that may need re-analysis.
+    """
+    root = Path(directory)
+    json_files = sorted(root.rglob("*_hierarchy.json"))
+
+    if not json_files:
+        click.echo(f"No *_hierarchy.json files found under {root}", err=True)
+        sys.exit(1)
+
+    entries = []
+    skipped = 0
+    for jf in json_files:
+        summary = _load_hierarchy_summary(jf)
+        if summary is None:
+            skipped += 1
+            continue
+        if summary["overall"] is None or summary["overall"] < min_score:
+            continue
+        entries.append(summary)
+
+    if not entries:
+        click.echo("No songs match the filter criteria.", err=True)
+        sys.exit(1)
+
+    # Sort
+    reverse = sort_by != "name"
+    def _sort_key(e):
+        v = e.get(sort_by)
+        return (v is not None, v or 0)
+    entries.sort(key=_sort_key, reverse=reverse)
+
+    # Header
+    click.echo(f"\nSong Library  ({len(entries)} songs")
+    if skipped:
+        click.echo(f", {skipped} skipped (old schema)", nl=False)
+    click.echo(")")
+    click.echo(
+        f"  {'':1} {'SONG':<40} {'DUR':>5}  {'BPM':>5}  {'ST':>2}  "
+        f"{'BARS':>13}  {'BEATS':>13}  {'SECT':>13}  {'L4':>13}  {'OVERALL':>13}"
+    )
+    click.echo("  " + "-" * 127)
+
+    for e in entries:
+        flag = "!" if (e["overall"] or 0) < flag_below else " "
+
+        def _cell(v) -> str:
+            return _bar(v) if v is not None else "         n/a"
+
+        click.echo(
+            f"  {flag} {e['name']:<40} {e['duration']:>5}  {e['bpm']:>5.0f}  "
+            f"{e['stems']:>2}  {_cell(e['bars'])}  {_cell(e['beats'])}  "
+            f"{_cell(e['sections'])}  {_cell(e['l4'])}  {_cell(e['overall'])}"
+        )
+
+    # Summary stats
+    overalls = [e["overall"] for e in entries if e["overall"] is not None]
+    if overalls:
+        mean = sum(overalls) / len(overalls)
+        low = sum(1 for s in overalls if s < flag_below)
+        click.echo(f"\n  Mean overall: {mean:.3f}  |  Flagged (< {flag_below}): {low}/{len(overalls)}")
 
 
 def main() -> None:

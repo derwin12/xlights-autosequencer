@@ -343,6 +343,9 @@ def run_orchestrator(
     if bars:
         print(f"L2 Bars: {bars.mark_count} marks ({bars.algorithm_name}, "
               f"{bars.mark_count / (meta.duration_ms / 1000):.2f} Hz)")
+        # Snap L1 section boundaries to nearest bar now that we have the bar track
+        if sections:
+            sections = _snap_sections_to_bars(sections, bars)
     else:
         warnings.append("L2 Bars: no bar track produced")
 
@@ -373,6 +376,16 @@ def run_orchestrator(
 
     event_summary = ", ".join(f"{k} {v.mark_count}" for k, v in events.items())
     print(f"L4 Events: {event_summary or 'none'}")
+
+    # Filter L4 events to top-60% energy onsets per stem (removes ghost notes)
+    # Done before energy_curves is fully built, so pass what we have so far;
+    # the full-mix curve is available from bbc_energy tracks already processed above.
+    _early_energy_curves: dict = {}
+    for t in tracks_by_name.get("bbc_energy", []):
+        vc = _get_value_curve(t)
+        if vc:
+            _early_energy_curves[t.stem_source or "full_mix"] = vc
+    events = _filter_events_by_energy(events, _early_energy_curves, energy_curve_full)
 
     # L5: energy curves per stem
     energy_curves: dict[str, "ValueCurve"] = {}
@@ -556,11 +569,137 @@ def _section_summary(marks: list) -> str:
 
 
 def _collect_onset_times(tracks_by_name: dict) -> list[int]:
-    for name in ("aubio_onset", "librosa_onsets", "qm_onsets_complex"):
+    """Return onset times for use in bar/beat selector scoring.
+
+    Prefers aubio_onset on full_mix (densest, most accurate for beat alignment),
+    then falls back to librosa_onsets or qm_onsets_complex.
+    """
+    # Prefer full_mix aubio onsets
+    for t in tracks_by_name.get("aubio_onset", []):
+        if (t.stem_source or "full_mix") == "full_mix":
+            return [m.time_ms for m in t.marks]
+    # Fallback: any aubio track
+    aubio = tracks_by_name.get("aubio_onset", [])
+    if aubio:
+        return [m.time_ms for m in aubio[0].marks]
+    # Final fallbacks
+    for name in ("librosa_onsets", "qm_onsets_complex"):
         tracks = tracks_by_name.get(name, [])
         if tracks:
             return [m.time_ms for m in tracks[0].marks]
     return []
+
+
+def _nearest_in_sorted(t: int, sorted_times: list[int]) -> int | None:
+    """Binary-search nearest value in sorted list; return the value (not distance)."""
+    if not sorted_times:
+        return None
+    lo, hi = 0, len(sorted_times) - 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if sorted_times[mid] < t:
+            lo = mid + 1
+        else:
+            hi = mid
+    best_idx = lo
+    if lo > 0 and abs(sorted_times[lo - 1] - t) < abs(sorted_times[lo] - t):
+        best_idx = lo - 1
+    return sorted_times[best_idx]
+
+
+def _snap_sections_to_bars(sections: list, bars: "TimingTrack") -> list:
+    """Snap each section boundary to the nearest bar mark within the adaptive window.
+
+    Uses the same adaptive window as the validator: half the median bar interval,
+    clamped to 400–1200 ms.  Sections already on a bar boundary are unchanged.
+    Returns a (possibly mutated) list of TimingMark objects.
+    """
+    import copy as _copy
+    if not sections or not bars or not bars.marks:
+        return sections
+
+    bar_times = sorted(m.time_ms for m in bars.marks)
+
+    if len(bar_times) > 1:
+        intervals = [bar_times[i + 1] - bar_times[i] for i in range(len(bar_times) - 1)]
+        median_interval = sorted(intervals)[len(intervals) // 2]
+        window_ms = max(400, min(1200, median_interval // 2))
+    else:
+        window_ms = 500
+
+    result = []
+    snapped = 0
+    for mark in sections:
+        nearest = _nearest_in_sorted(mark.time_ms, bar_times)
+        if nearest is not None and abs(nearest - mark.time_ms) <= window_ms and nearest != mark.time_ms:
+            new_mark = _copy.copy(mark)
+            new_mark.time_ms = nearest
+            result.append(new_mark)
+            snapped += 1
+        else:
+            result.append(mark)
+
+    if snapped:
+        print(f"  L1 snap: {snapped}/{len(sections)} boundaries snapped to bars (window={window_ms}ms)")
+    return result
+
+
+def _filter_events_by_energy(
+    events: dict,
+    energy_curves: dict,
+    full_mix_curve,
+    percentile: float = 40.0,
+) -> dict:
+    """Keep only onsets above the given energy percentile per stem.
+
+    For each stem track in *events*, look up the matching energy curve
+    (falling back to full_mix).  Compute the energy value at each onset's
+    frame, then discard onsets below the *percentile*-th percentile.
+    If fewer than 10 marks remain after filtering the track is kept as-is
+    to avoid degenerate output.
+    """
+    import copy as _copy
+    filtered: dict = {}
+    total_before = total_after = 0
+
+    for stem, track in events.items():
+        curve = energy_curves.get(stem) or full_mix_curve
+        if not curve or not curve.values or not track.marks:
+            filtered[stem] = track
+            continue
+
+        values = curve.values
+        n = len(values)
+        fps = curve.fps
+
+        energies = [
+            values[max(0, min(n - 1, int(m.time_ms * fps / 1000)))]
+            for m in track.marks
+        ]
+
+        sorted_e = sorted(energies)
+        threshold_idx = int(len(sorted_e) * percentile / 100)
+        threshold = sorted_e[max(0, threshold_idx - 1)]
+
+        kept = [m for m, e in zip(track.marks, energies) if e >= threshold]
+        total_before += len(track.marks)
+        total_after += len(kept)
+
+        if len(kept) < 10:
+            # Degenerate result — keep original
+            filtered[stem] = track
+            total_after += len(track.marks) - len(kept)  # correct counter
+            continue
+
+        new_track = _copy.copy(track)
+        new_track.marks = kept
+        filtered[stem] = new_track
+
+    removed = total_before - total_after
+    if removed:
+        print(f"  L4 energy filter: removed {removed}/{total_before} low-energy onsets "
+              f"(bottom {percentile:.0f}%)")
+    return filtered
 
 
 def _print_dry_run(algos) -> None:

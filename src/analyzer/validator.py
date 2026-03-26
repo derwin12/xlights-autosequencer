@@ -67,28 +67,50 @@ def _onset_alignment_rate(track: "TimingTrack", onset_times_ms: list[int],
 
 def _transient_rate(track: "TimingTrack", curve: "ValueCurve",
                     window_ms: int = 100) -> float:
-    """Fraction of onset marks where energy rises from before to after the mark.
+    """Fraction of onset marks that look like transients in the energy curve.
 
-    Uses energy slope (after_avg > before_avg) rather than peak proximity,
-    since RMS energy peaks after the onset attack due to smoothing lag.
+    A mark passes if EITHER:
+      (a) short-window slope: energy in the 40ms after the mark exceeds the
+          40ms before (catches sharp attacks — kick, snare, pluck), OR
+      (b) local peak: energy at the mark frame is above the mean of the
+          surrounding ±window_ms region (catches sustained-onset instruments
+          like bass and legato guitar where the slope check often fails).
+
+    Using two criteria with OR union gives better coverage across stems
+    without artificially inflating scores — both conditions require the mark
+    to be at a genuine energy event.
     """
     if not track.marks or not curve or not curve.values:
         return 0.0
     values = curve.values
     n = len(values)
-    window_frames = max(2, int(window_ms * curve.fps / 1000))
+    fps = curve.fps
+
+    short_frames = max(1, int(40 * fps / 1000))          # 40 ms attack window
+    broad_frames = max(2, int(window_ms * fps / 1000))   # ±window_ms context
 
     aligned = 0
     for mark in track.marks:
-        center = int(mark.time_ms * curve.fps / 1000)
-        before = values[max(0, center - window_frames): center]
-        after = values[center: min(n, center + window_frames)]
-        if not before or not after:
-            continue
-        before_avg = sum(before) / len(before)
-        after_avg = sum(after) / len(after)
-        if after_avg > before_avg:
+        center = int(mark.time_ms * fps / 1000)
+
+        # (a) short-window slope check
+        pre_short  = values[max(0, center - short_frames): center]
+        post_short = values[center: min(n, center + short_frames)]
+        slope_ok = (
+            pre_short and post_short and
+            sum(post_short) / len(post_short) > sum(pre_short) / len(pre_short)
+        )
+
+        # (b) local peak check
+        region = values[max(0, center - broad_frames): min(n, center + broad_frames)]
+        peak_ok = bool(
+            region and
+            values[max(0, min(n - 1, center))] >= sum(region) / len(region)
+        )
+
+        if slope_ok or peak_ok:
             aligned += 1
+
     return aligned / len(track.marks)
 
 
@@ -176,14 +198,27 @@ def validate_hierarchy(result: "HierarchyResult") -> dict:
     report: dict = {}
 
     full_mix_curve = result.energy_curves.get("full_mix")
-    full_mix_onsets: list[int] = []
-    if result.events.get("full_mix"):
-        full_mix_onsets = sorted(m.time_ms for m in result.events["full_mix"].marks)
+
+    # Prefer drum stem onsets for bar/beat alignment — drums are on-beat by
+    # definition and much less noisy than full_mix (which includes off-beat
+    # hi-hats, guitar strums, etc.).  Fall back to full_mix when unavailable.
+    def _best_onsets() -> list[int]:
+        for stem in ("drums", "full_mix"):
+            track = result.events.get(stem)
+            if track and track.marks:
+                return sorted(m.time_ms for m in track.marks)
+        return []
+
+    beat_onsets: list[int] = _best_onsets()
+    full_mix_onsets: list[int] = (
+        sorted(m.time_ms for m in result.events["full_mix"].marks)
+        if result.events.get("full_mix") else []
+    )
 
     # ── L2 Bars ───────────────────────────────────────────────────────────────
     if result.bars and result.bars.marks:
         reg = _regularity(result.bars)
-        align = _onset_alignment_rate(result.bars, full_mix_onsets, window_ms=80)
+        align = _onset_alignment_rate(result.bars, beat_onsets, window_ms=80)
         bar_score = round((reg + align) / 2, 3)
         report["bars"] = {
             "mark_count": len(result.bars.marks),
@@ -197,7 +232,7 @@ def validate_hierarchy(result: "HierarchyResult") -> dict:
     # ── L3 Beats ─────────────────────────────────────────────────────────────
     if result.beats and result.beats.marks:
         reg = _regularity(result.beats)
-        align = _onset_alignment_rate(result.beats, full_mix_onsets, window_ms=50)
+        align = _onset_alignment_rate(result.beats, beat_onsets, window_ms=50)
         beat_score = round((reg + align) / 2, 3)
         report["beats"] = {
             "mark_count": len(result.beats.marks),

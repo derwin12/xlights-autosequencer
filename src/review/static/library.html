@@ -88,6 +88,34 @@
     .col-bpm { color: #7ec8e3; }
     .col-date { color: #777; font-size: 0.82rem; }
 
+    /* ── Hierarchy score bar ────────────────────────────────────────────────── */
+
+    .score-cell { white-space: nowrap; }
+
+    .score-bar-wrap {
+      display: inline-block;
+      vertical-align: middle;
+      width: 52px;
+      height: 6px;
+      background: #333;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-right: 4px;
+    }
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: #4a9eff;
+      transition: width 0.2s;
+    }
+    .score-bar-fill.score-good  { background: #4caf50; }
+    .score-bar-fill.score-mid   { background: #f0a030; }
+    .score-bar-fill.score-low   { background: #e05050; }
+    .score-val { font-size: 0.8rem; color: #aaa; }
+
+    .col-overall .score-val { color: #fff; font-weight: 600; }
+    .col-overall .score-bar-fill { background: #4a9eff; }
+
     .badge-warn {
       display: inline-block;
       margin-left: 0.4rem;
@@ -260,9 +288,31 @@
   <h1>xlight-analyze</h1>
   <p class="subtitle">Analysis cache &amp; song library</p>
 
-  <!-- ── Library section ────────────────────────────────────────────────── -->
-  <div id="library-section">
+  <!-- ── Hierarchy library section ─────────────────────────────────────── -->
+  <div id="hierarchy-section" style="display:none; margin-bottom:3rem;">
     <h2>Song Library</h2>
+    <div id="hierarchy-loading" style="color:#555;font-size:.9rem;padding:.5rem 0;">Loading…</div>
+    <table id="hierarchy-table" style="display:none">
+      <thead>
+        <tr>
+          <th>Song</th>
+          <th>Dur</th>
+          <th style="text-align:right">BPM</th>
+          <th style="text-align:center">St</th>
+          <th style="text-align:center">Bars</th>
+          <th style="text-align:center">Beats</th>
+          <th style="text-align:center">Sections</th>
+          <th style="text-align:center">L4</th>
+          <th style="text-align:center">Overall</th>
+        </tr>
+      </thead>
+      <tbody id="hierarchy-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── Old library section (upload-mode entries) ───────────────────────── -->
+  <div id="library-section">
+    <h2>Analyzed Files</h2>
     <div id="library-loading">Loading library…</div>
     <div id="library-empty" style="display:none">No analyzed songs yet. Use the form below to analyze your first file.</div>
     <table id="library-table" style="display:none">
