@@ -1627,5 +1627,114 @@ def library_cmd(directory: str, min_score: float, flag_below: float, sort_by: st
         click.echo(f"\n  Mean overall: {mean:.3f}  |  Flagged (< {flag_below}): {low}/{len(overalls)}")
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# group-layout command
+# ──────────────────────────────────────────────────────────────────────────────
+
+@cli.command("group-layout")
+@click.argument("layout_file", type=click.Path(dir_okay=False))
+@click.option(
+    "--profile",
+    type=click.Choice(["energetic", "cinematic", "technical"]),
+    default=None,
+    help="Show profile: energetic, cinematic, or technical (default: all tiers).",
+)
+@click.option("--dry-run", "dry_run", is_flag=True, default=False,
+              help="Preview groups without modifying any files.")
+@click.option("--output", "output_path", default=None, type=click.Path(),
+              help="Write output to a different path (default: in-place).")
+@click.option("--hero", "extra_heroes", multiple=True,
+              help="Explicitly add a prop as a hero (repeatable). Use exact prop name.")
+@click.option("--no-auto-heroes", "no_auto_heroes", is_flag=True, default=False,
+              help="Disable pixel-count-based automatic hero detection.")
+def group_layout_cmd(
+    layout_file: str,
+    profile: str | None,
+    dry_run: bool,
+    output_path: str | None,
+    extra_heroes: tuple[str, ...],
+    no_auto_heroes: bool,
+) -> None:
+    """Generate xLights Power Groups from LAYOUT_FILE (xlights_rgbeffects.xml)."""
+    import xml.etree.ElementTree as ET
+    from src.grouper.layout import parse_layout
+    from src.grouper.classifier import normalize_coords, classify_props
+    from src.grouper.grouper import generate_groups
+    from src.grouper.writer import inject_groups, write_layout
+
+    # ── Input validation ──────────────────────────────────────────────────────
+    path = Path(layout_file)
+    if not path.exists() or not path.is_file():
+        click.echo(f"ERROR: File not found or not readable: {layout_file}", err=True)
+        sys.exit(1)
+
+    try:
+        layout = parse_layout(path)
+    except ET.ParseError as exc:
+        click.echo(f"ERROR: XML parse error in {layout_file}: {exc}", err=True)
+        sys.exit(2)
+
+    if not layout.props:
+        click.echo(f"ERROR: No <model> elements found in {layout_file}", err=True)
+        sys.exit(3)
+
+    # ── Pipeline ──────────────────────────────────────────────────────────────
+    normalize_coords(layout.props)
+    classify_props(layout.props)
+    heroes_list = list(extra_heroes) if extra_heroes else None
+    groups = generate_groups(
+        layout.props,
+        profile=profile,
+        extra_heroes=heroes_list,
+        auto_heroes=not no_auto_heroes,
+    )
+
+    profile_label = profile if profile else "(all)"
+
+    # ── Dry-run output ────────────────────────────────────────────────────────
+    if dry_run:
+        click.echo(f"xLights Layout Grouping — Dry Run")
+        click.echo(f"Layout:  {path}")
+        click.echo(f"Profile: {profile_label}")
+        click.echo(f"Props:   {len(layout.props)}")
+        click.echo("")
+        click.echo(f"{'Tier':<6}{'Group Name':<30}{'Members':>7}")
+        click.echo(f"{'----':<6}{'----------':<30}{'-------':>7}")
+        for g in groups:
+            click.echo(f"{g.tier:02d}    {g.name:<30}{len(g.members):>7}")
+        click.echo("")
+        click.echo(f"Total groups: {len(groups)}")
+        click.echo("No files modified (dry run).")
+        return
+
+    # ── Write output ──────────────────────────────────────────────────────────
+    # Count how many old auto-groups exist before injection
+    from src.grouper.writer import AUTO_PREFIXES
+    root = layout.raw_tree.getroot()
+    # Check both modern (<modelGroups><modelGroup>) and legacy (<ModelGroup>) formats
+    old_groups_el = root.find("modelGroups")
+    if old_groups_el is not None:
+        old_mgs = old_groups_el.findall("modelGroup")
+    else:
+        old_mgs = root.findall("ModelGroup")
+    old_count = sum(
+        1 for mg in old_mgs
+        if any(mg.get("name", "").startswith(p) for p in AUTO_PREFIXES)
+    )
+
+    inject_groups(layout.raw_tree, groups)
+    dest = Path(output_path) if output_path else path
+    write_layout(layout, dest)
+
+    click.echo(f"xLights Layout Grouping")
+    click.echo(f"Layout:  {path}")
+    click.echo(f"Profile: {profile_label}")
+    click.echo(f"Props:   {len(layout.props)}")
+    click.echo("")
+    click.echo(f"Generated {len(groups)} groups across {len({g.tier for g in groups})} tiers.")
+    click.echo(f"Removed {old_count} previous auto-groups.")
+    click.echo(f"Written: {dest}")
+
+
 def main() -> None:
     cli()

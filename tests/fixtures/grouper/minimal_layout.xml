@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xlights_rgbeffects>
+    <!-- Single prop edge case -->
+    <model name="SingleArch" DisplayAs="Arch" WorldPosX="100.0" WorldPosY="100.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="25" />
+</xlights_rgbeffects>

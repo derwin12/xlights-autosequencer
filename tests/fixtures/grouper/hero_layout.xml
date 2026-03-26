@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xlights_rgbeffects>
+    <!-- A regular prop -->
+    <model name="ArchLeft" DisplayAs="Arch" WorldPosX="100.0" WorldPosY="50.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+    <!-- A singing face with sub-models -->
+    <model name="SingingFace" DisplayAs="Custom" WorldPosX="300.0" WorldPosY="200.0" WorldPosZ="0.0"
+           ScaleX="1.5" ScaleY="2.0" parm1="5" parm2="60">
+        <subModel name="Eyes" nodesOrValues="1-30" />
+        <subModel name="Mouth" nodesOrValues="31-60" />
+    </model>
+    <!-- A mega tree -->
+    <model name="MegaTree" DisplayAs="Tree 360" WorldPosX="500.0" WorldPosY="150.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="4.0" parm1="16" parm2="50" />
+    <!-- Another regular prop -->
+    <model name="ArchRight" DisplayAs="Arch" WorldPosX="700.0" WorldPosY="50.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+</xlights_rgbeffects>

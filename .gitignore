@@ -34,6 +34,7 @@ htmlcov/
 # Exception: keep fixture generation script output notes
 !tests/fixtures/README.md
 !tests/fixtures/*.json
+!tests/fixtures/**/*.xml
 
 # Generated hierarchy output inside fixture dirs
 tests/fixtures/**/*_hierarchy.json

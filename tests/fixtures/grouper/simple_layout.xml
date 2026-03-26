@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xlights_rgbeffects>
+    <!-- 8 props with varied X/Y positions and different pixel counts / aspect ratios -->
+    <!-- Left side, bottom row — low-density horizontal -->
+    <model name="ArchLeft1" DisplayAs="Arch" WorldPosX="50.0" WorldPosY="40.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+    <!-- Left-center, bottom -->
+    <model name="ArchLeft2" DisplayAs="Arch" WorldPosX="150.0" WorldPosY="40.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+    <!-- Center-left, mid — vertical, hi-density -->
+    <model name="TreeLeft" DisplayAs="Poly Line" WorldPosX="200.0" WorldPosY="200.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="2.0" parm1="10" parm2="100" />
+    <!-- Center, top — hi-density matrix -->
+    <model name="MatrixCenter" DisplayAs="Matrix" WorldPosX="300.0" WorldPosY="350.0" WorldPosZ="0.0"
+           ScaleX="3.0" ScaleY="2.0" parm1="20" parm2="30" />
+    <!-- Center-right, mid — vertical -->
+    <model name="TreeRight" DisplayAs="Poly Line" WorldPosX="400.0" WorldPosY="200.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="2.0" parm1="10" parm2="100" />
+    <!-- Right-center, bottom -->
+    <model name="ArchRight2" DisplayAs="Arch" WorldPosX="450.0" WorldPosY="40.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+    <!-- Right, bottom -->
+    <model name="ArchRight1" DisplayAs="Arch" WorldPosX="550.0" WorldPosY="40.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+    <!-- Right, top — vertical hi-density -->
+    <model name="RooflineRight" DisplayAs="Poly Line" WorldPosX="500.0" WorldPosY="350.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="3.0" parm1="1" parm2="600" />
+    <!-- Pre-existing manual group (must not be removed) -->
+    <ModelGroup name="MyManualGroup" models="ArchLeft1,ArchRight1" />
+    <!-- Pre-existing auto-group (must be removed on re-run) -->
+    <ModelGroup name="01_BASE_All" models="ArchLeft1" />
+</xlights_rgbeffects>
