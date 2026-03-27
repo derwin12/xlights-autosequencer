@@ -25,6 +25,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-26
 - `xlights_rgbeffects.xml` — read and rewritten in-place (backup optional) (017-xlights-layout-grouping)
 - Python 3.11+ + `json` (stdlib), `pathlib` (stdlib) — no new dependencies (018-effect-themes-library)
 - `src/effects/builtin_effects.json` (built-in catalog), `~/.xlight/custom_effects/*.json` (custom overrides) (018-effect-themes-library)
+- Python 3.11+ + `json` (stdlib), `pathlib` (stdlib), `src.effects` (feature 018) (019-effect-themes)
+- `src/themes/builtin_themes.json` (built-in), `~/.xlight/custom_themes/*.json` (custom) (019-effect-themes)
 
 - **Language**: Python 3.11+
 - **Audio analysis**: vamp (Python host), librosa 0.10+, madmom 0.16+
@@ -99,9 +101,9 @@ pytest tests/ -v
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
+- 019-effect-themes: Added Python 3.11+ + `json` (stdlib), `pathlib` (stdlib), `src.effects` (feature 018)
 - 018-effect-themes-library: Added Python 3.11+ + `json` (stdlib), `pathlib` (stdlib) — no new dependencies
 - 017-xlights-layout-grouping: Added Python 3.11+ + `xml.etree.ElementTree` (stdlib), `click` 8+ (existing)
-- 016-hierarchy-orchestrator: Added Python 3.11+ + librosa 0.10+, vamp (optional), madmom 0.16+ (optional), demucs/torch (optional), click 8+ (CLI), numpy
   `htdemucs_6s` separates audio into 6 stems (drums, bass, vocals, guitar, piano, other).
   Algorithms route to their preferred stem via `Algorithm.preferred_stem` class attribute.
   Stems are MD5-cached in `.stems/<hash>/` adjacent to the source file. Each `TimingTrack`

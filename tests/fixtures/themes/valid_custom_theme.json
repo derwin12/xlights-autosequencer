@@ -1,0 +1,17 @@
+{
+  "name": "Test Aggressive",
+  "mood": "aggressive",
+  "occasion": "general",
+  "genre": "rock",
+  "intent": "Custom override — different palette",
+  "layers": [
+    {
+      "effect": "Fire",
+      "blend_mode": "Normal",
+      "parameter_overrides": {
+        "E_SLIDER_Fire_Height": 99
+      }
+    }
+  ],
+  "palette": ["#0000FF", "#4400FF"]
+}

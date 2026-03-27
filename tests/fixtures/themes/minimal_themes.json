@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0.0",
+  "themes": {
+    "Test Ethereal": {
+      "name": "Test Ethereal",
+      "mood": "ethereal",
+      "occasion": "general",
+      "genre": "any",
+      "intent": "Gentle ambient theme for testing",
+      "layers": [
+        {
+          "effect": "Bars",
+          "blend_mode": "Normal",
+          "parameter_overrides": {
+            "E_SLIDER_Bars_BarCount": 3
+          }
+        },
+        {
+          "effect": "On",
+          "blend_mode": "Additive",
+          "parameter_overrides": {}
+        }
+      ],
+      "palette": ["#4488FF", "#88CCFF", "#FFFFFF"]
+    },
+    "Test Aggressive": {
+      "name": "Test Aggressive",
+      "mood": "aggressive",
+      "occasion": "general",
+      "genre": "rock",
+      "intent": "High energy theme for testing",
+      "layers": [
+        {
+          "effect": "Fire",
+          "blend_mode": "Normal",
+          "parameter_overrides": {
+            "E_SLIDER_Fire_Height": 80
+          }
+        }
+      ],
+      "palette": ["#FF4400", "#FF8800", "#FFCC00"]
+    },
+    "Test Christmas": {
+      "name": "Test Christmas",
+      "mood": "ethereal",
+      "occasion": "christmas",
+      "genre": "pop",
+      "intent": "Holiday test theme",
+      "layers": [
+        {
+          "effect": "On",
+          "blend_mode": "Normal",
+          "parameter_overrides": {}
+        },
+        {
+          "effect": "Bars",
+          "blend_mode": "Additive",
+          "parameter_overrides": {
+            "E_CHOICE_Bars_Direction": "up"
+          }
+        }
+      ],
+      "palette": ["#FF0000", "#00FF00", "#FFD700"]
+    }
+  }
+}
