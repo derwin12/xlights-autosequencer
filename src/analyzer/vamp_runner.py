@@ -26,6 +26,15 @@ import json
 import os
 import sys
 
+# ── Restore deprecated numpy aliases for madmom 0.16.1 compatibility ─────────
+# Madmom's compiled Cython extensions reference np.float/np.int which were
+# removed in numpy 1.24+. Monkey-patching before any madmom import fixes this.
+import numpy as _np  # noqa: E402
+for _alias, _target in [("float", _np.float64), ("int", _np.int64),
+                         ("bool", _np.bool_), ("complex", _np.complex128)]:
+    if not hasattr(_np, _alias):
+        setattr(_np, _alias, _target)
+
 # ── Add the repo root to sys.path so src.* imports work ──────────────────────
 # This file lives at src/analyzer/vamp_runner.py → repo root is 2 levels up.
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

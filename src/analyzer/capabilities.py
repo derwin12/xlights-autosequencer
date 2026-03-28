@@ -48,9 +48,15 @@ def detect_capabilities() -> dict[str, bool]:
         pass
 
     try:
+        # madmom 0.16.1 needs deprecated numpy aliases restored before import
+        import numpy as _np
+        _np.float = _np.float64   # type: ignore[attr-defined]
+        _np.int = _np.int64       # type: ignore[attr-defined]
+        _np.bool = _np.bool_      # type: ignore[attr-defined]
+        _np.complex = _np.complex128  # type: ignore[attr-defined]
         import madmom  # noqa: F401
         caps["madmom"] = True
-    except ImportError:
+    except (ImportError, AttributeError):
         pass
 
     try:
