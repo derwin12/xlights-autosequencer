@@ -90,16 +90,29 @@ def build_plan(
     profile.genre = config.genre
     profile.occasion = config.occasion
 
-    # 2. Derive section energies
+    # 2. Derive section energies (dynamic complexity + LUFS normalization)
+    ef = hierarchy.essentia_features or {}
     section_energies = derive_section_energies(
         hierarchy.sections,
         hierarchy.energy_curves,
         hierarchy.energy_impacts,
+        dynamic_complexity=ef.get("dynamic_complexity"),
+        loudness_lufs=ef.get("loudness_lufs"),
     )
 
-    # 3. Select themes
+    # 3. Select themes (key/scale can infer mood automatically)
+    inferred_genre = config.genre
+    inferred_occasion = config.occasion
+
+    # Auto-infer mood-appropriate genre from essentia key analysis
+    if inferred_genre == "pop" and ef.get("scale"):
+        # If user didn't explicitly set genre, let the key/scale inform it
+        if ef["scale"] == "minor" and ef.get("key_strength", 0) > 0.6:
+            inferred_genre = "classical"  # minor key → favor darker themes
+
     assignments = select_themes(
-        section_energies, theme_library, config.genre, config.occasion
+        section_energies, theme_library, inferred_genre, inferred_occasion,
+        scale=ef.get("scale"),
     )
 
     # Apply theme overrides if specified
@@ -208,8 +221,10 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
     profile.occasion = config.occasion
 
     target_section_energies = [s for s in section_energies if s.label in target_labels]
+    ef_regen = hierarchy.essentia_features or {}
     assignments = select_themes(
-        target_section_energies, theme_library, config.genre, config.occasion
+        target_section_energies, theme_library, config.genre, config.occasion,
+        scale=ef_regen.get("scale"),
     )
 
     for assignment in assignments:

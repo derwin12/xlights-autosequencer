@@ -499,6 +499,9 @@ class HierarchyResult:
     # Interactions
     interactions: Optional["InteractionResult"] = None
 
+    # Essentia high-level features (danceability, dynamics, key, loudness)
+    essentia_features: Optional[dict] = None
+
     # Metadata
     stems_available: list[str] = field(default_factory=list)
     capabilities: dict[str, bool] = field(default_factory=dict)
@@ -544,6 +547,7 @@ class HierarchyResult:
             "chords": self.chords.to_dict() if self.chords else None,
             "key_changes": self.key_changes.to_dict() if self.key_changes else None,
             "interactions": self.interactions.to_dict() if self.interactions else None,
+            "essentia_features": self.essentia_features,
             "stems_available": self.stems_available,
             "capabilities": self.capabilities,
             "algorithms_run": self.algorithms_run,
@@ -604,6 +608,7 @@ class HierarchyResult:
         obj.key_changes = TimingTrack.from_dict(key_data) if key_data else None
         ir_data = d.get("interactions")
         obj.interactions = InteractionResult.from_dict(ir_data) if ir_data else None
+        obj.essentia_features = d.get("essentia_features")
         obj.stems_available = d.get("stems_available", [])
         obj.capabilities = d.get("capabilities", {})
         obj.algorithms_run = d.get("algorithms_run", [])

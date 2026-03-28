@@ -17,6 +17,7 @@ def detect_capabilities() -> dict[str, bool]:
         "vamp": False,
         "madmom": False,
         "demucs": False,
+        "essentia": False,
         "whisperx": False,
         "genius": False,
     }
@@ -26,9 +27,14 @@ def detect_capabilities() -> dict[str, bool]:
         import vamp  # noqa: F401
         plugin_dirs = [
             os.path.expanduser("~/Library/Audio/Plug-Ins/Vamp"),  # macOS
+            os.path.expanduser("~/.local/lib/vamp"),  # Linux user-local
             "/usr/local/lib/vamp",
             "/usr/lib/vamp",
         ]
+        # Also honour VAMP_PATH environment variable
+        vamp_path = os.environ.get("VAMP_PATH", "")
+        if vamp_path:
+            plugin_dirs = vamp_path.split(os.pathsep) + plugin_dirs
         has_plugins = any(
             os.path.isdir(d) and any(
                 f.endswith(".dylib") or f.endswith(".so")
@@ -57,6 +63,12 @@ def detect_capabilities() -> dict[str, bool]:
     try:
         import whisperx  # noqa: F401
         caps["whisperx"] = True
+    except ImportError:
+        pass
+
+    try:
+        import essentia.standard  # noqa: F401
+        caps["essentia"] = True
     except ImportError:
         pass
 

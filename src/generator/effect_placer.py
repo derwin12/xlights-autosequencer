@@ -7,6 +7,13 @@ from typing import Any
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import EffectLibrary
 from src.effects.models import VALID_DURATION_TYPES, EffectDefinition
+from src.generator.chord_colors import (
+    adjust_palette_brightness,
+    blend_palettes,
+    build_tension_curve,
+    generate_chord_palette,
+    tension_at_time,
+)
 from src.generator.models import (
     FRAME_INTERVAL_MS,
     EffectPlacement,
@@ -63,6 +70,9 @@ def place_effects(
     - Middle layer(s) -> tiers 3-6 (type/beat/fidelity/prop groups)
     - Top layer(s) -> tiers 7-8 (compound/hero groups)
 
+    When chord data is available (L6 Harmony), palettes are blended with
+    chord-derived colors and brightness is modulated by harmonic tension.
+
     Returns: group_name -> list of EffectPlacement
     """
     section = assignment.section
@@ -71,6 +81,25 @@ def place_effects(
 
     if not layers:
         return {}
+
+    # Build chord/tension data if available
+    chord_marks = None
+    tension_curve = None
+    if hierarchy.chords and hierarchy.chords.marks:
+        chord_marks = hierarchy.chords.marks
+        tension_curve = build_tension_curve(chord_marks, hierarchy.duration_ms)
+
+    # Extract essentia features if available
+    ef = hierarchy.essentia_features or {}
+    danceability = ef.get("danceability")
+
+    # Adaptive chord weight: songs with rich harmony get more chord-color
+    # influence; simple I-IV-V songs rely more on theme palette.
+    # 40 unique chords → 0.50 (max), 10 unique → 0.12, 0 → 0.0
+    chord_weight = 0.0
+    if chord_marks:
+        unique_chords = len({m.label for m in chord_marks if m.label and m.label != "N"})
+        chord_weight = min(0.50, unique_chords / 80.0)
 
     # Map layers to tier sets
     layer_tier_map = _assign_layers_to_tiers(layers)
@@ -104,6 +133,10 @@ def place_effects(
             hierarchy=hierarchy,
             palette=theme.palette,
             variation_seed=assignment.variation_seed,
+            chord_marks=chord_marks,
+            tension_curve=tension_curve,
+            danceability=danceability,
+            chord_weight=chord_weight,
         )
         if placements:
             result.setdefault(group.name, []).extend(placements)
@@ -199,6 +232,10 @@ def _place_effect_on_group(
     hierarchy: HierarchyResult,
     palette: list[str],
     variation_seed: int = 0,
+    chord_marks: list[TimingMark] | None = None,
+    tension_curve: list[tuple[int, int]] | None = None,
+    danceability: float | None = None,
+    chord_weight: float = 0.4,
 ) -> list[EffectPlacement]:
     """Create effect placement instances for a group within a section."""
     start_ms = section.start_ms
@@ -211,33 +248,40 @@ def _place_effect_on_group(
     if variation_seed > 0:
         params = _apply_variation(params, variation_seed)
 
+    # Resolve palette: blend with chord colors if available
+    resolved_palette = _resolve_palette(palette, chord_marks, tension_curve, start_ms, end_ms, chord_weight)
+
     if duration_type == "section":
         return [_make_placement(
             effect_def, group.name, start_ms, end_ms,
-            params, palette, layer.blend_mode, duration_type,
+            params, resolved_palette, layer.blend_mode, duration_type,
         )]
 
     elif duration_type == "bar":
         return _place_per_bar(
             effect_def, group.name, section, hierarchy,
-            params, palette, layer.blend_mode,
+            params, resolved_palette, layer.blend_mode,
+            chord_marks=chord_marks, tension_curve=tension_curve,
+            chord_weight=chord_weight,
         )
 
     elif duration_type == "beat":
         return _place_per_beat(
             effect_def, group.name, section, hierarchy,
-            params, palette, layer.blend_mode,
+            params, resolved_palette, layer.blend_mode,
+            chord_marks=chord_marks, tension_curve=tension_curve,
+            danceability=danceability, chord_weight=chord_weight,
         )
 
     elif duration_type == "trigger":
         return _place_per_trigger(
             effect_def, group.name, section, hierarchy,
-            params, palette, layer.blend_mode,
+            params, resolved_palette, layer.blend_mode,
         )
 
     return [_make_placement(
         effect_def, group.name, start_ms, end_ms,
-        params, palette, layer.blend_mode, "section",
+        params, resolved_palette, layer.blend_mode, "section",
     )]
 
 
@@ -284,10 +328,36 @@ def _place_chase_across_groups(
     return result
 
 
+def _resolve_palette(
+    theme_palette: list[str],
+    chord_marks: list[TimingMark] | None,
+    tension_curve: list[tuple[int, int]] | None,
+    start_ms: int,
+    end_ms: int,
+    chord_weight: float = 0.4,
+) -> list[str]:
+    """Blend theme palette with chord colors and apply tension brightness."""
+    if not chord_marks or chord_weight <= 0:
+        return theme_palette
+
+    chord_pal = generate_chord_palette(chord_marks, start_ms, end_ms)
+    blended = blend_palettes(theme_palette, chord_pal, chord_weight=chord_weight)
+
+    if tension_curve:
+        mid_ms = (start_ms + end_ms) // 2
+        tension = tension_at_time(tension_curve, mid_ms)
+        blended = adjust_palette_brightness(blended, tension)
+
+    return blended
+
+
 def _place_per_bar(
     effect_def: EffectDefinition, group_name: str, section: SectionEnergy,
     hierarchy: HierarchyResult, params: dict[str, Any],
     palette: list[str], blend_mode: str,
+    chord_marks: list[TimingMark] | None = None,
+    tension_curve: list[tuple[int, int]] | None = None,
+    chord_weight: float = 0.4,
 ) -> list[EffectPlacement]:
     """Place one effect instance per bar within the section."""
     bars_track = hierarchy.bars
@@ -304,9 +374,10 @@ def _place_per_bar(
         bar_end = marks[i + 1].time_ms if i + 1 < len(marks) else section.end_ms
         if bar_end <= bar_start:
             continue
+        bar_palette = _resolve_palette(palette, chord_marks, tension_curve, bar_start, bar_end, chord_weight)
         placements.append(_make_placement(
             effect_def, group_name, bar_start, bar_end,
-            params, palette, blend_mode, "bar",
+            params, bar_palette, blend_mode, "bar",
             instance_index=i,
         ))
     return placements
@@ -316,6 +387,10 @@ def _place_per_beat(
     effect_def: EffectDefinition, group_name: str, section: SectionEnergy,
     hierarchy: HierarchyResult, params: dict[str, Any],
     palette: list[str], blend_mode: str,
+    chord_marks: list[TimingMark] | None = None,
+    tension_curve: list[tuple[int, int]] | None = None,
+    danceability: float | None = None,
+    chord_weight: float = 0.4,
 ) -> list[EffectPlacement]:
     """Place effect instances per beat, subject to energy-driven density."""
     beats_track = hierarchy.beats
@@ -326,7 +401,7 @@ def _place_per_beat(
         )]
 
     marks = _marks_in_range(beats_track.marks, section.start_ms, section.end_ms)
-    marks = _apply_density_filter(marks, section.energy_score)
+    marks = _apply_density_filter(marks, section.energy_score, danceability=danceability)
 
     placements = []
     for i, mark in enumerate(marks):
@@ -336,9 +411,10 @@ def _place_per_beat(
         )
         if beat_end <= beat_start:
             continue
+        beat_palette = _resolve_palette(palette, chord_marks, tension_curve, beat_start, beat_end, chord_weight)
         placements.append(_make_placement(
             effect_def, group_name, beat_start, beat_end,
-            params, palette, blend_mode, "beat",
+            params, beat_palette, blend_mode, "beat",
             instance_index=i,
         ))
     return placements
@@ -432,22 +508,33 @@ def _marks_in_range(
 
 
 def _apply_density_filter(
-    marks: list[TimingMark], energy_score: int
+    marks: list[TimingMark], energy_score: int,
+    danceability: float | None = None,
 ) -> list[TimingMark]:
     """Filter marks based on energy-driven density.
 
     High energy (80+): use ~90% of marks
     Low energy (20): use ~50% of marks
     Linear interpolation between.
+
+    If danceability is available (from essentia), high danceability (>1.0)
+    boosts density by up to +0.10 — songs with strong rhythmic drive
+    benefit from more beat-synced effects.
     """
     if not marks:
         return marks
 
     # Map energy 0-100 to density 0.5-0.9
     density = 0.5 + (energy_score / 100.0) * 0.4
-    density = max(0.5, min(0.9, density))
 
-    if density >= 0.9:
+    # Danceability boost: 0.0->+0.00, 1.0->+0.05, 2.0->+0.10
+    if danceability is not None and danceability > 0:
+        boost = min(0.10, danceability * 0.05)
+        density += boost
+
+    density = max(0.5, min(0.95, density))
+
+    if density >= 0.95:
         return marks
 
     # Deterministic selection using step-based skipping

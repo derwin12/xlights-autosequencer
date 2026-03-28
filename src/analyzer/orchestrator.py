@@ -248,7 +248,8 @@ def run_orchestrator(
 
     cap_str = (f"Capabilities: vamp {'✓' if caps['vamp'] else '✗'}  "
                f"madmom {'✓' if caps['madmom'] else '✗'}  "
-               f"demucs {'✓' if caps['demucs'] else '✗'}")
+               f"demucs {'✓' if caps['demucs'] else '✗'}  "
+               f"essentia {'✓' if caps.get('essentia') else '✗'}")
     print(cap_str)
 
     # ── Stage 5: Stem separation ──────────────────────────────────────────────
@@ -513,6 +514,20 @@ def run_orchestrator(
         except Exception as exc:
             warnings.append(f"Solo detection failed: {exc}")
 
+    # ── Stage 9c: Essentia high-level features ─────────────────────────────────
+    essentia_features = None
+    if caps.get("essentia"):
+        try:
+            from src.analyzer.essentia_features import extract_essentia_features
+            essentia_features = extract_essentia_features(audio, sr).to_dict()
+            ef = essentia_features
+            print(f"Essentia: key={ef['key']} {ef['scale']}  "
+                  f"danceability={ef['danceability']:.2f}  "
+                  f"dynamics={ef['dynamic_complexity']:.1f}  "
+                  f"loudness={ef['loudness_lufs']:.1f} LUFS")
+        except Exception as exc:
+            warnings.append(f"Essentia analysis failed: {exc}")
+
     # ── Stage 10: Assemble result ─────────────────────────────────────────────
     result = HierarchyResult(
         schema_version=SCHEMA_VERSION,
@@ -535,6 +550,7 @@ def run_orchestrator(
         key_changes=key_changes,
         interactions=interactions,
         solos=solos,
+        essentia_features=essentia_features,
         stems_available=stems_available,
         capabilities=caps,
         algorithms_run=[a.name for a in algos],

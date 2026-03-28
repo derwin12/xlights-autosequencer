@@ -1831,5 +1831,89 @@ def generate_wizard_cmd(audio_file):
     click.echo(fseq_guidance(output_path))
 
 
+@cli.command("chord-stats")
+@click.argument("analysis_json", type=click.Path(exists=True, dir_okay=False))
+def chord_stats_cmd(analysis_json: str) -> None:
+    """Show chordino change frequency and label distribution from an analysis JSON."""
+    from src.analyzer.result import TimingMark
+
+    try:
+        data = json.loads(Path(analysis_json).read_text(encoding="utf-8"))
+    except Exception as exc:
+        click.echo(f"ERROR: Cannot read {analysis_json}: {exc}", err=True)
+        sys.exit(1)
+
+    # Support both hierarchy (schema 2.0.0) and flat analysis formats
+    marks: list[TimingMark] = []
+    source_name = ""
+    duration_ms = 0
+    estimated_bpm = 0.0
+
+    if data.get("schema_version") == "2.0.0":
+        # Hierarchy format — chords are in the top-level "chords" field
+        source_name = Path(data.get("source_file", analysis_json)).name
+        duration_ms = data.get("duration_ms", 0)
+        estimated_bpm = data.get("estimated_bpm", 0.0)
+        chords = data.get("chords")
+        if chords and isinstance(chords, dict):
+            raw_marks = chords.get("marks", [])
+            marks = [
+                TimingMark(
+                    time_ms=m["time_ms"],
+                    confidence=m.get("confidence"),
+                    label=m.get("label"),
+                )
+                for m in raw_marks
+            ]
+    else:
+        # Flat AnalysisResult format
+        try:
+            result = export_mod.read(analysis_json)
+        except Exception as exc:
+            click.echo(f"ERROR: Cannot parse {analysis_json}: {exc}", err=True)
+            sys.exit(1)
+        source_name = result.filename
+        duration_ms = result.duration_ms
+        estimated_bpm = result.estimated_tempo_bpm or 0.0
+        tracks = [t for t in result.timing_tracks if t.name == "chordino_chords"]
+        if tracks:
+            marks = tracks[0].marks
+
+    if not marks:
+        click.echo("No chordino chord data found in this analysis.", err=True)
+        sys.exit(1)
+
+    click.echo(f"\nSource: {source_name}  ({_format_duration(duration_ms)})")
+    click.echo(f"Chordino changes: {len(marks)}")
+
+    if len(marks) >= 2:
+        intervals = [
+            marks[i + 1].time_ms - marks[i].time_ms
+            for i in range(len(marks) - 1)
+        ]
+        avg_ms = sum(intervals) / len(intervals)
+        min_ms = min(intervals)
+        max_ms = max(intervals)
+        click.echo(f"Avg interval:     {avg_ms:.0f} ms  ({avg_ms / 1000:.2f} s)")
+        click.echo(f"Min / Max:        {min_ms} ms / {max_ms} ms")
+        if estimated_bpm:
+            beat_ms = 60_000 / estimated_bpm
+            click.echo(f"Beats per change: {avg_ms / beat_ms:.1f}  (at {estimated_bpm} BPM)")
+    elif len(marks) == 1:
+        click.echo("Only one chord detected — interval stats not available.")
+
+    labels = [m.label for m in marks if m.label]
+    if labels:
+        from collections import Counter
+        counts = Counter(labels).most_common()
+        click.echo(f"\nLabel distribution ({len(labels)} labelled / {len(marks)} total):")
+        for label, count in counts:
+            pct = count / len(marks) * 100
+            bar = "#" * int(pct / 2)
+            click.echo(f"  {label:<14}  {count:>4}  ({pct:4.1f}%)  {bar}")
+    else:
+        click.echo("\nNo labels on marks (chordino output may not include chord names).")
+
+
 def main() -> None:
     cli()
