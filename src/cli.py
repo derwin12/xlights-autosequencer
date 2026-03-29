@@ -1915,5 +1915,215 @@ def chord_stats_cmd(analysis_json: str) -> None:
         click.echo("\nNo labels on marks (chordino output may not include chord names).")
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# cross-song parameter tuning commands
+# ──────────────────────────────────────────────────────────────────────────────
+
+@cli.command("tune")
+@click.argument("audio_files", nargs=-1, required=True, type=click.Path(exists=True))
+@click.option("--batch", "-b", type=int, default=None,
+              help="Run a specific batch (1-4). Omit to run all sequentially.")
+@click.option("--output", "-o", type=click.Path(), default=None,
+              help="Output directory for tuning results")
+@click.option("--sample-duration", type=float, default=30.0,
+              help="Duration of audio sample to analyze (seconds)")
+@click.option("--sample-start", type=float, default=30.0,
+              help="Start offset for audio sample (seconds)")
+@click.option("--resume", type=click.Path(exists=True), default=None,
+              help="Resume from a previous tuning_session.json")
+def tune_cmd(
+    audio_files: tuple[str, ...],
+    batch: int | None,
+    output: str | None,
+    sample_duration: float,
+    sample_start: float,
+    resume: str | None,
+) -> None:
+    """Run cross-song parameter tuning across multiple audio files.
+
+    Sweeps parameters in prioritized batches (onset detection first, then
+    beat/tempo, pitch/melody, and envelope/percussion). Each batch locks
+    in optimal values before the next batch runs.
+
+    Examples:
+
+        xlight-analyze tune song1.mp3 song2.mp3 song3.mp3
+
+        xlight-analyze tune *.mp3 --batch 1
+
+        xlight-analyze tune *.mp3 --resume tuning_results/tuning_session.json
+    """
+    from src.analyzer.cross_song_tuner import (
+        CrossSongTuner, OptimalDefaults, TUNING_BATCHES, TuningSession,
+    )
+
+    songs = list(audio_files)
+    click.echo(f"\nCross-song parameter tuning")
+    click.echo(f"  Songs:           {len(songs)}")
+    for s in songs:
+        click.echo(f"    - {Path(s).name}")
+    click.echo(f"  Sample:          {sample_start:.0f}s offset, {sample_duration:.0f}s duration")
+
+    tuner = CrossSongTuner(
+        song_paths=songs,
+        output_dir=output,
+        sample_duration_s=sample_duration,
+        sample_start_s=sample_start,
+    )
+
+    # Resume from previous session
+    if resume:
+        prev = TuningSession.read(resume)
+        tuner._locked_params = dict(prev.locked_params)
+        tuner._session.locked_params = dict(prev.locked_params)
+        tuner._session.batch_reports = list(prev.batch_reports)
+        completed_ids = {br.batch_id for br in prev.batch_reports}
+        click.echo(f"  Resumed:         batches {sorted(completed_ids)} already done")
+        click.echo(f"  Locked params:   {prev.locked_params}")
+
+    batches_to_run = [batch] if batch else [b.batch_id for b in TUNING_BATCHES]
+
+    # Skip already-completed batches when resuming
+    if resume:
+        batches_to_run = [b for b in batches_to_run if b not in completed_ids]
+
+    click.echo(f"  Batches to run:  {batches_to_run}")
+    click.echo()
+
+    def _progress(event, *args):
+        if event == "song_start":
+            idx, total, name, batch_name = args
+            click.echo(f"  [{idx}/{total}] {name} — {batch_name}...")
+        elif event == "song_done":
+            idx, total, name, info = args
+            click.echo(f"  [{idx}/{total}] {name} — {info}")
+
+    for bid in batches_to_run:
+        from src.analyzer.cross_song_tuner import get_batch
+        b = get_batch(bid)
+        click.echo(f"{'=' * 60}")
+        click.echo(f"BATCH {bid}: {b.name}")
+        click.echo(f"  {b.description}")
+        params_str = ", ".join(p.name for p in b.params)
+        click.echo(f"  Parameters: {params_str}")
+        if tuner.locked_params:
+            click.echo(f"  Locked from previous: {tuner.locked_params}")
+        click.echo()
+
+        report = tuner.run_batch(bid, progress_callback=_progress)
+
+        # Display recommendations
+        click.echo(f"\n  Results for Batch {bid}:")
+        click.echo(f"  {'PARAMETER':<20} {'OPTIMAL':>10} {'DEFAULT':>10} {'IMPROVE':>10} {'AGREE':>8}")
+        click.echo(f"  {'-'*20} {'-'*10} {'-'*10} {'-'*10} {'-'*8}")
+        for rec in report.recommendations:
+            click.echo(
+                f"  {rec.param_name:<20} {rec.optimal_value:>10.4f} "
+                f"{rec.default_value:>10.4f} {rec.improvement_pct:>9.1f}% "
+                f"{rec.agreement_score:>7.0%}"
+            )
+            click.echo(f"    {rec.notes}")
+
+        # Lock in optimal values
+        newly_locked = tuner.lock_recommendations(report)
+        if newly_locked:
+            click.echo(f"\n  Locked: {newly_locked}")
+        click.echo()
+
+    # Generate final optimal defaults
+    defaults = OptimalDefaults.from_session(tuner.session)
+    defaults_path = tuner._output_dir / "optimal_defaults.json"
+    defaults.write(defaults_path)
+
+    click.echo(f"{'=' * 60}")
+    click.echo("OPTIMAL DEFAULTS (across all songs)")
+    click.echo(f"  {'PARAMETER':<20} {'VALUE':>12} {'vs DEFAULT':>12}")
+    click.echo(f"  {'-'*20} {'-'*12} {'-'*12}")
+    for param, value in defaults.params.items():
+        meta = defaults.metadata[param]
+        change = f"{meta['improvement_pct']:+.1f}%"
+        click.echo(f"  {param:<20} {value:>12.4f} {change:>12}")
+
+    click.echo(f"\n  Results saved to: {tuner._output_dir}")
+    click.echo(f"  Session:  tuning_session.json")
+    click.echo(f"  Defaults: optimal_defaults.json")
+
+
+@cli.command("tune-status")
+@click.argument("session_json", type=click.Path(exists=True))
+def tune_status_cmd(session_json: str) -> None:
+    """Show the status of a tuning session."""
+    from src.analyzer.cross_song_tuner import TuningSession, OptimalDefaults
+
+    session = TuningSession.read(session_json)
+
+    click.echo(f"\nTuning Session: {session.session_id}")
+    click.echo(f"  Songs: {', '.join(session.songs)}")
+    click.echo(f"  Created: {session.created_at}")
+    click.echo(f"  Updated: {session.updated_at}")
+    click.echo(f"  Batches completed: {len(session.batch_reports)}/4")
+
+    if session.locked_params:
+        click.echo(f"\n  Locked Parameters:")
+        for k, v in session.locked_params.items():
+            click.echo(f"    {k}: {v}")
+
+    for report in session.batch_reports:
+        click.echo(f"\n  Batch {report.batch_id}: {report.batch_name}")
+        for rec in report.recommendations:
+            arrow = ">>>" if rec.improvement_pct > 5 else "-->" if rec.improvement_pct > 0 else "==="
+            click.echo(
+                f"    {rec.param_name:<20} {rec.default_value:.4f} {arrow} "
+                f"{rec.optimal_value:.4f}  ({rec.improvement_pct:+.1f}%, "
+                f"agreement: {rec.agreement_score:.0%})"
+            )
+
+    if session.batch_reports:
+        defaults = OptimalDefaults.from_session(session)
+        click.echo(f"\n  Current optimal defaults:")
+        for k, v in defaults.params.items():
+            click.echo(f"    {k}: {v}")
+
+
+@cli.command("tune-apply")
+@click.argument("defaults_json", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Show what would change without modifying files")
+def tune_apply_cmd(defaults_json: str, dry_run: bool) -> None:
+    """Show how to apply optimal defaults to the algorithm configs.
+
+    Reads optimal_defaults.json and displays the algorithm parameter
+    updates that would result from applying these values.
+    """
+    from src.analyzer.cross_song_tuner import OptimalDefaults
+
+    defaults = OptimalDefaults(
+        params={}, metadata={}, songs_tested=[], generated_at=""
+    )
+    import json as _json
+    data = _json.loads(Path(defaults_json).read_text(encoding="utf-8"))
+    defaults.params = data["optimal_defaults"]
+    defaults.metadata = data.get("metadata", {})
+    defaults.songs_tested = data.get("songs_tested", [])
+
+    updates = defaults.apply_to_affinity_table()
+
+    click.echo(f"\nOptimal defaults from: {defaults_json}")
+    click.echo(f"Songs tested: {', '.join(defaults.songs_tested)}")
+    click.echo(f"\nAlgorithm parameter updates:")
+
+    for algo, params in sorted(updates.items()):
+        click.echo(f"\n  {algo}:")
+        for param, value in sorted(params.items()):
+            meta = defaults.metadata.get(param, {})
+            default = meta.get("default_value", "?")
+            click.echo(f"    {param}: {default} -> {value}")
+
+    if dry_run:
+        click.echo("\n  (dry-run — no files modified)")
+    else:
+        click.echo("\n  To apply: update algorithm default parameters in their class definitions,")
+        click.echo("  or pass these values via sweep configs / CLI overrides.")
+
+
 def main() -> None:
     cli()
