@@ -4,23 +4,14 @@ from __future__ import annotations
 import numpy as np
 
 from src.analyzer.algorithms.base import Algorithm
-from src.analyzer.result import TimingMark, TimingTrack
+from src.analyzer.algorithms.vamp_utils import vamp_list_to_marks
+from src.analyzer.result import TimingTrack
 
 __all__ = [
     "AubioOnsetAlgorithm",
     "AubioTempoAlgorithm",
     "AubioNotesAlgorithm",
 ]
-
-
-def _vamp_list_to_marks(items: list) -> list[TimingMark]:
-    marks = []
-    for item in items:
-        ts = item.get("timestamp") if isinstance(item, dict) else getattr(item, "timestamp", None)
-        if ts is not None:
-            ms = int(round(float(ts) * 1000))
-            marks.append(TimingMark(time_ms=ms, confidence=None))
-    return marks
 
 
 class AubioOnsetAlgorithm(Algorithm):
@@ -37,7 +28,7 @@ class AubioOnsetAlgorithm(Algorithm):
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
-        marks = _vamp_list_to_marks(outputs.get("list", []))
+        marks = vamp_list_to_marks(outputs.get("list", []))
         return TimingTrack(
             name=self.name, algorithm_name=self.name,
             element_type=self.element_type, marks=marks, quality_score=0.0,
@@ -58,7 +49,7 @@ class AubioTempoAlgorithm(Algorithm):
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
-        marks = _vamp_list_to_marks(outputs.get("list", []))
+        marks = vamp_list_to_marks(outputs.get("list", []))
         return TimingTrack(
             name=self.name, algorithm_name=self.name,
             element_type=self.element_type, marks=marks, quality_score=0.0,
@@ -79,7 +70,7 @@ class AubioNotesAlgorithm(Algorithm):
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
-        marks = _vamp_list_to_marks(outputs.get("list", []))
+        marks = vamp_list_to_marks(outputs.get("list", []))
         return TimingTrack(
             name=self.name, algorithm_name=self.name,
             element_type=self.element_type, marks=marks, quality_score=0.0,

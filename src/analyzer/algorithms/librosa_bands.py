@@ -9,6 +9,30 @@ from src.analyzer.result import TimingMark, TimingTrack
 _HOP_LENGTH = 512
 _N_FFT = 2048
 
+# Module-level STFT cache to avoid recomputing the same STFT 3 times
+# (once per band). Keyed by (id(audio), sample_rate) so it auto-invalidates
+# when a different audio array is passed.
+_stft_cache: dict[tuple[int, int], tuple[np.ndarray, np.ndarray]] = {}
+
+
+def _get_stft_and_freqs(
+    audio: np.ndarray, sample_rate: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return (magnitude_stft, freq_bins), computing once and caching."""
+    key = (id(audio), sample_rate)
+    cached = _stft_cache.get(key)
+    if cached is not None:
+        return cached
+
+    import librosa
+
+    stft = np.abs(librosa.stft(audio, n_fft=_N_FFT, hop_length=_HOP_LENGTH))
+    freqs = librosa.fft_frequencies(sr=sample_rate, n_fft=_N_FFT)
+    # Keep only one entry to bound memory
+    _stft_cache.clear()
+    _stft_cache[key] = (stft, freqs)
+    return stft, freqs
+
 
 def _band_onsets(
     audio: np.ndarray,
@@ -19,9 +43,7 @@ def _band_onsets(
     """Return onset times (seconds) for energy peaks in a frequency band."""
     import librosa
 
-    # Band-pass filter via stft masking
-    stft = np.abs(librosa.stft(audio, n_fft=_N_FFT, hop_length=_HOP_LENGTH))
-    freqs = librosa.fft_frequencies(sr=sample_rate, n_fft=_N_FFT)
+    stft, freqs = _get_stft_and_freqs(audio, sample_rate)
     mask = (freqs >= fmin) & (freqs <= fmax)
     band_stft = stft[mask, :]
 
@@ -41,7 +63,7 @@ def _band_onsets(
 
 
 class LibrosaBassAlgorithm(Algorithm):
-    """Bass band (20–250 Hz) onset detection."""
+    """Bass band (20-250 Hz) onset detection."""
 
     name = "bass"
     element_type = "frequency"
@@ -65,7 +87,7 @@ class LibrosaBassAlgorithm(Algorithm):
 
 
 class LibrosaMidAlgorithm(Algorithm):
-    """Mid band (250–4000 Hz) onset detection."""
+    """Mid band (250-4000 Hz) onset detection."""
 
     name = "mid"
     element_type = "frequency"
@@ -89,7 +111,7 @@ class LibrosaMidAlgorithm(Algorithm):
 
 
 class LibrosaTrebleAlgorithm(Algorithm):
-    """Treble band (4000–20000 Hz) onset detection."""
+    """Treble band (4000-20000 Hz) onset detection."""
 
     name = "treble"
     element_type = "frequency"

@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -77,10 +78,20 @@ class AnalysisRunner:
         local_algos = [a for a in self._algorithms if a.library not in _SUBPROCESS_LIBS]
         sub_algos   = [a for a in self._algorithms if a.library in _SUBPROCESS_LIBS]
 
-        # ── In-process algorithms (librosa) ──────────────────────────────────
-        for idx, algo in enumerate(local_algos):
+        # ── In-process algorithms (librosa) — run in parallel ────────────────
+        def _run_one(algo: Algorithm) -> tuple[Algorithm, TimingTrack | None]:
             algo_audio, algo_sr = _select_audio(algo, audio, sr, stems)
-            track = algo.run(algo_audio, algo_sr)
+            return algo, algo.run(algo_audio, algo_sr)
+
+        with ThreadPoolExecutor(max_workers=min(4, len(local_algos) or 1)) as pool:
+            futures = {pool.submit(_run_one, a): i for i, a in enumerate(local_algos)}
+            results_by_idx: dict[int, tuple[Algorithm, TimingTrack | None]] = {}
+            for future in as_completed(futures):
+                idx = futures[future]
+                results_by_idx[idx] = future.result()
+
+        for idx in sorted(results_by_idx):
+            algo, track = results_by_idx[idx]
             if track is not None:
                 track.quality_score = score_track(track)
                 track.stem_source = algo.preferred_stem if stems is not None else "full_mix"

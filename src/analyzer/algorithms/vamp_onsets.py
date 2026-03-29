@@ -4,16 +4,8 @@ from __future__ import annotations
 import numpy as np
 
 from src.analyzer.algorithms.base import Algorithm
-from src.analyzer.result import TimingMark, TimingTrack
-
-
-def _vamp_outputs_to_marks(outputs: list) -> list[TimingMark]:
-    marks = []
-    for output in outputs:
-        t = output["timestamp"]
-        t_sec = t.to_float() if hasattr(t, "to_float") else float(t)
-        marks.append(TimingMark(time_ms=int(round(t_sec * 1000)), confidence=None))
-    return marks
+from src.analyzer.algorithms.vamp_utils import vamp_outputs_to_marks
+from src.analyzer.result import TimingTrack
 
 
 class QMOnsetComplexAlgorithm(Algorithm):
@@ -36,7 +28,7 @@ class QMOnsetComplexAlgorithm(Algorithm):
             output=self.vamp_output,
             parameters=self.parameters,
         )
-        marks = _vamp_outputs_to_marks(outputs.get("list", []))
+        marks = vamp_outputs_to_marks(outputs.get("list", []))
         return TimingTrack(
             name=self.name,
             algorithm_name=self.name,
@@ -66,7 +58,7 @@ class QMOnsetHFCAlgorithm(Algorithm):
             output=self.vamp_output,
             parameters=self.parameters,
         )
-        marks = _vamp_outputs_to_marks(outputs.get("list", []))
+        marks = vamp_outputs_to_marks(outputs.get("list", []))
         return TimingTrack(
             name=self.name,
             algorithm_name=self.name,
@@ -96,7 +88,7 @@ class QMOnsetPhaseAlgorithm(Algorithm):
             output=self.vamp_output,
             parameters=self.parameters,
         )
-        marks = _vamp_outputs_to_marks(outputs.get("list", []))
+        marks = vamp_outputs_to_marks(outputs.get("list", []))
         return TimingTrack(
             name=self.name,
             algorithm_name=self.name,

@@ -164,7 +164,7 @@ class StemSeparator:
         model = get_model("htdemucs_6s")
         model.eval()
 
-        wav = torch.from_numpy(wav_np.copy())
+        wav = torch.from_numpy(np.ascontiguousarray(wav_np))
         if sr != model.samplerate:
             import torchaudio
             wav = torchaudio.functional.resample(wav, sr, model.samplerate)
