@@ -40,20 +40,28 @@ _FORCE_PALETTE_PARAMS: dict[str, dict[str, str]] = {
     "Bars": {"E_CHOICE_Bars_Direction": "Left"},
     "Fire": {"E_CHECKBOX_Fire_GrowWithMusic": "0"},
     "Garlands": {"E_CHOICE_Garlands_Type": "Palette"},
-    "Spirals": {"E_CHOICE_Spirals_Direction": "Right"},
+    "Spirals": {"E_CHOICE_Spirals_Direction": "Up"},
     "Curtain": {"E_CHOICE_Curtain_Effect": "open"},
-    "Liquid": {"E_CHOICE_Liquid_Direction": "Left"},
+    "Liquid": {"E_CHOICE_ParticleType": "Elastic"},
 }
 
 # Direction parameters that should alternate between instances.
 # Maps storage_name -> [even_value, odd_value]
 _ALTERNATING_DIRECTIONS: dict[str, list[str]] = {
-    "E_CHOICE_Bars_Direction": ["Left", "Right"],
-    "E_CHOICE_Spirals_Direction": ["Right", "Left"],
-    "E_CHOICE_Meteors_Effect": ["Down", "Up"],
-    "E_CHOICE_Curtain_Effect": ["open", "close"],
+    "E_CHOICE_Bars_Direction": ["Left", "Right", "expand", "compress"],
+    "E_CHOICE_Spirals_Direction": ["Up", "Down"],
+    "E_CHOICE_Meteors_Effect": ["Down", "Up", "Left", "Right"],
+    "E_CHOICE_Curtain_Effect": ["open", "close", "open then close", "close then open"],
+    "E_CHOICE_Curtain_Edge": ["center", "left", "right", "bottom", "top"],
     "E_CHOICE_Wave_Direction": ["Right to Left", "Left to Right"],
-    "E_CHOICE_Liquid_Direction": ["Left", "Right"],
+    "E_CHOICE_Chase_Type1": [
+        "Left-Right", "Right-Left", "From Middle", "To Middle",
+        "Bounce from Left", "Bounce from Right", "Dual Chase",
+    ],
+    "E_CHOICE_Skips_Direction": ["Left", "Right", "From Middle", "To Middle"],
+    "E_CHOICE_Ripple_Movement": ["Explode", "Implode"],
+    "E_CHOICE_Fire_Location": ["Bottom", "Top", "Left", "Right"],
+    "E_CHOICE_Fill_Direction": ["Up", "Down", "Left", "Right"],
 }
 
 

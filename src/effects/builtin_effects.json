@@ -44,6 +44,30 @@
           "choices": null,
           "description": "Enable shimmer (rapid on/off) on the solid color",
           "supports_value_curve": false
+        },
+        {
+          "name": "Eff_On_Start",
+          "storage_name": "E_TEXTCTRL_Eff_On_Start",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 255,
+          "choices": null,
+          "description": "Starting brightness level (0-255)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Eff_On_End",
+          "storage_name": "E_TEXTCTRL_Eff_On_End",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 255,
+          "choices": null,
+          "description": "Ending brightness level (0-255, enables fade in/out when different from start)",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -110,6 +134,21 @@
           "max": null,
           "choices": null,
           "description": "Fade to off over the effect duration instead of instant blackout",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Off_Style",
+          "storage_name": "E_CHOICE_Off_Style",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Black",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Black",
+            "Background"
+          ],
+          "description": "What to show when effect is off (black or pass-through background)",
           "supports_value_curve": false
         }
       ],
@@ -190,6 +229,30 @@
           "max": null,
           "choices": null,
           "description": "Enable shimmer overlay on the color wash",
+          "supports_value_curve": false
+        },
+        {
+          "name": "ColorWash_CircularPalette",
+          "storage_name": "E_CHECKBOX_ColorWash_CircularPalette",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Wrap palette colors circularly (seamless loop between last and first color)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "ColorWash_ReverseFades",
+          "storage_name": "E_CHECKBOX_ColorWash_ReverseFades",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Reverse the direction of horizontal/vertical fades",
           "supports_value_curve": false
         }
       ],
@@ -284,6 +347,42 @@
             "Right"
           ],
           "description": "Direction of the fill movement",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Fill_Skip_Size",
+          "storage_name": "E_SLIDER_Fill_Skip_Size",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Size of gaps between fill bands (0=no gaps)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fill_Color_Time",
+          "storage_name": "E_CHECKBOX_Fill_Color_Time",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Cycle colors over time instead of over position",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Fill_Wrap",
+          "storage_name": "E_CHECKBOX_Fill_Wrap",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Wrap the fill pattern around when it reaches the edge",
           "supports_value_curve": false
         }
       ],
@@ -423,6 +522,18 @@
           ],
           "description": "Pattern of the strobe flash across the model",
           "supports_value_curve": false
+        },
+        {
+          "name": "Strobe_Music",
+          "storage_name": "E_CHECKBOX_Strobe_Music",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Trigger strobe flashes from audio level (music reactive)",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -512,6 +623,21 @@
           "choices": null,
           "description": "Re-randomize twinkle positions each cycle",
           "supports_value_curve": false
+        },
+        {
+          "name": "Twinkle_Style",
+          "storage_name": "E_CHOICE_Twinkle_Style",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "New Render Method",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Old Render Method",
+            "New Render Method"
+          ],
+          "description": "Rendering method for twinkle animation",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -551,7 +677,7 @@
           "value_type": "int",
           "default": 1,
           "min": 1,
-          "max": 100,
+          "max": 5,
           "choices": null,
           "description": "Number of color bars visible at once",
           "supports_value_curve": true
@@ -588,7 +714,9 @@
             "Alternate Up",
             "Alternate Down",
             "Alternate Left",
-            "Alternate Right"
+            "Alternate Right",
+            "Custom Horz",
+            "Custom Vert"
           ],
           "description": "Direction of bar movement",
           "supports_value_curve": false
@@ -616,6 +744,42 @@
           "choices": null,
           "description": "Apply 3D shading to bars for depth effect",
           "supports_value_curve": false
+        },
+        {
+          "name": "Bars_Gradient",
+          "storage_name": "E_CHECKBOX_Bars_Gradient",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Apply gradient coloring across bar bands",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Bars_UseFirstColorForHighlight",
+          "storage_name": "E_CHECKBOX_Bars_UseFirstColorForHighlight",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Use the first palette color for the highlight edge instead of white",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Bars_Center",
+          "storage_name": "E_SLIDER_Bars_Center",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Center point offset for expand/compress directions",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -660,33 +824,45 @@
       "parameters": [
         {
           "name": "Butterfly_Colors",
-          "storage_name": "E_SLIDER_Butterfly_Colors",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 1,
-          "min": 1,
-          "max": 7,
-          "choices": null,
-          "description": "Number of palette colors used in the pattern",
+          "storage_name": "E_CHOICE_Butterfly_Colors",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Rainbow",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Rainbow",
+            "Palette"
+          ],
+          "description": "Color source for the butterfly pattern",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Butterfly_Direction",
+          "storage_name": "E_CHOICE_Butterfly_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Normal",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Normal",
+            "Reverse"
+          ],
+          "description": "Direction of the butterfly animation",
           "supports_value_curve": false
         },
         {
           "name": "Butterfly_Style",
-          "storage_name": "E_CHOICE_Butterfly_Style",
-          "widget_type": "choice",
-          "value_type": "choice",
-          "default": "1",
-          "min": null,
-          "max": null,
-          "choices": [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5"
-          ],
-          "description": "Mathematical style variant of the butterfly pattern",
-          "supports_value_curve": false
+          "storage_name": "E_SLIDER_Butterfly_Style",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "choices": null,
+          "description": "Mathematical style variant of the butterfly pattern (1-10)",
+          "supports_value_curve": true
         },
         {
           "name": "Butterfly_Chunks",
@@ -719,7 +895,7 @@
           "value_type": "int",
           "default": 10,
           "min": 0,
-          "max": 50,
+          "max": 100,
           "choices": null,
           "description": "Animation speed of the butterfly pattern",
           "supports_value_curve": true
@@ -814,6 +990,54 @@
           "choices": null,
           "description": "Enable collision detection between circles",
           "supports_value_curve": false
+        },
+        {
+          "name": "Circles_Speed",
+          "storage_name": "E_SLIDER_Circles_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 50,
+          "choices": null,
+          "description": "Speed of circle movement/animation",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Circles_XC",
+          "storage_name": "E_SLIDER_Circles_XC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center offset for radial mode",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Circles_YC",
+          "storage_name": "E_SLIDER_Circles_YC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center offset for radial mode",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Circles_Plasma",
+          "storage_name": "E_CHECKBOX_Circles_Plasma",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Use plasma coloring instead of solid colors",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -865,10 +1089,11 @@
           "min": null,
           "max": null,
           "choices": [
-            "center",
             "left",
+            "center",
             "right",
             "bottom",
+            "middle",
             "top"
           ],
           "description": "Edge from which the curtain opens",
@@ -1017,6 +1242,114 @@
           "choices": null,
           "description": "Outer radius of the fan blades",
           "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Start_Angle",
+          "storage_name": "E_SLIDER_Fan_Start_Angle",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 360,
+          "choices": null,
+          "description": "Starting angle of the first fan blade in degrees",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Blade_Angle",
+          "storage_name": "E_SLIDER_Fan_Blade_Angle",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 90,
+          "min": 0,
+          "max": 360,
+          "choices": null,
+          "description": "Angular span of each fan blade",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Num_Elements",
+          "storage_name": "E_SLIDER_Fan_Num_Elements",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "choices": null,
+          "description": "Number of concentric elements per blade",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Element_Width",
+          "storage_name": "E_SLIDER_Fan_Element_Width",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 5,
+          "max": 100,
+          "choices": null,
+          "description": "Width of each element within a blade",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Duration",
+          "storage_name": "E_SLIDER_Fan_Duration",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 80,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Duration of the fan animation as percentage of effect duration",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Accel",
+          "storage_name": "E_SLIDER_Fan_Accel",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -10,
+          "max": 10,
+          "choices": null,
+          "description": "Acceleration of fan rotation (negative = decelerate)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_CenterX",
+          "storage_name": "E_SLIDER_Fan_CenterX",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center position of the fan",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_CenterY",
+          "storage_name": "E_SLIDER_Fan_CenterY",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center position of the fan",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fan_Scale",
+          "storage_name": "E_CHECKBOX_Fan_Scale",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Scale the fan to fit the model dimensions",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -1118,6 +1451,78 @@
           "choices": null,
           "description": "Reverse the direction of chase movement",
           "supports_value_curve": false
+        },
+        {
+          "name": "Marquee_Stagger",
+          "storage_name": "E_SLIDER_Marquee_Stagger",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Stagger offset between rows/columns of the marquee",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_Start",
+          "storage_name": "E_SLIDER_Marquee_Start",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Starting position offset in the chase cycle",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_ScaleX",
+          "storage_name": "E_SLIDER_Marquee_ScaleX",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal scale percentage of the marquee pattern",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_ScaleY",
+          "storage_name": "E_SLIDER_Marquee_ScaleY",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical scale percentage of the marquee pattern",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_XC",
+          "storage_name": "E_SLIDER_MarqueeXC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center offset of the marquee pattern",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Marquee_YC",
+          "storage_name": "E_SLIDER_MarqueeYC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center offset of the marquee pattern",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -1226,6 +1631,42 @@
           ],
           "description": "3D shading style for the pinwheel",
           "supports_value_curve": false
+        },
+        {
+          "name": "Pinwheel_Offset",
+          "storage_name": "E_SLIDER_Pinwheel_Offset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 360,
+          "choices": null,
+          "description": "Rotation offset angle to shift starting position",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pinwheel_XC",
+          "storage_name": "E_SLIDER_PinwheelXC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center offset of the pinwheel",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Pinwheel_YC",
+          "storage_name": "E_SLIDER_PinwheelYC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center offset of the pinwheel",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -1354,19 +1795,76 @@
       "intent": "Impact visualization for drum hits and accents, used frequently in real sequences",
       "parameters": [
         {
+          "name": "Ripple_Object_To_Draw",
+          "storage_name": "E_CHOICE_Ripple_Object_To_Draw",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Circle",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Circle",
+            "Square",
+            "Triangle",
+            "Star",
+            "Polygon",
+            "Heart",
+            "Tree",
+            "Candy Cane",
+            "Snow Flake",
+            "Crucifix",
+            "Present",
+            "SVG"
+          ],
+          "description": "Shape of the ripple rings",
+          "supports_value_curve": false
+        },
+        {
           "name": "Ripple_Movement",
           "storage_name": "E_CHOICE_Ripple_Movement",
           "widget_type": "choice",
           "value_type": "choice",
-          "default": "None",
+          "default": "Explode",
           "min": null,
           "max": null,
           "choices": [
-            "None",
             "Explode",
-            "Implode"
+            "Implode",
+            "None"
           ],
           "description": "Direction of ripple movement",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Ripple_Draw_Style",
+          "storage_name": "E_CHOICE_Ripple_Draw_Style",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Old",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Old",
+            "Lines Inward",
+            "Lines Outward",
+            "Lines Both",
+            "Lines Inward Ripple",
+            "Lines Outward Ripple",
+            "Lines Both Ripple",
+            "Solid Inward",
+            "Solid Outward",
+            "Solid Both",
+            "Solid Inward Ripple",
+            "Solid Outward Ripple",
+            "Solid Both Ripple",
+            "Highlight Inward",
+            "Highlight Outward",
+            "Highlight Both",
+            "Highlight Inward Ripple",
+            "Highlight Outward Ripple",
+            "Highlight Both Ripple"
+          ],
+          "description": "Drawing style and fill mode for ripple rings (lines, solid, or highlighted)",
           "supports_value_curve": false
         },
         {
@@ -1383,31 +1881,139 @@
         },
         {
           "name": "Ripple_Cycles",
-          "storage_name": "E_TEXTCTRL_Ripple_Cycles",
-          "widget_type": "textctrl",
-          "value_type": "float",
-          "default": 1.0,
-          "min": 0.0,
-          "max": 100.0,
+          "storage_name": "E_SLIDER_Ripple_Cycles",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 300,
           "choices": null,
-          "description": "Number of complete ripple cycles",
+          "description": "Number of complete ripple cycles (divided by 10)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Scale",
+          "storage_name": "E_SLIDER_Ripple_Scale",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 500,
+          "choices": null,
+          "description": "Scale of the ripple pattern as percentage",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Spacing",
+          "storage_name": "E_SLIDER_Ripple_Spacing",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 1,
+          "max": 400,
+          "choices": null,
+          "description": "Spacing between concentric ripple rings (divided by 10)",
           "supports_value_curve": true
         },
         {
           "name": "Ripple_Points",
-          "storage_name": "E_SLIDER_Ripple_Points",
+          "storage_name": "E_SLIDER_RIPPLE_POINTS",
           "widget_type": "slider",
           "value_type": "int",
           "default": 5,
-          "min": 1,
-          "max": 25,
+          "min": 3,
+          "max": 8,
           "choices": null,
-          "description": "Number of ripple origin points",
+          "description": "Number of polygon points (for Polygon/Star shapes)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Ripple_Rotation",
+          "storage_name": "E_SLIDER_Ripple_Rotation",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -360,
+          "max": 360,
+          "choices": null,
+          "description": "Rotation angle of the ripple shape",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Velocity",
+          "storage_name": "E_SLIDER_Ripple_Velocity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 300,
+          "choices": null,
+          "description": "Velocity of ripple center movement (divided by 10)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Direction",
+          "storage_name": "E_SLIDER_Ripple_Direction",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -360,
+          "max": 360,
+          "choices": null,
+          "description": "Direction angle of ripple center movement",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_XC",
+          "storage_name": "E_SLIDER_Ripple_XC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center offset of the ripple origin",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_YC",
+          "storage_name": "E_SLIDER_Ripple_YC",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center offset of the ripple origin",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Outline",
+          "storage_name": "E_SLIDER_Ripple_Outline",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Outline thickness for ring shapes (divided by 10)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Ripple_Twist",
+          "storage_name": "E_SLIDER_Ripple_Twist",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -450,
+          "max": 450,
+          "choices": null,
+          "description": "Twist applied to ripple rings as they expand (divided by 10)",
           "supports_value_curve": true
         },
         {
           "name": "Ripple_3D",
-          "storage_name": "E_CHECKBOX_Ripple_3D",
+          "storage_name": "E_CHECKBOX_Ripple3D",
           "widget_type": "checkbox",
           "value_type": "bool",
           "default": false,
@@ -1479,7 +2085,10 @@
             "Snowflake",
             "Candy Cane",
             "Crucifix",
-            "Present"
+            "Present",
+            "Polygon",
+            "Octagon",
+            "Ellipse"
           ],
           "description": "Shape to draw",
           "supports_value_curve": false
@@ -1531,6 +2140,66 @@
           "choices": null,
           "description": "Lifetime of each shape before it fades",
           "supports_value_curve": true
+        },
+        {
+          "name": "Shape_StartSize",
+          "storage_name": "E_SLIDER_Shape_StartSize",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 5,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Initial size of spawned shapes",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shape_Rotation",
+          "storage_name": "E_SLIDER_Shape_Rotation",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 360,
+          "choices": null,
+          "description": "Rotation angle of the shapes",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shape_CentreX",
+          "storage_name": "E_SLIDER_Shape_CentreX",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center position for shape spawning",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shape_CentreY",
+          "storage_name": "E_SLIDER_Shape_CentreY",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center position for shape spawning",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Shape_UseMusic",
+          "storage_name": "E_CHECKBOX_Shape_UseMusic",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Trigger shape spawns from audio level (music reactive)",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -1668,6 +2337,30 @@
           "choices": null,
           "description": "Blend/antialias the edges of the shockwave ring",
           "supports_value_curve": false
+        },
+        {
+          "name": "Shockwave_Scale",
+          "storage_name": "E_CHECKBOX_Shockwave_Scale",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Scale the shockwave to fit the model dimensions",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Shockwave_Cycles",
+          "storage_name": "E_SLIDER_Shockwave_Cycles",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Number of shockwave expansion cycles during the effect",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -1795,6 +2488,42 @@
           "choices": null,
           "description": "Blend colors between spiral bands",
           "supports_value_curve": false
+        },
+        {
+          "name": "Spirals_Grow",
+          "storage_name": "E_CHECKBOX_Spirals_Grow",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Spiral bands grow outward over time",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Spirals_Shrink",
+          "storage_name": "E_CHECKBOX_Spirals_Shrink",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Spiral bands shrink inward over time",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Spirals_Movement",
+          "storage_name": "E_SLIDER_Spirals_Movement",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": -200,
+          "max": 200,
+          "choices": null,
+          "description": "Vertical movement speed of the spirals (divided by 10 for float, negative = down)",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -1909,6 +2638,21 @@
           "supports_value_curve": true
         },
         {
+          "name": "Wave_Direction",
+          "storage_name": "E_CHOICE_Wave_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Right to Left",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Right to Left",
+            "Left to Right"
+          ],
+          "description": "Horizontal direction of wave movement",
+          "supports_value_curve": false
+        },
+        {
           "name": "Wave_YOffset",
           "storage_name": "E_SLIDER_Wave_YOffset",
           "widget_type": "slider",
@@ -1919,6 +2663,30 @@
           "choices": null,
           "description": "Vertical offset of the wave centerline",
           "supports_value_curve": true
+        },
+        {
+          "name": "Wave_Height",
+          "storage_name": "E_SLIDER_Wave_Height",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Height/amplitude of the wave",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Mirror_Wave",
+          "storage_name": "E_CHECKBOX_Mirror_Wave",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Mirror the wave pattern vertically for symmetric effect",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -2139,6 +2907,66 @@
           "choices": null,
           "description": "Gravity pulling particles downward",
           "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_XLocation",
+          "storage_name": "E_SLIDER_Fireworks_XLocation",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": -1,
+          "min": -1,
+          "max": 100,
+          "choices": null,
+          "description": "Fixed horizontal spawn position (-1=random)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_YLocation",
+          "storage_name": "E_SLIDER_Fireworks_YLocation",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": -1,
+          "min": -1,
+          "max": 100,
+          "choices": null,
+          "description": "Fixed vertical spawn position (-1=random)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_XVelocity",
+          "storage_name": "E_SLIDER_Fireworks_XVelocity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -200,
+          "max": 200,
+          "choices": null,
+          "description": "Horizontal velocity bias for particle spray",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_YVelocity",
+          "storage_name": "E_SLIDER_Fireworks_YVelocity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -200,
+          "max": 200,
+          "choices": null,
+          "description": "Vertical velocity bias for particle spray",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Fireworks_UseTimingTrack",
+          "storage_name": "E_CHECKBOX_FIRETIMING",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Trigger fireworks from a timing track instead of auto-spawning",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -2193,72 +3021,266 @@
       "intent": "Smooth flowing visual for ambient and atmospheric sections",
       "parameters": [
         {
-          "name": "Liquid_TopBarrier",
-          "storage_name": "E_CHOICE_Liquid_TopBarrier",
+          "name": "Liquid_ParticleType",
+          "storage_name": "E_CHOICE_ParticleType",
           "widget_type": "choice",
           "value_type": "choice",
-          "default": "Wrap",
+          "default": "Elastic",
           "min": null,
           "max": null,
           "choices": [
-            "Wrap",
-            "Reflect",
-            "None"
+            "Powder",
+            "Elastic",
+            "Spring",
+            "Tensile",
+            "Viscous",
+            "Static Pressure",
+            "Water",
+            "Reactive",
+            "Repulsive"
           ],
-          "description": "Behavior when particles hit the top edge",
+          "description": "Physics behavior type for the liquid particles",
           "supports_value_curve": false
-        },
-        {
-          "name": "Liquid_BottomBarrier",
-          "storage_name": "E_CHOICE_Liquid_BottomBarrier",
-          "widget_type": "choice",
-          "value_type": "choice",
-          "default": "Wrap",
-          "min": null,
-          "max": null,
-          "choices": [
-            "Wrap",
-            "Reflect",
-            "None"
-          ],
-          "description": "Behavior when particles hit the bottom edge",
-          "supports_value_curve": false
-        },
-        {
-          "name": "Liquid_Particles",
-          "storage_name": "E_SLIDER_Liquid_Particles",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 50,
-          "min": 1,
-          "max": 200,
-          "choices": null,
-          "description": "Number of liquid particles in the simulation",
-          "supports_value_curve": true
         },
         {
           "name": "Liquid_Lifetime",
-          "storage_name": "E_SLIDER_Liquid_Lifetime",
+          "storage_name": "E_SLIDER_LifeTime",
           "widget_type": "slider",
           "value_type": "int",
-          "default": 50,
-          "min": 1,
-          "max": 100,
+          "default": 1000,
+          "min": 0,
+          "max": 1000,
           "choices": null,
-          "description": "Lifetime of each particle before it fades",
+          "description": "Lifetime of each particle in frames",
           "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_Size",
+          "storage_name": "E_TEXTCTRL_Size",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 500,
+          "min": 1,
+          "max": 10000,
+          "choices": null,
+          "description": "Size of the particle system",
+          "supports_value_curve": false
         },
         {
           "name": "Liquid_Gravity",
           "storage_name": "E_SLIDER_Liquid_Gravity",
           "widget_type": "slider",
           "value_type": "int",
+          "default": 100,
+          "min": -1000,
+          "max": 1000,
+          "choices": null,
+          "description": "Gravity force applied to particles (divided by 10 for float)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_GravityAngle",
+          "storage_name": "E_SLIDER_Liquid_GravityAngle",
+          "widget_type": "slider",
+          "value_type": "int",
           "default": 0,
-          "min": -100,
+          "min": 0,
+          "max": 360,
+          "choices": null,
+          "description": "Angle of gravity direction in degrees",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_X1",
+          "storage_name": "E_SLIDER_X1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
           "max": 100,
           "choices": null,
-          "description": "Gravity applied to liquid particles",
+          "description": "X position of source 1",
           "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_Y1",
+          "storage_name": "E_SLIDER_Y1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Y position of source 1",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_Direction1",
+          "storage_name": "E_SLIDER_Direction1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 270,
+          "min": 0,
+          "max": 360,
+          "choices": null,
+          "description": "Emission direction angle of source 1",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_Velocity1",
+          "storage_name": "E_SLIDER_Velocity1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 1000,
+          "choices": null,
+          "description": "Emission velocity of source 1",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_Flow1",
+          "storage_name": "E_SLIDER_Flow1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 1000,
+          "choices": null,
+          "description": "Particle flow rate of source 1",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_SourceSize1",
+          "storage_name": "E_SLIDER_Liquid_SourceSize1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Size of emission area for source 1",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Liquid_FlowMusic1",
+          "storage_name": "E_CHECKBOX_FlowMusic1",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Drive source 1 flow rate from audio level",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_Enabled2",
+          "storage_name": "E_CHECKBOX_Enabled2",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable particle source 2",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_Enabled3",
+          "storage_name": "E_CHECKBOX_Enabled3",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable particle source 3",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_Enabled4",
+          "storage_name": "E_CHECKBOX_Enabled4",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable particle source 4",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_TopBarrier",
+          "storage_name": "E_CHECKBOX_TopBarrier",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable barrier at the top edge",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_BottomBarrier",
+          "storage_name": "E_CHECKBOX_BottomBarrier",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": true,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable barrier at the bottom edge",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_LeftBarrier",
+          "storage_name": "E_CHECKBOX_LeftBarrier",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable barrier at the left edge",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_RightBarrier",
+          "storage_name": "E_CHECKBOX_RightBarrier",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Enable barrier at the right edge",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_HoldColor",
+          "storage_name": "E_CHECKBOX_HoldColor",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": true,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Hold initial particle color (don't blend with neighbors)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_MixColors",
+          "storage_name": "E_CHECKBOX_MixColors",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Mix colors when particles from different sources interact",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -2271,11 +3293,11 @@
       },
       "analysis_mappings": [
         {
-          "parameter": "Liquid_Particles",
+          "parameter": "Liquid_Flow1",
           "analysis_level": "L5",
           "analysis_field": "energy_curves.overall",
           "mapping_type": "direct",
-          "description": "Energy drives particle count for visual density",
+          "description": "Energy drives particle flow rate for visual density",
           "input_min": 0.0,
           "input_max": 100.0,
           "curve_shape": "linear"
@@ -2354,11 +3376,75 @@
           "widget_type": "slider",
           "value_type": "int",
           "default": 10,
-          "min": 1,
+          "min": 0,
           "max": 50,
           "choices": null,
           "description": "Speed of meteor movement",
           "supports_value_curve": true
+        },
+        {
+          "name": "Meteors_Type",
+          "storage_name": "E_CHOICE_Meteors_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Rainbow",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Rainbow",
+            "Range",
+            "Palette"
+          ],
+          "description": "Color source for meteor trails",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Meteors_XOffset",
+          "storage_name": "E_SLIDER_Meteors_XOffset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal offset for meteor spawn position",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Meteors_YOffset",
+          "storage_name": "E_SLIDER_Meteors_YOffset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical offset for meteor spawn position",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Meteors_UseMusic",
+          "storage_name": "E_CHECKBOX_Meteors_UseMusic",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Trigger meteor spawns from audio level (music reactive)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "FadeWithDistance",
+          "storage_name": "E_CHECKBOX_FadeWithDistance",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Fade meteor brightness based on distance from origin (for Implode/Explode)",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -2457,6 +3543,22 @@
           "max": null,
           "choices": null,
           "description": "Snowflakes accumulate at the bottom instead of disappearing",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Falling",
+          "storage_name": "E_CHOICE_Falling",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Driving",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Driving",
+            "Falling",
+            "Falling & Accumulating"
+          ],
+          "description": "Falling behavior style",
           "supports_value_curve": false
         }
       ],
@@ -2565,7 +3667,11 @@
             "Horizontal",
             "Vertical",
             "Music Line",
-            "Music Circle"
+            "Music Circle",
+            "Vertical Zig Zag",
+            "Vert. Zig Zag Return",
+            "Horiz. Zig Zag Return",
+            "Manual"
           ],
           "description": "Movement pattern of the tendril",
           "supports_value_curve": false
@@ -2616,6 +3722,54 @@
           "max": 100,
           "choices": null,
           "description": "Length of the tendril trail",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tendril_ManualY",
+          "storage_name": "E_SLIDER_Tendril_ManualY",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Manual Y position for the tendril head",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tendril_XOffset",
+          "storage_name": "E_SLIDER_Tendril_XOffset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal offset of the tendril center",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tendril_YOffset",
+          "storage_name": "E_SLIDER_Tendril_YOffset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical offset of the tendril center",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Tendril_TuneMovement",
+          "storage_name": "E_SLIDER_Tendril_TuneMovement",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Fine-tune the movement range and scale of the tendril animation",
           "supports_value_curve": true
         }
       ],
@@ -2680,32 +3834,143 @@
           "supports_value_curve": false
         },
         {
-          "name": "SingleStrand_Speed",
-          "storage_name": "E_SLIDER_SingleStrand_Speed",
+          "name": "Chase_Type1",
+          "storage_name": "E_CHOICE_Chase_Type1",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Left-Right",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Left-Right",
+            "Right-Left",
+            "Bounce from Left",
+            "Bounce from Right",
+            "Dual Chase",
+            "From Middle",
+            "To Middle",
+            "Bounce to Middle",
+            "Bounce from Middle",
+            "Static Left-Right",
+            "Static Right-Left",
+            "Static Dual",
+            "Static From Middle",
+            "Static To Middle",
+            "Static Double-Ended"
+          ],
+          "description": "Chase direction and movement pattern (applies to Color Chase and Color Sweep modes)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Fade_Type",
+          "storage_name": "E_CHOICE_Fade_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "None",
+          "min": null,
+          "max": null,
+          "choices": [
+            "None",
+            "From Head",
+            "From Tail",
+            "Head and Tail",
+            "Middle"
+          ],
+          "description": "How the chase fades at its leading/trailing edges",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Chase_Rotations",
+          "storage_name": "E_SLIDER_Chase_Rotations",
           "widget_type": "slider",
           "value_type": "int",
           "default": 10,
-          "min": 0,
-          "max": 50,
+          "min": 1,
+          "max": 500,
           "choices": null,
-          "description": "Speed of the chase/sweep movement",
+          "description": "Number of chase rotations (divided by 10 for float, e.g. 10 = 1.0 rotation)",
           "supports_value_curve": true
         },
         {
-          "name": "SingleStrand_Color_Mix1",
-          "storage_name": "E_SLIDER_SingleStrand_Color_Mix1",
+          "name": "Number_Chases",
+          "storage_name": "E_SLIDER_Number_Chases",
           "widget_type": "slider",
           "value_type": "int",
-          "default": 50,
+          "default": 1,
+          "min": 1,
+          "max": 20,
+          "choices": null,
+          "description": "Number of simultaneous chases running on the strand",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Color_Mix1",
+          "storage_name": "E_SLIDER_Color_Mix1",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
           "min": 1,
           "max": 100,
           "choices": null,
-          "description": "Color mix ratio for the first color",
+          "description": "Color mix ratio (percentage of lit pixels in chase band)",
           "supports_value_curve": true
         },
         {
-          "name": "SingleStrand_Skips_BandSize",
-          "storage_name": "E_SLIDER_SingleStrand_Skips_BandSize",
+          "name": "Chase_Offset",
+          "storage_name": "E_SLIDER_Chase_Offset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -5000,
+          "max": 5000,
+          "choices": null,
+          "description": "Starting offset position of the chase (divided by 10 for float)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "FX_Intensity",
+          "storage_name": "E_SLIDER_FX_Intensity",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 128,
+          "min": 0,
+          "max": 255,
+          "choices": null,
+          "description": "Intensity/brightness of the FX sub-effect (used in Fireworks 1D and other FX modes)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "FX_Speed",
+          "storage_name": "E_SLIDER_FX_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 128,
+          "min": 0,
+          "max": 255,
+          "choices": null,
+          "description": "Speed of the FX sub-effect animation",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Skips_Direction",
+          "storage_name": "E_CHOICE_Skips_Direction",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Left",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Left",
+            "Right",
+            "From Middle",
+            "To Middle"
+          ],
+          "description": "Direction of skip pattern movement (applies to Skips 2-Color and 3-Color modes)",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Skips_BandSize",
+          "storage_name": "E_SLIDER_Skips_BandSize",
           "widget_type": "slider",
           "value_type": "int",
           "default": 1,
@@ -2716,8 +3981,8 @@
           "supports_value_curve": true
         },
         {
-          "name": "SingleStrand_Skips_SkipSize",
-          "storage_name": "E_SLIDER_SingleStrand_Skips_SkipSize",
+          "name": "Skips_SkipSize",
+          "storage_name": "E_SLIDER_Skips_SkipSize",
           "widget_type": "slider",
           "value_type": "int",
           "default": 1,
@@ -2726,6 +3991,42 @@
           "choices": null,
           "description": "Number of pixels to skip between bands",
           "supports_value_curve": true
+        },
+        {
+          "name": "Skips_StartPos",
+          "storage_name": "E_SLIDER_Skips_StartPos",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Starting pixel position for skip patterns",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Skips_Advance",
+          "storage_name": "E_SLIDER_Skips_Advance",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Number of pixels to advance each frame in skip modes",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Chase_Group_All",
+          "storage_name": "E_CHECKBOX_Chase_Group_All",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Group all strands together as one for chase (treat multi-strand model as single strand)",
+          "supports_value_curve": false
         },
         {
           "name": "SingleStrand_Colors",
@@ -2768,21 +4069,31 @@
       },
       "analysis_mappings": [
         {
-          "parameter": "SingleStrand_Speed",
+          "parameter": "Chase_Rotations",
           "analysis_level": "L3",
           "analysis_field": "beats.bpm",
           "mapping_type": "direct",
-          "description": "BPM drives chase speed for beat-synchronized movement",
+          "description": "BPM drives chase rotations for beat-synchronized movement",
           "input_min": 0.0,
           "input_max": 100.0,
           "curve_shape": "linear"
         },
         {
-          "parameter": "SingleStrand_Color_Mix1",
+          "parameter": "Color_Mix1",
           "analysis_level": "L5",
           "analysis_field": "energy_curves.overall",
           "mapping_type": "direct",
           "description": "Energy drives color mix ratio for intensity variation",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "curve_shape": "linear"
+        },
+        {
+          "parameter": "Number_Chases",
+          "analysis_level": "L4",
+          "analysis_field": "onsets.count",
+          "mapping_type": "direct",
+          "description": "Onset density drives number of simultaneous chases",
           "input_min": 0.0,
           "input_max": 100.0,
           "curve_shape": "linear"
@@ -2869,6 +4180,138 @@
           "choices": null,
           "description": "Number of morph shape repetitions",
           "supports_value_curve": true
+        },
+        {
+          "name": "Morph_Repeat_Skip",
+          "storage_name": "E_SLIDER_Morph_Repeat_Skip",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 100,
+          "choices": null,
+          "description": "Spacing between repeated morph shapes",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_Start_X2",
+          "storage_name": "E_SLIDER_Morph_Start_X2",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Starting X position of the second morph point (defines head width)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_Start_Y2",
+          "storage_name": "E_SLIDER_Morph_Start_Y2",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Starting Y position of the second morph point (defines head height)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_End_X2",
+          "storage_name": "E_SLIDER_Morph_End_X2",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Ending X position of the second morph point (defines tail width)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Morph_End_Y2",
+          "storage_name": "E_SLIDER_Morph_End_Y2",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Ending Y position of the second morph point (defines tail height)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "MorphDuration",
+          "storage_name": "E_SLIDER_MorphDuration",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 20,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Duration of the morph head as percentage of effect time",
+          "supports_value_curve": true
+        },
+        {
+          "name": "MorphAccel",
+          "storage_name": "E_SLIDER_MorphAccel",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -10,
+          "max": 10,
+          "choices": null,
+          "description": "Acceleration of the morph movement (negative = decelerate)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "MorphStartLength",
+          "storage_name": "E_SLIDER_MorphStartLength",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Length of the morph head at the start",
+          "supports_value_curve": true
+        },
+        {
+          "name": "MorphEndLength",
+          "storage_name": "E_SLIDER_MorphEndLength",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Length of the morph head at the end",
+          "supports_value_curve": true
+        },
+        {
+          "name": "MorphUseHeadStartColor",
+          "storage_name": "E_CHECKBOX_MorphUseHeadStartColor",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Use a specific color for the morph head at the start position",
+          "supports_value_curve": false
+        },
+        {
+          "name": "MorphUseHeadEndColor",
+          "storage_name": "E_CHECKBOX_MorphUseHeadEndColor",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Use a specific color for the morph head at the end position",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -2974,6 +4417,30 @@
           "max": 100,
           "choices": null,
           "description": "Frequency of the warp distortion pattern",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Warp_X",
+          "storage_name": "E_SLIDER_Warp_X",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Horizontal center position of the warp effect",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Warp_Y",
+          "storage_name": "E_SLIDER_Warp_Y",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical center position of the warp effect",
           "supports_value_curve": true
         }
       ],
@@ -3081,6 +4548,46 @@
           "choices": null,
           "description": "Scale bars to fit model width",
           "supports_value_curve": false
+        },
+        {
+          "name": "Music_ScaleNotes",
+          "storage_name": "E_CHECKBOX_Music_ScaleNotes",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Scale individual note bars proportionally",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Music_Scaling",
+          "storage_name": "E_CHOICE_Music_Scaling",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "None",
+          "min": null,
+          "max": null,
+          "choices": [
+            "None",
+            "Individual Notes",
+            "All Notes"
+          ],
+          "description": "How frequency bars are scaled across the display",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Music_Offset",
+          "storage_name": "E_SLIDER_Music_Offset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical offset of the music visualization",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -3163,7 +4670,12 @@
             "Note On",
             "Note Level Pulse",
             "Spectrogram",
-            "Spectrogram Peak"
+            "Spectrogram Peak",
+            "Waveform",
+            "Timing Event Bar Bounce",
+            "Level Jump",
+            "Spectrogram Line",
+            "Frame Waveform"
           ],
           "description": "VU meter visualization type",
           "supports_value_curve": false
@@ -3210,10 +4722,43 @@
             "Heart",
             "Snowflake",
             "Candy Cane",
-            "Present"
+            "Present",
+            "Filled Circle",
+            "Filled Square",
+            "Filled Diamond",
+            "Filled Star",
+            "Filled Tree",
+            "Filled Crucifix",
+            "Filled Present",
+            "Filled Heart",
+            "SVG"
           ],
           "description": "Shape used for shape-based VU modes",
           "supports_value_curve": false
+        },
+        {
+          "name": "VUMeter_Gain",
+          "storage_name": "E_SLIDER_VUMeter_Gain",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Audio gain adjustment (positive = amplify, negative = attenuate)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "VUMeter_YOffset",
+          "storage_name": "E_SLIDER_VUMeter_YOffset",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "choices": null,
+          "description": "Vertical offset of the VU meter display",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -3490,6 +5035,25 @@
       "description": "Kaleidoscope mirror effect that reflects content in symmetric patterns",
       "intent": "Add visual symmetry and complexity to underlying effects",
       "parameters": [
+        {
+          "name": "Kaleidoscope_Type",
+          "storage_name": "E_CHOICE_Kaleidoscope_Type",
+          "widget_type": "choice",
+          "value_type": "choice",
+          "default": "Triangle",
+          "min": null,
+          "max": null,
+          "choices": [
+            "Triangle",
+            "Square",
+            "6-Fold",
+            "8-Fold",
+            "12-Fold",
+            "Radial"
+          ],
+          "description": "Kaleidoscope symmetry type",
+          "supports_value_curve": false
+        },
         {
           "name": "Kaleidoscope_X",
           "storage_name": "E_SLIDER_Kaleidoscope_X",
