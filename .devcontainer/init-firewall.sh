@@ -75,6 +75,7 @@ for domain in \
     "update.code.visualstudio.com" \
     "pypi.org" \
     "xlights.org" \
+    "objects.githubusercontent.com" \
     "files.pythonhosted.org" \
     "code.soundsoftware.ac.uk" \
     "dl.fbaipublicfiles.com" \
