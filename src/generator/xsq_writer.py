@@ -309,6 +309,9 @@ def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult 
         model_el.set("name", group_name)
 
         layer_el = ET.SubElement(model_el, "EffectLayer")
+        # Per-model rendering for tier 3+ groups (group name starts with 2-digit tier)
+        if group_name[:2].isdigit() and int(group_name[:2]) >= 3:
+            layer_el.set("settings", "B_CHOICE_BufferStyle=Per Model Default")
         for p in sorted(placements, key=lambda p: p.start_ms):
             effect_el = ET.SubElement(layer_el, "Effect")
 

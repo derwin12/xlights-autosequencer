@@ -31,6 +31,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-venv \
   ffmpeg \
   build-essential \
+  cmake \
+  libarmadillo-dev \
+  libaubio-dev \
   libfftw3-dev \
   libsamplerate0-dev \
   libsndfile1-dev \
@@ -170,7 +173,14 @@ RUN mkdir -p /usr/local/lib/vamp && \
       cp beatroot-vamp-linux64-v1.0.2/*.so /usr/local/lib/vamp/ && \
       cp beatroot-vamp-linux64-v1.0.2/*.cat /usr/local/lib/vamp/ && \
       cp beatroot-vamp-linux64-v1.0.2/*.n3 /usr/local/lib/vamp/ && \
-      rm -rf beatroot.tar.gz beatroot-vamp-linux64-v1.0.2 || echo "WARN: BeatRoot download failed, skipping"); \
+      rm -rf beatroot.tar.gz beatroot-vamp-linux64-v1.0.2 || echo "WARN: BeatRoot download failed, skipping") && \
+    # Vamp Plugin Pack (x86-64 installer — includes segmentino, silvet, aubio, tempogram, BBC)
+    (wget -q -T 30 --read-timeout=30 --tries=1 "https://code.soundsoftware.ac.uk/attachments/download/2690/vamp-plugin-pack-linux64-v2.0.tar.gz" -O pack.tar.gz && \
+      tar -xzf pack.tar.gz && \
+      cp vamp-plugin-pack-linux64-v2.0/*.so /usr/local/lib/vamp/ && \
+      cp vamp-plugin-pack-linux64-v2.0/*.cat /usr/local/lib/vamp/ 2>/dev/null; \
+      cp vamp-plugin-pack-linux64-v2.0/*.n3 /usr/local/lib/vamp/ 2>/dev/null; \
+      rm -rf pack.tar.gz vamp-plugin-pack-linux64-v2.0 || echo "WARN: Vamp Plugin Pack download failed, skipping"); \
   else \
     echo "Building Vamp plugins from source for $ARCH..." && \
     cd /tmp && \
@@ -214,36 +224,36 @@ RUN mkdir -p /usr/local/lib/vamp && \
     cp nnls-chroma.cat /usr/local/lib/vamp/ 2>/dev/null; \
     cp nnls-chroma.n3 /usr/local/lib/vamp/ 2>/dev/null; \
     cd /tmp && \
-    # 6. Segmentino
+    # 6. Segmentino (needs armadillo, qm-dsp, nnls-chroma, vamp-sdk at root level)
     git clone --depth 1 https://github.com/c4dm/segmentino.git && \
     cd segmentino && \
-    mkdir -p lib && ln -sf /tmp/qm-dsp lib/qm-dsp && \
-    ln -sf /tmp/nnls-chroma lib/nnls-chroma && \
-    ln -sf /tmp/vamp-plugin-sdk lib/vamp-plugin-sdk && \
-    make -f Makefile.linux -j$(nproc) 2>/dev/null && \
+    ln -sf /tmp/qm-dsp qm-dsp && \
+    ln -sf /tmp/nnls-chroma nnls-chroma && \
+    ln -sf /tmp/vamp-plugin-sdk vamp-plugin-sdk && \
+    sed -i 's|-Iarmadillo-3.900.4/include|-I/usr/include|' Makefile.inc && \
+    sed -i "/^CFLAGS/ s|\$| -I/tmp/boost-1.87.0|" Makefile.inc && \
+    touch .repoint.point && \
+    make -f Makefile.linux \
+      LDFLAGS="-shared -Wl,-Bsymbolic -Wl,--version-script=segmentino/vamp-plugin.map -larmadillo" \
+      -j$(nproc) && \
     cp segmentino.so segmentino.cat /usr/local/lib/vamp/ && \
     cp segmentino.n3 /usr/local/lib/vamp/ 2>/dev/null; \
     cd /tmp && \
     # 7. BBC Vamp Plugins
     git clone --depth 1 https://github.com/bbc/bbc-vamp-plugins.git && \
-    cd bbc-vamp-plugins && mkdir -p build && cd build && \
-    cmake .. -DCMAKE_PREFIX_PATH=/usr/local && make -j$(nproc) && \
+    cd bbc-vamp-plugins && \
+    make -f Makefile.linux VAMP_SDK_DIR=/tmp/vamp-plugin-sdk -j$(nproc) && \
     cp bbc-vamp-plugins.so /usr/local/lib/vamp/ && \
-    cp ../bbc-vamp-plugins.cat /usr/local/lib/vamp/ && \
-    cp ../bbc-vamp-plugins.n3 /usr/local/lib/vamp/ 2>/dev/null; \
+    cp bbc-vamp-plugins.cat /usr/local/lib/vamp/ && \
+    cp bbc-vamp-plugins.n3 /usr/local/lib/vamp/ 2>/dev/null; \
     cd /tmp && \
     # 8. pYIN
     git clone --depth 1 https://github.com/c4dm/pyin.git && \
     cd pyin && \
-    make -f Makefile.linux \
-      VAMP_SDK_DIR=/tmp/vamp-plugin-sdk \
-      BOOST_ROOT=/tmp/boost-1.87.0 \
+    make -f Makefile.linux64 plugin \
+      CFLAGS="-O3 -fPIC -I/tmp/boost-1.87.0 -I/tmp/vamp-plugin-sdk" \
+      PLUGIN_LDFLAGS="-shared -Wl,--version-script=vamp-plugin.map /tmp/vamp-plugin-sdk/src/vamp-sdk/PluginAdapter.o /tmp/vamp-plugin-sdk/src/vamp-sdk/RealTime.o /tmp/vamp-plugin-sdk/src/vamp-sdk/FFT.o" \
       -j$(nproc) && \
-    g++ -o pyin.so *.o \
-      /tmp/vamp-plugin-sdk/src/vamp-sdk/PluginAdapter.o \
-      /tmp/vamp-plugin-sdk/src/vamp-sdk/RealTime.o \
-      /tmp/vamp-plugin-sdk/src/vamp-sdk/FFT.o \
-      -shared -Wl,--version-script=vamp-plugin.map && \
     cp pyin.so /usr/local/lib/vamp/ && \
     cp pyin.cat /usr/local/lib/vamp/ 2>/dev/null; \
     cp pyin.n3 /usr/local/lib/vamp/ 2>/dev/null; \
@@ -260,10 +270,45 @@ RUN mkdir -p /usr/local/lib/vamp && \
     cp beatroot-vamp.so /usr/local/lib/vamp/ && \
     cp beatroot-vamp.cat /usr/local/lib/vamp/ 2>/dev/null; \
     cp beatroot-vamp.n3 /usr/local/lib/vamp/ 2>/dev/null; \
+    cd /tmp && \
+    # 10. vamp-aubio (onset/tempo/note detection)
+    git clone --depth 1 https://github.com/aubio/vamp-aubio-plugins.git && \
+    cd vamp-aubio-plugins && \
+    g++ -shared -fPIC -O3 -o vamp-aubio.so \
+      -I/tmp/vamp-plugin-sdk plugins/*.cpp libmain.cpp \
+      /tmp/vamp-plugin-sdk/src/vamp-sdk/PluginAdapter.o \
+      /tmp/vamp-plugin-sdk/src/vamp-sdk/RealTime.o \
+      /tmp/vamp-plugin-sdk/src/vamp-sdk/FFT.o \
+      $(pkg-config --cflags --libs aubio) && \
+    cp vamp-aubio.so /usr/local/lib/vamp/ && \
+    cp vamp-aubio.cat vamp-aubio.n3 /usr/local/lib/vamp/ 2>/dev/null; \
+    cd /tmp && \
+    # 11. Silvet (note transcription — strip all SSE flags from submodules too)
+    git clone --depth 1 --recursive https://github.com/cannam/silvet.git && \
+    cd silvet && \
+    find . -name "Makefile*" -exec sed -i 's/-msse //g; s/-msse2 //g; s/-mfpmath=sse //g' {} \; && \
+    sed -i 's|I../vamp-plugin-sdk/|I/tmp/vamp-plugin-sdk/|' Makefile.linux && \
+    make -f Makefile.linux -j$(nproc) && \
+    cp silvet.so /usr/local/lib/vamp/ && \
+    cp silvet.cat silvet.n3 /usr/local/lib/vamp/ 2>/dev/null; \
+    cd /tmp && \
+    # 12. Tempogram
+    git clone --depth 1 https://github.com/c4dm/vamp-tempogram.git && \
+    cd vamp-tempogram && \
+    sed -i 's/-msse -msse2 -mfpmath=sse//' Makefile.linux && \
+    make -f Makefile.linux VAMP_SDK_DIR=/tmp/vamp-plugin-sdk -j$(nproc) && \
+    g++ -o tempogram.so *.o \
+      /tmp/vamp-plugin-sdk/src/vamp-sdk/PluginAdapter.o \
+      /tmp/vamp-plugin-sdk/src/vamp-sdk/RealTime.o \
+      /tmp/vamp-plugin-sdk/src/vamp-sdk/FFT.o \
+      -shared && \
+    cp tempogram.so /usr/local/lib/vamp/ && \
+    cp tempogram.cat tempogram.n3 /usr/local/lib/vamp/ 2>/dev/null; \
     # Cleanup build artifacts
     cd / && rm -rf /tmp/vamp-plugin-sdk /tmp/qm-dsp /tmp/qm-vamp-plugins \
       /tmp/nnls-chroma /tmp/segmentino /tmp/bbc-vamp-plugins /tmp/pyin \
-      /tmp/beatroot-vamp /tmp/boost* /tmp/qm-dsp-mk /tmp/qm-vamp-mk; \
+      /tmp/beatroot-vamp /tmp/vamp-aubio-plugins /tmp/silvet /tmp/vamp-tempogram \
+      /tmp/boost* /tmp/qm-dsp-mk /tmp/qm-vamp-mk; \
   fi
 
 ENV VAMP_PATH=/usr/local/lib/vamp

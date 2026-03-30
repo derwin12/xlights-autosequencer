@@ -96,4 +96,9 @@ def validate_theme(data: dict, effect_library: EffectLibrary) -> list[str]:
     if len(palette) < 2:
         errors.append(f"Palette must have at least 2 colors, got {len(palette)}")
 
+    # Accent palette (optional)
+    accent_palette = data.get("accent_palette", [])
+    if accent_palette and len(accent_palette) < 2:
+        errors.append(f"accent_palette must have at least 2 colors, got {len(accent_palette)}")
+
     return errors

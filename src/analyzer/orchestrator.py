@@ -131,6 +131,12 @@ def _build_algorithm_list(caps: dict[str, bool], stems_available: list[str]):
             print(f"WARNING: segmentino unavailable: {exc}", file=sys.stderr)
 
         try:
+            from src.analyzer.algorithms.vamp_structure import QMSegmenterAlgorithm
+            algos.append(QMSegmenterAlgorithm())
+        except Exception as exc:
+            print(f"WARNING: qm_segmenter unavailable: {exc}", file=sys.stderr)
+
+        try:
             from src.analyzer.algorithms.vamp_harmony import ChordinoAlgorithm
             # Force full_mix: Chordino's default preferred_stem="piano" is too sparse
             # for most genres. Full mix gives reliable chord detection.
@@ -326,15 +332,26 @@ def run_orchestrator(
                 energy_curve_full = vc
                 break
 
-    # L1: sections from segmentino
+    # L1: sections from segmentino, optionally enriched with QM segmenter boundaries
     sections: list["TimingMark"] = []
     seg_tracks = tracks_by_name.get("segmentino", [])
     if seg_tracks:
         sections = seg_tracks[0].marks
+        # Merge QM segmenter boundaries that don't overlap with segmentino
+        qm_seg_tracks = tracks_by_name.get("qm_segments", [])
+        if qm_seg_tracks:
+            sections = _merge_qm_boundaries(sections, qm_seg_tracks[0].marks)
         print(f"L1 Structure: {len(sections)} sections "
               f"({_section_summary(sections)})")
     else:
-        warnings.append("L1 Structure: skipped — segmentino not available (install Vamp plugin 'segmentino')")
+        # Fall back to QM segmenter if segmentino unavailable
+        qm_seg_tracks = tracks_by_name.get("qm_segments", [])
+        if qm_seg_tracks:
+            sections = qm_seg_tracks[0].marks
+            print(f"L1 Structure: {len(sections)} sections from qm_segmenter "
+                  f"({_section_summary(sections)})")
+        else:
+            warnings.append("L1 Structure: skipped — segmentino not available (install Vamp plugin 'segmentino')")
 
     # L2: select best bar track
     bar_algo_names = {"qm_bars", "librosa_bars", "madmom_downbeats"}
@@ -688,6 +705,40 @@ def _nearest_in_sorted(t: int, sorted_times: list[int]) -> int | None:
     if lo > 0 and abs(sorted_times[lo - 1] - t) < abs(sorted_times[lo] - t):
         best_idx = lo - 1
     return sorted_times[best_idx]
+
+
+def _merge_qm_boundaries(
+    sections: list, qm_marks: list, min_gap_ms: int = 2000
+) -> list:
+    """Merge QM segmenter boundaries into the segmentino section list.
+
+    Only adds QM boundaries that are at least *min_gap_ms* away from any
+    existing segmentino boundary — this avoids creating tiny micro-sections
+    while still capturing structural changes that segmentino missed.
+    """
+    import copy as _copy
+
+    existing_times = {m.time_ms for m in sections}
+    merged = list(sections)
+    added = 0
+
+    for qm_mark in qm_marks:
+        t = qm_mark.time_ms
+        # Skip if too close to an existing boundary
+        if any(abs(t - et) < min_gap_ms for et in existing_times):
+            continue
+        new_mark = _copy.copy(qm_mark)
+        if not new_mark.label:
+            new_mark.label = "qm_boundary"
+        merged.append(new_mark)
+        existing_times.add(t)
+        added += 1
+
+    if added:
+        merged.sort(key=lambda m: m.time_ms)
+        print(f"  L1 merge: added {added} QM segmenter boundaries")
+
+    return merged
 
 
 def _snap_sections_to_bars(sections: list, bars: "TimingTrack") -> list:

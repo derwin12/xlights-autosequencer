@@ -57,6 +57,7 @@ class Theme:
     intent: str
     layers: list[EffectLayer]
     palette: list[str]
+    accent_palette: list[str] = field(default_factory=list)
     variants: list[ThemeVariant] = field(default_factory=list)
 
     @classmethod
@@ -69,5 +70,6 @@ class Theme:
             intent=data["intent"],
             layers=[EffectLayer.from_dict(l) for l in data["layers"]],
             palette=data["palette"],
+            accent_palette=data.get("accent_palette", []),
             variants=[ThemeVariant.from_dict(v) for v in data.get("variants", [])],
         )

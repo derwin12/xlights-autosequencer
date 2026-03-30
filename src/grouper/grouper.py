@@ -131,27 +131,35 @@ def _tier3_architecture(props: list[Prop]) -> list[PowerGroup]:
 
 
 def _tier4_rhythm(props: list[Prop]) -> list[PowerGroup]:
-    groups: list[PowerGroup] = []
+    """Create exactly 4 beat groups with props distributed evenly by type.
 
-    # Method A: Left-to-Right (sort by norm_x)
-    lr_sorted = sorted(props, key=lambda p: p.norm_x)
-    for i, chunk in enumerate(_chunks(lr_sorted, 4), start=1):
-        groups.append(PowerGroup(
-            name=f"04_BEAT_LR_{i}",
-            tier=4,
-            members=[p.name for p in chunk],
-        ))
+    Each prop type is dealt round-robin across the 4 groups so that, e.g.,
+    candy cane 1 → group 1, candy cane 2 → group 2, candy cane 3 → group 3,
+    candy cane 4 → group 4. A rotating offset prevents remainders from
+    always landing in group 1.
+    """
+    def _type_name(name: str) -> str:
+        s = name.split(" - ")[0]
+        s = re.sub(r"[\s-]*\d+\s*$", "", s)
+        s = re.sub(r"\s+[A-Z]\s*$", "", s)
+        return s.strip(" -")
 
-    # Method B: Center-Out (sort by distance from 0.5)
-    co_sorted = sorted(props, key=lambda p: abs(p.norm_x - 0.5))
-    for i, chunk in enumerate(_chunks(co_sorted, 4), start=1):
-        groups.append(PowerGroup(
-            name=f"04_BEAT_CO_{i}",
-            tier=4,
-            members=[p.name for p in chunk],
-        ))
+    buckets: dict[str, list[str]] = {}
+    for p in props:
+        key = _type_name(p.name)
+        buckets.setdefault(key, []).append(p.name)
 
-    return groups
+    members: dict[int, list[str]] = {1: [], 2: [], 3: [], 4: []}
+    offset = 0
+    for key in sorted(buckets, key=lambda k: -len(buckets[k])):
+        for i, name in enumerate(buckets[key]):
+            members[((i + offset) % 4) + 1].append(name)
+        offset += len(buckets[key])
+
+    return [
+        PowerGroup(name=f"04_BEAT_{g}", tier=4, members=members[g])
+        for g in sorted(members)
+    ]
 
 
 def _tier5_fidelity(props: list[Prop]) -> list[PowerGroup]:

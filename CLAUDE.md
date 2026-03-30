@@ -120,4 +120,22 @@ pytest tests/ -v
   to timeline when done. Vamp/madmom toggles on upload page.
 
 <!-- MANUAL ADDITIONS START -->
+
+## Future Work / TODOs
+
+### Intelligent Effect Rotation (Tier 6-7)
+- Current implementation cycles through `_PROP_EFFECT_POOL` in round-robin order per group.
+- Future improvement: weight effect selection by section energy, mood, and tempo. High-energy
+  sections should favor Meteors/Shockwave/Strobe; low-energy sections should favor
+  Ripple/Spirals/Wave. The rotation seed should incorporate variation_seed so repeated
+  sections get different effect assignments.
+- Consider per-prop-type affinity: arches look best with Chase/Wave, mini-trees with
+  Spirals/Fire, candy canes with Single Strand/Bars.
+
+### QM Segmenter Boundary Merging
+- The `_merge_qm_boundaries` function uses a simple 2-second minimum gap to avoid
+  micro-sections. A better approach would weight QM boundaries by the energy change
+  across the boundary (from L5 energy curves) and only merge boundaries with significant
+  energy transitions.
+
 <!-- MANUAL ADDITIONS END -->
