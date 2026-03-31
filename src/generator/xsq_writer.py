@@ -215,6 +215,21 @@ def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult 
     - Frame-aligns all times to 25ms multiples
     - Model names from DisplayElements match layout
     """
+    # Warn if audio is outside the mounted show directory (devcontainer-specific).
+    # The XSQ will still be written, but xLights on the host won't find the audio.
+    if audio_path is not None:
+        from src.paths import PathContext as _PathContext
+        _pc = _PathContext()
+        if _pc.in_container and not _pc.is_in_show_dir(str(audio_path)):
+            import warnings as _warnings
+            _warnings.warn(
+                f"Audio file '{audio_path}' is outside the mounted show directory "
+                f"({_pc.container_show_dir}). xLights on the host may not find the "
+                f"audio. Copy the file into the show directory for reliable playback.",
+                UserWarning,
+                stacklevel=2,
+            )
+
     # Collect all placements across sections
     all_placements: dict[str, list[EffectPlacement]] = {}
     for section in plan.sections:
@@ -252,7 +267,10 @@ def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult 
     ET.SubElement(head, "author").text = "xlight-autosequencer"
     ET.SubElement(head, "song").text = plan.song_profile.title
     ET.SubElement(head, "artist").text = plan.song_profile.artist
-    # Write media path and ensure the MP3 is alongside the XSQ
+    # Write media path and ensure the MP3 is alongside the XSQ.
+    # mediaFile stores only the filename (basename), not an absolute path, so the
+    # XSQ resolves the audio relative to its own location. This makes sequences
+    # portable across devcontainer and host environments without path translation.
     if audio_path is not None:
         dest = output_path.parent / audio_path.name
         if not dest.exists() and audio_path.exists():

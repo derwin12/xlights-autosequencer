@@ -83,12 +83,16 @@ class StemCache:
             _write_mp3(arr, stem_set.sample_rate, mp3_path)
             stem_files[name] = f"{name}.mp3"
 
+        from src.paths import PathContext as _PathContext
         manifest = {
             "source_hash": self.source_hash,
             "source_path": str(self.source_path),
             "created_at": int(time.time() * 1000),
             "stems": stem_files,
         }
+        rel = _PathContext().to_relative(str(self.source_path))
+        if rel is not None:
+            manifest["relative_source_path"] = rel
         (self.stem_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
     def load(self) -> StemSet:

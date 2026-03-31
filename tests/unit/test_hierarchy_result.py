@@ -84,9 +84,10 @@ class TestHierarchyResultSchema:
         expected_keys = {
             "schema_version", "source_file", "source_hash", "duration_ms", "estimated_bpm",
             "energy_impacts", "energy_drops", "gaps", "sections",
-            "bars", "beats", "events", "energy_curves", "spectral_flux",
-            "chords", "key_changes", "interactions",
-            "stems_available", "capabilities", "algorithms_run", "warnings",
+            "bars", "beats", "half_bars", "eighth_notes", "events", "solos",
+            "energy_curves", "spectral_flux",
+            "chords", "key_changes", "interactions", "essentia_features",
+            "stems_available", "capabilities", "algorithms_run", "warnings", "validation",
         }
         assert expected_keys == set(d.keys())
 

@@ -10,6 +10,7 @@ from typing import Optional
 
 from src import export as export_mod
 from src.analyzer.result import AnalysisResult
+from src.paths import PathContext
 
 
 @dataclass
@@ -21,6 +22,7 @@ class CacheStatus:
     age_seconds: Optional[float]
     cache_path: Optional[Path]
     track_count: int
+    suggested_path: Optional[str] = None  # cross-env path suggestion when audio not found
 
     @classmethod
     def from_audio_path(
@@ -42,6 +44,17 @@ class CacheStatus:
             else:
                 candidate = audio_path.parent / f"{audio_path.stem}_analysis.json"
             output_path = candidate
+
+        if not audio_path.exists():
+            suggestion = PathContext().suggest_path(str(audio_path))
+            return cls(
+                exists=False,
+                is_valid=False,
+                age_seconds=None,
+                cache_path=None,
+                track_count=0,
+                suggested_path=suggestion,
+            )
 
         if not output_path.exists():
             return cls(

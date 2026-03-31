@@ -461,6 +461,7 @@ class HierarchyResult:
     source_hash: str                             # MD5 of file content (cache key)
     duration_ms: int
     estimated_bpm: float
+    relative_source_file: Optional[str] = None  # path relative to show dir (cross-env portable)
 
     # L0: Special Moments
     energy_impacts: list[TimingMark] = field(default_factory=list)
@@ -526,7 +527,7 @@ class HierarchyResult:
         )
 
     def to_dict(self) -> dict:
-        return {
+        d: dict = {
             "schema_version": self.schema_version,
             "source_file": self.source_file,
             "source_hash": self.source_hash,
@@ -554,6 +555,9 @@ class HierarchyResult:
             "warnings": self.warnings,
             "validation": self.validation,
         }
+        if self.relative_source_file is not None:
+            d["relative_source_file"] = self.relative_source_file
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "HierarchyResult":
@@ -563,6 +567,7 @@ class HierarchyResult:
             source_hash=d["source_hash"],
             duration_ms=d["duration_ms"],
             estimated_bpm=d["estimated_bpm"],
+            relative_source_file=d.get("relative_source_file"),
         )
         obj.energy_impacts = [
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),

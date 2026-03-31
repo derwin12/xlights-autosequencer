@@ -1,6 +1,6 @@
 # XLight AutoSequencer Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-26
+Auto-generated from all feature plans. Last updated: 2026-03-30
 
 ## Active Technologies
 - Python 3.11+ + demucs (new), vamp, librosa, madmom, click, Flask (008-stem-separation)
@@ -29,6 +29,10 @@ Auto-generated from all feature plans. Last updated: 2026-03-26
 - `src/themes/builtin_themes.json` (built-in), `~/.xlight/custom_themes/*.json` (custom) (019-effect-themes)
 - Python 3.11+ + click 8+ (CLI), questionary 2+ (wizard prompts), rich 13+ (progress/tables), mutagen (ID3 tags), xml.etree.ElementTree (stdlib, XSQ generation) (020-sequence-generator)
 - `.xsq` XML files (output), JSON analysis cache (existing) (020-sequence-generator)
+- Python 3.11+ + librosa 0.10+, vamp, madmom 0.16+, demucs (htdemucs_6s), Flask 3+, click 8+, numpy (021-song-story-tool)
+- JSON files (song story output), WAV/MP3 stems in `.stems/<md5>/`, analysis cache (`_hierarchy.json`) (021-song-story-tool)
+- Python 3.11+ + pathlib (stdlib), os (stdlib), hashlib (stdlib) — no new dependencies (023-devcontainer-path-resolution)
+- JSON files (analysis cache, library index, stem manifests) (023-devcontainer-path-resolution)
 
 - **Language**: Python 3.11+
 - **Audio analysis**: vamp (Python host), librosa 0.10+, madmom 0.16+
@@ -103,9 +107,9 @@ pytest tests/ -v
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
-- 020-sequence-generator: Added Python 3.11+ + click 8+ (CLI), questionary 2+ (wizard prompts), rich 13+ (progress/tables), mutagen (ID3 tags), xml.etree.ElementTree (stdlib, XSQ generation)
-- 019-effect-themes: Added Python 3.11+ + `json` (stdlib), `pathlib` (stdlib), `src.effects` (feature 018)
-- 018-effect-themes-library: Added Python 3.11+ + `json` (stdlib), `pathlib` (stdlib) — no new dependencies
+- 023-devcontainer-path-resolution: Added Python 3.11+ + pathlib (stdlib), os (stdlib), hashlib (stdlib) — no new dependencies
+- 023-devcontainer-path-resolution: Added Python 3.11+ + pathlib (stdlib), os (stdlib), hashlib (stdlib) — no new dependencies
+- 021-song-story-tool: Added Python 3.11+ + librosa 0.10+, vamp, madmom 0.16+, demucs (htdemucs_6s), Flask 3+, click 8+, numpy
   `htdemucs_6s` separates audio into 6 stems (drums, bass, vocals, guitar, piano, other).
   Algorithms route to their preferred stem via `Algorithm.preferred_stem` class attribute.
   Stems are MD5-cached in `.stems/<hash>/` adjacent to the source file. Each `TimingTrack`
@@ -256,4 +260,24 @@ pytest tests/ -v
 - Test each on different prop types (1D strings, 2D matrices, custom shapes)
   to determine suitability before adding to the effect pool.
 
+## Engineering Principles
+
+- **Favor real solutions over hacks.** Fix root causes, not symptoms. No `# HACK`,
+  no `# TODO: fix this properly later`, no "temporary" workarounds that become permanent.
+  If the right fix is too large for the current scope, say so — don't ship a band-aid.
+- **Understand before changing.** Read the relevant code before proposing modifications.
+  Trace the call chain. Check how existing callers use the function. Don't guess at behavior.
+- **Don't over-engineer.** Solve the problem at hand. No speculative abstractions,
+  premature generalization, or "just in case" parameters. Three similar lines are
+  better than a clever helper used once.
+- **Don't under-engineer either.** If the task requires proper error handling, tests,
+  or data validation — do it. Cutting corners to save time creates debt that costs more later.
+- **Keep changes minimal and focused.** A bug fix is a bug fix — don't refactor
+  surrounding code, add type hints to untouched functions, or "improve" unrelated logic.
+- **Test what matters.** Write tests for non-trivial logic, edge cases, and regressions.
+  Don't write tests that just assert the implementation does what the implementation does.
+- **Name things clearly.** Variable and function names should convey intent. If you need
+  a comment to explain what a name means, the name is wrong.
+- **No dead code.** Don't comment out code "for reference." Don't leave unused imports,
+  variables, or functions. Git history exists for a reason.
 <!-- MANUAL ADDITIONS END -->

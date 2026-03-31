@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Optional
 
 DEFAULT_LIBRARY_PATH: Path = Path.home() / ".xlight" / "library.json"
 
@@ -21,6 +22,25 @@ class LibraryEntry:
     track_count: int
     stem_separation: bool
     analyzed_at: int  # Unix timestamp in milliseconds
+    relative_source_file: Optional[str] = None   # show-dir-relative (cross-env portable)
+    relative_analysis_path: Optional[str] = None  # show-dir-relative (cross-env portable)
+
+
+def _entry_from_dict(d: dict) -> LibraryEntry:
+    """Deserialise a raw dict to LibraryEntry, tolerating missing optional fields."""
+    return LibraryEntry(
+        source_hash=d["source_hash"],
+        source_file=d["source_file"],
+        filename=d["filename"],
+        analysis_path=d["analysis_path"],
+        duration_ms=d["duration_ms"],
+        estimated_tempo_bpm=d["estimated_tempo_bpm"],
+        track_count=d["track_count"],
+        stem_separation=d["stem_separation"],
+        analyzed_at=d["analyzed_at"],
+        relative_source_file=d.get("relative_source_file"),
+        relative_analysis_path=d.get("relative_analysis_path"),
+    )
 
 
 class Library:
@@ -52,14 +72,14 @@ class Library:
         sorted_raw = sorted(
             data["entries"], key=lambda e: e.get("analyzed_at", 0), reverse=True
         )
-        return [LibraryEntry(**e) for e in sorted_raw]
+        return [_entry_from_dict(e) for e in sorted_raw]
 
     def find_by_hash(self, source_hash: str) -> LibraryEntry | None:
         """Return the entry whose ``source_hash`` matches, or ``None``."""
         data = self._load()
         for raw in data["entries"]:
             if raw.get("source_hash") == source_hash:
-                return LibraryEntry(**raw)
+                return _entry_from_dict(raw)
         return None
 
     # ── Internal helpers ──────────────────────────────────────────────────────

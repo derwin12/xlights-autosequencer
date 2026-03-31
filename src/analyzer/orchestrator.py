@@ -546,10 +546,13 @@ def run_orchestrator(
             warnings.append(f"Essentia analysis failed: {exc}")
 
     # ── Stage 10: Assemble result ─────────────────────────────────────────────
+    from src.paths import PathContext as _PathContext
+    _path_ctx = _PathContext()
     result = HierarchyResult(
         schema_version=SCHEMA_VERSION,
         source_file=str(src_path),
         source_hash=source_hash,
+        relative_source_file=_path_ctx.to_relative(str(src_path)),
         duration_ms=meta.duration_ms,
         estimated_bpm=round(estimated_bpm, 2),
         energy_impacts=impacts,

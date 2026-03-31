@@ -340,7 +340,12 @@ def wizard_cmd(
     # T010: validate file existence before launching wizard
     audio_path = Path(audio_file)
     if not audio_path.exists() or not audio_path.is_file():
-        click.echo(f"ERROR: File not found: {audio_file}", err=True)
+        from src.paths import PathContext
+        suggestion = PathContext().suggest_path(str(audio_path))
+        msg = f"ERROR: File not found: {audio_file}"
+        if suggestion:
+            msg += f"\n  Did you mean: {suggestion}"
+        click.echo(msg, err=True)
         sys.exit(1)
 
     flags = {
