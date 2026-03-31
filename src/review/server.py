@@ -222,7 +222,7 @@ def _hierarchy_summary_for_server(json_path: Path) -> dict | None:
 
 
 def create_app(analysis_path: str | None = None, audio_path: str | None = None,
-               scan_dir: str | None = None) -> Flask:
+               scan_dir: str | None = None, story_mode: bool = False) -> Flask:
     """
     Create the Flask application.
 
@@ -234,6 +234,15 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
     app.config["ANALYSIS_PATH"] = analysis_path
     app.config["AUDIO_PATH"] = audio_path
     app.config["SCAN_DIR"] = scan_dir
+
+    # ── Register the story review blueprint ───────────────────────────────────
+    from src.review.story_routes import story_bp  # noqa: PLC0415
+    app.register_blueprint(story_bp, url_prefix="/story")
+
+    # ── Story review SPA route (always available) ─────────────────────────────
+    @app.route("/story-review")
+    def story_review_spa():
+        return send_from_directory(app.static_folder, "story-review.html")
 
     if analysis_path is None:
         # ── Upload mode ───────────────────────────────────────────────────────

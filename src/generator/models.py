@@ -125,6 +125,7 @@ class GenerationConfig:
     target_sections: Optional[list[str]] = None
     theme_overrides: Optional[dict[int, str]] = None
     tiers: Optional[set[int]] = None
+    story_path: Optional[Path] = None   # Optional path to song story JSON
 
     def __post_init__(self) -> None:
         self.audio_path = Path(self.audio_path)

@@ -138,4 +138,122 @@ pytest tests/ -v
   across the boundary (from L5 energy curves) and only merge boundaries with significant
   energy transitions.
 
+### Value Curves Integration
+- Value curves (`generate_value_curves` in `src/generator/value_curves.py`) are currently
+  disabled (Phase 1 comment in `build_plan`). These allow effect parameters to change
+  over time within a single effect placement — e.g. speed ramps up toward a beat drop,
+  brightness follows the energy curve, color mix shifts with chord changes.
+- Priority parameters for value curves:
+  - **Brightness**: follow L5 energy curve so effects breathe with the music
+  - **Speed**: ramp up during builds, slow down during drops
+  - **Color mix**: shift palette position to follow chord changes (L6 harmony)
+  - **Effect-specific**: Fire height follows energy, Ripple movement follows beats
+- xLights supports value curves via `VC_` prefixed parameters in the effect string.
+  The `supports_value_curve` flag in `builtin_effects.json` marks which parameters
+  can accept curves. See `src/generator/value_curves.py` for the existing framework.
+
+### Prop Effect Suitability and Selection
+- Currently all prop groups get effects from the same pool (`_PROP_EFFECT_POOL`) without
+  considering what looks good on each prop type. This needs a suitability matrix:
+  - **Arches/Candy Canes** (linear): Single Strand, Bars, Wave, Marquee work well.
+    Shockwave/Ripple render poorly on 1D props.
+  - **Matrices** (2D grids): Plasma, Butterfly, Fire, Pinwheel look great.
+    Single Strand wastes the 2D resolution.
+  - **Mini props** (stars, ornaments, low pixel): On/Off, Strobe, Twinkle are most
+    effective. Complex effects are wasted on <50 pixel props.
+  - **Deer/figures** (custom shapes): Shimmer, Color Wash, Twinkle preserve the shape.
+    Directional effects (Bars, Wave) ignore the form factor.
+- Implementation: add a `suitability` dict to each effect in `builtin_effects.json`
+  mapping prop display types (SingleLine, Custom, Matrix, Tree, etc.) to a 0-1 score.
+  Use these scores in `_build_effect_pool` to weight selection per group based on the
+  dominant prop type in that group.
+- Also consider prop pixel count: high-density props can handle complex effects,
+  low-density props should get simpler ones.
+
+### End-of-Song Fade Out
+- Songs that end with a gradual energy decrease (detected via L5 energy curves
+  and _drop tagged sections) should have a smooth visual fade-out rather than
+  an abrupt cut. Implementation options:
+  - Apply a brightness value curve that ramps from 100% to 0% over the final
+    _drop section on all active tiers
+  - Progressively kill upper tiers one by one (heroes first, then compounds,
+    then props, then beats) as energy decreases, leaving only the dim background
+    wash for the final seconds
+  - Use the existing fade_out_ms field on EffectPlacement to add crossfade
+    on the last effect in each group
+- This ties into the value curves integration above — a brightness ramp on
+  the final section would be the simplest and most effective approach.
+
+### 3D Effects, Blending, and Multi-Layer Effects
+- Current implementation places one effect per layer per group. xLights supports
+  stacking multiple effect layers on a single model/group with blend modes
+  (Additive, Subtractive, Mask, etc.) to create composite visuals.
+- **Layer stacking**: place the base effect on layer 1, then add an accent effect
+  on layer 2 with a blend mode. E.g. Color Wash (layer 1) + Twinkle (layer 2,
+  Additive) creates a twinkling wash. The theme already defines multi-layer
+  setups — this would render them as actual stacked layers in the XSQ instead
+  of mapping them to different tier groups.
+- **3D model awareness**: props with WorldPosZ (depth) or 3D model types could
+  use depth-based effects — front props brighter than back props, or effects
+  that sweep in the Z direction. The layout parser already reads WorldPosZ.
+- **Buffer transforms**: xLights supports per-layer transforms (rotation, zoom,
+  blur) via B_SLIDER parameters. Subtle rotation on Pinwheel or zoom pulses
+  on Shockwave timed to beats would add visual depth.
+- **Render style options**: beyond Per Model Default, explore Per Model Per Preview
+  and Per Model Single Line for different prop types.
+
+### Section Transition Boundary Cleanup
+- Some section boundaries from the segmentino + QM merge produce awkward
+  transitions where effects cut abruptly or overlap in unexpected ways.
+  Issues to investigate:
+  - **Snap precision**: `_snap_sections_to_bars` uses a window of half the
+    median bar interval. Some boundaries may snap to the wrong bar, creating
+    short (<2s) or overlapping sub-sections.
+  - **Effect crossfade at boundaries**: currently effects end exactly at the
+    section boundary and the next section's effects start immediately. Adding
+    a short crossfade (fade_out_ms on the outgoing effect, fade_in_ms on the
+    incoming) would smooth transitions.
+  - **Theme change at boundaries**: when a section changes themes (e.g. A→N5),
+    the color palette and effect type change instantly. A 500ms blend or brief
+    "Off" gap between sections would create cleaner visual transitions.
+  - **QM merge edge cases**: QM boundaries very close to bar lines may create
+    sub-sections that are too short to render a full effect cycle. The current
+    min_gap_ms=5000 may need tuning per song tempo.
+  - Test with more songs to identify systematic boundary issues vs one-offs.
+
+### Custom Per-Song Themes
+- Allow users to create custom themes tailored to specific songs, beyond the
+  21 built-in themes. Implementation:
+  - Custom theme JSON files in `~/.xlight/custom_themes/*.json` (the theme
+    library loader already supports this path from feature 019)
+  - A `--theme` CLI flag on `generate` to force a specific theme for all sections
+  - A `--theme-file` flag to load a one-off theme JSON for a song
+  - Theme wizard: interactive prompts to build a theme by choosing mood, palette
+    colors, accent colors, base effect, upper effects, and blend modes
+  - Theme preview: render a 10-second sample of each section with the chosen
+    theme so users can evaluate before committing to a full sequence
+  - Song-theme mapping: a config file that remembers which custom theme to use
+    for each song (keyed by audio hash or filename)
+
+### Explore Advanced Visual Effects
+- Investigate underused xLights effects that could add visual interest:
+  - **Kaleidoscope**: mirrors and rotates the underlying effect to create
+    symmetrical patterns. Works as a modifier layer (blend on top of a base
+    effect). Could be powerful on matrices and large groups where symmetry
+    reads well.
+  - **Warp**: distorts the effect buffer with swirl/ripple/dissolve transforms.
+    Combined with a base like Color Wash or Plasma, could create organic
+    evolving visuals. Currently only used in Molten Metal (removed).
+  - **Spirograph**: mathematical curve patterns that animate over time.
+    Visually striking on matrices but untested in our pipeline.
+  - **Galaxy / Swirl patterns**: using Pinwheel with high twist + Kaleidoscope
+    overlay could simulate galaxy/vortex effects for dramatic moments.
+  - **Music-reactive modifiers**: Kaleidoscope size or Warp intensity driven
+    by beat energy or spectral flux, so the visual distortion pulses with
+    the music.
+- These are best used sparingly as accent effects on hero props or during
+  high-energy impact sections rather than as base layer backgrounds.
+- Test each on different prop types (1D strings, 2D matrices, custom shapes)
+  to determine suitability before adding to the effect pool.
+
 <!-- MANUAL ADDITIONS END -->

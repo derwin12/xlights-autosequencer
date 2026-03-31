@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Song Story Review</title>
+  <link rel="stylesheet" href="story-review.css">
+</head>
+<body>
+
+  <div id="loading">Loading song story...</div>
+
+  <div id="app" style="display:none;">
+    <div id="toolbar">
+      <button id="back-btn" onclick="window.history.back()">&#8592; Back</button>
+      <span id="song-title">Song Story Review</span>
+      <span class="toolbar-sep"></span>
+      <button id="play-btn">&#9654; Play</button>
+      <span id="time-display">0:00 / 0:00</span>
+      <span class="toolbar-sep"></span>
+      <button id="save-btn">Save</button>
+      <button id="export-btn">Export</button>
+      <button id="prefs-btn">&#9881; Prefs</button>
+    </div>
+
+    <div id="main">
+      <div id="timeline-area">
+        <canvas id="timeline"></canvas>
+        <canvas id="stem-tracks"></canvas>
+        <div id="playhead-bar"></div>
+      </div>
+
+      <div id="sidebar">
+        <div id="section-detail">
+          <p class="placeholder">Select a section</p>
+        </div>
+
+        <div id="stems-panel">
+          <h4>Stem Levels</h4>
+          <div id="stems-bars"></div>
+        </div>
+
+        <div id="moments-panel">
+          <h4>Moments</h4>
+          <div id="moments-list"></div>
+        </div>
+
+        <div id="prefs-panel" style="display:none;">
+          <!-- Populated by renderPreferencesPanel() -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="player" preload="auto"></audio>
+
+  <script src="story-review.js?v=4"></script>
+</body>
+</html>

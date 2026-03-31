@@ -1760,9 +1760,12 @@ def group_layout_cmd(
 @click.option("--tiers", "tiers_raw", default=None,
               help="Comma-separated tiers to include (1-8 or names: "
                    "base,geo,type,beat,fidelity,prop,compound,hero)")
+@click.option("--story", "story_path", default=None, type=click.Path(dir_okay=False),
+              help="Path to song story JSON (uses _story_reviewed.json if exists, "
+                   "falls back to _story.json)")
 def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
                  fresh, no_wizard, target_section, theme_overrides_raw,
-                 tiers_raw):
+                 tiers_raw, story_path):
     """Generate an xLights .xsq sequence from an MP3 and layout file."""
     from src.generator.models import GenerationConfig
     from src.generator.plan import generate_sequence, read_song_metadata
@@ -1816,6 +1819,7 @@ def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
         force_reanalyze=fresh,
         target_sections=[target_section] if target_section else None,
         tiers=tiers,
+        story_path=Path(story_path) if story_path else None,
     )
 
     tiers_label = ", ".join(sorted(
@@ -2152,6 +2156,177 @@ def tune_apply_cmd(defaults_json: str, dry_run: bool) -> None:
     else:
         click.echo("\n  To apply: update algorithm default parameters in their class definitions,")
         click.echo("  or pass these values via sweep configs / CLI overrides.")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# story command (FR-021)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@cli.command("story")
+@click.argument("audio_path", type=click.Path(dir_okay=False))
+@click.option(
+    "--output", default=None,
+    help="Path to write story JSON (default: <audio_stem>_story.json alongside audio file)",
+)
+@click.option(
+    "--force", is_flag=True, default=False,
+    help="Overwrite even if a reviewed story already exists at the output path",
+)
+@click.option(
+    "--review", "launch_review", is_flag=True, default=False,
+    help="After generation, launch the story-review server and open browser",
+)
+def story_cmd(
+    audio_path: str,
+    output: str | None,
+    force: bool,
+    launch_review: bool,
+) -> None:
+    """Build a song story interpretation from an existing hierarchy analysis.
+
+    AUDIO_PATH is the source audio file. The command looks for a matching
+    `<stem>_hierarchy.json` file beside the audio file.
+    """
+    from src.story.builder import build_song_story, write_song_story
+
+    audio_p = Path(audio_path)
+    if not audio_p.exists():
+        click.echo(f"ERROR: Audio file not found: {audio_path}", err=True)
+        sys.exit(1)
+
+    # Locate hierarchy JSON — check beside the audio file, then in a subdirectory
+    hierarchy_path = audio_p.parent / (audio_p.stem + "_hierarchy.json")
+    if not hierarchy_path.exists():
+        # Also check <stem>/<stem>_hierarchy.json (analysis cache directory pattern)
+        hierarchy_path = audio_p.parent / audio_p.stem / (audio_p.stem + "_hierarchy.json")
+    if not hierarchy_path.exists():
+        click.echo(
+            f"ERROR: Hierarchy file not found.\n"
+            f"  Checked: {audio_p.parent / (audio_p.stem + '_hierarchy.json')}\n"
+            f"  Checked: {hierarchy_path}\n"
+            "Run 'xlight-analyze analyze' first to generate the hierarchy.",
+            err=True,
+        )
+        sys.exit(1)
+
+    # Determine output path
+    if output is None:
+        output_path = str(audio_p.parent / (audio_p.stem + "_story.json"))
+    else:
+        output_path = output
+
+    # Load hierarchy
+    click.echo(f"Analyzing sections...")
+    try:
+        import json as _json
+        hierarchy_dict = _json.loads(Path(hierarchy_path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        click.echo(f"ERROR: Cannot read hierarchy file: {exc}", err=True)
+        sys.exit(1)
+
+    # Build song story
+    click.echo("Building song story...")
+    try:
+        story = build_song_story(hierarchy_dict, audio_path)
+    except Exception as exc:
+        click.echo(f"ERROR: Story build failed: {exc}", err=True)
+        sys.exit(2)
+
+    # Write to output (skip overwrite protection when --force)
+    if force and Path(output_path).exists():
+        # Remove so write_song_story doesn't see a reviewed file
+        import json as _json
+        try:
+            existing = _json.loads(Path(output_path).read_text(encoding="utf-8"))
+            if existing.get("review", {}).get("status") == "reviewed":
+                # Stamp as draft so write_song_story allows the overwrite
+                Path(output_path).unlink()
+        except Exception:
+            Path(output_path).unlink(missing_ok=True)
+
+    try:
+        write_song_story(story, output_path)
+    except FileExistsError as exc:
+        click.echo(
+            f"ERROR: {exc}\nUse --force to overwrite a reviewed story.",
+            err=True,
+        )
+        sys.exit(3)
+    except Exception as exc:
+        click.echo(f"ERROR: Cannot write story file: {exc}", err=True)
+        sys.exit(3)
+
+    click.echo(f"Story written to: {output_path}")
+
+    n_sections = len(story.get("sections", []))
+    n_moments = len(story.get("moments", []))
+    click.echo(f"  {n_sections} sections, {n_moments} moments detected")
+
+    if launch_review:
+        # Delegate to story-review command logic
+        ctx = click.get_current_context()
+        ctx.invoke(story_review_cmd, story_path=output_path, port=5173, no_browser=False)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# story-review command (FR-021, Phase 4)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@cli.command("story-review")
+@click.argument("story_path", type=click.Path(dir_okay=False))
+@click.option("--port", default=5173, help="Port to serve on")
+@click.option("--no-browser", is_flag=True, default=False, help="Don't auto-open browser")
+def story_review_cmd(story_path: str, port: int, no_browser: bool) -> None:
+    """Open the song story review UI in the browser.
+
+    STORY_PATH is the path to a *_story.json or *_story_reviewed.json file.
+    The server prefers *_story_reviewed.json if it exists alongside *_story.json.
+    """
+    from src.review.server import create_app
+
+    story_p = Path(story_path).resolve()
+
+    # If user passed an audio file instead of a story JSON, find the story
+    if story_p.suffix.lower() in (".mp3", ".wav", ".flac", ".ogg", ".m4a"):
+        for candidate_name in (
+            story_p.stem + "_story_reviewed.json",
+            story_p.stem + "_story.json",
+        ):
+            candidate = story_p.parent / candidate_name
+            if candidate.exists():
+                story_p = candidate
+                break
+        else:
+            click.echo(
+                f"ERROR: No story file found for {story_p.name}\n"
+                f"Run 'story' command first to generate one.",
+                err=True,
+            )
+            sys.exit(4)
+
+    if not story_p.exists():
+        click.echo(f"ERROR: Story file not found: {story_path}", err=True)
+        sys.exit(4)
+
+    app = create_app()
+    url = f"http://127.0.0.1:{port}/story-review?path={story_p}"
+    click.echo(f"Starting story review UI at {url}")
+    click.echo("Press Ctrl-C to stop.")
+
+    if not no_browser:
+        threading.Timer(0.5, webbrowser.open, args=[url]).start()
+
+    try:
+        app.run(host="127.0.0.1", port=port, use_reloader=False, debug=False)
+    except OSError as exc:
+        if exc.errno == errno.EADDRINUSE:
+            click.echo(
+                f"ERROR: Port {port} is already in use.\n"
+                "Kill the process using that port or use --port to choose another.",
+                err=True,
+            )
+            sys.exit(5)
+        raise
 
 
 def main() -> None:

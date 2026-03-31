@@ -8,6 +8,7 @@ from src.analyzer.result import HierarchyResult
 from src.effects.library import EffectLibrary, load_effect_library
 from src.generator.effect_placer import place_effects
 from src.generator.energy import derive_section_energies
+from src.story.builder import load_song_story
 from src.generator.models import (
     GenerationConfig,
     SectionAssignment,
@@ -91,29 +92,43 @@ def build_plan(
     profile.genre = config.genre
     profile.occasion = config.occasion
 
-    # 2. Derive section energies (dynamic complexity + LUFS normalization)
-    ef = hierarchy.essentia_features or {}
-    section_energies = derive_section_energies(
-        hierarchy.sections,
-        hierarchy.energy_curves,
-        hierarchy.energy_impacts,
-        dynamic_complexity=ef.get("dynamic_complexity"),
-        loudness_lufs=ef.get("loudness_lufs"),
-    )
+    # 2. Derive section energies — use song story if available, else derive from hierarchy
+    story: Optional[dict] = None
+    if config.story_path is not None:
+        story_path = config.story_path
+        # Look for reviewed story first, fall back to base story
+        reviewed_path = story_path.parent / (story_path.stem.replace("_story", "_story_reviewed") + ".json")
+        if reviewed_path.exists():
+            story = load_song_story(reviewed_path)
+        elif story_path.exists():
+            story = load_song_story(story_path)
 
-    # 3. Select themes (key/scale can infer mood automatically)
-    inferred_genre = config.genre
-    inferred_occasion = config.occasion
+    if story is not None:
+        section_energies = _section_energies_from_story(story)
+        inferred_genre = story["preferences"].get("genre") or config.genre
+        inferred_occasion = story["preferences"].get("occasion") or config.occasion
+        scale = None  # story handles mood directly
+    else:
+        ef = hierarchy.essentia_features or {}
+        section_energies = derive_section_energies(
+            hierarchy.sections,
+            hierarchy.energy_curves,
+            hierarchy.energy_impacts,
+            dynamic_complexity=ef.get("dynamic_complexity"),
+            loudness_lufs=ef.get("loudness_lufs"),
+        )
+        inferred_genre = config.genre
+        inferred_occasion = config.occasion
+        scale = ef.get("scale")
+        # Auto-infer mood-appropriate genre from essentia key analysis
+        if inferred_genre == "pop" and ef.get("scale"):
+            if ef["scale"] == "minor" and ef.get("key_strength", 0) > 0.6:
+                inferred_genre = "classical"  # minor key → favor darker themes
 
-    # Auto-infer mood-appropriate genre from essentia key analysis
-    if inferred_genre == "pop" and ef.get("scale"):
-        # If user didn't explicitly set genre, let the key/scale inform it
-        if ef["scale"] == "minor" and ef.get("key_strength", 0) > 0.6:
-            inferred_genre = "classical"  # minor key → favor darker themes
-
+    # 3. Select themes
     assignments = select_themes(
         section_energies, theme_library, inferred_genre, inferred_occasion,
-        scale=ef.get("scale"),
+        scale=scale,
     )
 
     # Apply theme overrides if specified
@@ -143,6 +158,43 @@ def build_plan(
         layout_groups=groups,
         models=model_names,
     )
+
+
+def _section_energies_from_story(story: dict) -> list[SectionEnergy]:
+    """Convert song story sections to SectionEnergy objects.
+
+    Applies three-level precedence: per-section override > song-wide preference > auto-derived.
+    """
+    from src.generator.models import energy_to_mood
+
+    prefs = story.get("preferences", {})
+    global_mood = prefs.get("mood")
+
+    energies: list[SectionEnergy] = []
+    for sec in story.get("sections", []):
+        overrides = sec.get("overrides", {})
+        # Three-level precedence for mood
+        mood = (
+            overrides.get("mood")
+            or global_mood
+            or energy_to_mood(sec["character"]["energy_score"])
+        )
+        energy_score = sec["character"]["energy_score"]
+        # Apply per-section intensity scaler to energy score
+        section_intensity = overrides.get("intensity") or 1.0
+        global_intensity = prefs.get("intensity", 1.0)
+        adjusted_score = min(100, int(energy_score * section_intensity * global_intensity))
+
+        impact_count = sec.get("lighting", {}).get("moment_count", 0)
+        energies.append(SectionEnergy(
+            label=sec["role"],
+            start_ms=int(sec["start"] * 1000),
+            end_ms=int(sec["end"] * 1000),
+            energy_score=adjusted_score,
+            mood_tier=mood,
+            impact_count=impact_count,
+        ))
+    return energies
 
 
 def generate_sequence(config: GenerationConfig) -> Path:

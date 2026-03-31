@@ -1,0 +1,551 @@
+/* ── Song Story Review UI ────────────────────────────────────────────────── */
+
+:root {
+  /* Section role colors */
+  --role-intro: #4a90d9;
+  --role-verse: #5a9e5a;
+  --role-pre-chorus: #9e8a3a;
+  --role-pre_chorus: #9e8a3a;
+  --role-chorus: #d95a5a;
+  --role-post-chorus: #c06030;
+  --role-post_chorus: #c06030;
+  --role-bridge: #8a5a9e;
+  --role-instrumental-break: #3a9e9e;
+  --role-instrumental_break: #3a9e9e;
+  --role-climax: #ff4444;
+  --role-ambient-bridge: #6a6a9e;
+  --role-ambient_bridge: #6a6a9e;
+  --role-outro: #6a6a6a;
+  --role-interlude: #8a6a3a;
+
+  /* Moment type colors */
+  --moment-energy_surge: #ff8800;
+  --moment-energy_drop: #4488ff;
+  --moment-vocal_entry: #44bbff;
+  --moment-vocal_exit: #8899bb;
+  --moment-silence: #888888;
+  --moment-percussive_impact: #ff4444;
+  --moment-brightness_spike: #ffee00;
+  --moment-tempo_change: #ee44ee;
+  --moment-texture_shift: #44eeaa;
+  --moment-handoff: #ffaadd;
+
+  /* Stem colors */
+  --stem-drums: #e05050;
+  --stem-bass: #e09030;
+  --stem-vocals: #50b0e0;
+  --stem-guitar: #50e080;
+  --stem-piano: #a050e0;
+  --stem-other: #808080;
+  --stem-full_mix: #c0c0c0;
+
+  /* UI palette */
+  --bg: #1a1a1a;
+  --bg2: #222222;
+  --bg3: #2a2a2a;
+  --border: #333333;
+  --text: #e0e0e0;
+  --text-dim: #888888;
+  --accent: #5a9e5a;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: monospace;
+  font-size: 13px;
+}
+
+#loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 16px;
+  color: var(--text-dim);
+}
+
+#app {
+  display: grid;
+  grid-template-rows: 40px 1fr;
+  height: 100vh;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+#song-title {
+  font-weight: bold;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.toolbar-sep {
+  flex: 1;
+  max-width: 24px;
+}
+
+#time-display {
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ── Toolbar buttons ─────────────────────────────────────────────────────── */
+
+#toolbar button {
+  background: #333;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+#toolbar button:hover {
+  background: #444;
+}
+
+#toolbar button:active {
+  background: #555;
+}
+
+#save-btn {
+  border-color: #5a9e5a !important;
+  color: #7bc97b !important;
+}
+
+#save-btn:hover {
+  background: #2a3a2a !important;
+}
+
+#export-btn {
+  border-color: #4a90d9 !important;
+  color: #7ab8f5 !important;
+}
+
+#export-btn:hover {
+  background: #1a2a3a !important;
+}
+
+/* ── Main layout ─────────────────────────────────────────────────────────── */
+
+#main {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Timeline area ───────────────────────────────────────────────────────── */
+
+#timeline-area {
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  position: relative;
+  overflow: hidden;
+}
+
+#timeline {
+  width: 100%;
+  height: 200px;
+  display: block;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#stem-tracks {
+  width: 100%;
+  height: 480px;
+  display: block;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+
+#playhead-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 680px;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  display: none;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+
+#sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+/* ── Section detail panel ────────────────────────────────────────────────── */
+
+#section-detail {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#section-detail h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#section-detail .detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 3px 0;
+  gap: 8px;
+}
+
+#section-detail .detail-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+#section-detail .detail-value {
+  color: var(--text);
+  text-align: right;
+  word-break: break-all;
+}
+
+.placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+  margin: 4px 0;
+}
+
+/* ── Section role heading colors ─────────────────────────────────────────── */
+
+h3[data-role="intro"]               { color: var(--role-intro); }
+h3[data-role="verse"]               { color: var(--role-verse); }
+h3[data-role="pre_chorus"],
+h3[data-role="pre-chorus"]          { color: var(--role-pre-chorus); }
+h3[data-role="chorus"]              { color: var(--role-chorus); }
+h3[data-role="post_chorus"],
+h3[data-role="post-chorus"]         { color: var(--role-post-chorus); }
+h3[data-role="bridge"]              { color: var(--role-bridge); }
+h3[data-role="instrumental_break"],
+h3[data-role="instrumental-break"]  { color: var(--role-instrumental-break); }
+h3[data-role="climax"]              { color: var(--role-climax); }
+h3[data-role="ambient_bridge"],
+h3[data-role="ambient-bridge"]      { color: var(--role-ambient-bridge); }
+h3[data-role="outro"]               { color: var(--role-outro); }
+h3[data-role="interlude"]           { color: var(--role-interlude); }
+
+/* ── Stems panel ─────────────────────────────────────────────────────────── */
+
+#stems-panel {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#stems-panel h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stem-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.stem-name {
+  width: 52px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.stem-bar-bg {
+  flex: 1;
+  height: 8px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.stem-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.stem-bar-fill[data-stem="drums"]    { background: var(--stem-drums); }
+.stem-bar-fill[data-stem="bass"]     { background: var(--stem-bass); }
+.stem-bar-fill[data-stem="vocals"]   { background: var(--stem-vocals); }
+.stem-bar-fill[data-stem="guitar"]   { background: var(--stem-guitar); }
+.stem-bar-fill[data-stem="piano"]    { background: var(--stem-piano); }
+.stem-bar-fill[data-stem="other"]    { background: var(--stem-other); }
+.stem-bar-fill[data-stem="full_mix"] { background: var(--stem-full_mix); }
+
+.stem-pct {
+  width: 32px;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Moments panel ───────────────────────────────────────────────────────── */
+
+#moments-panel {
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+#moments-panel h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.moment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 4px 6px;
+  background: #1e1e1e;
+  border-radius: 3px;
+  border-left: 3px solid #444;
+}
+
+.moment-item.dismissed {
+  opacity: 0.4;
+}
+
+.moment-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.moment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.moment-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  color: #000;
+  margin-bottom: 2px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.moment-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  word-break: break-word;
+}
+
+/* Moment badge colors */
+.moment-badge[data-type="energy_surge"]      { background: var(--moment-energy_surge); }
+.moment-badge[data-type="energy_drop"]       { background: var(--moment-energy_drop); color: #fff; }
+.moment-badge[data-type="vocal_entry"]       { background: var(--moment-vocal_entry); }
+.moment-badge[data-type="vocal_exit"]        { background: var(--moment-vocal_exit); }
+.moment-badge[data-type="silence"]           { background: var(--moment-silence); color: #fff; }
+.moment-badge[data-type="percussive_impact"] { background: var(--moment-percussive_impact); color: #fff; }
+.moment-badge[data-type="brightness_spike"]  { background: var(--moment-brightness_spike); }
+.moment-badge[data-type="tempo_change"]      { background: var(--moment-tempo_change); color: #fff; }
+.moment-badge[data-type="texture_shift"]     { background: var(--moment-texture_shift); }
+.moment-badge[data-type="handoff"]           { background: var(--moment-handoff); }
+
+/* ── Section edit controls (Phase 5-7) ──────────────────────────────────── */
+
+.section-edit-controls {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0;
+}
+
+.edit-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.edit-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+}
+
+.edit-btn {
+  background: #333;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.edit-btn:hover { background: #444; }
+.edit-btn:active { background: #555; }
+.edit-btn.active { border-color: #d9a05a; color: #f0c078; background: #3a2a10; }
+
+.edit-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  min-width: 40px;
+}
+
+select {
+  background: #333;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+input[type="text"] {
+  background: #333;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+/* ── Moment dismiss button ───────────────────────────────────────────────── */
+
+.moment-dismiss-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid #444;
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 10px;
+  cursor: pointer;
+  font-family: monospace;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+
+.moment-dismiss-btn:hover { background: #3a2a2a; color: #ff8888; border-color: #884444; }
+.moment-item.dismissed .moment-dismiss-btn { color: #5a9e5a; border-color: #3a6e3a; }
+.moment-item.dismissed .moment-dismiss-btn:hover { background: #1a2a1a; }
+
+/* ── Preferences panel ───────────────────────────────────────────────────── */
+
+#prefs-panel {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+
+#prefs-panel h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pref-form { display: flex; flex-direction: column; gap: 5px; }
+
+.pref-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pref-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+#prefs-btn {
+  border-color: #888 !important;
+}
+
+/* ── Scrollbar styling ───────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
