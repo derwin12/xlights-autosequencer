@@ -837,4 +837,354 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
 
             return jsonify({"path": str(out_path)}), 200
 
+    # ── Grouper editor routes ─────────────────────────────────────────────────
+    # These routes are always available regardless of analysis_path mode.
+
+    # Per-layout in-memory edit state: md5 -> GroupingEdits
+    _grouper_edits: dict[str, object] = {}
+
+    @app.route("/grouper")
+    def grouper_index():
+        return send_from_directory(app.static_folder, "grouper.html")
+
+    @app.route("/grouper/layout")
+    def grouper_layout():
+        from src.grouper.classifier import classify_props, normalize_coords
+        from src.grouper.editor import (
+            GroupingEdits,
+            apply_edits,
+            layout_md5,
+            load_baseline,
+            load_edits,
+            new_edits,
+            _TIER_LABELS,
+            _TIER_PREFIXES,
+        )
+
+        layout_path_str = request.args.get("path", "")
+        if not layout_path_str:
+            return jsonify({"error": "Missing 'path' query parameter"}), 400
+
+        layout_path = Path(layout_path_str)
+        if not layout_path.exists():
+            return jsonify({"error": f"Layout file not found: {layout_path_str}"}), 400
+
+        try:
+            baseline, all_prop_names = load_baseline(layout_path)
+        except Exception as exc:
+            return jsonify({"error": f"Failed to parse layout: {exc}"}), 500
+
+        md5 = layout_md5(layout_path)
+
+        # Load or create edits for this layout
+        if md5 not in _grouper_edits:
+            saved = load_edits(layout_path, all_prop_names)
+            _grouper_edits[md5] = saved if saved is not None else new_edits(layout_path)
+
+        edits = _grouper_edits[md5]
+        has_saved_edits = any([edits.moves, edits.added_groups, edits.removed_groups, edits.renamed_groups])
+        merged = apply_edits(baseline, edits if has_saved_edits else None, all_prop_names)
+
+        # Fetch prop metadata for the UI
+        from src.grouper.layout import parse_layout
+        layout = parse_layout(layout_path)
+        normalize_coords(layout.props)
+        classify_props(layout.props)
+        prop_map = {p.name: p for p in layout.props}
+
+        props_json = [
+            {
+                "name": p.name,
+                "display_as": p.display_as,
+                "pixel_count": p.pixel_count,
+                "norm_x": round(p.norm_x, 3),
+                "norm_y": round(p.norm_y, 3),
+            }
+            for p in layout.props
+        ]
+
+        # Build per-tier structure
+        groups_by_tier: dict[int, list] = {t: [] for t in range(1, 9)}
+        for grp in merged.groups:
+            groups_by_tier.setdefault(grp.tier, []).append(grp)
+
+        # Build ungrouped: props not in any group for each tier
+        tiers_json = []
+        for tier_num in range(1, 9):
+            tier_groups = groups_by_tier.get(tier_num, [])
+            assigned = set()
+            for g in tier_groups:
+                assigned.update(g.members)
+            ungrouped = [n for n in all_prop_names if n not in assigned]
+            tiers_json.append({
+                "tier": tier_num,
+                "label": _TIER_LABELS.get(tier_num, f"Tier {tier_num}"),
+                "prefix": _TIER_PREFIXES.get(tier_num, ""),
+                "groups": [
+                    {"name": g.name, "members": list(g.members), "is_user_created": False}
+                    for g in sorted(tier_groups, key=lambda g: g.name)
+                ],
+                "ungrouped": ungrouped,
+            })
+
+        return jsonify({
+            "layout_md5": md5,
+            "layout_path": str(layout_path),
+            "props": props_json,
+            "tiers": tiers_json,
+            "has_edits": has_saved_edits,
+            "edited_props": list(merged.edited_props),
+        })
+
+    @app.route("/grouper/move", methods=["POST"])
+    def grouper_move():
+        from src.grouper.editor import PropMove, apply_edits, load_baseline, new_edits
+        from src.grouper.editor import _TIER_LABELS, _TIER_PREFIXES
+
+        body = request.get_json(force=True) or {}
+        md5 = body.get("layout_md5", "")
+        moves_data = body.get("moves", [])
+
+        if md5 not in _grouper_edits:
+            return jsonify({"error": "Layout not loaded. Call GET /grouper/layout first."}), 400
+
+        edits = _grouper_edits[md5]
+
+        # Validate and add moves
+        for m in moves_data:
+            prop_name = m.get("prop_name", "")
+            tier = m.get("tier")
+            from_group = m.get("from_group")
+            to_group = m.get("to_group")
+
+            if not prop_name or tier is None:
+                return jsonify({"error": "Each move requires prop_name and tier"}), 400
+
+            # Check not already in target group (will be filtered by apply_edits too)
+            edits.moves.append(PropMove(
+                prop_name=prop_name,
+                tier=tier,
+                from_group=from_group,
+                to_group=to_group,
+            ))
+
+        # Re-apply edits and return updated tier
+        tier_nums = list({m.get("tier") for m in moves_data})
+        if len(tier_nums) != 1:
+            return jsonify({"error": "All moves in one request must be for the same tier"}), 400
+        tier_num = tier_nums[0]
+
+        # Get the prop names for this layout
+        layout_path = Path(edits.layout_path)
+        _, all_prop_names = load_baseline(layout_path)
+        from src.grouper.grouper import generate_groups
+        from src.grouper.classifier import classify_props, normalize_coords
+        from src.grouper.layout import parse_layout
+        layout_obj = parse_layout(layout_path)
+        normalize_coords(layout_obj.props)
+        classify_props(layout_obj.props)
+        baseline = generate_groups(layout_obj.props)
+
+        merged = apply_edits(baseline, edits, all_prop_names)
+
+        # Extract updated tier data
+        tier_groups = [g for g in merged.groups if g.tier == tier_num]
+        assigned = set()
+        for g in tier_groups:
+            assigned.update(g.members)
+        ungrouped = [n for n in all_prop_names if n not in assigned]
+
+        return jsonify({
+            "success": True,
+            "tier": tier_num,
+            "groups": [
+                {"name": g.name, "members": list(g.members)}
+                for g in sorted(tier_groups, key=lambda g: g.name)
+            ],
+            "ungrouped": ungrouped,
+            "edited_props": list(merged.edited_props),
+        })
+
+    @app.route("/grouper/group/create", methods=["POST"])
+    def grouper_group_create():
+        from src.grouper.editor import add_group_to_edits
+
+        body = request.get_json(force=True) or {}
+        md5 = body.get("layout_md5", "")
+        tier = body.get("tier")
+        name = body.get("name", "")
+
+        if md5 not in _grouper_edits:
+            return jsonify({"error": "Layout not loaded"}), 400
+
+        edits = _grouper_edits[md5]
+        try:
+            add_group_to_edits(edits, name, tier)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify({
+            "success": True,
+            "group": {"name": name, "tier": tier, "members": [], "is_user_created": True},
+        })
+
+    @app.route("/grouper/group/delete", methods=["POST"])
+    def grouper_group_delete():
+        from src.grouper.editor import remove_group_from_edits, apply_edits, load_baseline
+
+        body = request.get_json(force=True) or {}
+        md5 = body.get("layout_md5", "")
+        group_name = body.get("group_name", "")
+
+        if md5 not in _grouper_edits:
+            return jsonify({"error": "Layout not loaded"}), 400
+
+        edits = _grouper_edits[md5]
+
+        # Find current members before deleting (from in-memory merged state)
+        layout_path = Path(edits.layout_path)
+        from src.grouper.classifier import classify_props, normalize_coords
+        from src.grouper.layout import parse_layout
+        layout_obj = parse_layout(layout_path)
+        normalize_coords(layout_obj.props)
+        classify_props(layout_obj.props)
+        from src.grouper.grouper import generate_groups
+        baseline = generate_groups(layout_obj.props)
+        all_prop_names = [p.name for p in layout_obj.props]
+        merged = apply_edits(baseline, edits, all_prop_names)
+
+        displaced = []
+        for g in merged.groups:
+            if g.name == group_name:
+                displaced = list(g.members)
+                tier = g.tier
+                break
+        else:
+            tier = None
+
+        remove_group_from_edits(edits, group_name)
+
+        return jsonify({
+            "success": True,
+            "displaced_props": displaced,
+            "tier": tier,
+            "ungrouped": displaced,
+        })
+
+    @app.route("/grouper/group/rename", methods=["POST"])
+    def grouper_group_rename():
+        from src.grouper.editor import rename_group_in_edits
+
+        body = request.get_json(force=True) or {}
+        md5 = body.get("layout_md5", "")
+        old_name = body.get("old_name", "")
+        new_name = body.get("new_name", "")
+
+        if md5 not in _grouper_edits:
+            return jsonify({"error": "Layout not loaded"}), 400
+
+        edits = _grouper_edits[md5]
+        try:
+            rename_group_in_edits(edits, old_name, new_name)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        # Find members in merged state
+        layout_path = Path(edits.layout_path)
+        from src.grouper.classifier import classify_props, normalize_coords
+        from src.grouper.layout import parse_layout
+        from src.grouper.grouper import generate_groups
+        from src.grouper.editor import apply_edits
+        layout_obj = parse_layout(layout_path)
+        normalize_coords(layout_obj.props)
+        classify_props(layout_obj.props)
+        baseline = generate_groups(layout_obj.props)
+        all_prop_names = [p.name for p in layout_obj.props]
+        merged = apply_edits(baseline, edits, all_prop_names)
+        grp = next((g for g in merged.groups if g.name == new_name), None)
+
+        return jsonify({
+            "success": True,
+            "group": {
+                "name": new_name,
+                "tier": grp.tier if grp else None,
+                "members": list(grp.members) if grp else [],
+            },
+        })
+
+    @app.route("/grouper/save", methods=["POST"])
+    def grouper_save():
+        from src.grouper.editor import save_edits
+
+        body = request.get_json(force=True) or {}
+        md5 = body.get("layout_md5", "")
+
+        if md5 not in _grouper_edits:
+            return jsonify({"error": "Layout not loaded"}), 400
+
+        edits = _grouper_edits[md5]
+        layout_path = Path(edits.layout_path)
+        try:
+            save_edits(edits, layout_path)
+        except Exception as exc:
+            return jsonify({"error": f"Save failed: {exc}"}), 500
+
+        from src.grouper.editor import edits_path
+        return jsonify({"success": True, "edits_path": str(edits_path(layout_path))})
+
+    @app.route("/grouper/reset", methods=["POST"])
+    def grouper_reset():
+        from src.grouper.editor import reset_edits, new_edits
+
+        body = request.get_json(force=True) or {}
+        md5 = body.get("layout_md5", "")
+
+        if md5 not in _grouper_edits:
+            return jsonify({"error": "Layout not loaded"}), 400
+
+        edits = _grouper_edits[md5]
+        layout_path = Path(edits.layout_path)
+        reset_edits(layout_path)
+        _grouper_edits[md5] = new_edits(layout_path)
+
+        return jsonify({"success": True, "message": "All edits discarded. Showing baseline grouping."})
+
+    @app.route("/grouper/export", methods=["POST"])
+    def grouper_export():
+        from src.grouper.editor import (
+            apply_edits, export_grouping, load_baseline
+        )
+        from src.grouper.classifier import classify_props, normalize_coords
+        from src.grouper.layout import parse_layout
+        from src.grouper.grouper import generate_groups
+
+        body = request.get_json(force=True) or {}
+        md5 = body.get("layout_md5", "")
+
+        if md5 not in _grouper_edits:
+            return jsonify({"error": "Layout not loaded"}), 400
+
+        edits = _grouper_edits[md5]
+        layout_path = Path(edits.layout_path)
+
+        try:
+            layout_obj = parse_layout(layout_path)
+            normalize_coords(layout_obj.props)
+            classify_props(layout_obj.props)
+            baseline = generate_groups(layout_obj.props)
+            all_prop_names = [p.name for p in layout_obj.props]
+            has_edits = any([edits.moves, edits.added_groups, edits.removed_groups, edits.renamed_groups])
+            merged = apply_edits(baseline, edits if has_edits else None, all_prop_names)
+            out_path = export_grouping(merged, layout_path)
+        except Exception as exc:
+            return jsonify({"error": f"Export failed: {exc}"}), 500
+
+        return jsonify({
+            "success": True,
+            "export_path": str(out_path),
+            "group_count": len(merged.groups),
+            "has_edits": has_edits,
+            "edited_prop_count": len(merged.edited_props),
+        })
+
     return app

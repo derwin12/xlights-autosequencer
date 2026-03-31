@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Layout Group Editor</title>
+  <link rel="stylesheet" href="grouper.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Layout Group Editor</h1>
+    <div class="header-actions">
+      <span id="edit-status" class="edit-status"></span>
+      <button id="btn-save" class="btn btn-primary" disabled>Save</button>
+      <button id="btn-reset" class="btn btn-secondary" disabled>Reset to Original</button>
+      <button id="btn-export" class="btn btn-export" disabled>Export</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <div id="loading-banner" class="banner banner-info" style="display:none">
+      Loading layout…
+    </div>
+    <div id="error-banner" class="banner banner-error" style="display:none"></div>
+    <div id="empty-banner" class="banner banner-warn" style="display:none">
+      No props found in layout file. Check that the file contains &lt;model&gt; elements.
+    </div>
+    <div id="excluded-banner" class="banner banner-warn excluded-banner" style="display:none">
+      <strong>Excluded from sequencing:</strong>
+      <span id="excluded-list"></span>
+      <small>(Props not in any group across all tiers)</small>
+    </div>
+
+    <!-- Tier tab bar -->
+    <nav id="tier-tabs" class="tier-tabs" style="display:none">
+      <button class="tier-tab active" data-tier="1">Canvas</button>
+      <button class="tier-tab" data-tier="2">Spatial</button>
+      <button class="tier-tab" data-tier="3">Architecture</button>
+      <button class="tier-tab" data-tier="4">Rhythm</button>
+      <button class="tier-tab" data-tier="5">Fidelity</button>
+      <button class="tier-tab" data-tier="6">Prop Type</button>
+      <button class="tier-tab" data-tier="7">Compound</button>
+      <button class="tier-tab" data-tier="8">Heroes</button>
+    </nav>
+
+    <!-- Tier content area -->
+    <div id="tier-content" class="tier-content" style="display:none">
+      <div id="tier-toolbar" class="tier-toolbar">
+        <span id="tier-label" class="tier-label"></span>
+        <button id="btn-new-group" class="btn btn-small">+ New Group</button>
+        <div id="new-group-form" class="new-group-form" style="display:none">
+          <input id="new-group-name" type="text" class="new-group-input" placeholder="Group name (e.g. 01_BASE_Roof)" />
+          <button id="btn-new-group-confirm" class="btn btn-small btn-primary">Create</button>
+          <button id="btn-new-group-cancel" class="btn btn-small">Cancel</button>
+        </div>
+      </div>
+      <div id="groups-container" class="groups-container"></div>
+      <div id="ungrouped-section" class="ungrouped-section">
+        <h3 class="ungrouped-title">Ungrouped</h3>
+        <div id="ungrouped-list" class="prop-list"
+             data-group="__ungrouped__"
+             data-tier=""
+             ondragover="handleDragOver(event)"
+             ondrop="handleDrop(event)">
+          <span class="ungrouped-empty-hint">No ungrouped props in this tier.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="grouper.js"></script>
+</body>
+</html>
