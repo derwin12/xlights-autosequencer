@@ -112,17 +112,52 @@ def _reassign_section_ids(sections: list[dict], moments: list[dict]) -> None:
             moment["section_id"] = sections[-1]["id"]
 
 
-def _quick_profile(section: dict, story: dict) -> dict:
-    """Rebuild section lighting from stem curves in story (no audio access needed).
+def _load_hierarchy(story: dict) -> dict | None:
+    """Load the hierarchy JSON for the current song (cached in session)."""
+    if "hierarchy" in _session and _session["hierarchy"] is not None:
+        return _session["hierarchy"]
+    audio_path = story.get("song", {}).get("file", "")
+    if not audio_path:
+        return None
+    audio_p = Path(audio_path)
+    # Try standard hierarchy path locations
+    for candidate in [
+        audio_p.parent / audio_p.stem / f"{audio_p.stem}_hierarchy.json",
+        audio_p.parent / f"{audio_p.stem}_hierarchy.json",
+    ]:
+        if candidate.exists():
+            try:
+                h = json.loads(candidate.read_text(encoding="utf-8"))
+                _session["hierarchy"] = h
+                return h
+            except Exception:
+                pass
+    return None
 
-    Keeps existing character/stems but re-runs lighting mapper.
+
+def _quick_profile(section: dict, story: dict) -> dict:
+    """Rebuild section character, stems, accents, and lighting.
+
+    Tries to load the hierarchy for full re-profiling (energy, texture,
+    brightness, drum pattern, accents). Falls back to lighting-only
+    update if the hierarchy isn't available.
     """
     from src.story.lighting_mapper import map_lighting
+
+    hierarchy = _load_hierarchy(story)
+    if hierarchy is not None:
+        from src.story.section_profiler import profile_section
+        start_ms = int(section["start"] * 1000)
+        end_ms = int(section["end"] * 1000)
+        profile = profile_section(start_ms, end_ms, hierarchy)
+        section["character"] = profile["character"]
+        section["stems"] = {**section.get("stems", {}), **profile["stems"]}
+
     energy_level = section["character"]["energy_level"]
     role = section["role"]
     new_lighting = map_lighting(role, energy_level)
-    new_lighting["moment_count"] = section["lighting"].get("moment_count", 0)
-    new_lighting["moment_pattern"] = section["lighting"].get("moment_pattern", "isolated")
+    new_lighting["moment_count"] = section.get("lighting", {}).get("moment_count", 0)
+    new_lighting["moment_pattern"] = section.get("lighting", {}).get("moment_pattern", "isolated")
     section["lighting"] = new_lighting
     return section
 

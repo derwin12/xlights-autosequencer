@@ -22,9 +22,20 @@
       <button id="zoom-out-btn" title="Zoom out (Ctrl+scroll)">-</button>
       <button id="zoom-reset-btn" title="Reset zoom">Fit</button>
       <span class="toolbar-sep"></span>
+      <button id="accents-btn" title="Toggle accent layers">Accents</button>
+      <span class="toolbar-sep"></span>
       <button id="save-btn">Save</button>
       <button id="export-btn">Export</button>
       <button id="prefs-btn">&#9881; Prefs</button>
+    </div>
+
+    <div id="accent-toggles" style="display:none;">
+      <label class="accent-toggle" data-stem="drums"><input type="checkbox" checked /><span class="accent-dot" style="background:#ffee44"></span>Drums</label>
+      <label class="accent-toggle" data-stem="bass"><input type="checkbox" checked /><span class="accent-dot" style="background:#ff6020"></span>Bass</label>
+      <label class="accent-toggle" data-stem="vocals"><input type="checkbox" checked /><span class="accent-dot" style="background:#00e0ff"></span>Vocals</label>
+      <label class="accent-toggle" data-stem="guitar"><input type="checkbox" /><span class="accent-dot" style="background:#40ff90"></span>Guitar</label>
+      <label class="accent-toggle" data-stem="piano"><input type="checkbox" /><span class="accent-dot" style="background:#d080ff"></span>Piano</label>
+      <label class="accent-toggle" data-stem="other"><input type="checkbox" /><span class="accent-dot" style="background:#ffffff"></span>Other</label>
     </div>
 
     <div id="main">
@@ -58,6 +69,6 @@
 
   <audio id="player" preload="auto"></audio>
 
-  <script src="story-review.js?v=5"></script>
+  <script src="story-review.js?v=6"></script>
 </body>
 </html>

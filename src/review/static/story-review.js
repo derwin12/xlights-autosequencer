@@ -20,6 +20,8 @@ const state = {
   // Zoom state: visible time window (seconds)
   zoomLevel: 1.0,       // 1.0 = full song visible; 2.0 = 2× zoomed, etc.
   scrollOffset: 0,      // left edge of visible window (seconds)
+  // Accent layer visibility: which stems' accents are shown on the timeline
+  accentLayers: { drums: true, bass: true, vocals: true, guitar: false, piano: false, other: false },
 };
 
 // ── Role → CSS var mapping ────────────────────────────────────────────────────
@@ -262,9 +264,10 @@ document.addEventListener("DOMContentLoaded", () => {
       'Error: missing ?path= query parameter. Usage: /story-review?path=/absolute/path/to/story.json';
     return;
   }
-  loadStory(path);
   wireToolbar();
-  wireAudio();
+  // Load story first, THEN wire audio (player needs /story/load to complete
+  // before it can fetch /story/audio).
+  loadStory(path).then(() => wireAudio());
 });
 
 async function loadStory(path) {
@@ -438,26 +441,34 @@ function renderTimeline() {
     }
   });
 
-  // ── Draw big hit markers ──
-  // Small triangles/ticks at the bottom of the timeline for each big drum hit
-  sections.forEach((section) => {
-    const dp = (section.stems || {}).drum_pattern;
-    if (!dp || !dp.big_hits) return;
-    dp.big_hits.forEach((hit) => {
-      const hx = timeToX(hit.time_ms / 1000, W);
-      if (hx < -2 || hx > W + 2) return;
-      const intensity = (hit.intensity || 50) / 100;
-      ctx.save();
-      ctx.globalAlpha = 0.5 + intensity * 0.5;
-      ctx.fillStyle = "#ff4444";
-      // Small upward triangle at the bottom
-      ctx.beginPath();
-      ctx.moveTo(hx, H);
-      ctx.lineTo(hx - 3, H - 6);
-      ctx.lineTo(hx + 3, H - 6);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+  // ── Draw accent bars as full-height lines on the waveform ──
+  // Each enabled stem's accents are drawn as vertical lines spanning
+  // the entire timeline height, colored by stem, opacity by intensity.
+  const enabledStems = Object.entries(state.accentLayers)
+    .filter(([, on]) => on).map(([s]) => s);
+
+  enabledStems.forEach((stemName) => {
+    const color = ACCENT_COLORS[stemName] || STEM_COLORS[stemName] || "#fff";
+
+    sections.forEach((section) => {
+      const accents = (section.stems || {}).accents || {};
+      const hits = accents[stemName];
+      if (!hits || !hits.length) return;
+
+      hits.forEach((hit) => {
+        const hx = timeToX(hit.time_ms / 1000, W);
+        if (hx < -2 || hx > W + 2) return;
+        const intensity = (hit.intensity || 50) / 100;
+        ctx.save();
+        ctx.globalAlpha = 0.25 + intensity * 0.45;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(hx, 0);
+        ctx.lineTo(hx, H);
+        ctx.stroke();
+        ctx.restore();
+      });
     });
   });
 
@@ -481,6 +492,16 @@ const STEM_COLORS = {
   guitar: "#50e080",
   piano:  "#a050e0",
   other:  "#808080",
+};
+
+// Accent bar colors — high-contrast so they stand out against the waveform
+const ACCENT_COLORS = {
+  drums:  "#ffee44",  // bright yellow — pops against red waveform
+  bass:   "#ff6020",  // bright orange
+  vocals: "#00e0ff",  // cyan
+  guitar: "#40ff90",  // bright green
+  piano:  "#d080ff",  // bright purple
+  other:  "#ffffff",  // white
 };
 
 let _stemTracksClickBound = false;
@@ -587,30 +608,6 @@ function renderStemTracks() {
     ctx.lineTo(x, H);
     ctx.stroke();
   });
-
-  // ── Draw big hit markers on the drums track ──
-  const drumsTrackIdx = STEM_TRACK_NAMES.indexOf("drums");
-  if (drumsTrackIdx >= 0) {
-    const dTrackY = drumsTrackIdx * trackH;
-    sections.forEach((section) => {
-      const dp = (section.stems || {}).drum_pattern;
-      if (!dp || !dp.big_hits) return;
-      dp.big_hits.forEach((hit) => {
-        const hx = timeToX(hit.time_ms / 1000, W);
-        if (hx < -2 || hx > W + 2) return;
-        const intensity = (hit.intensity || 50) / 100;
-        ctx.save();
-        ctx.globalAlpha = 0.3 + intensity * 0.5;
-        ctx.strokeStyle = "#ff4444";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(hx, dTrackY + 2);
-        ctx.lineTo(hx, dTrackY + trackH - 2);
-        ctx.stroke();
-        ctx.restore();
-      });
-    });
-  }
 
   // Highlight current section (zoom-aware)
   if (sections[state.currentSectionIdx]) {
@@ -802,6 +799,15 @@ function _roleLabel(role) {
   return (role || "unknown").replace(/_/g, " ").replace(/-/g, " ");
 }
 
+function _accentSummary(accents) {
+  if (!accents) return "—";
+  const parts = [];
+  for (const [stem, hits] of Object.entries(accents)) {
+    if (hits && hits.length > 0) parts.push(`${stem}: ${hits.length}`);
+  }
+  return parts.length > 0 ? parts.join(", ") : "—";
+}
+
 function _fmtSec(s) {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
@@ -859,9 +865,7 @@ function renderSectionDetail(idx) {
     ["Vocals",      stems.vocals_active ? "yes" : "no"],
     ["Dominant stem", stems.dominant_stem || "—"],
     ["Drum style",  stems.drum_pattern ? stems.drum_pattern.style.replace(/_/g, " ") : "—"],
-    ["Big hits",    stems.drum_pattern && stems.drum_pattern.big_hit_count > 0
-                    ? `${stems.drum_pattern.big_hit_count} hits`
-                    : "—"],
+    ["Accents",     _accentSummary(stems.accents)],
     ["Active tiers", lighting.active_tiers ? lighting.active_tiers.join(", ") : "—"],
     ["Brightness ceil.", lighting.brightness_ceiling != null ? `${(lighting.brightness_ceiling * 100).toFixed(0)}%` : "—"],
     ["Moments",     `${lighting.moment_count ?? 0} (${lighting.moment_pattern || "isolated"})`],
@@ -958,6 +962,20 @@ function wireToolbar() {
   document.getElementById("zoom-in-btn").addEventListener("click", zoomIn);
   document.getElementById("zoom-out-btn").addEventListener("click", zoomOut);
   document.getElementById("zoom-reset-btn").addEventListener("click", zoomReset);
+
+  // Accent layer toggles
+  document.getElementById("accents-btn").addEventListener("click", () => {
+    const panel = document.getElementById("accent-toggles");
+    panel.style.display = panel.style.display === "none" ? "flex" : "none";
+  });
+  document.querySelectorAll(".accent-toggle input").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const stem = cb.closest(".accent-toggle").dataset.stem;
+      state.accentLayers[stem] = cb.checked;
+      renderTimeline();
+      renderStemTracks();
+    });
+  });
 
   document.getElementById("save-btn").addEventListener("click", () => {
     fetch("/story/save", { method: "POST" })

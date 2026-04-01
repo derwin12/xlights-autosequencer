@@ -142,6 +142,29 @@ html, body {
   font-weight: 600;
 }
 
+#accent-toggles {
+  display: flex;
+  gap: 12px;
+  padding: 4px 16px;
+  background: #252525;
+  border-bottom: 1px solid #333;
+  font-size: 0.8em;
+}
+.accent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: #aaa;
+}
+.accent-toggle input { width: 14px; height: 14px; }
+.accent-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
 #save-btn {
   border-color: #5a9e5a !important;
   color: #7bc97b !important;

@@ -15,6 +15,95 @@ _HARMONIC_STEMS = ("guitar", "piano", "bass", "vocals")
 # Stems considered percussive
 _PERCUSSIVE_STEMS = ("drums",)
 
+def _detect_accents(
+    energy_curves: dict,
+    stem_name: str,
+    start_ms: int,
+    end_ms: int,
+    floor: int = 20,
+) -> list[dict]:
+    """Detect dramatic accent peaks on a stem's energy curve.
+
+    Finds all local peaks, computes median intensity, keeps only outliers
+    that significantly exceed the normal level. Timestamps are snapped to
+    the **onset** (rising edge) of each peak so they align with the
+    visible waveform transient rather than the smoothed envelope peak.
+
+    Returns list of {"time_ms": int, "intensity": int} dicts, sorted by time.
+    """
+    curve = energy_curves.get(stem_name, {})
+    vals = curve.get("values", [])
+    fps = float(curve.get("fps") or curve.get("sample_rate") or 10.0)
+    if not vals:
+        return []
+
+    si = int(start_ms / 1000 * fps)
+    ei = int(end_ms / 1000 * fps)
+    section_vals = vals[si:ei]
+    if not section_vals or max(section_vals) < floor:
+        return []
+
+    # Step 1: Find all local peaks above the noise floor
+    window = max(1, int(fps * 0.15))   # ~150ms peak window
+    min_gap = int(fps * 0.3)           # ~300ms between peaks
+    all_peaks: list[tuple[int, int]] = []  # (onset_ms, peak_intensity)
+
+    i = si
+    while i < min(ei, len(vals)):
+        chunk = vals[i:i + window]
+        peak = max(chunk) if chunk else 0
+        if peak >= floor:
+            # Find the actual peak position within the chunk
+            peak_offset = chunk.index(peak)
+            peak_idx = i + peak_offset
+
+            # Snap to onset: scan backwards from peak to find where the
+            # energy started rising (crossed below 40% of peak value).
+            # This aligns the marker with the transient attack, not the
+            # smoothed envelope peak which lags behind.
+            onset_threshold = peak * 0.4
+            onset_idx = peak_idx
+            lookback = max(1, int(fps * 0.15))  # up to ~150ms back
+            for j in range(peak_idx - 1, max(si, peak_idx - lookback) - 1, -1):
+                if j < len(vals) and vals[j] <= onset_threshold:
+                    onset_idx = j + 1
+                    break
+
+            onset_ms = int(onset_idx / fps * 1000)
+            all_peaks.append((onset_ms, int(peak)))
+            i += max(window, min_gap)
+        else:
+            i += 1
+
+    if len(all_peaks) < 3:
+        return []
+
+    # Step 2: Keep only outlier peaks above the normal level
+    sorted_intensities = sorted(p[1] for p in all_peaks)
+    n_peaks = len(sorted_intensities)
+    median_intensity = sorted_intensities[n_peaks // 2]
+    p75 = sorted_intensities[int(n_peaks * 0.75)]
+    p90 = sorted_intensities[int(n_peaks * 0.90)]
+    section_max = sorted_intensities[-1]
+
+    # Threshold: top ~10% of peaks, but never higher than 90% of max.
+    # The cap prevents the threshold from exceeding 100 when median is high
+    # (e.g. songs with uniformly sharp drum transients).
+    big_threshold = min(
+        max(p75 * 1.3, median_intensity * 1.8, 50),
+        section_max * 0.90,
+    )
+    # Only flag accents if there's meaningful dynamic range (P90 > median * 1.2).
+    # If all peaks are nearly the same intensity, there are no standout accents.
+    if p90 <= median_intensity * 1.2:
+        return []
+
+    return [
+        {"time_ms": t, "intensity": v}
+        for t, v in all_peaks if v >= big_threshold
+    ]
+
+
 _FREQUENCY_BAND_NAMES = (
     "sub_bass", "bass", "low_mid", "mid", "upper_mid", "presence", "brilliance"
 )
@@ -363,52 +452,8 @@ def profile_section(start_ms: int, end_ms: int, hierarchy: dict) -> dict:
         else:
             style = "balanced"
 
-        # ── Detect big hits: dramatic accents that break the drum pattern ──
-        # Strategy: find all local peaks, compute median peak intensity, then
-        # keep only peaks that are outliers (well above the typical beat level).
-        # Regular rhythmic kicks at consistent volume are the beat, not big hits.
-        drum_curve = energy_curves.get("drums", {})
-        drum_vals = drum_curve.get("values", [])
-        drum_fps = float(drum_curve.get("fps") or drum_curve.get("sample_rate") or 10.0)
-        big_hits: list[dict] = []
-
-        if drum_vals and drum_energy > 0:
-            si_curve = int(start_ms / 1000 * drum_fps)
-            ei_curve = int(end_ms / 1000 * drum_fps)
-            section_drum_vals = drum_vals[si_curve:ei_curve]
-
-            if section_drum_vals:
-                # Step 1: Find ALL local peaks (above a low floor)
-                window = max(1, int(drum_fps * 0.15))
-                min_gap = int(drum_fps * 0.3)
-                floor = 20  # ignore noise
-                all_peaks: list[tuple[int, int]] = []  # (time_ms, intensity)
-
-                i = si_curve
-                while i < min(ei_curve, len(drum_vals)):
-                    chunk = drum_vals[i:i + window]
-                    peak = max(chunk) if chunk else 0
-                    if peak >= floor:
-                        hit_ms = int(i / drum_fps * 1000)
-                        all_peaks.append((hit_ms, int(peak)))
-                        i += max(window, min_gap)
-                    else:
-                        i += 1
-
-                # Step 2: Compute median peak intensity — this is the "normal beat" level
-                if len(all_peaks) >= 3:
-                    sorted_intensities = sorted(p[1] for p in all_peaks)
-                    median_intensity = sorted_intensities[len(sorted_intensities) // 2]
-                    p75 = sorted_intensities[int(len(sorted_intensities) * 0.75)]
-
-                    # A big hit must exceed the 75th percentile by at least 30%,
-                    # AND be at least 50 absolute (to avoid noise in quiet sections)
-                    big_threshold = max(p75 * 1.3, median_intensity * 1.8, 50)
-
-                    big_hits = [
-                        {"time_ms": t, "intensity": v}
-                        for t, v in all_peaks if v >= big_threshold
-                    ]
+        # ── Detect big hits on drums ──
+        big_hits = _detect_accents(energy_curves, "drums", start_ms, end_ms)
 
         drum_pattern = {
             "kick_count": kick_count,
@@ -447,6 +492,13 @@ def profile_section(start_ms: int, end_ms: int, hierarchy: dict) -> dict:
         "frequency_bands": frequency_bands,
     }
 
+    # ── Per-stem accents (outlier peaks on each stem's energy curve) ────────
+    stem_accents: dict[str, list[dict]] = {}
+    for sn in _STEM_NAMES:
+        accents = _detect_accents(energy_curves, sn, start_ms, end_ms)
+        if accents:
+            stem_accents[sn] = accents
+
     stems = {
         "dominant_stem": dominant_stem,
         "active_stems": active_stems,
@@ -461,6 +513,7 @@ def profile_section(start_ms: int, end_ms: int, hierarchy: dict) -> dict:
         "handoffs": [],
         "chords": [],
         "other_stem_class": None,
+        "accents": stem_accents,
     }
 
     return {"character": character, "stems": stems}
