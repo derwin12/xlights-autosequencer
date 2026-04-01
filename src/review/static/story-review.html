@@ -45,21 +45,25 @@
         <div id="playhead-bar"></div>
       </div>
 
-      <div id="sidebar">
-        <div id="section-detail">
-          <p class="placeholder">Select a section</p>
+      <div id="flyout" class="flyout flyout--closed">
+        <div class="flyout-header">
+          <div class="flyout-tabs">
+            <button class="flyout-tab active" data-tab="details">Details</button>
+            <button class="flyout-tab" data-tab="moments">Moments</button>
+            <button class="flyout-tab" data-tab="themes">Themes</button>
+          </div>
+          <button class="flyout-close" aria-label="Close panel">&times;</button>
         </div>
-
-        <div id="stems-panel">
-          <h4>Stem Levels</h4>
-          <div id="stems-bars"></div>
+        <div class="flyout-body">
+          <div class="flyout-content" data-tab-content="details">
+            <p class="placeholder">Select a section</p>
+          </div>
+          <div class="flyout-content" data-tab-content="moments" hidden>
+          </div>
+          <div class="flyout-content" data-tab-content="themes" hidden>
+            <p class="placeholder">Themes coming soon</p>
+          </div>
         </div>
-
-        <div id="moments-panel">
-          <h4>Moments</h4>
-          <div id="moments-list"></div>
-        </div>
-
         <div id="prefs-panel" style="display:none;">
           <!-- Populated by renderPreferencesPanel() -->
         </div>
@@ -69,6 +73,6 @@
 
   <audio id="player" preload="auto"></audio>
 
-  <script src="story-review.js?v=6"></script>
+  <script src="story-review.js?v=7"></script>
 </body>
 </html>

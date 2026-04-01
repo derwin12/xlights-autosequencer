@@ -22,6 +22,14 @@ const state = {
   scrollOffset: 0,      // left edge of visible window (seconds)
   // Accent layer visibility: which stems' accents are shown on the timeline
   accentLayers: { drums: true, bass: true, vocals: true, guitar: false, piano: false, other: false },
+  // Flyout panel state
+  flyoutOpen: false,
+  activeTab: "details", // "details" | "moments" | "themes"
+  // Theme data (loaded from /themes/api/list)
+  themeList: [],         // full list of theme objects
+  themePalettes: {},     // {themeName: [hex, hex, ...]} lookup
+  themeFilters: { mood: null, occasion: null },
+  themesLoadFailed: false,
 };
 
 // ── Role → CSS var mapping ────────────────────────────────────────────────────
@@ -312,6 +320,9 @@ async function loadStory(path) {
 
   // Load and decode actual audio waveforms (async, re-renders when ready)
   loadWaveforms();
+
+  // Load theme data for palette strips on timeline (async, re-renders when ready)
+  loadThemes().then(() => { if (state.themeList.length) renderTimeline(); });
 }
 
 // ── Timeline rendering ────────────────────────────────────────────────────────
@@ -422,6 +433,41 @@ function renderTimeline() {
     ctx.stroke();
     ctx.globalAlpha = 1;
   });
+
+  // ── Theme palette strip (4px at bottom of section bar) ──
+  sections.forEach((section, idx) => {
+    const themeName = (section.overrides || {}).theme;
+    if (!themeName) return;
+    const palette = (state.themePalettes[themeName] || []).filter(_isHexColor);
+    if (!palette.length) return;
+    const x = timeToX(section.start, W);
+    const x2 = timeToX(section.end, W);
+    if (x2 < 0 || x > W) return;
+    const w = x2 - x;
+    const stripH = 4;
+    const stripY = H - stripH;
+    const sliceW = w / palette.length;
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    palette.forEach((color, ci) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(x + ci * sliceW, stripY, sliceW + 0.5, stripH);
+    });
+    ctx.restore();
+  });
+
+  // ── Drop target highlight during drag ──
+  if (_highlightedSectionIdx >= 0 && sections[_highlightedSectionIdx]) {
+    const hs = sections[_highlightedSectionIdx];
+    const hx = timeToX(hs.start, W);
+    const hx2 = timeToX(hs.end, W);
+    ctx.save();
+    ctx.strokeStyle = "#5a9e5a";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 3]);
+    ctx.strokeRect(hx, 0, hx2 - hx, H);
+    ctx.restore();
+  }
 
   // T056: Low-confidence warning indicators
   sections.forEach((section) => {
@@ -654,7 +700,11 @@ function onTimelineClick(e) {
   const idx = story.sections.findIndex(
     (s, i) => clickTime >= s.start && (clickTime < s.end || i === story.sections.length - 1)
   );
-  if (idx >= 0) selectSection(idx);
+  if (idx >= 0) {
+    selectSection(idx);
+  } else {
+    closeFlyout();
+  }
 
   // Seek audio to the exact click position (not section start)
   const player = document.getElementById("player");
@@ -814,6 +864,60 @@ function _fmtSec(s) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+// ── Flyout panel controls ────────────────────────────────────────────────────
+
+function openFlyout() {
+  if (state.flyoutOpen) return;
+  state.flyoutOpen = true;
+  const flyout = document.getElementById("flyout");
+  const main = document.getElementById("main");
+  if (flyout) flyout.classList.remove("flyout--closed");
+  if (main) main.classList.add("flyout-open");
+}
+
+function closeFlyout() {
+  if (!state.flyoutOpen) return;
+  state.flyoutOpen = false;
+  const flyout = document.getElementById("flyout");
+  const main = document.getElementById("main");
+  if (flyout) flyout.classList.add("flyout--closed");
+  if (main) main.classList.remove("flyout-open");
+  // Canvas re-render handled by transitionend listener on #main
+}
+
+function switchTab(tabName) {
+  state.activeTab = tabName;
+  // Update tab button active states
+  document.querySelectorAll(".flyout-tab").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === tabName);
+  });
+  // Show/hide content
+  document.querySelectorAll(".flyout-content").forEach(el => {
+    el.hidden = el.dataset.tabContent !== tabName;
+  });
+  // Render the active tab content
+  renderActiveTab();
+}
+
+function renderActiveTab() {
+  const story = state.story;
+  if (!story || !story.sections) return;
+  const section = story.sections[state.currentSectionIdx];
+  if (!section) return;
+
+  switch (state.activeTab) {
+    case "details":
+      renderDetailsTab(state.currentSectionIdx);
+      break;
+    case "moments":
+      renderMomentsTab(section, story.moments || []);
+      break;
+    case "themes":
+      renderThemesTab(section);
+      break;
+  }
+}
+
 // ── Section selection ─────────────────────────────────────────────────────────
 
 function selectSection(idx) {
@@ -836,22 +940,25 @@ function selectSection(idx) {
 
   renderTimeline();
   renderStemTracks();
-  renderSectionDetail(idx);
-  renderStemsPanel(story.sections[idx]);
-  renderMomentsPanel(story.sections[idx], story.moments || []);
+  openFlyout();
+  renderActiveTab();
 }
 
-// ── Section detail panel ──────────────────────────────────────────────────────
+// ── Details tab (section detail + stems) ─────────────────────────────────────
 
-function renderSectionDetail(idx) {
+const STEM_ORDER = ["drums", "bass", "vocals", "guitar", "piano", "other"];
+
+function renderDetailsTab(idx) {
   const section = state.story.sections[idx];
-  const el = document.getElementById("section-detail");
+  const el = document.querySelector('.flyout-content[data-tab-content="details"]');
+  if (!el || !section) return;
 
   const role = section.role || "unknown";
   const char = section.character || {};
   const stems = section.stems || {};
   const lighting = section.lighting || {};
   const overrides = section.overrides || {};
+  const stemLevels = stems.stem_levels || {};
 
   const rows = [
     ["Time",        `${section.start_fmt || _fmtSec(section.start)} → ${section.end_fmt || _fmtSec(section.end)}`],
@@ -875,32 +982,10 @@ function renderSectionDetail(idx) {
     rows.push(["Notes", overrides.notes]);
   }
   if (overrides.is_highlight) {
-    rows.push(["Highlight", "⭐ yes"]);
+    rows.push(["Highlight", "\u2b50 yes"]);
   }
 
-  el.innerHTML = `
-    <h3 data-role="${role}">${_roleLabel(role).toUpperCase()} <small style="font-size:10px;opacity:0.6">${section.id}</small></h3>
-    ${rows.map(([label, value]) => `
-      <div class="detail-row">
-        <span class="detail-label">${label}</span>
-        <span class="detail-value">${value}</span>
-      </div>
-    `).join("")}
-  `;
-
-  addSectionEditControls(section);
-}
-
-// ── Stems panel ───────────────────────────────────────────────────────────────
-
-const STEM_ORDER = ["drums", "bass", "vocals", "guitar", "piano", "other"];
-
-function renderStemsPanel(section) {
-  const stems = section.stems || {};
-  const stemLevels = stems.stem_levels || {};
-
-  const barsEl = document.getElementById("stems-bars");
-  barsEl.innerHTML = STEM_ORDER.map(stem => {
+  const stemBarsHtml = STEM_ORDER.map(stem => {
     const level = stemLevels[stem] != null ? stemLevels[stem] : 0;
     const pct = Math.round(level * 100);
     const isDominant = stems.dominant_stem === stem;
@@ -914,22 +999,39 @@ function renderStemsPanel(section) {
       </div>
     `;
   }).join("");
+
+  el.innerHTML = `
+    <h3 data-role="${role}">${_roleLabel(role).toUpperCase()} <small style="font-size:10px;opacity:0.6">${section.id}</small></h3>
+    ${rows.map(([label, value]) => `
+      <div class="detail-row">
+        <span class="detail-label">${label}</span>
+        <span class="detail-value">${value}</span>
+      </div>
+    `).join("")}
+    <div class="stems-section">
+      <h4>Stem Levels</h4>
+      ${stemBarsHtml}
+    </div>
+  `;
+
+  addSectionEditControls(section);
 }
 
-// ── Moments panel ─────────────────────────────────────────────────────────────
+// ── Moments tab ──────────────────────────────────────────────────────────────
 
-function renderMomentsPanel(section, allMoments) {
+function renderMomentsTab(section, allMoments) {
+  const el = document.querySelector('.flyout-content[data-tab-content="moments"]');
+  if (!el || !section) return;
+
   const sectionId = section.id;
   const filtered = (allMoments || []).filter(m => m.section_id === sectionId);
 
-  const listEl = document.getElementById("moments-list");
-
   if (!filtered.length) {
-    listEl.innerHTML = '<p class="placeholder">No moments in this section</p>';
+    el.innerHTML = '<p class="placeholder">No dramatic moments detected in this section</p>';
     return;
   }
 
-  listEl.innerHTML = filtered.map(moment => {
+  el.innerHTML = `<div class="moments-section"><h4>Moments</h4>` + filtered.map(moment => {
     const typeBadge = (moment.type || "unknown").replace(/_/g, " ");
     const dismissed = moment.dismissed ? " dismissed" : "";
     const dismissLabel = moment.dismissed ? "Restore" : "Dismiss";
@@ -943,10 +1045,10 @@ function renderMomentsPanel(section, allMoments) {
         <button class="moment-dismiss-btn" data-id="${moment.id}" data-dismissed="${moment.dismissed ? "true" : "false"}">${dismissLabel}</button>
       </div>
     `;
-  }).join("");
+  }).join("") + `</div>`;
 
   // Wire dismiss buttons
-  listEl.querySelectorAll(".moment-dismiss-btn").forEach(btn => {
+  el.querySelectorAll(".moment-dismiss-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const mid = btn.dataset.id;
       const currentlyDismissed = btn.dataset.dismissed === "true";
@@ -954,6 +1056,367 @@ function renderMomentsPanel(section, allMoments) {
     });
   });
 }
+
+// ── HTML escaping ────────────────────────────────────────────────────────────
+
+const _ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function _esc(str) {
+  return String(str).replace(/[&<>"']/g, c => _ESC_MAP[c]);
+}
+
+function _isHexColor(c) {
+  return /^#[0-9a-fA-F]{3,8}$/.test(c);
+}
+
+// ── Themes tab ───────────────────────────────────────────────────────────────
+
+async function loadThemes() {
+  if (state.themeList.length > 0 || state.themesLoadFailed) return;
+  try {
+    const resp = await fetch("/themes/api/list");
+    if (!resp.ok) {
+      state.themesLoadFailed = true;
+      return;
+    }
+    const data = await resp.json();
+    state.themeList = data.themes || [];
+    state.themePalettes = {};
+    state.themeList.forEach(t => {
+      state.themePalettes[t.name] = t.palette || [];
+    });
+  } catch (e) {
+    console.warn("Could not load themes:", e);
+    state.themesLoadFailed = true;
+  }
+}
+
+function _recommendThemes(section) {
+  if (!state.themeList.length || !section) return [];
+  const char = section.character || {};
+  const prefs = (state.story && state.story.preferences) || {};
+  const occasion = prefs.occasion || "general";
+
+  // Filter by occasion: match occasion or include general themes
+  let candidates = state.themeList.filter(t =>
+    t.occasion === occasion || t.occasion === "general"
+  );
+
+  // Score by mood/energy match
+  const energyScore = char.energy_score || 50;
+  const isHighEnergy = energyScore > 65;
+  const isLowEnergy = energyScore < 35;
+
+  const scored = candidates.map(t => {
+    let score = 0;
+    // Mood match: map energy to expected moods
+    if (isHighEnergy && (t.mood === "aggressive" || t.mood === "structural")) score += 3;
+    if (isLowEnergy && (t.mood === "ethereal" || t.mood === "dark")) score += 3;
+    // Mid-energy: use texture to differentiate
+    if (!isHighEnergy && !isLowEnergy) {
+      if (char.texture === "harmonic" && t.mood === "ethereal") score += 2;
+      else if (char.texture === "percussive" && t.mood === "structural") score += 2;
+      else if (t.mood === "structural" || t.mood === "ethereal") score += 1;
+    }
+    // Occasion bonus
+    if (t.occasion === occasion && occasion !== "general") score += 2;
+    // Trajectory bonus
+    if (char.energy_trajectory === "rising" && t.mood === "aggressive") score += 1;
+    if (char.energy_trajectory === "falling" && t.mood === "ethereal") score += 1;
+    if (char.energy_trajectory === "stable" && t.mood === "structural") score += 1;
+    return { theme: t, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 3).map(s => ({
+    theme: s.theme,
+    reason: _recommendReason(s.theme, char, occasion),
+  }));
+}
+
+function _recommendReason(theme, char, occasion) {
+  const parts = [];
+  if (occasion !== "general" && theme.occasion === occasion) {
+    parts.push(`matches ${occasion} occasion`);
+  }
+  const energy = char.energy_score || 50;
+  if (energy > 65) parts.push("high-energy section");
+  else if (energy < 35) parts.push("low-energy section");
+  parts.push(`${theme.mood} mood`);
+  return parts.join(", ");
+}
+
+function renderThemesTab(section) {
+  const el = document.querySelector('.flyout-content[data-tab-content="themes"]');
+  if (!el) return;
+
+  if (!state.themeList.length) {
+    if (state.themesLoadFailed) {
+      el.innerHTML = '<p class="placeholder">Could not load themes. Check that the theme editor is available.</p>';
+      return;
+    }
+    el.innerHTML = '<p class="placeholder">Loading themes...</p>';
+    loadThemes().then(() => renderActiveTab());
+    return;
+  }
+
+  // Recommendations
+  const recs = _recommendThemes(section);
+
+  // Filter themes
+  const { mood, occasion } = state.themeFilters;
+  let filtered = state.themeList;
+  if (mood) filtered = filtered.filter(t => t.mood === mood);
+  if (occasion) filtered = filtered.filter(t => t.occasion === occasion || t.occasion === "general");
+
+  // Current section's assigned theme
+  const assignedTheme = (section.overrides || {}).theme || null;
+
+  let html = "";
+
+  // Filter bar
+  html += `<div class="theme-filters">
+    <select class="theme-filter-mood">
+      <option value="">All moods</option>
+      <option value="ethereal"${mood === "ethereal" ? " selected" : ""}>ethereal</option>
+      <option value="aggressive"${mood === "aggressive" ? " selected" : ""}>aggressive</option>
+      <option value="dark"${mood === "dark" ? " selected" : ""}>dark</option>
+      <option value="structural"${mood === "structural" ? " selected" : ""}>structural</option>
+    </select>
+    <select class="theme-filter-occasion">
+      <option value="">All occasions</option>
+      <option value="general"${occasion === "general" ? " selected" : ""}>general</option>
+      <option value="christmas"${occasion === "christmas" ? " selected" : ""}>christmas</option>
+      <option value="halloween"${occasion === "halloween" ? " selected" : ""}>halloween</option>
+    </select>
+  </div>`;
+
+  // Assigned theme display
+  if (assignedTheme) {
+    const palette = (state.themePalettes[assignedTheme] || []).filter(_isHexColor);
+    html += `<div class="theme-assigned">
+      <span class="theme-assigned-label">Assigned:</span>
+      <strong>${_esc(assignedTheme)}</strong>
+      <span class="theme-palette-inline">${palette.map(c => `<span class="palette-dot" style="background:${c}"></span>`).join("")}</span>
+      <button class="theme-remove-btn" data-section-id="${_esc(section.id)}">Remove</button>
+    </div>`;
+  }
+
+  // Recommended themes section
+  if (recs.length > 0 && !mood && !occasion) {
+    html += `<div class="theme-rec-header">Recommended</div>`;
+    recs.forEach(r => {
+      html += _renderThemeCard(r.theme, r.reason, assignedTheme);
+    });
+    html += `<div class="theme-all-header">All Themes</div>`;
+  }
+
+  // All themes (or filtered)
+  if (filtered.length === 0) {
+    html += '<p class="placeholder">No themes match filters</p>';
+  } else {
+    filtered.forEach(t => {
+      html += _renderThemeCard(t, null, assignedTheme);
+    });
+  }
+
+  // Bulk action
+  html += `<div class="theme-bulk-actions">
+    <button class="theme-apply-unassigned-btn" title="Apply the first recommended theme to all sections without a theme">Apply recommended to unassigned</button>
+  </div>`;
+
+  el.innerHTML = html;
+
+  // Helper to get the current section (avoids stale closures)
+  const currentSection = () => state.story.sections[state.currentSectionIdx];
+
+  // Wire filter handlers
+  el.querySelector(".theme-filter-mood").addEventListener("change", (e) => {
+    state.themeFilters.mood = e.target.value || null;
+    renderActiveTab();
+  });
+  el.querySelector(".theme-filter-occasion").addEventListener("change", (e) => {
+    state.themeFilters.occasion = e.target.value || null;
+    renderActiveTab();
+  });
+
+  // Wire remove button
+  const removeBtn = el.querySelector(".theme-remove-btn");
+  if (removeBtn) {
+    removeBtn.addEventListener("click", () => {
+      const sec = currentSection();
+      if (sec) _assignThemeToSection(sec.id, null).then(() => renderActiveTab());
+    });
+  }
+
+  // Wire "Assign" buttons on cards
+  el.querySelectorAll(".theme-assign-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sec = currentSection();
+      if (!sec) return;
+      const name = btn.dataset.themeName;
+      _assignThemeToSection(sec.id, name).then(() => {
+        renderTimeline();
+        renderActiveTab();
+      });
+    });
+  });
+
+  // Wire drag-and-drop on theme cards
+  el.querySelectorAll(".theme-card").forEach(card => {
+    card.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", card.dataset.themeName);
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      _clearDropHighlight();
+    });
+  });
+
+  // Wire bulk apply
+  const bulkBtn = el.querySelector(".theme-apply-unassigned-btn");
+  if (bulkBtn) {
+    bulkBtn.addEventListener("click", () => {
+      _applyToUnassigned(recs.length > 0 ? recs[0].theme.name : (filtered[0] || {}).name);
+    });
+  }
+}
+
+function _renderThemeCard(theme, reason, assignedTheme) {
+  const isAssigned = theme.name === assignedTheme;
+  const name = _esc(theme.name);
+  const mood = _esc(theme.mood || "");
+  const intent = _esc(theme.intent || "");
+  const palette = (theme.palette || []).filter(_isHexColor).map(c =>
+    `<span class="palette-swatch" style="background:${c}"></span>`
+  ).join("");
+  const accent = (theme.accent_palette || []).filter(_isHexColor).map(c =>
+    `<span class="palette-swatch accent" style="background:${c}"></span>`
+  ).join("");
+  return `
+    <div class="theme-card${isAssigned ? " assigned" : ""}" draggable="true" data-theme-name="${name}">
+      <div class="theme-card-header">
+        <span class="theme-name">${name}</span>
+        <span class="theme-mood-badge mood-${mood}">${mood}</span>
+      </div>
+      ${reason ? `<div class="theme-rec-reason">${_esc(reason)}</div>` : ""}
+      <p class="theme-intent">${intent}</p>
+      <div class="theme-palette">${palette}</div>
+      ${accent ? `<div class="theme-palette accent-row">${accent}</div>` : ""}
+      <button class="theme-assign-btn" data-theme-name="${name}">${isAssigned ? "Assigned" : "Assign"}</button>
+    </div>
+  `;
+}
+
+async function _assignThemeToSection(sectionId, themeName) {
+  try {
+    const resp = await fetch("/story/section/overrides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ section_id: sectionId, overrides: { theme: themeName } }),
+    });
+    const data = await resp.json();
+    if (data.error) { alert("Theme assign failed: " + data.error); return; }
+    // Update local state
+    const idx = state.story.sections.findIndex(s => s.id === sectionId);
+    if (idx >= 0) state.story.sections[idx] = data.section;
+  } catch (e) {
+    alert("Theme assign error: " + e);
+  }
+}
+
+async function _applyToUnassigned(themeName) {
+  if (!themeName) return;
+  const sections = state.story.sections || [];
+  const unassigned = sections.filter(s => !(s.overrides || {}).theme);
+  if (unassigned.length === 0) { alert("All sections already have themes assigned."); return; }
+
+  await Promise.all(unassigned.map(s => _assignThemeToSection(s.id, themeName)));
+  renderTimeline();
+  renderActiveTab();
+  const n = unassigned.length;
+  _showToast(`Applied "${_esc(themeName)}" to ${n} section${n !== 1 ? "s" : ""}`);
+}
+
+function _showToast(message) {
+  let toast = document.getElementById("flyout-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "flyout-toast";
+    toast.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#e0e0e0;padding:8px 16px;border-radius:4px;font-size:12px;z-index:999;transition:opacity 0.3s;";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.opacity = "1";
+  setTimeout(() => { toast.style.opacity = "0"; }, 2500);
+}
+
+// ── Drag-and-drop overlay for timeline ──────────────────────────────────────
+
+let _dropOverlay = null;
+let _highlightedSectionIdx = -1;
+
+function _ensureDropOverlay() {
+  if (_dropOverlay) return _dropOverlay;
+  const timelineArea = document.getElementById("timeline-area");
+  if (!timelineArea) return null;
+  _dropOverlay = document.createElement("div");
+  _dropOverlay.id = "drop-overlay";
+  _dropOverlay.style.cssText = "position:absolute;top:0;left:0;right:0;bottom:0;z-index:10;display:none;background:rgba(90,158,90,0.05);border:2px dashed rgba(90,158,90,0.3);pointer-events:auto;";
+  timelineArea.appendChild(_dropOverlay);
+
+  _dropOverlay.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    const rect = _dropOverlay.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const clickTime = xToTime(x, rect.width);
+    const sections = state.story ? state.story.sections : [];
+    const idx = sections.findIndex(
+      (s, i) => clickTime >= s.start && (clickTime < s.end || i === sections.length - 1)
+    );
+    if (idx !== _highlightedSectionIdx) {
+      _highlightedSectionIdx = idx;
+      renderTimeline();
+    }
+  });
+
+  _dropOverlay.addEventListener("dragleave", () => {
+    _clearDropHighlight();
+  });
+
+  _dropOverlay.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const themeName = e.dataTransfer.getData("text/plain");
+    if (!themeName || _highlightedSectionIdx < 0) { _clearDropHighlight(); return; }
+    const section = state.story.sections[_highlightedSectionIdx];
+    _clearDropHighlight();
+    _assignThemeToSection(section.id, themeName).then(() => {
+      renderTimeline();
+      renderActiveTab();
+    });
+  });
+
+  return _dropOverlay;
+}
+
+function _clearDropHighlight() {
+  _highlightedSectionIdx = -1;
+  if (_dropOverlay) _dropOverlay.style.display = "none";
+  renderTimeline();
+}
+
+// Show/hide drop overlay when dragging starts/ends
+document.addEventListener("dragstart", (e) => {
+  if (e.target.closest && e.target.closest(".theme-card")) {
+    const overlay = _ensureDropOverlay();
+    if (overlay) overlay.style.display = "block";
+  }
+});
+document.addEventListener("dragend", () => {
+  if (_dropOverlay) _dropOverlay.style.display = "none";
+  _clearDropHighlight();
+});
 
 // ── Toolbar wiring ────────────────────────────────────────────────────────────
 
@@ -1010,6 +1473,15 @@ function wireToolbar() {
       if (panel) panel.style.display = panel.style.display === "none" ? "" : "none";
     });
   }
+
+  // Flyout controls
+  const flyoutCloseBtn = document.querySelector(".flyout-close");
+  if (flyoutCloseBtn) {
+    flyoutCloseBtn.addEventListener("click", closeFlyout);
+  }
+  document.querySelectorAll(".flyout-tab").forEach(btn => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
 }
 
 // ── Section edit controls ─────────────────────────────────────────────────────
@@ -1021,7 +1493,7 @@ const VALID_ROLES = [
 ];
 
 function addSectionEditControls(section) {
-  const el = document.getElementById("section-detail");
+  const el = document.querySelector('.flyout-content[data-tab-content="details"]');
   if (!el || !section) return;
 
   // Remove any existing edit controls before re-adding
@@ -1170,7 +1642,7 @@ function toggleMomentDismiss(momentId, dismissed) {
       const idx = (state.story.moments || []).findIndex(m => m.id === momentId);
       if (idx >= 0) state.story.moments[idx].dismissed = dismissed;
       const section = state.story.sections[state.currentSectionIdx];
-      renderMomentsPanel(section, state.story.moments);
+      renderMomentsTab(section, state.story.moments);
     })
     .catch(e => alert("Dismiss error: " + e));
 }
@@ -1353,6 +1825,19 @@ window.addEventListener("resize", () => {
   if (state.story) { renderTimeline(); renderStemTracks(); }
 });
 
+// Re-render canvases after flyout open animation completes
+document.addEventListener("DOMContentLoaded", () => {
+  const main = document.getElementById("main");
+  if (main) {
+    main.addEventListener("transitionend", (e) => {
+      if (e.propertyName === "grid-template-columns" && state.story) {
+        renderTimeline();
+        renderStemTracks();
+      }
+    });
+  }
+});
+
 // ── T054: Stale edits banner ──────────────────────────────────────────────────
 // Called after loadStory() checks _meta.stale_edits from the load response.
 
@@ -1387,6 +1872,11 @@ document.addEventListener("keydown", (e) => {
   // Ignore when typing in an input/textarea
   const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
   if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+  if (e.key === "Escape") {
+    closeFlyout();
+    return;
+  }
 
   if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
     e.preventDefault();
