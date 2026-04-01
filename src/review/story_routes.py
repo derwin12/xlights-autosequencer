@@ -248,6 +248,15 @@ def story_load():
     return jsonify(response_data)
 
 
+@story_bp.route("/current")
+def story_current():
+    """Return the current in-memory story (including any unsaved edits)."""
+    story = _session.get("story")
+    if story is None:
+        return jsonify({"error": "No story loaded"}), 404
+    return jsonify(story)
+
+
 @story_bp.route("/audio")
 def story_audio():
     """Stream the audio file referenced by the loaded song story."""

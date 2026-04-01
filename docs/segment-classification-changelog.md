@@ -6,6 +6,27 @@ Do not remove old entries — append only. This log exists to prevent going in c
 
 ---
 
+## 2026-03-31 — Genius quality gate (fallback to heuristics)
+
+**Files:** `src/story/builder.py`
+
+**Problem:** Genius returns poor section data for classical, instrumental, or non-English
+songs. Carmina Burana matched TSO's version with Latin section headers (`[Introductio]`,
+`[Versum I]`, etc.) — only 4 sections, with Versum II+III merging into a 60-second
+"verse" that covers 37% of the song. The heuristic path (segmentino A×3 + N×3 + QM
+boundaries) would have produced better results.
+
+**Quality checks added (`_genius_quality_ok()`):**
+- Reject if <3 sections for songs >60s
+- Reject if any single section covers >60% of song duration
+- Reject if fewer than 2 distinct roles (all mapped to same role)
+- Reject if >50% of sections are <3s (bad WhisperX alignment)
+
+When Genius data fails the quality gate, `section_source` is set to `"heuristic"` and
+the segmentino+energy classifier runs instead.
+
+---
+
 ## 2026-03-31 — Implicit intro/outro detection for Genius sections
 
 **Files:** `src/story/builder.py`

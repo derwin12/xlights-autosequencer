@@ -140,7 +140,11 @@ def profile_section(start_ms: int, end_ms: int, hierarchy: dict) -> dict:
         frames = _get_frames_in_range(vals, rate, start_ms, end_ms)
         return _mean(frames) if frames else 0.0
 
-    harmonic_energy = sum(_stem_mean_in_range(s) for s in _HARMONIC_STEMS)
+    # Average the harmonic stems (not sum) so the ratio compares equivalent
+    # single-stem levels. Summing 4 harmonic stems vs 1 drums made it impossible
+    # for drums to ever win (would need 8× the energy of each harmonic stem).
+    harmonic_stems = [_stem_mean_in_range(s) for s in _HARMONIC_STEMS]
+    harmonic_energy = sum(harmonic_stems) / len(harmonic_stems) if harmonic_stems else 0.0
     percussive_energy = _stem_mean_in_range("drums")
 
     if percussive_energy > 0:
@@ -148,9 +152,9 @@ def profile_section(start_ms: int, end_ms: int, hierarchy: dict) -> dict:
     else:
         hp_ratio = float(harmonic_energy * 2.0) if harmonic_energy > 0 else 1.0
 
-    if hp_ratio > 2.0:
+    if hp_ratio > 1.5:
         texture = "harmonic"
-    elif hp_ratio < 0.5:
+    elif hp_ratio < 0.7:
         texture = "percussive"
     else:
         texture = "balanced"

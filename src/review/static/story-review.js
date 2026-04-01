@@ -17,6 +17,9 @@ const state = {
   waveformData: null,   // {peaks: Float32Array} for full mix
   stemWaveforms: {},     // {drums: {peaks}, bass: {peaks}, ...}
   isPlaying: false,
+  // Zoom state: visible time window (seconds)
+  zoomLevel: 1.0,       // 1.0 = full song visible; 2.0 = 2× zoomed, etc.
+  scrollOffset: 0,      // left edge of visible window (seconds)
 };
 
 // ── Role → CSS var mapping ────────────────────────────────────────────────────
@@ -42,6 +45,80 @@ const ROLE_CSS_VAR = {
 function roleColor(role) {
   const varName = ROLE_CSS_VAR[role] || "--role-outro";
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || "#666";
+}
+
+// ── Zoom helpers ─────────────────────────────────────────────────────────────
+
+function visibleDuration() {
+  const total = state.story ? state.story.song.duration_seconds || 1 : 1;
+  return total / state.zoomLevel;
+}
+
+/** Convert a song time (seconds) to canvas pixel X. */
+function timeToX(timeSec, canvasW) {
+  return ((timeSec - state.scrollOffset) / visibleDuration()) * canvasW;
+}
+
+/** Convert a canvas pixel X to song time (seconds). */
+function xToTime(px, canvasW) {
+  return state.scrollOffset + (px / canvasW) * visibleDuration();
+}
+
+/** Clamp scrollOffset so visible window stays within [0, totalDuration]. */
+function clampScroll() {
+  const total = state.story ? state.story.song.duration_seconds || 1 : 1;
+  const visDur = visibleDuration();
+  state.scrollOffset = Math.max(0, Math.min(state.scrollOffset, total - visDur));
+}
+
+function zoomIn() {
+  const maxZoom = 16;
+  if (state.zoomLevel >= maxZoom) return;
+  const center = state.scrollOffset + visibleDuration() / 2;
+  state.zoomLevel = Math.min(maxZoom, state.zoomLevel * 1.5);
+  state.scrollOffset = center - visibleDuration() / 2;
+  clampScroll();
+  renderTimeline();
+  renderStemTracks();
+  _updatePlayheadPosition();
+}
+
+function zoomOut() {
+  if (state.zoomLevel <= 1.0) return;
+  const center = state.scrollOffset + visibleDuration() / 2;
+  state.zoomLevel = Math.max(1.0, state.zoomLevel / 1.5);
+  state.scrollOffset = center - visibleDuration() / 2;
+  clampScroll();
+  renderTimeline();
+  renderStemTracks();
+  _updatePlayheadPosition();
+}
+
+function zoomReset() {
+  state.zoomLevel = 1.0;
+  state.scrollOffset = 0;
+  renderTimeline();
+  renderStemTracks();
+  _updatePlayheadPosition();
+}
+
+/** Scroll so that a given time is centered (or at least visible). */
+function scrollToTime(timeSec) {
+  const visDur = visibleDuration();
+  if (timeSec < state.scrollOffset || timeSec > state.scrollOffset + visDur) {
+    state.scrollOffset = timeSec - visDur / 2;
+    clampScroll();
+  }
+}
+
+function _updatePlayheadPosition() {
+  const player = document.getElementById("player");
+  const playheadBar = document.getElementById("playhead-bar");
+  const canvas = document.getElementById("timeline");
+  if (!player || !playheadBar || !canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const px = timeToX(player.currentTime, rect.width);
+  playheadBar.style.left = `${px}px`;
 }
 
 // ── Audio waveform decoding ───────────────────────────────────────────────────
@@ -257,20 +334,29 @@ function renderTimeline() {
   canvas.height = H * dpr;
   ctx.scale(dpr, dpr);
 
-  const totalDuration = story.song.duration_seconds || 1;
   const sections = story.sections;
 
   ctx.clearRect(0, 0, W, H);
 
-  // ── Draw waveform from decoded audio PCM data ──
+  // ── Draw waveform from decoded audio PCM data (zoom-aware) ──
   if (state.waveformData && state.waveformData.mono) {
-    drawWaveform(ctx, state.waveformData.mono, W, 0, H, "rgba(255,255,255,0.35)");
+    const mono = state.waveformData.mono;
+    const total = story.song.duration_seconds || 1;
+    const sampleRate = mono.length / total;
+    const startSample = Math.floor(state.scrollOffset * sampleRate);
+    const endSample = Math.floor((state.scrollOffset + visibleDuration()) * sampleRate);
+    const visibleMono = mono.slice(startSample, endSample);
+    drawWaveform(ctx, visibleMono, W, 0, H, "rgba(255,255,255,0.35)");
   }
 
-  // ── Draw section blocks ──
+  // ── Draw section blocks (zoom-aware) ──
   sections.forEach((section, idx) => {
-    const x = (section.start / totalDuration) * W;
-    const w = ((section.end - section.start) / totalDuration) * W;
+    const x = timeToX(section.start, W);
+    const x2 = timeToX(section.end, W);
+    const w = x2 - x;
+
+    // Skip sections entirely outside view
+    if (x2 < 0 || x > W) return;
 
     const color = roleColor(section.role);
     const isSelected = idx === state.currentSectionIdx;
@@ -306,7 +392,7 @@ function renderTimeline() {
     if (maxLabelW > 20) {
       ctx.save();
       ctx.beginPath();
-      ctx.rect(x, 0, w, H);
+      ctx.rect(Math.max(x, 0), 0, Math.min(w, W), H);
       ctx.clip();
       ctx.fillText(label, x + padding, 8, maxLabelW);
 
@@ -337,8 +423,10 @@ function renderTimeline() {
   // T056: Low-confidence warning indicators
   sections.forEach((section) => {
     if (section.role_confidence != null && section.role_confidence < 0.5) {
-      const x = (section.start / totalDuration) * W;
-      const w = ((section.end - section.start) / totalDuration) * W;
+      const x = timeToX(section.start, W);
+      const x2 = timeToX(section.end, W);
+      if (x2 < 0 || x > W) return;
+      const w = x2 - x;
       ctx.save();
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = "#ffaa00";
@@ -350,9 +438,12 @@ function renderTimeline() {
     }
   });
 
-  // Register click handler once
+  // Register click + wheel + drag handlers once
   if (!_timelineClickBound) {
     canvas.addEventListener("click", onTimelineClick);
+    canvas.addEventListener("wheel", onTimelineWheel, { passive: false });
+    canvas.addEventListener("mousedown", onBoundaryDragStart);
+    canvas.addEventListener("mousemove", onBoundaryHover);
     _timelineClickBound = true;
   }
 }
@@ -408,24 +499,31 @@ function renderStemTracks() {
     const midY = y0 + trackH * 0.5;
     const amp = trackH * 0.45;
 
-    // Draw real decoded waveform (pixel-perfect, re-binned to canvas width)
+    // Draw real decoded waveform (zoom-aware)
     const stemWf = state.stemWaveforms[stemName];
     if (stemWf && stemWf.mono) {
-      drawWaveform(ctx, stemWf.mono, W, y0, trackH, color);
+      const mono = stemWf.mono;
+      const sr = mono.length / totalDuration;
+      const startSample = Math.floor(state.scrollOffset * sr);
+      const endSample = Math.floor((state.scrollOffset + visibleDuration()) * sr);
+      const visibleMono = mono.slice(startSample, endSample);
+      drawWaveform(ctx, visibleMono, W, y0, trackH, color);
     } else if (rms.length > 0) {
-      // Fallback: RMS as mirrored shape
+      // Fallback: RMS as mirrored shape (zoom-aware)
       const numPts = rms.length;
       ctx.beginPath();
-      ctx.moveTo(0, midY);
+      ctx.moveTo(timeToX(0, W), midY);
       for (let i = 0; i < numPts; i++) {
         const t = i / sampleRate;
-        const x = (t / totalDuration) * W;
+        const x = timeToX(t, W);
+        if (x < -10 || x > W + 10) continue;
         const val = Math.min(1, rms[i]);
         ctx.lineTo(x, midY - val * amp);
       }
       for (let i = numPts - 1; i >= 0; i--) {
         const t = i / sampleRate;
-        const x = (t / totalDuration) * W;
+        const x = timeToX(t, W);
+        if (x < -10 || x > W + 10) continue;
         const val = Math.min(1, rms[i]);
         ctx.lineTo(x, midY + val * amp);
       }
@@ -454,10 +552,11 @@ function renderStemTracks() {
     ctx.stroke();
   });
 
-  // Draw section boundary lines across stem tracks
+  // Draw section boundary lines across stem tracks (zoom-aware)
   const sections = story.sections || [];
   sections.forEach((section) => {
-    const x = (section.start / totalDuration) * W;
+    const x = timeToX(section.start, W);
+    if (x < 0 || x > W) return;
     ctx.strokeStyle = "rgba(255,255,255,0.12)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -466,11 +565,12 @@ function renderStemTracks() {
     ctx.stroke();
   });
 
-  // Highlight current section
+  // Highlight current section (zoom-aware)
   if (sections[state.currentSectionIdx]) {
     const sec = sections[state.currentSectionIdx];
-    const x = (sec.start / totalDuration) * W;
-    const w = ((sec.end - sec.start) / totalDuration) * W;
+    const x = timeToX(sec.start, W);
+    const x2 = timeToX(sec.end, W);
+    const w = x2 - x;
     ctx.fillStyle = "rgba(255,255,255,0.06)";
     ctx.fillRect(x, 0, w, H);
     ctx.strokeStyle = "rgba(255,255,255,0.2)";
@@ -480,33 +580,175 @@ function renderStemTracks() {
 
   if (!_stemTracksClickBound) {
     canvas.addEventListener("click", onTimelineClick);
+    canvas.addEventListener("wheel", onTimelineWheel, { passive: false });
+    canvas.addEventListener("mousedown", onBoundaryDragStart);
+    canvas.addEventListener("mousemove", onBoundaryHover);
     _stemTracksClickBound = true;
   }
 }
 
 // ── Timeline click handler ───────────────────────────────────────────────────
 
+let _suppressNextClick = false;
+
 function onTimelineClick(e) {
+  if (_suppressNextClick) { _suppressNextClick = false; return; }
+
   const story = state.story;
   if (!story || !story.sections) return;
 
   const canvas = e.currentTarget;
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
-  const pct = x / rect.width;
-  const totalDuration = story.song.duration_seconds || 1;
-  const clickTime = pct * totalDuration;
 
+  // Don't seek if clicking on a boundary (drag handles it)
+  if (_findBoundaryAt(x, rect.width) >= 0) return;
+
+  const clickTime = xToTime(x, rect.width);
+
+  // Select the section under the click
   const idx = story.sections.findIndex(
     (s, i) => clickTime >= s.start && (clickTime < s.end || i === story.sections.length - 1)
   );
   if (idx >= 0) selectSection(idx);
 
-  // Seek audio to the section start
+  // Seek audio to the exact click position (not section start)
   const player = document.getElementById("player");
-  if (player && story.sections[idx]) {
-    player.currentTime = story.sections[idx].start;
+  if (player) {
+    player.currentTime = Math.max(0, clickTime);
+    _updatePlayheadPosition();
   }
+}
+
+function onTimelineWheel(e) {
+  e.preventDefault();
+  if (!state.story) return;
+
+  const canvas = e.currentTarget;
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseTime = xToTime(mouseX, rect.width);
+
+  if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    // Vertical scroll or pinch = zoom
+    if (e.deltaY < 0) {
+      // Zoom in, keep mouse position stable
+      const oldZoom = state.zoomLevel;
+      state.zoomLevel = Math.min(16, state.zoomLevel * 1.15);
+      // Adjust scroll so the time under the mouse stays at the same pixel
+      state.scrollOffset = mouseTime - (mouseX / rect.width) * visibleDuration();
+    } else {
+      state.zoomLevel = Math.max(1.0, state.zoomLevel / 1.15);
+      state.scrollOffset = mouseTime - (mouseX / rect.width) * visibleDuration();
+    }
+  } else {
+    // Horizontal scroll = pan
+    const panAmount = visibleDuration() * 0.1 * Math.sign(e.deltaX);
+    state.scrollOffset += panAmount;
+  }
+  clampScroll();
+  renderTimeline();
+  renderStemTracks();
+  _updatePlayheadPosition();
+}
+
+// ── Boundary drag ────────────────────────────────────────────────────────────
+
+const BOUNDARY_HIT_PX = 8; // grab zone width in pixels
+
+/** Find the section boundary index closest to a pixel X, within hit zone. */
+function _findBoundaryAt(px, canvasW) {
+  const story = state.story;
+  if (!story || !story.sections) return -1;
+  const sections = story.sections;
+  // Check interior boundaries only (not first start or last end)
+  for (let i = 1; i < sections.length; i++) {
+    const bx = timeToX(sections[i].start, canvasW);
+    if (Math.abs(px - bx) <= BOUNDARY_HIT_PX) return i;
+  }
+  return -1;
+}
+
+let _dragBoundaryIdx = -1;
+let _dragStartX = 0;
+let _isDragging = false;
+
+function onBoundaryHover(e) {
+  const canvas = e.currentTarget;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const idx = _findBoundaryAt(x, rect.width);
+  canvas.style.cursor = idx >= 0 ? "col-resize" : "pointer";
+}
+
+function onBoundaryDragStart(e) {
+  const canvas = e.currentTarget;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const idx = _findBoundaryAt(x, rect.width);
+  if (idx < 0) return; // not near a boundary — let click handler take it
+
+  e.preventDefault();
+  e.stopPropagation();
+  _dragBoundaryIdx = idx;
+  _dragStartX = x;
+  _isDragging = true;
+
+  const onMove = (me) => {
+    if (!_isDragging) return;
+    const mx = me.clientX - rect.left;
+    const newTime = xToTime(mx, rect.width);
+    const story = state.story;
+    if (!story) return;
+
+    const sections = story.sections;
+    const prevSection = sections[_dragBoundaryIdx - 1];
+    const nextSection = sections[_dragBoundaryIdx];
+
+    // Enforce minimum section duration of 2s
+    const minDur = 2.0;
+    const minTime = prevSection.start + minDur;
+    const maxTime = nextSection.end - minDur;
+    const clampedTime = Math.max(minTime, Math.min(maxTime, newTime));
+
+    // Update in-memory (preview only)
+    prevSection.end = Math.round(clampedTime * 1000) / 1000;
+    prevSection.end_fmt = _fmtSec(clampedTime);
+    prevSection.duration = Math.round((prevSection.end - prevSection.start) * 1000) / 1000;
+    nextSection.start = prevSection.end;
+    nextSection.start_fmt = prevSection.end_fmt;
+    nextSection.duration = Math.round((nextSection.end - nextSection.start) * 1000) / 1000;
+
+    renderTimeline();
+    renderStemTracks();
+  };
+
+  const onUp = (me) => {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    _isDragging = false;
+
+    if (!state.story) return;
+    const sections = state.story.sections;
+    const section = sections[_dragBoundaryIdx - 1];
+    const newEnd = section.end;
+
+    // Persist to server
+    fetch("/story/boundary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ section_id: section.id, new_end: newEnd }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert("Boundary move failed: " + data.error); return; }
+        return reloadStoryFromSession();
+      })
+      .catch(e => alert("Boundary error: " + e));
+  };
+
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
 }
 
 function _roleLabel(role) {
@@ -527,6 +769,18 @@ function selectSection(idx) {
   if (idx < 0 || idx >= story.sections.length) return;
 
   state.currentSectionIdx = idx;
+
+  // When zoomed, scroll to keep the selected section visible
+  if (state.zoomLevel > 1.0) {
+    const sec = story.sections[idx];
+    const visDur = visibleDuration();
+    const secMid = (sec.start + sec.end) / 2;
+    if (secMid < state.scrollOffset || secMid > state.scrollOffset + visDur) {
+      state.scrollOffset = secMid - visDur / 2;
+      clampScroll();
+    }
+  }
+
   renderTimeline();
   renderStemTracks();
   renderSectionDetail(idx);
@@ -650,6 +904,11 @@ function renderMomentsPanel(section, allMoments) {
 // ── Toolbar wiring ────────────────────────────────────────────────────────────
 
 function wireToolbar() {
+  // Zoom controls
+  document.getElementById("zoom-in-btn").addEventListener("click", zoomIn);
+  document.getElementById("zoom-out-btn").addEventListener("click", zoomOut);
+  document.getElementById("zoom-reset-btn").addEventListener("click", zoomReset);
+
   document.getElementById("save-btn").addEventListener("click", () => {
     fetch("/story/save", { method: "POST" })
       .then(r => r.json())
@@ -820,14 +1079,12 @@ function addSectionEditControls(section) {
 // ── Reload full story from session (after structural edits) ───────────────────
 
 async function reloadStoryFromSession() {
-  // Re-fetch the current loaded story via /story/load with same path
-  const params = new URLSearchParams(window.location.search);
-  const path = params.get("path");
-  if (!path) return;
-  const resp = await fetch(`/story/load?path=${encodeURIComponent(path)}`);
+  // Fetch the current in-memory story (includes unsaved edits like splits)
+  const resp = await fetch("/story/current");
   if (!resp.ok) return;
   state.story = await resp.json();
   renderTimeline();
+  renderStemTracks();
   selectSection(Math.min(state.currentSectionIdx, state.story.sections.length - 1));
 }
 
@@ -974,15 +1231,26 @@ function wireAudio() {
     // Update time display
     timeDisplay.textContent = `${_fmtSec(currentTime)} / ${_fmtSec(duration)}`;
 
-    // Move playhead
+    // Move playhead (zoom-aware)
     const canvas = document.getElementById("timeline");
     if (canvas) {
       const rect = canvas.getBoundingClientRect();
-      const pct = currentTime / (state.story ? state.story.song.duration_seconds || duration : duration);
-      playheadBar.style.left = `${pct * rect.width}px`;
+      const px = timeToX(currentTime, rect.width);
+      playheadBar.style.left = `${px}px`;
+      // Hide playhead when it scrolls out of view
+      playheadBar.style.display = (px >= 0 && px <= rect.width) ? "block" : "none";
+
+      // Auto-scroll during playback to keep playhead visible
+      if (state.isPlaying && state.zoomLevel > 1.0) {
+        if (px > rect.width * 0.85 || px < 0) {
+          scrollToTime(currentTime);
+          renderTimeline();
+          renderStemTracks();
+        }
+      }
     }
 
-    // Auto-select current section without re-rendering timeline (avoids flicker)
+    // Auto-select current section
     const story = state.story;
     if (!story || !story.sections) return;
 
@@ -1053,6 +1321,15 @@ document.addEventListener("keydown", (e) => {
       if (player.paused) player.play().catch(() => {});
       else player.pause();
     }
+  } else if (e.key === "=" || e.key === "+") {
+    e.preventDefault();
+    zoomIn();
+  } else if (e.key === "-" || e.key === "_") {
+    e.preventDefault();
+    zoomOut();
+  } else if (e.key === "0") {
+    e.preventDefault();
+    zoomReset();
   }
 });
 

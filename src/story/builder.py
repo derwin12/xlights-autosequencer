@@ -143,6 +143,46 @@ else:
         return None
 
 
+def _genius_quality_ok(
+    genius_sections: list[tuple[int, int, str]],
+    duration_ms: int,
+) -> bool:
+    """Return True if Genius sections are good enough to use as primary source.
+
+    Rejects Genius data when:
+    - Too few sections (<3 for songs >60s)
+    - Any single section covers >60% of the song
+    - Fewer than 2 distinct roles (e.g. all mapped to "verse")
+    - Most sections are very short (<3s), suggesting bad alignment
+    """
+    if not genius_sections:
+        return False
+
+    n = len(genius_sections)
+    dur_s = duration_ms / 1000.0
+
+    # Too few sections for a non-trivial song
+    if dur_s > 60 and n < 3:
+        return False
+
+    # Any section covers >60% of total duration
+    for start, end, _role in genius_sections:
+        if (end - start) > duration_ms * 0.6:
+            return False
+
+    # Need at least 2 distinct roles
+    roles = set(r for _, _, r in genius_sections)
+    if len(roles) < 2:
+        return False
+
+    # Most sections are too short (bad alignment)
+    short_count = sum(1 for s, e, _ in genius_sections if (e - s) < 3_000)
+    if short_count > n * 0.5:
+        return False
+
+    return True
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _fmt_time(seconds: float) -> str:
@@ -195,9 +235,10 @@ def build_song_story(hierarchy: dict, audio_path: str) -> dict:
     # (chorus, verse, bridge, etc.) with WhisperX-aligned timestamps.
     # Fall back to segmentino + energy heuristics when Genius isn't available.
     genius_sections = _try_genius_sections(audio_path, duration_ms)
-    section_source = "genius" if genius_sections else "heuristic"
+    genius_ok = genius_sections and _genius_quality_ok(genius_sections, duration_ms)
+    section_source = "genius" if genius_ok else "heuristic"
 
-    if genius_sections:
+    if genius_ok:
         # Use Genius sections directly as our section boundaries + roles
         sections_ms = [(s, e) for s, e, _r in genius_sections]
         roles = [{"role": r, "confidence": 0.95} for _s, _e, r in genius_sections]
@@ -309,6 +350,31 @@ def build_song_story(hierarchy: dict, audio_path: str) -> dict:
         profile_section(start, end, hierarchy)
         for start, end in sections_ms
     ]
+
+    # ── Step 5b: Normalize energy within the song ─────────────────────────────
+    # Raw energy_score values are absolute (0–100 from the curve generator).
+    # Songs with a narrow dynamic range (e.g. classical) can have all sections
+    # score 30–50, making them all "low". Rescale so the song's own min→0 and
+    # max→100, preserving relative dynamics.
+    raw_scores = [p["character"]["energy_score"] for p in profiles]
+    if raw_scores:
+        e_min = min(raw_scores)
+        e_max = max(raw_scores)
+        e_range = e_max - e_min
+        for p in profiles:
+            char = p["character"]
+            raw = char["energy_score"]
+            if e_range > 0:
+                char["energy_score"] = int(round((raw - e_min) / e_range * 100))
+            else:
+                char["energy_score"] = 50  # all sections identical energy
+            # Also rescale peak
+            raw_peak = char["energy_peak"]
+            if e_range > 0:
+                char["energy_peak"] = int(min(100, max(0, round((raw_peak - e_min) / e_range * 100))))
+            # Re-derive energy_level from normalized score
+            s = char["energy_score"]
+            char["energy_level"] = "low" if s <= 33 else ("medium" if s <= 66 else "high")
 
     # ── Step 6: Compute energy arc ────────────────────────────────────────────
     energy_curves: dict = hierarchy.get("energy_curves") or {}

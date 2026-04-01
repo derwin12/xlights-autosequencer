@@ -135,6 +135,13 @@ html, body {
   background: #555;
 }
 
+#zoom-in-btn, #zoom-out-btn, #zoom-reset-btn {
+  min-width: 32px;
+  padding: 4px 8px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
 #save-btn {
   border-color: #5a9e5a !important;
   color: #7bc97b !important;
