@@ -1218,6 +1218,7 @@ function renderPreferencesPanel() {
       <div class="pref-row">
         <label class="pref-label">Theme lock</label>
         <input id="pref-theme" type="text" placeholder="(auto)" value="${prefs.theme || ""}" style="width:120px">
+        <a id="pref-theme-edit-link" href="#" title="Edit in Theme Editor" style="margin-left:4px;font-size:11px;color:#5a9e5a;text-decoration:none;${prefs.theme ? '' : 'display:none'}">&#9998;</a>
       </div>
       <div class="pref-row">
         <button id="pref-apply-btn" class="edit-btn">Apply preferences</button>
@@ -1231,6 +1232,20 @@ function renderPreferencesPanel() {
   intensitySlider.addEventListener("input", () => {
     intensityVal.textContent = Number(intensitySlider.value).toFixed(2);
   });
+
+  // Theme editor deep link
+  const themeEditLink = document.getElementById("pref-theme-edit-link");
+  const themeInput = document.getElementById("pref-theme");
+  if (themeEditLink) {
+    themeEditLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      const themeName = themeInput.value.trim();
+      if (themeName) window.open(`/themes?theme=${encodeURIComponent(themeName)}&mode=edit`, "_blank");
+    });
+    themeInput.addEventListener("input", () => {
+      themeEditLink.style.display = themeInput.value.trim() ? "" : "none";
+    });
+  }
 
   // Apply button
   document.getElementById("pref-apply-btn").addEventListener("click", () => {

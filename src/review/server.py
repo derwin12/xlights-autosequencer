@@ -320,6 +320,10 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
     from src.review.story_routes import story_bp  # noqa: PLC0415
     app.register_blueprint(story_bp, url_prefix="/story")
 
+    # ── Register the theme editor blueprint (always available) ────────────────
+    from src.review.theme_routes import theme_bp  # noqa: PLC0415
+    app.register_blueprint(theme_bp)
+
     # ── Story review SPA route (always available) ─────────────────────────────
     @app.route("/story-review")
     def story_review_spa():

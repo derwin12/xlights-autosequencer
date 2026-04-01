@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Editor — xLight AutoSequencer</title>
+  <link rel="stylesheet" href="theme-editor.css">
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar">
+      <h1>Theme Editor</h1>
+      <button id="btn-new-theme" disabled>+ New Theme</button>
+    </div>
+    <div id="main">
+      <div id="list-panel">
+        <div id="filters">
+          <input type="text" id="search" placeholder="Search themes..." autocomplete="off">
+          <div id="filter-dropdowns">
+            <select id="filter-mood"><option value="">All moods</option></select>
+            <select id="filter-occasion"><option value="">All occasions</option></select>
+            <select id="filter-genre"><option value="">All genres</option></select>
+          </div>
+          <button id="btn-clear-filters" style="display:none">Clear filters</button>
+        </div>
+        <div id="theme-list"></div>
+      </div>
+      <div id="detail-panel">
+        <div id="detail-placeholder">Select a theme from the list</div>
+        <div id="detail-content" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+  <script src="theme-editor.js"></script>
+</body>
+</html>
