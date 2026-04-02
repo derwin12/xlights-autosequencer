@@ -35,6 +35,7 @@ class GenerationWizard:
         occasion: Optional[str] = None,
         output_dir: Optional[Path] = None,
         force_reanalyze: bool = False,
+        curves_mode: str = "all",
     ) -> GenerationConfig:
         """Build a GenerationConfig from provided or default values."""
         if genre is None:
@@ -50,6 +51,7 @@ class GenerationWizard:
             genre=genre,
             occasion=occasion,
             force_reanalyze=force_reanalyze,
+            curves_mode=curves_mode,
         )
 
     def show_plan_preview(self, plan: SequencePlan) -> None:
@@ -209,11 +211,21 @@ class GenerationWizard:
             if occasion is None:
                 return None
 
-            # Step 5: Confirm
+            # Step 5: Value curves mode
+            curves_mode = questionary.select(
+                "Value curves:",
+                choices=["all", "brightness", "speed", "color", "none"],
+                default="all",
+            ).ask()
+            if curves_mode is None:
+                return None
+
+            # Step 6: Confirm
             click.echo(f"\n  Audio:    {audio_path.name}")
             click.echo(f"  Layout:   {layout_path.name}")
             click.echo(f"  Genre:    {genre}")
             click.echo(f"  Occasion: {occasion}")
+            click.echo(f"  Curves:   {curves_mode}")
 
             proceed = questionary.confirm("Generate sequence?", default=True).ask()
             if not proceed:
@@ -224,6 +236,7 @@ class GenerationWizard:
                 layout_path=layout_path,
                 genre=genre,
                 occasion=occasion,
+                curves_mode=curves_mode,
             )
 
         except KeyboardInterrupt:

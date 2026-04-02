@@ -1745,6 +1745,25 @@ def group_layout_cmd(
 # Sequence generation
 # ──────────────────────────────────────────────────────────────────────────────
 
+
+def _load_curves_mode_from_config() -> str:
+    """Read curves_mode from ~/.xlight/generation.toml if present.
+
+    Returns "all" if the file does not exist or has no [generation].curves_mode.
+    """
+    import tomllib
+
+    config_path = Path.home() / ".xlight" / "generation.toml"
+    if not config_path.exists():
+        return "all"
+    try:
+        data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        mode = data.get("generation", {}).get("curves_mode", "all")
+        return str(mode)
+    except Exception:
+        return "all"
+
+
 @cli.command("generate")
 @click.argument("audio_file", type=click.Path(exists=True, dir_okay=False))
 @click.argument("layout_file", type=click.Path(exists=True, dir_okay=False))
@@ -1768,9 +1787,12 @@ def group_layout_cmd(
 @click.option("--story", "story_path", default=None, type=click.Path(dir_okay=False),
               help="Path to song story JSON (uses _story_reviewed.json if exists, "
                    "falls back to _story.json)")
+@click.option("--curves", "curves_mode", default=None,
+              type=click.Choice(["all", "brightness", "speed", "color", "none"]),
+              help="Value curve generation mode (default: all). Overrides config file.")
 def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
                  fresh, no_wizard, target_section, theme_overrides_raw,
-                 tiers_raw, story_path):
+                 tiers_raw, story_path, curves_mode):
     """Generate an xLights .xsq sequence from an MP3 and layout file."""
     from src.generator.models import GenerationConfig
     from src.generator.plan import generate_sequence, read_song_metadata
@@ -1784,6 +1806,14 @@ def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
         profile = read_song_metadata(audio_path)
         genre = profile.genre
         click.echo(f"Detected genre: {genre}")
+
+    # Resolve curves_mode: CLI flag > config file > default "all"
+    if curves_mode is None:
+        curves_mode = _load_curves_mode_from_config()
+
+    _VALID_CURVES_MODES = {"all", "brightness", "speed", "color", "none"}
+    if curves_mode not in _VALID_CURVES_MODES:
+        curves_mode = "all"
 
     # Parse theme overrides
     theme_overrides = None
@@ -1825,6 +1855,7 @@ def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
         target_sections=[target_section] if target_section else None,
         tiers=tiers,
         story_path=Path(story_path) if story_path else None,
+        curves_mode=curves_mode,
     )
 
     tiers_label = ", ".join(sorted(

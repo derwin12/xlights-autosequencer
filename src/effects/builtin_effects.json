@@ -2824,6 +2824,18 @@
           "input_max": 100.0,
           "curve_shape": "linear",
           "threshold": 50.0
+        },
+        {
+          "parameter": "Fire_HueShift",
+          "analysis_level": "L5",
+          "analysis_field": "energy_curves.overall",
+          "mapping_type": "direct",
+          "description": "Overall energy subtly shifts flame hue for dynamic color variation",
+          "input_min": 0.0,
+          "input_max": 100.0,
+          "output_min": 0.0,
+          "output_max": 30.0,
+          "curve_shape": "linear"
         }
       ],
       "layer_role": "standalone",

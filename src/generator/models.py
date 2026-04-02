@@ -127,6 +127,7 @@ class GenerationConfig:
     theme_overrides: Optional[dict[int, str]] = None
     tiers: Optional[set[int]] = None
     story_path: Optional[Path] = None   # Optional path to song story JSON
+    curves_mode: str = "all"            # Value curve generation: all, brightness, speed, color, none
 
     def __post_init__(self) -> None:
         self.audio_path = Path(self.audio_path)

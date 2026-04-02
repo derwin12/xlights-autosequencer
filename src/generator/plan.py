@@ -171,8 +171,16 @@ def build_plan(
         )
         assignment.group_effects = group_effects
 
-    # 5. Value curves — disabled for phase 1 (static parameters only).
-    # Will be re-enabled once base layer rendering is validated in xLights.
+    # 5. Value curves — generate for each placement when curves are enabled
+    if config.curves_mode != "none":
+        for assignment in assignments:
+            for placements in assignment.group_effects.values():
+                for placement in placements:
+                    effect_def = effect_library.effects.get(placement.effect_name)
+                    if effect_def:
+                        placement.value_curves = generate_value_curves(
+                            placement, effect_def, hierarchy, config.curves_mode
+                        )
 
     # 6. Assemble plan
     return SequencePlan(
@@ -358,12 +366,13 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
         )
         assignment.group_effects = group_effects
 
+        curves_mode = getattr(config, "curves_mode", "all")
         for placements in group_effects.values():
             for placement in placements:
                 effect_def = effect_library.effects.get(placement.effect_name)
                 if effect_def:
                     placement.value_curves = generate_value_curves(
-                        placement, effect_def, hierarchy
+                        placement, effect_def, hierarchy, curves_mode
                     )
 
     # Merge new effects into the document
