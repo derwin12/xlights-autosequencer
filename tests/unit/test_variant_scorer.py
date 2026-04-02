@@ -328,3 +328,86 @@ class TestRankVariantsWithFallback:
         _, relaxed = rank_variants_with_fallback(ctx, variant_library, effect_library)
         for item in relaxed:
             assert isinstance(item, str)
+
+
+class TestGraduatedPropScoring:
+    """Tests for graduated _score_prop_type() scoring.
+
+    The NEW graduated behavior maps prop_suitability rating strings to scores:
+      ideal → 1.0, good → 0.75, possible → 0.25, not_recommended → 0.0
+    Unknown prop types (not in suitability dict) → 0.0.
+    No context (prop_type=None) → 0.5.
+
+    Fire effect fixture ratings: matrix=ideal, outline=good, arch=possible,
+    vertical=good, tree=good, radial=good.
+    No fixture effect has a "not_recommended" rating — that case uses a
+    synthetic effect to ensure coverage.
+    """
+
+    def test_ideal_prop_type_scores_one(self, variant_library, effect_library):
+        """Fire has matrix rated 'ideal' → prop_type score should be 1.0."""
+        ctx = ScoringContext(prop_type="matrix")
+        results = {v.name: bd for v, _, bd in rank_variants(ctx, variant_library, effect_library)}
+        assert results["Fire Blaze High"]["prop_type"] == 1.0
+
+    def test_good_prop_type_scores_075(self, variant_library, effect_library):
+        """Fire has outline rated 'good' → prop_type score should be 0.75."""
+        ctx = ScoringContext(prop_type="outline")
+        results = {v.name: bd for v, _, bd in rank_variants(ctx, variant_library, effect_library)}
+        assert results["Fire Blaze High"]["prop_type"] == 0.75
+
+    def test_possible_prop_type_scores_025(self, variant_library, effect_library):
+        """Fire has arch rated 'possible' → prop_type score should be 0.25."""
+        ctx = ScoringContext(prop_type="arch")
+        results = {v.name: bd for v, _, bd in rank_variants(ctx, variant_library, effect_library)}
+        assert results["Fire Blaze High"]["prop_type"] == 0.25
+
+    def test_not_recommended_prop_type_scores_zero(self, effect_library):
+        """A prop_suitability rating of 'not_recommended' → prop_type score should be 0.0.
+
+        No fixture effect has this rating, so we patch in a synthetic effect.
+        """
+        from src.effects.library import EffectDefinition, EffectLibrary
+        from src.variants.library import VariantLibrary
+
+        patched_lib = EffectLibrary(
+            schema_version="1.0.0",
+            target_xlights_version="2024.x",
+            effects={
+                "TestEffect": EffectDefinition(
+                    name="TestEffect",
+                    xlights_id="eff_TEST",
+                    category="test",
+                    description="test",
+                    intent="test",
+                    parameters=[],
+                    prop_suitability={"matrix": "not_recommended"},
+                    analysis_mappings=[],
+                ),
+            },
+        )
+        v = EffectVariant(
+            name="Test Variant",
+            base_effect="TestEffect",
+            description="test",
+            parameter_overrides={},
+            tags=VariantTags(),
+        )
+        vlib = VariantLibrary(schema_version="1.0.0", variants={"Test Variant": v})
+        ctx = ScoringContext(prop_type="matrix")
+        results = rank_variants(ctx, vlib, patched_lib)
+        assert len(results) == 1
+        _, _, breakdown = results[0]
+        assert breakdown["prop_type"] == 0.0
+
+    def test_unknown_prop_type_scores_zero(self, variant_library, effect_library):
+        """A prop_type not present in the effect's suitability dict → 0.0."""
+        ctx = ScoringContext(prop_type="custom_string")
+        results = {v.name: bd for v, _, bd in rank_variants(ctx, variant_library, effect_library)}
+        assert results["Fire Blaze High"]["prop_type"] == 0.0
+
+    def test_none_prop_type_scores_half(self, variant_library, effect_library):
+        """No prop_type context (None) → neutral 0.5."""
+        ctx = ScoringContext(prop_type=None)
+        results = {v.name: bd for v, _, bd in rank_variants(ctx, variant_library, effect_library)}
+        assert results["Fire Blaze High"]["prop_type"] == 0.5

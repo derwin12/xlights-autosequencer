@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "themes": {
+    "Test Pool Theme": {
+      "name": "Test Pool Theme",
+      "mood": "energetic",
+      "occasion": "general",
+      "genre": "any",
+      "intent": "Testing effect pool rotation",
+      "palette": ["#FF0000", "#00FF00", "#0000FF", "#FFFF00"],
+      "accent_palette": ["#FFFFFF", "#CCCCCC"],
+      "layers": [
+        {
+          "effect": "Color Wash",
+          "blend_mode": "Normal",
+          "parameter_overrides": {}
+        },
+        {
+          "effect": "Fire",
+          "blend_mode": "Normal",
+          "parameter_overrides": {},
+          "effect_pool": [
+            "Fire Medium",
+            "Meteors Sparse Explode",
+            "Spirals 3D Blend",
+            "Ripple Circle"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1483,4 +1483,43 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
             "edited_prop_count": len(merged.edited_props),
         })
 
+    # ── Rotation report endpoint ───────────────────────────────────────────
+
+    @app.route("/rotation-report")
+    def rotation_report_api():
+        """Return rotation plan data from a .plan.json file.
+
+        Query params:
+          plan_path — path to the .plan.json file (required)
+          section   — filter to section label (optional)
+          group     — filter to group name (optional)
+        """
+        plan_path = request.args.get("plan_path")
+        if not plan_path:
+            return jsonify({"error": "plan_path query parameter required"}), 400
+
+        plan_file = Path(plan_path)
+        if not plan_file.exists():
+            return jsonify({"error": f"Plan file not found: {plan_path}"}), 404
+
+        try:
+            data = json.loads(plan_file.read_text())
+        except (json.JSONDecodeError, OSError) as exc:
+            return jsonify({"error": f"Failed to read plan file: {exc}"}), 400
+
+        rp = data.get("rotation_plan")
+        if not rp:
+            return jsonify({"error": "No rotation_plan found in file"}), 404
+
+        entries = rp.get("entries", [])
+
+        section_filter = request.args.get("section")
+        group_filter = request.args.get("group")
+        if section_filter:
+            entries = [e for e in entries if e["section_label"] == section_filter]
+        if group_filter:
+            entries = [e for e in entries if e["group_name"] == group_filter]
+
+        return jsonify({"rotation_plan": {**rp, "entries": entries}})
+
     return app

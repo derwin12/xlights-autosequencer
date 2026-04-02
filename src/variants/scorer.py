@@ -49,6 +49,13 @@ _TIER_ADJACENT: dict[str, set[str]] = {
     "hero":       {"foreground"},
 }
 
+_SUITABILITY_SCORES: dict[str, float] = {
+    "ideal": 1.0,
+    "good": 0.75,
+    "possible": 0.25,
+    "not_recommended": 0.0,
+}
+
 
 # --------------------------------------------------------------------------- #
 # Per-dimension scorers                                                        #
@@ -106,7 +113,10 @@ def _score_prop_type(
     effect_def = effect_library.get(variant.base_effect)
     if effect_def is None:
         return 0.5
-    return 1.0 if context_val in effect_def.prop_suitability else 0.0
+    rating = effect_def.prop_suitability.get(context_val)
+    if rating is None:
+        return 0.0
+    return _SUITABILITY_SCORES.get(rating, 0.0)
 
 
 # --------------------------------------------------------------------------- #

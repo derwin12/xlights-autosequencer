@@ -30,7 +30,12 @@
           "parameter_overrides": {
             "E_SLIDER_Ripple_Thickness": 4,
             "E_SLIDER_Ripple_Movement": 20
-          }
+          },
+          "effect_pool": [
+            "Ripple Circle",
+            "Ripple Star",
+            "Spirals 3D Slow Spin"
+          ]
         }
       ],
       "variants": [
@@ -221,7 +226,13 @@
             "E_SLIDER_Shockwave_Start_Width": 8,
             "E_SLIDER_Shockwave_End_Radius": 100,
             "E_SLIDER_Shockwave_Speed": 70
-          }
+          },
+          "effect_pool": [
+            "Fire Medium",
+            "Fire Music-Reactive",
+            "Meteors Intense Explode",
+            "Shockwave Center"
+          ]
         },
         {
           "effect": "Strobe",
@@ -609,7 +620,12 @@
             "E_SLIDER_Pinwheel_Arms": 6,
             "E_SLIDER_Pinwheel_Speed": 15,
             "E_SLIDER_Pinwheel_Twist": 25
-          }
+          },
+          "effect_pool": [
+            "Bars Single 3D Half-Cycle",
+            "Bars Quad 3D Vertical",
+            "Single Strand Rainbow Chase"
+          ]
         }
       ],
       "variants": [

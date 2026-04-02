@@ -97,6 +97,7 @@ class SequencePlan:
     layout_groups: list = field(default_factory=list)  # list[PowerGroup]
     models: list[str] = field(default_factory=list)
     frame_interval_ms: int = FRAME_INTERVAL_MS
+    rotation_plan: Optional[Any] = None  # RotationPlan when variant rotation is active
 
 
 @dataclass

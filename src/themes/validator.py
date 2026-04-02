@@ -72,6 +72,16 @@ def validate_theme(
             if blend not in VALID_BLEND_MODES:
                 errors.append(f"Layer {i}: invalid blend_mode '{blend}'")
 
+            # Check effect_pool entries (optional)
+            effect_pool = layer.get("effect_pool", [])
+            if effect_pool and variant_library is not None:
+                for pool_entry in effect_pool:
+                    if variant_library.get(pool_entry) is None:
+                        logger.warning(
+                            "Layer %d: effect_pool entry '%s' not found in variant library",
+                            i, pool_entry,
+                        )
+
             # Check variant_ref (optional)
             variant_ref = layer.get("variant_ref")
             if variant_ref is not None and variant_library is not None:

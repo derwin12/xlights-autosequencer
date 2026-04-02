@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.grouper.layout import Layout, Prop, parse_layout
+from src.grouper.layout import Layout, Prop, dominant_prop_type, parse_layout, prop_type_for_display_as
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "grouper"
 
@@ -92,3 +92,94 @@ class TestParseLayout:
         layout = parse_layout(FIXTURES / "minimal_layout.xml")
         assert len(layout.props) == 1
         assert layout.props[0].name == "SingleArch"
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_prop(name: str = "Prop", display_as: str = "Arch") -> Prop:
+    return Prop(
+        name=name,
+        display_as=display_as,
+        world_x=0.0,
+        world_y=0.0,
+        world_z=0.0,
+        scale_x=1.0,
+        scale_y=1.0,
+        parm1=1,
+        parm2=1,
+        sub_models=[],
+    )
+
+
+# ---------------------------------------------------------------------------
+# T004 — DISPLAY_AS_TO_PROP_TYPE mapping and prop_type_for_display_as()
+# ---------------------------------------------------------------------------
+
+class TestPropTypeForDisplayAs:
+    """prop_type_for_display_as maps xLights DisplayAs strings to canonical prop types."""
+
+    def test_matrix(self):
+        assert prop_type_for_display_as("Matrix") == "matrix"
+
+    def test_arch(self):
+        assert prop_type_for_display_as("Arch") == "arch"
+
+    def test_tree_360(self):
+        assert prop_type_for_display_as("Tree 360") == "tree"
+
+    def test_candy_cane(self):
+        assert prop_type_for_display_as("Candy Cane") == "arch"
+
+    def test_single_line(self):
+        assert prop_type_for_display_as("Single Line") == "outline"
+
+    def test_custom(self):
+        assert prop_type_for_display_as("Custom") == "outline"
+
+    def test_circle(self):
+        assert prop_type_for_display_as("Circle") == "radial"
+
+    def test_icicles(self):
+        assert prop_type_for_display_as("Icicles") == "vertical"
+
+    def test_unknown_value_falls_back_to_outline(self):
+        assert prop_type_for_display_as("FooBar") == "outline"
+
+    def test_empty_string_falls_back_to_outline(self):
+        assert prop_type_for_display_as("") == "outline"
+
+
+# ---------------------------------------------------------------------------
+# T005 — dominant_prop_type()
+# ---------------------------------------------------------------------------
+
+class TestDominantPropType:
+    """dominant_prop_type picks the most common canonical type among a list of props."""
+
+    def test_majority_arch(self):
+        props = [
+            _make_prop("Arch1", "Arch"),
+            _make_prop("Arch2", "Arch"),
+            _make_prop("Arch3", "Arch"),
+            _make_prop("Matrix1", "Matrix"),
+        ]
+        assert dominant_prop_type(props) == "arch"
+
+    def test_tie_breaks_alphabetically(self):
+        props = [
+            _make_prop("Arch1", "Arch"),
+            _make_prop("Arch2", "Arch"),
+            _make_prop("Matrix1", "Matrix"),
+            _make_prop("Matrix2", "Matrix"),
+        ]
+        # "arch" < "matrix" alphabetically
+        assert dominant_prop_type(props) == "arch"
+
+    def test_empty_list_returns_outline(self):
+        assert dominant_prop_type([]) == "outline"
+
+    def test_single_prop_matrix(self):
+        props = [_make_prop("Matrix1", "Matrix")]
+        assert dominant_prop_type(props) == "matrix"

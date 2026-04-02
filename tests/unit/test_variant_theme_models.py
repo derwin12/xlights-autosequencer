@@ -160,3 +160,62 @@ class TestValidateThemeWithVariants:
         data["layers"][0]["variant_ref"] = "fire-low-flicker"
         errors = validate_theme(data, effect_lib, variant_library=variant_lib)
         assert errors == []
+
+
+class TestEffectLayerEffectPool:
+    """Tests for EffectLayer.effect_pool field."""
+
+    def test_from_dict_with_effect_pool(self):
+        data = {
+            "effect": "Fire",
+            "effect_pool": ["variant-a", "variant-b"],
+        }
+        layer = EffectLayer.from_dict(data)
+        assert layer.effect_pool == ["variant-a", "variant-b"]
+
+    def test_from_dict_without_effect_pool_defaults_to_empty_list(self):
+        data = {"effect": "Fire", "blend_mode": "Normal", "parameter_overrides": {}}
+        layer = EffectLayer.from_dict(data)
+        assert layer.effect_pool == []
+
+    def test_to_dict_includes_effect_pool_when_populated(self):
+        layer = EffectLayer(
+            effect="Fire",
+            effect_pool=["meteors-fast-down", "fire-low-flicker"],
+        )
+        d = layer.to_dict()
+        assert "effect_pool" in d
+        assert d["effect_pool"] == ["meteors-fast-down", "fire-low-flicker"]
+
+    def test_to_dict_includes_effect_pool_as_empty_list_when_not_set(self):
+        layer = EffectLayer(effect="Fire")
+        d = layer.to_dict()
+        assert "effect_pool" in d
+        assert d["effect_pool"] == []
+
+    def test_backward_compat_existing_dict_without_effect_pool(self):
+        """Dicts saved before effect_pool was added still parse correctly."""
+        data = {
+            "effect": "Bars",
+            "blend_mode": "Additive",
+            "parameter_overrides": {"E_SLIDER_Bars_BarCount": 5},
+            "variant_ref": "bars-triple",
+        }
+        layer = EffectLayer.from_dict(data)
+        assert layer.effect == "Bars"
+        assert layer.blend_mode == "Additive"
+        assert layer.variant_ref == "bars-triple"
+        assert layer.effect_pool == []
+
+    def test_roundtrip_preserves_effect_pool(self):
+        original = EffectLayer(
+            effect="Meteors",
+            blend_mode="Normal",
+            parameter_overrides={},
+            variant_ref="meteors-fast-down",
+            effect_pool=["meteors-fast-down", "meteors-slow-up"],
+        )
+        d = original.to_dict()
+        restored = EffectLayer.from_dict(d)
+        assert restored.effect_pool == ["meteors-fast-down", "meteors-slow-up"]
+        assert restored.variant_ref == "meteors-fast-down"

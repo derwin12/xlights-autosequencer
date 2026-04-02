@@ -325,3 +325,21 @@ def api_restore_theme():
         "theme_name": name,
         "message": f"Custom override removed. Built-in '{name}' restored.",
     })
+
+
+@theme_bp.route("/api/effect-pools/<name>")
+def api_theme_effect_pools(name):
+    """Return the effect_pool configuration per layer for a theme."""
+    lib = _get_library()
+    theme = lib.get(name)
+    if theme is None:
+        return jsonify({"error": f"Theme '{name}' not found"}), 404
+    layers = []
+    for i, layer in enumerate(theme.layers):
+        layers.append({
+            "index": i,
+            "effect": layer.effect,
+            "effect_pool": getattr(layer, "effect_pool", []),
+            "variant_ref": layer.variant_ref,
+        })
+    return jsonify({"theme": theme.name, "layers": layers})

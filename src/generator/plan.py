@@ -1,13 +1,17 @@
 """Plan builder — orchestrates the full sequence generation pipeline."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from src.analyzer.result import HierarchyResult
 from src.effects.library import EffectLibrary, load_effect_library
 from src.generator.effect_placer import place_effects
 from src.generator.energy import derive_section_energies
+from src.generator.rotation import RotationEngine
 from src.story.builder import load_song_story
 from src.generator.models import (
     GenerationConfig,
@@ -139,12 +143,31 @@ def build_plan(
                 if theme is not None:
                     assignments[idx].theme = theme
 
+    # 3b. Load variant library and build rotation plan
+    variant_library = None
+    rotation_plan = None
+    try:
+        from src.variants.library import load_variant_library
+
+        variant_library = load_variant_library(effect_library=effect_library)
+        rotation_engine = RotationEngine(variant_library, effect_library)
+        rotation_plan = rotation_engine.build_rotation_plan(
+            sections=[a.section for a in assignments],
+            groups=groups,
+            theme_assignments=assignments,
+        )
+    except Exception:
+        logger.debug("Variant library unavailable — falling back to pool rotation")
+
     # 4. Place effects for each section
     model_names = [p.name for p in props]
-    for assignment in assignments:
+    for idx, assignment in enumerate(assignments):
         group_effects = place_effects(
             assignment, groups, effect_library, hierarchy,
             tiers=config.tiers,
+            variant_library=variant_library,
+            rotation_plan=rotation_plan,
+            section_index=idx,
         )
         assignment.group_effects = group_effects
 
@@ -157,6 +180,7 @@ def build_plan(
         sections=assignments,
         layout_groups=groups,
         models=model_names,
+        rotation_plan=rotation_plan,
     )
 
 
@@ -197,6 +221,26 @@ def _section_energies_from_story(story: dict) -> list[SectionEnergy]:
     return energies
 
 
+def _write_plan_json(plan: SequencePlan, output_path: Path) -> None:
+    """Write the rotation plan as a JSON file for diagnostics and the rotation-report CLI."""
+    import json
+
+    data: dict = {
+        "song_profile": {
+            "title": plan.song_profile.title,
+            "artist": plan.song_profile.artist,
+            "genre": plan.song_profile.genre,
+            "occasion": plan.song_profile.occasion,
+            "duration_ms": plan.song_profile.duration_ms,
+            "estimated_bpm": plan.song_profile.estimated_bpm,
+        },
+        "rotation_plan": plan.rotation_plan.to_dict(),
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(data, indent=2))
+    logger.info("Wrote rotation plan: %s", output_path)
+
+
 def generate_sequence(config: GenerationConfig) -> Path:
     """Top-level function: run the full pipeline from config to .xsq file.
 
@@ -230,6 +274,10 @@ def generate_sequence(config: GenerationConfig) -> Path:
     output_name = config.audio_path.stem + ".xsq"
     output_path = config.output_dir / output_name
     write_xsq(plan, output_path, hierarchy=hierarchy, audio_path=config.audio_path)
+
+    # Write rotation plan JSON alongside the XSQ for diagnostics
+    if plan.rotation_plan is not None:
+        _write_plan_json(plan, output_path.with_suffix(".plan.json"))
 
     return output_path
 
@@ -285,8 +333,29 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
         scale=ef_regen.get("scale"),
     )
 
-    for assignment in assignments:
-        group_effects = place_effects(assignment, groups, effect_library, hierarchy)
+    # Build rotation plan for regenerated sections
+    variant_library = None
+    rotation_plan = None
+    try:
+        from src.variants.library import load_variant_library
+
+        variant_library = load_variant_library(effect_library=effect_library)
+        rotation_engine = RotationEngine(variant_library, effect_library)
+        rotation_plan = rotation_engine.build_rotation_plan(
+            sections=[a.section for a in assignments],
+            groups=groups,
+            theme_assignments=assignments,
+        )
+    except Exception:
+        logger.debug("Variant library unavailable — falling back to pool rotation")
+
+    for idx, assignment in enumerate(assignments):
+        group_effects = place_effects(
+            assignment, groups, effect_library, hierarchy,
+            variant_library=variant_library,
+            rotation_plan=rotation_plan,
+            section_index=idx,
+        )
         assignment.group_effects = group_effects
 
         for placements in group_effects.values():

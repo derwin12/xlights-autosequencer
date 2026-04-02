@@ -16,7 +16,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from src.grouper.layout import Prop
+from src.grouper.layout import Prop, dominant_prop_type
 
 # Show profile → set of active tier numbers
 PROFILE_TIERS: dict[str, set[int]] = {
@@ -41,6 +41,7 @@ class PowerGroup:
     name: str
     tier: int
     members: list[str] = field(default_factory=list)
+    prop_type: str | None = None  # canonical suitability key (matrix, outline, arch, etc.)
 
 
 def generate_groups(
@@ -74,8 +75,18 @@ def generate_groups(
     if 8 in active_tiers:
         groups.extend(_tier8_heroes(props, extra_heroes=extra_heroes, auto_heroes=auto_heroes))
 
-    # Remove empty groups
-    return [g for g in groups if g.members]
+    # Remove empty groups and populate prop_type
+    props_by_name = {p.name: p for p in props}
+    result = []
+    for g in groups:
+        if not g.members:
+            continue
+        if g.prop_type is None:
+            member_props = [props_by_name[m] for m in g.members if m in props_by_name]
+            if member_props:
+                g.prop_type = dominant_prop_type(member_props)
+        result.append(g)
+    return result
 
 
 # ─── Tier generators ──────────────────────────────────────────────────────────

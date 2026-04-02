@@ -7,6 +7,7 @@ from typing import Any
 
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import EffectLibrary
+from src.generator.rotation import RotationPlan
 from src.effects.models import VALID_DURATION_TYPES, EffectDefinition
 from src.generator.chord_colors import (
     adjust_palette_brightness,
@@ -135,6 +136,8 @@ def place_effects(
     hierarchy: HierarchyResult,
     tiers: set[int] | None = None,
     variant_library=None,
+    rotation_plan: RotationPlan | None = None,
+    section_index: int = 0,
 ) -> dict[str, list[EffectPlacement]]:
     """Place effects from theme layers onto power groups, aligned to timing tracks.
 
@@ -227,7 +230,59 @@ def place_effects(
             else:
                 tier_palette = theme.palette
 
-            # Tier 6-7 effect rotation: cycle through prop-effect pool
+            # Tier 5-8: use rotation plan when available
+            if tier in (5, 6, 7, 8) and groups_for_tier and rotation_plan is not None:
+                for group in groups_for_tier:
+                    entry = rotation_plan.lookup(section_index, group.name)
+                    if entry is None:
+                        continue
+                    rotated_def = effect_library.effects.get(entry.base_effect)
+                    if rotated_def is None:
+                        continue
+                    # Look up variant for parameter overrides
+                    variant = None
+                    if variant_library is not None:
+                        variant = variant_library.get(entry.variant_name)
+                    rot_params: dict[str, Any] = {}
+                    rot_direction_cycle = None
+                    if variant is not None:
+                        rot_params = dict(variant.parameter_overrides)
+                        rot_direction_cycle = variant.direction_cycle
+                    rot_placements = _place_effect_on_group(
+                        effect_def=rotated_def,
+                        layer=layer,
+                        group=group,
+                        section=assignment.section,
+                        hierarchy=hierarchy,
+                        palette=tier_palette,
+                        variation_seed=assignment.variation_seed,
+                        chord_marks=chord_marks,
+                        tension_curve=tension_curve,
+                        danceability=danceability,
+                        chord_weight=chord_weight,
+                        variant_library=None,  # already resolved
+                    )
+                    # Override params from variant
+                    for p in rot_placements:
+                        p.parameters.update(rot_params)
+                    # Apply direction cycle from variant
+                    if rot_direction_cycle is not None:
+                        dc_param = rot_direction_cycle.get("param", "")
+                        dc_values = rot_direction_cycle.get("values", [])
+                        dc_mode = rot_direction_cycle.get("mode", "alternate")
+                        if dc_param and dc_values:
+                            for pi, p in enumerate(rot_placements):
+                                if dc_mode == "random":
+                                    p.parameters[dc_param] = dc_values[
+                                        hash((pi, dc_param)) % len(dc_values)
+                                    ]
+                                else:
+                                    p.parameters[dc_param] = dc_values[pi % len(dc_values)]
+                    if rot_placements:
+                        result.setdefault(group.name, []).extend(rot_placements)
+                continue
+
+            # Tier 6-7 effect rotation (fallback): cycle through prop-effect pool
             if tier in (6, 7) and groups_for_tier:
                 pool = _build_effect_pool(effect_library, exclude={layer.effect})
                 if pool:

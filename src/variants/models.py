@@ -37,6 +37,10 @@ class VariantTags:
             genre_affinity=data.get("genre_affinity", "any"),
         )
 
+    def get(self, key: str, default=None):
+        """Dict-like access to tag fields."""
+        return getattr(self, key, default)
+
     def to_dict(self) -> dict:
         return {
             "tier_affinity": self.tier_affinity,

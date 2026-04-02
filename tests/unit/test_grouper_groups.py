@@ -233,3 +233,55 @@ class TestBeatGroups:
         beat = self._beat_groups(props)
         names = sorted(g.name for g in beat)
         assert names == ["04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4"]
+
+
+# ─── T006: PowerGroup.prop_type population ──────────────────────────────────
+
+class TestPropTypePopulation:
+    """generate_groups() should populate prop_type on every non-empty PowerGroup."""
+
+    def test_all_groups_have_prop_type(self):
+        """Every non-empty group from simple_layout.xml gets a non-None prop_type."""
+        props = _prepared_props_from_fixture("simple_layout.xml")
+        groups = generate_groups(props)
+        for g in groups:
+            if g.members:
+                assert g.prop_type is not None, (
+                    f"Group {g.name!r} has members but prop_type is None"
+                )
+
+    def test_all_arch_members_yield_arch_prop_type(self):
+        """A group whose members all have DisplayAs='Arch' gets prop_type='arch'."""
+        props = [
+            make_prop("A1", world_x=0.0, world_y=50.0),
+            make_prop("A2", world_x=100.0, world_y=50.0),
+        ]
+        # make_prop defaults display_as to "Arch"
+        normalize_coords(props)
+        classify_props(props)
+        groups = generate_groups(props)
+        base = next(g for g in groups if g.name == "01_BASE_All")
+        assert base.prop_type == "arch"
+
+    def test_all_matrix_members_yield_matrix_prop_type(self):
+        """A group whose members all have DisplayAs='Matrix' gets prop_type='matrix'."""
+        p = Prop(
+            name="M1", display_as="Matrix",
+            world_x=0.0, world_y=0.0, world_z=0.0,
+            scale_x=3.0, scale_y=2.0,
+            parm1=20, parm2=30,
+            sub_models=[],
+        )
+        q = Prop(
+            name="M2", display_as="Matrix",
+            world_x=100.0, world_y=0.0, world_z=0.0,
+            scale_x=3.0, scale_y=2.0,
+            parm1=20, parm2=30,
+            sub_models=[],
+        )
+        props = [p, q]
+        normalize_coords(props)
+        classify_props(props)
+        groups = generate_groups(props)
+        base = next(g for g in groups if g.name == "01_BASE_All")
+        assert base.prop_type == "matrix"
