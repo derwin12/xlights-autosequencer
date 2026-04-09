@@ -19,6 +19,17 @@
     </div>
   </header>
 
+  <!-- File picker (shown when no layout path is set) -->
+  <div id="layout-picker" class="layout-picker" style="display:none">
+    <div class="picker-header">
+      <div class="picker-icon">&#9638;</div>
+      <h2>Select xLights Layout File</h2>
+      <p>Browse to your <code>xlights_rgbeffects.xml</code> file to get started.</p>
+    </div>
+    <div class="picker-breadcrumb" id="picker-breadcrumb"></div>
+    <div class="picker-list" id="picker-list"></div>
+  </div>
+
   <main id="app">
     <div id="loading-banner" class="banner banner-info" style="display:none">
       Loading layout…

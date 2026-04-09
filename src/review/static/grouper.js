@@ -26,16 +26,27 @@ let _state = {
   dragging: null,             // {propName, sourceTier, sourceGroup}
 };
 
+function esc(s) {
+  var d = document.createElement("div");
+  d.textContent = s || "";
+  return d.innerHTML;
+}
+
 // ── Initialization ────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
-  const path = params.get("path");
+  var path = params.get("path");
+  // Fall back to last-used layout path from localStorage
   if (!path) {
-    showError("No layout path provided. Use ?path=/path/to/xlights_rgbeffects.xml");
+    path = localStorage.getItem("xlight_layout_path") || "";
+  }
+  if (!path) {
+    showFilePicker();
     return;
   }
   _state.layoutPath = path;
+  localStorage.setItem("xlight_layout_path", path);
   loadLayout(path);
 
   // Wire header buttons
@@ -581,6 +592,159 @@ function showLoading(visible) {
   document.getElementById("loading-banner").style.display = visible ? "" : "none";
 }
 
+// ── File picker ──────────────────────────────────────────────────────────────
+
+function showFilePicker() {
+  document.getElementById("layout-picker").style.display = "";
+  // Fetch starting roots
+  fetch("/grouper/browse")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.roots) {
+        renderPickerRoots(data.roots);
+      }
+    })
+    .catch(function() {
+      document.getElementById("picker-list").innerHTML =
+        '<div class="picker-error">Could not load directories.</div>';
+    });
+}
+
+function renderPickerRoots(roots) {
+  var list = document.getElementById("picker-list");
+  var bc = document.getElementById("picker-breadcrumb");
+  bc.innerHTML = '<span class="picker-breadcrumb-seg" style="color:#888;cursor:default">Choose a starting location</span>';
+  list.innerHTML = "";
+  roots.forEach(function(r) {
+    var item = document.createElement("div");
+    item.className = "picker-item picker-item-dir";
+    item.innerHTML =
+      '<span class="picker-item-icon">&#128193;</span>' +
+      '<span class="picker-item-name">' + esc(r.name) + '</span>' +
+      '<span class="picker-item-hint">' + esc(r.path) + '</span>';
+    item.addEventListener("click", function() { browseDir(r.path); });
+    list.appendChild(item);
+  });
+}
+
+function browseDir(dirPath) {
+  var list = document.getElementById("picker-list");
+  list.innerHTML = '<div class="picker-loading">Loading\u2026</div>';
+
+  fetch("/grouper/browse?dir=" + encodeURIComponent(dirPath))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        list.innerHTML = '<div class="picker-error">' + esc(data.error) + '</div>';
+        return;
+      }
+      renderPickerBreadcrumb(data.current);
+      renderPickerContents(data);
+    })
+    .catch(function() {
+      list.innerHTML = '<div class="picker-error">Could not browse directory.</div>';
+    });
+}
+
+function renderPickerBreadcrumb(currentPath) {
+  var bc = document.getElementById("picker-breadcrumb");
+  bc.innerHTML = "";
+  // Split path into segments and build clickable breadcrumb
+  var parts = currentPath.split("/");
+  var built = "";
+  parts.forEach(function(part, i) {
+    if (i === 0 && part === "") {
+      // Root "/"
+      built = "/";
+      var seg = document.createElement("span");
+      seg.className = "picker-breadcrumb-seg";
+      seg.textContent = "/";
+      seg.addEventListener("click", function() { browseDir("/"); });
+      bc.appendChild(seg);
+      return;
+    }
+    if (!part) return;
+    built += (built.endsWith("/") ? "" : "/") + part;
+    var sep = document.createElement("span");
+    sep.className = "picker-breadcrumb-sep";
+    sep.textContent = " / ";
+    bc.appendChild(sep);
+    var seg = document.createElement("span");
+    seg.className = "picker-breadcrumb-seg";
+    seg.textContent = part;
+    var target = built;
+    seg.addEventListener("click", function() { browseDir(target); });
+    bc.appendChild(seg);
+  });
+}
+
+function renderPickerContents(data) {
+  var list = document.getElementById("picker-list");
+  list.innerHTML = "";
+
+  // Parent directory link
+  if (data.parent) {
+    var up = document.createElement("div");
+    up.className = "picker-item picker-item-dir";
+    up.innerHTML =
+      '<span class="picker-item-icon">\u2191</span>' +
+      '<span class="picker-item-name">..</span>' +
+      '<span class="picker-item-hint">Parent directory</span>';
+    up.addEventListener("click", function() { browseDir(data.parent); });
+    list.appendChild(up);
+  }
+
+  // Directories
+  data.dirs.forEach(function(d) {
+    var item = document.createElement("div");
+    item.className = "picker-item picker-item-dir";
+    item.innerHTML =
+      '<span class="picker-item-icon">&#128193;</span>' +
+      '<span class="picker-item-name">' + esc(d.name) + '</span>';
+    item.addEventListener("click", function() { browseDir(d.path); });
+    list.appendChild(item);
+  });
+
+  // XML files
+  data.files.forEach(function(f) {
+    var item = document.createElement("div");
+    item.className = "picker-item picker-item-xml";
+    var isLayout = f.name.toLowerCase().indexOf("rgbeffects") >= 0;
+    item.innerHTML =
+      '<span class="picker-item-icon">\u2B25</span>' +
+      '<span class="picker-item-name">' + esc(f.name) + '</span>' +
+      (isLayout ? '<span class="picker-item-hint" style="color:var(--xo-accent)">layout file</span>' : '');
+    item.addEventListener("click", function() { selectLayoutFile(f.path); });
+    list.appendChild(item);
+  });
+
+  if (data.dirs.length === 0 && data.files.length === 0) {
+    list.innerHTML += '<div class="picker-empty">No folders or XML files in this directory.</div>';
+  }
+}
+
+function selectLayoutFile(filePath) {
+  _state.layoutPath = filePath;
+  localStorage.setItem("xlight_layout_path", filePath);
+  document.getElementById("layout-picker").style.display = "none";
+  loadLayout(filePath);
+  // Wire header buttons that were skipped during init
+  document.getElementById("btn-save").addEventListener("click", saveEdits);
+  document.getElementById("btn-reset").addEventListener("click", resetEdits);
+  document.getElementById("btn-export").addEventListener("click", exportGrouping);
+  document.getElementById("btn-new-group").addEventListener("click", showNewGroupForm);
+  document.getElementById("btn-new-group-cancel").addEventListener("click", hideNewGroupForm);
+  document.getElementById("btn-new-group-confirm").addEventListener("click", createGroup);
+  document.getElementById("new-group-name").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") createGroup();
+    if (e.key === "Escape") hideNewGroupForm();
+  });
+  document.getElementById("tier-tabs").addEventListener("click", function(e) {
+    var tab = e.target.closest(".tier-tab");
+    if (tab) switchTier(parseInt(tab.dataset.tier, 10));
+  });
+}
+
 function showError(msg) {
   const el = document.getElementById("error-banner");
   if (msg) {
@@ -596,6 +760,46 @@ function setEditStatus(msg, cls) {
   el.textContent = msg;
   el.className = "edit-status" + (cls ? " " + cls : "");
 }
+
+// ── Background drop → ungrouped ──────────────────────────────────────────────
+// Dropping a prop onto the background (outside any group card or ungrouped list)
+// moves it to ungrouped.
+
+document.addEventListener("DOMContentLoaded", () => {
+  const tierContent = document.getElementById("tier-content");
+  if (!tierContent) return;
+
+  tierContent.addEventListener("dragover", (e) => {
+    // Only act if the drop target is the background, not a child .prop-list
+    if (e.target.closest(".prop-list")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  });
+
+  tierContent.addEventListener("drop", (e) => {
+    if (e.target.closest(".prop-list")) return;
+    e.preventDefault();
+
+    // Delegate to the ungrouped list's drop handler
+    const ungroupedList = document.getElementById("ungrouped-list");
+    if (ungroupedList) {
+      // Synthesize drop on the ungrouped list
+      const synth = new DragEvent("drop", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: e.dataTransfer,
+      });
+      // handleDrop reads e.currentTarget.dataset, so call it directly
+      // with ungrouped-list as the context
+      const fakeEvent = {
+        preventDefault() {},
+        currentTarget: ungroupedList,
+        dataTransfer: e.dataTransfer,
+      };
+      handleDrop(fakeEvent);
+    }
+  });
+});
 
 // Expose drop handlers to HTML (needed for ungrouped section's inline ondrop attribute)
 window.handleDragOver = handleDragOver;

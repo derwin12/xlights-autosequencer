@@ -1,14 +1,14 @@
-/* Variant Library — xLight AutoSequencer */
+/* Variant Library — x-onset */
 
 :root {
-  --bg: #1a1a1a;
+  --bg: var(--xo-bg);
   --bg2: #222222;
   --bg3: #2a2a2a;
-  --border: #333333;
-  --text: #e0e0e0;
+  --border: var(--xo-border);
+  --text: var(--xo-fg);
   --text-dim: #888888;
-  --accent: #5a9e5a;
-  --accent-hover: #6ebe6e;
+  --accent: var(--xo-accent);
+  --accent-hover: #81EBFF;
   --danger: #d95a5a;
   --danger-hover: #e06e6e;
   --warning: #d9a05a;
@@ -22,7 +22,7 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 13px;
 }
 
@@ -91,7 +91,7 @@ body.has-navbar #app {
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 12px;
   border-radius: 3px;
 }
@@ -102,7 +102,7 @@ body.has-navbar #app {
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 12px;
   border-radius: 3px;
 }
@@ -116,7 +116,7 @@ body.has-navbar #app {
 }
 .toggle-group button {
   padding: 3px 8px;
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 11px;
   border-radius: 3px;
   cursor: pointer;
@@ -158,7 +158,7 @@ body.has-navbar #app {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 11px;
   cursor: pointer;
   border-radius: 3px;
@@ -287,7 +287,7 @@ body.has-navbar #app {
 }
 .variant-card:hover { background: var(--bg3); }
 .variant-card.selected {
-  background: #2a3a2a;
+  background: var(--xo-accent-dim);
   border-left-color: var(--accent);
 }
 .variant-card-name {
@@ -342,7 +342,7 @@ body.has-navbar #app {
 #btn-close-detail {
   margin-bottom: 12px;
   padding: 3px 10px;
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 12px;
   border-radius: 3px;
   cursor: pointer;
@@ -445,7 +445,7 @@ body.has-navbar #app {
 
 /* ── Buttons (base) ──────────────────────────────────────────────────────── */
 button {
-  font-family: monospace;
+  font-family: var(--xo-font-main);
 }
 .btn-secondary {
   background: var(--bg3);

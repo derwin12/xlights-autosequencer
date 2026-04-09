@@ -262,24 +262,35 @@ def story_load():
     _session["story_path"] = str(resolved)
     _session["edits"] = None  # reset edits on fresh load
 
-    # T054: Stale edits detection — check if _story_edits.json exists and its
-    # base_story_hash still matches the current _story.json MD5.
+    # Check if saved edits exist and whether they match the current story.
     stale_edits = False
+    has_edits = False
     edits_path = _get_edits_path(resolved)
     if edits_path and edits_path.exists():
+        has_edits = True
         try:
             edits_data = json.loads(edits_path.read_text(encoding="utf-8"))
             # Locate the base _story.json (not _reviewed) to hash
             base_path = _get_base_story_path(resolved)
             if base_path and base_path.exists():
-                current_hash = hashlib.md5(base_path.read_bytes()).hexdigest()
+                # Hash must match _init_edits: normalized JSON, not raw bytes
+                base_story = json.loads(base_path.read_text(encoding="utf-8"))
+                normalized = json.dumps(base_story, sort_keys=True, ensure_ascii=False).encode()
+                current_hash = hashlib.md5(normalized).hexdigest()
                 saved_hash = edits_data.get("base_story_hash", "")
                 stale_edits = saved_hash != current_hash and bool(saved_hash)
+
+            # If edits are not stale, restore them into the session and apply
+            if not stale_edits:
+                _session["edits"] = edits_data
+                from src.story.builder import merge_story_with_edits
+                story = merge_story_with_edits(story, edits_data)
+                _session["story"] = story
         except Exception:
             pass
 
     response_data = dict(story)
-    response_data["_meta"] = {"stale_edits": stale_edits, "has_edits": edits_path.exists() if edits_path else False}
+    response_data["_meta"] = {"stale_edits": stale_edits, "has_edits": has_edits}
     return jsonify(response_data)
 
 

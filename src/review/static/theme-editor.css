@@ -22,7 +22,7 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--xo-font-mono);
+  font-family: var(--xo-font-main);
   font-size: 13px;
 }
 
@@ -78,7 +78,7 @@ body.has-navbar #app {
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 12px;
   border-radius: 3px;
 }
@@ -94,7 +94,7 @@ body.has-navbar #app {
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 11px;
   border-radius: 3px;
 }
@@ -104,7 +104,7 @@ body.has-navbar #app {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 11px;
   cursor: pointer;
   border-radius: 3px;
@@ -218,7 +218,7 @@ body.has-navbar #app {
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 button {
   padding: 5px 12px;
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 12px;
   border-radius: 3px;
   cursor: pointer;
@@ -261,7 +261,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: monospace;
+  font-family: var(--xo-font-main);
   font-size: 12px;
   border-radius: 3px;
 }

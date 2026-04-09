@@ -243,12 +243,15 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
                 from src.library import Library
                 _title = None
                 _artist = None
+                _filename_stem = mp3.stem
                 # Prefer story metadata (Genius-resolved)
                 if story_path:
                     try:
                         _story = json.loads(Path(story_path).read_text(encoding="utf-8"))
                         _song = _story.get("song") or {}
-                        _title = _song.get("title") or None
+                        _t = _song.get("title") or None
+                        if _t and _t != _filename_stem:
+                            _title = _t
                         _artist = _song.get("artist") or None
                     except Exception:
                         pass
@@ -258,7 +261,9 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
                         _hier = json.loads(Path(out_path).read_text(encoding="utf-8"))
                         _song = _hier.get("song") or {}
                         if not _title:
-                            _title = _song.get("title") or None
+                            _t = _song.get("title") or None
+                            if _t and _t != _filename_stem:
+                                _title = _t
                         if not _artist:
                             _artist = _song.get("artist") or None
                     except Exception:
@@ -476,13 +481,19 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
             has_story = story_path.exists()
             entry_dict["story_path"] = str(story_path) if has_story else None
 
+            # Helper: reject titles that are just the filename stem
+            filename_stem = Path(e.filename).stem
+
+            def _is_real_title(t: str | None) -> bool:
+                return bool(t) and t != filename_stem
+
             try:
                 with open(e.analysis_path, "r", encoding="utf-8") as fh:
                     data = json.load(fh)
                 has_phonemes = data.get("phoneme_result") is not None
                 quality_score = (data.get("validation") or {}).get("overall_score")
                 song_meta = data.get("song") or {}
-                if not title and song_meta.get("title"):
+                if not title and _is_real_title(song_meta.get("title")):
                     title = song_meta["title"]
                 if not artist and song_meta.get("artist") and song_meta["artist"] != "Unknown":
                     artist = song_meta["artist"]
@@ -494,7 +505,7 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
                 try:
                     story_data = json.loads(story_path.read_text(encoding="utf-8"))
                     song_meta = story_data.get("song") or {}
-                    if not title and song_meta.get("title"):
+                    if not title and _is_real_title(song_meta.get("title")):
                         title = song_meta["title"]
                     if not artist and song_meta.get("artist") and song_meta["artist"] != "Unknown":
                         artist = song_meta["artist"]
@@ -1164,6 +1175,51 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
     @app.route("/grouper")
     def grouper_index():
         return send_from_directory(app.static_folder, "grouper.html")
+
+    @app.route("/grouper/browse")
+    def grouper_browse():
+        """Browse directories and list XML files for the layout file picker."""
+        dir_path = request.args.get("dir", "")
+        if not dir_path:
+            # Default starting points: home dir, common xLights locations
+            home = Path.home()
+            roots: list[dict] = []
+            candidates = [
+                home,
+                home / "Documents",
+                home / "xLights",
+                home / "Documents" / "xLights",
+                Path("/"),
+            ]
+            for c in candidates:
+                if c.is_dir():
+                    roots.append({"name": c.name or str(c), "path": str(c)})
+            return jsonify({"roots": roots})
+
+        target = Path(dir_path)
+        if not target.is_dir():
+            return jsonify({"error": f"Not a directory: {dir_path}"}), 400
+
+        dirs: list[dict] = []
+        files: list[dict] = []
+        try:
+            for entry in sorted(target.iterdir(), key=lambda p: p.name.lower()):
+                if entry.name.startswith("."):
+                    continue
+                if entry.is_dir():
+                    dirs.append({"name": entry.name, "path": str(entry)})
+                elif entry.is_file() and entry.suffix.lower() == ".xml":
+                    files.append({"name": entry.name, "path": str(entry)})
+        except PermissionError:
+            return jsonify({"error": f"Permission denied: {dir_path}"}), 403
+
+        parent = str(target.parent) if target.parent != target else None
+        return jsonify({
+            "current": str(target),
+            "parent": parent,
+            "dirs": dirs,
+            "files": files,
+        })
 
     @app.route("/grouper/layout")
     def grouper_layout():
