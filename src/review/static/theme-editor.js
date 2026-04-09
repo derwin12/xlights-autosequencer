@@ -18,6 +18,7 @@ const state = {
   filterGenre: '',
   searchText: '',
   variantCache: {},
+  groupedVariants: [],  // loaded from /variants/api/list-grouped
 };
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
@@ -27,8 +28,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // ── Init ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   showLoading(true);
-  await loadThemes();
-  await loadEffects();
+  await Promise.all([loadThemes(), loadEffects(), loadGroupedVariants()]);
   showLoading(false);
   populateFilters();
   renderThemeList();
@@ -76,6 +76,16 @@ async function loadEffects() {
     state.blendModes = data.blend_modes || [];
   } catch (err) {
     console.error('Failed to load effects:', err);
+  }
+}
+
+async function loadGroupedVariants() {
+  try {
+    const resp = await fetch('/variants/api/list-grouped');
+    const data = await resp.json();
+    state.groupedVariants = data.groups || [];
+  } catch (err) {
+    console.error('Failed to load grouped variants:', err);
   }
 }
 
@@ -297,19 +307,17 @@ function renderDetailView(theme) {
   // Layers
   html += '<div class="detail-section"><h3>Layers</h3><ol class="layer-list">';
   for (const layer of theme.layers || []) {
-    const overrideCount = Object.keys(layer.parameter_overrides || {}).length;
-    const overrideNote = overrideCount > 0 ? ` <span class="text-dim">(${overrideCount} override${overrideCount > 1 ? 's' : ''})</span>` : '';
-    html += `<li><strong>${esc(layer.effect)}</strong> — ${esc(layer.blend_mode)}${overrideNote}</li>`;
+    html += `<li><strong>${esc(layer.variant || '(no variant)')}</strong> — ${esc(layer.blend_mode)}</li>`;
   }
   html += '</ol></div>';
 
   // Alternates (alternate layer sets)
-  if (theme.variants && theme.variants.length > 0) {
+  if (theme.alternates && theme.alternates.length > 0) {
     html += '<div class="detail-section"><h3>Alternates</h3>';
-    theme.variants.forEach((v, i) => {
+    theme.alternates.forEach((v, i) => {
       html += `<div class="variant-block"><h4>Alternate ${i + 1}</h4><ol class="layer-list">`;
       for (const layer of v.layers || []) {
-        html += `<li><strong>${esc(layer.effect)}</strong> — ${esc(layer.blend_mode)}</li>`;
+        html += `<li><strong>${esc(layer.variant || '(no variant)')}</strong> — ${esc(layer.blend_mode)}</li>`;
       }
       html += '</ol></div>';
     });
@@ -393,10 +401,10 @@ function defaultTheme() {
     occasion: 'general',
     genre: 'any',
     intent: '',
-    layers: [{ effect: 'Color Wash', blend_mode: 'Normal', parameter_overrides: {} }],
+    layers: [{ variant: '', blend_mode: 'Normal' }],
     palette: ['#FFFFFF', '#FFFFFF'],
     accent_palette: [],
-    variants: [],
+    alternates: [],
     is_custom: false,
     has_builtin_override: false,
   };
@@ -463,7 +471,7 @@ function renderEditForm(theme) {
   renderPaletteEditor('palette-editor', theme.palette || ['#FFFFFF', '#FFFFFF'], 2);
   renderPaletteEditor('accent-palette-editor', theme.accent_palette || [], 0);
   renderLayerEditor(theme.layers || []);
-  renderAlternateEditor(theme.variants || []);
+  renderAlternateEditor(theme.alternates || []);
 
   // Bind events
   bindFormDirtyTracking();
@@ -611,43 +619,48 @@ function renderLayerEditor(layers) {
   addBtn.style.marginTop = '4px';
   addBtn.addEventListener('click', () => {
     const current = getLayerData();
-    current.push({ effect: '', blend_mode: 'Normal', parameter_overrides: {} });
+    current.push({ variant: '', blend_mode: 'Normal' });
     renderLayerEditor(current);
     state.dirty = true;
   });
   container.appendChild(addBtn);
 }
 
+function _buildVariantSelect(selectedVariant) {
+  const variantSel = document.createElement('select');
+  variantSel.className = 'variant-select';
+  const emptyOpt = document.createElement('option');
+  emptyOpt.value = '';
+  emptyOpt.textContent = '-- Select variant --';
+  variantSel.appendChild(emptyOpt);
+  for (const group of state.groupedVariants) {
+    const og = document.createElement('optgroup');
+    og.label = group.effect;
+    for (const v of group.variants) {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name;
+      if (v.name === selectedVariant) opt.selected = true;
+      og.appendChild(opt);
+    }
+    variantSel.appendChild(og);
+  }
+  return variantSel;
+}
+
 function createLayerRow(layer, index, total) {
   const row = document.createElement('div');
   row.className = 'layer-editor-row';
 
-  // Header: effect select, blend mode select, reorder, remove
+  // Header: variant select, blend mode select, reorder, remove
   const header = document.createElement('div');
   header.className = 'layer-editor-header';
 
   const isBottom = index === 0;
 
-  // Effect select
-  const effectSel = document.createElement('select');
-  effectSel.innerHTML = '<option value="">-- Select effect --</option>';
-  const standaloneEffects = state.effects.filter(e => {
-    if (isBottom) return e.layer_role !== 'modifier';
-    return true;
-  });
-  standaloneEffects.forEach(e => {
-    const opt = document.createElement('option');
-    opt.value = e.name;
-    opt.textContent = `${e.name} (${e.category})`;
-    if (e.name === layer.effect) opt.selected = true;
-    effectSel.appendChild(opt);
-  });
-  effectSel.addEventListener('change', () => {
-    state.dirty = true;
-    delete row.dataset.variantRef;
-    refreshLayerParams(row, effectSel.value, {});
-    renderVariantPicker(row, effectSel.value);
-  });
+  // Variant select (replaces effect select + parameter controls)
+  const variantSel = _buildVariantSelect(layer.variant || '');
+  variantSel.addEventListener('change', () => { state.dirty = true; });
 
   // Blend mode select
   const blendSel = document.createElement('select');
@@ -704,23 +717,8 @@ function createLayerRow(layer, index, total) {
     state.dirty = true;
   });
 
-  header.append(label, effectSel, blendSel, upBtn, downBtn, removeBtn);
+  header.append(label, variantSel, blendSel, upBtn, downBtn, removeBtn);
   row.appendChild(header);
-
-  // Parameter section
-  const params = document.createElement('div');
-  params.className = 'layer-params';
-  row.appendChild(params);
-
-  // Store variant_ref from layer data
-  if (layer.variant_ref) {
-    row.dataset.variantRef = layer.variant_ref;
-  }
-
-  refreshLayerParams(row, layer.effect, layer.parameter_overrides || {});
-
-  // Fire-and-forget: render variant picker (async)
-  renderVariantPicker(row, layer.effect);
 
   return row;
 }
@@ -789,19 +787,13 @@ function refreshLayerParams(layerRow, effectName, overrides) {
 function getLayerData() {
   const rows = $$('#layer-editor .layer-editor-row');
   return Array.from(rows).map(row => {
-    const effectSel = row.querySelector('.layer-editor-header select:first-of-type');
+    const variantSel = row.querySelector('.layer-editor-header .variant-select');
     const blendSel = row.querySelector('.layer-editor-header select:nth-of-type(2)');
-    const effectName = effectSel ? effectSel.value : '';
-    const overrides = collectParamOverrides(row, effectName);
-    const variantRef = row.dataset.variantRef || null;
-
-    const data = {
-      effect: effectName,
+    return {
+      variant: variantSel ? variantSel.value : '',
       blend_mode: blendSel ? blendSel.value : 'Normal',
-      parameter_overrides: overrides,
+      effect_pool: [],
     };
-    if (variantRef) data.variant_ref = variantRef;
-    return data;
   });
 }
 
@@ -875,7 +867,7 @@ function renderAlternateEditor(alternates) {
   addBtn.style.marginTop = '4px';
   addBtn.addEventListener('click', () => {
     const data = getAlternateData();
-    data.push({ layers: [{ effect: 'Color Wash', blend_mode: 'Normal', parameter_overrides: {} }] });
+    data.push({ layers: [{ variant: '', blend_mode: 'Normal' }] });
     renderAlternateEditor(data);
     state.dirty = true;
   });
@@ -893,7 +885,7 @@ function renderAlternateLayers(container, layers) {
   addBtn.style.marginTop = '4px';
   addBtn.addEventListener('click', () => {
     const currentLayers = getLayerDataFromContainer(container);
-    currentLayers.push({ effect: '', blend_mode: 'Normal', parameter_overrides: {} });
+    currentLayers.push({ variant: '', blend_mode: 'Normal' });
     renderAlternateLayers(container, currentLayers);
     state.dirty = true;
   });
@@ -903,18 +895,13 @@ function renderAlternateLayers(container, layers) {
 function getLayerDataFromContainer(container) {
   const rows = container.querySelectorAll('.layer-editor-row');
   return Array.from(rows).map(row => {
-    const effectSel = row.querySelector('.layer-editor-header select:first-of-type');
+    const variantSel = row.querySelector('.layer-editor-header .variant-select');
     const blendSel = row.querySelector('.layer-editor-header select:nth-of-type(2)');
-    const effectName = effectSel ? effectSel.value : '';
-    const overrides = collectParamOverrides(row, effectName);
-    const variantRef = row.dataset.variantRef || null;
-    const data = {
-      effect: effectName,
+    return {
+      variant: variantSel ? variantSel.value : '',
       blend_mode: blendSel ? blendSel.value : 'Normal',
-      parameter_overrides: overrides,
+      effect_pool: [],
     };
-    if (variantRef) data.variant_ref = variantRef;
-    return data;
   });
 }
 
@@ -1273,7 +1260,7 @@ function collectFormData() {
     palette: getPaletteColors('palette-editor'),
     accent_palette: getPaletteColors('accent-palette-editor'),
     layers: getLayerData(),
-    variants: getAlternateData(),
+    alternates: getAlternateData(),
   };
 }
 

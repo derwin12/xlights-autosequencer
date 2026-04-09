@@ -8,12 +8,17 @@ import pytest
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import load_effect_library
 from src.generator.effect_placer import place_effects
+from src.variants.library import load_variant_library
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.generator.transitions import TransitionConfig, apply_crossfades, apply_fadeout, build_fadeout_plan
 from src.grouper.grouper import PowerGroup
 from src.themes.models import EffectLayer, Theme
 
 EFFECTS_FIXTURE = Path(__file__).parent.parent / "fixtures" / "effects" / "minimal_library_with_meteors.json"
+VARIANTS_FIXTURE = Path(__file__).parent.parent / "fixtures" / "variants" / "builtin_variants_minimal.json"
+
+FIRE_VARIANT = "Fire Blaze High"
+METEORS_VARIANT = "Meteors Gentle Rain"
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +67,7 @@ def _make_theme(effect_name: str = "Fire") -> Theme:
         occasion="general",
         genre="any",
         intent="test",
-        layers=[EffectLayer(effect=effect_name)],
+        layers=[EffectLayer(variant=effect_name)],
         palette=["#FF0000", "#00FF00"],
     )
 
@@ -77,16 +82,17 @@ def _make_group(name: str, tier: int) -> PowerGroup:
 
 def _build_section_assignment(
     label: str, start_ms: int, end_ms: int,
-    effect_name: str,
+    variant_name: str,
     groups: list[PowerGroup],
     effect_library,
     hierarchy: HierarchyResult,
+    variant_library=None,
 ) -> SectionAssignment:
-    theme = _make_theme(effect_name)
+    theme = _make_theme(variant_name)
     section = _make_section(label, start_ms, end_ms)
     assignment = SectionAssignment(section=section, theme=theme)
     assignment.group_effects = place_effects(
-        assignment, groups, effect_library, hierarchy,
+        assignment, groups, effect_library, hierarchy, variant_library=variant_library,
     )
     return assignment
 
@@ -99,6 +105,7 @@ class TestCrossfadesIntegration:
     def test_three_sections_all_boundaries_have_fades(self):
         """intro→verse→chorus: every boundary should have non-zero fades on at least one group."""
         effect_library = load_effect_library(builtin_path=EFFECTS_FIXTURE)
+        variant_library = load_variant_library(builtin_path=VARIANTS_FIXTURE, effect_library=effect_library)
         hierarchy = _make_hierarchy(duration_ms=60000)
 
         # Two groups that will get placements
@@ -108,9 +115,9 @@ class TestCrossfadesIntegration:
         ]
 
         assignments = [
-            _build_section_assignment("intro",  0,     20000, "Fire",    groups, effect_library, hierarchy),
-            _build_section_assignment("verse",  20000, 40000, "Meteors", groups, effect_library, hierarchy),
-            _build_section_assignment("chorus", 40000, 60000, "Fire",    groups, effect_library, hierarchy),
+            _build_section_assignment("intro",  0,     20000, FIRE_VARIANT,    groups, effect_library, hierarchy, variant_library),
+            _build_section_assignment("verse",  20000, 40000, METEORS_VARIANT, groups, effect_library, hierarchy, variant_library),
+            _build_section_assignment("chorus", 40000, 60000, FIRE_VARIANT,    groups, effect_library, hierarchy, variant_library),
         ]
 
         config = TransitionConfig(mode="subtle")
@@ -137,13 +144,14 @@ class TestCrossfadesIntegration:
     def test_none_mode_all_fades_zero(self):
         """mode='none' should produce zero fades — backward compatible."""
         effect_library = load_effect_library(builtin_path=EFFECTS_FIXTURE)
+        variant_library = load_variant_library(builtin_path=VARIANTS_FIXTURE, effect_library=effect_library)
         hierarchy = _make_hierarchy(duration_ms=40000)
 
         groups = [_make_group("01_BASE_ALL", tier=1)]
 
         assignments = [
-            _build_section_assignment("verse",  0,     20000, "Fire",    groups, effect_library, hierarchy),
-            _build_section_assignment("chorus", 20000, 40000, "Meteors", groups, effect_library, hierarchy),
+            _build_section_assignment("verse",  0,     20000, FIRE_VARIANT,    groups, effect_library, hierarchy, variant_library),
+            _build_section_assignment("chorus", 20000, 40000, METEORS_VARIANT, groups, effect_library, hierarchy, variant_library),
         ]
 
         config = TransitionConfig(mode="none")
@@ -158,13 +166,14 @@ class TestCrossfadesIntegration:
     def test_dramatic_produces_longer_fades_than_subtle(self):
         """Dramatic mode should produce longer fades than subtle on same song."""
         effect_library = load_effect_library(builtin_path=EFFECTS_FIXTURE)
+        variant_library = load_variant_library(builtin_path=VARIANTS_FIXTURE, effect_library=effect_library)
         hierarchy = _make_hierarchy(duration_ms=40000)
         groups = [_make_group("01_BASE_ALL", tier=1)]
 
         def total_fade_ms(mode: str) -> int:
             assigns = [
-                _build_section_assignment("verse",  0,     20000, "Fire",    groups, effect_library, hierarchy),
-                _build_section_assignment("chorus", 20000, 40000, "Meteors", groups, effect_library, hierarchy),
+                _build_section_assignment("verse",  0,     20000, FIRE_VARIANT,    groups, effect_library, hierarchy, variant_library),
+                _build_section_assignment("chorus", 20000, 40000, METEORS_VARIANT, groups, effect_library, hierarchy, variant_library),
             ]
             apply_crossfades(assigns, TransitionConfig(mode=mode), bpm=120.0)
             total = 0
@@ -179,13 +188,14 @@ class TestCrossfadesIntegration:
     def test_same_effect_across_boundary_no_fade(self):
         """Same effect on both sides of boundary → no crossfade for that group."""
         effect_library = load_effect_library(builtin_path=EFFECTS_FIXTURE)
+        variant_library = load_variant_library(builtin_path=VARIANTS_FIXTURE, effect_library=effect_library)
         hierarchy = _make_hierarchy(duration_ms=40000)
         groups = [_make_group("01_BASE_ALL", tier=1)]
 
-        # Both sections use Fire
+        # Both sections use same Fire variant
         assignments = [
-            _build_section_assignment("verse",  0,     20000, "Fire", groups, effect_library, hierarchy),
-            _build_section_assignment("chorus", 20000, 40000, "Fire", groups, effect_library, hierarchy),
+            _build_section_assignment("verse",  0,     20000, FIRE_VARIANT, groups, effect_library, hierarchy, variant_library),
+            _build_section_assignment("chorus", 20000, 40000, FIRE_VARIANT, groups, effect_library, hierarchy, variant_library),
         ]
 
         config = TransitionConfig(mode="subtle")
@@ -206,6 +216,7 @@ class TestBackwardCompatibility:
     def test_mode_none_matches_pre_feature_output(self):
         """Generating with mode='none' should produce all-zero fade values."""
         effect_library = load_effect_library(builtin_path=EFFECTS_FIXTURE)
+        variant_library = load_variant_library(builtin_path=VARIANTS_FIXTURE, effect_library=effect_library)
         hierarchy = _make_hierarchy(duration_ms=60000)
         groups = [
             _make_group("01_BASE_ALL", tier=1),
@@ -214,9 +225,9 @@ class TestBackwardCompatibility:
         ]
 
         assignments = [
-            _build_section_assignment("intro",  0,     20000, "Fire",    groups, effect_library, hierarchy),
-            _build_section_assignment("verse",  20000, 40000, "Meteors", groups, effect_library, hierarchy),
-            _build_section_assignment("chorus", 40000, 60000, "Fire",    groups, effect_library, hierarchy),
+            _build_section_assignment("intro",  0,     20000, FIRE_VARIANT,    groups, effect_library, hierarchy, variant_library),
+            _build_section_assignment("verse",  20000, 40000, METEORS_VARIANT, groups, effect_library, hierarchy, variant_library),
+            _build_section_assignment("chorus", 40000, 60000, FIRE_VARIANT,    groups, effect_library, hierarchy, variant_library),
         ]
 
         config = TransitionConfig(mode="none", fadeout_strategy="none")

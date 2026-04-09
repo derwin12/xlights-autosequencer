@@ -31,7 +31,7 @@ def _make_theme(name: str = "Test", transition_mode: str | None = None) -> Theme
         occasion="general",
         genre="any",
         intent="test",
-        layers=[EffectLayer(effect="Fire")],
+        layers=[EffectLayer(variant="Fire")],
         palette=["#FF0000"],
         transition_mode=transition_mode,
     )
@@ -225,7 +225,7 @@ class TestThemeTransitionMode:
             "occasion": "general",
             "genre": "any",
             "intent": "test",
-            "layers": [{"effect": "Fire", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire", "blend_mode": "Normal"}],
             "palette": ["#FF0000"],
         }
         theme = Theme.from_dict(data)
@@ -238,7 +238,7 @@ class TestThemeTransitionMode:
             "occasion": "general",
             "genre": "any",
             "intent": "test",
-            "layers": [{"effect": "Fire", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire", "blend_mode": "Normal"}],
             "palette": ["#FF0000"],
             "transition_mode": "dramatic",
         }

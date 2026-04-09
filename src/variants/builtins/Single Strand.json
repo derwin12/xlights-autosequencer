@@ -25,13 +25,19 @@
         "energy_level": "medium",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "verse"],
+        "section_roles": [
+          "chorus",
+          "verse"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -59,13 +65,19 @@
         "energy_level": "medium",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "verse"],
+        "section_roles": [
+          "chorus",
+          "verse"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -93,13 +105,19 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "drop"],
+        "section_roles": [
+          "chorus",
+          "drop"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -127,13 +145,19 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "drop"],
+        "section_roles": [
+          "chorus",
+          "drop"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -161,13 +185,20 @@
         "energy_level": "medium",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "verse", "bridge"],
+        "section_roles": [
+          "chorus",
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -195,13 +226,19 @@
         "energy_level": "medium",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "build"],
+        "section_roles": [
+          "chorus",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -229,13 +266,20 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "drop", "build"],
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -263,13 +307,19 @@
         "energy_level": "medium",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -297,13 +347,19 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["drop", "chorus"],
+        "section_roles": [
+          "drop",
+          "chorus"
+        ],
         "scope": "group",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
       }
     },
@@ -331,14 +387,130 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": "horizontal",
-        "section_roles": ["drop", "chorus"],
+        "section_roles": [
+          "drop",
+          "chorus"
+        ],
         "scope": "group",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Skips_Direction",
-        "values": ["Left", "Right"],
+        "values": [
+          "Left",
+          "Right"
+        ],
         "mode": "alternate"
+      }
+    },
+    {
+      "name": "Chase Fast Multi",
+      "base_effect": "Single Strand",
+      "description": "Fast chase with 5 simultaneous strands. High-speed multi-strand chase for peak energy.",
+      "parameter_overrides": {
+        "E_SLIDER_Single Strand_Speed": 50,
+        "E_SLIDER_Number_Chases": 5
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Chase Multi Dense",
+      "base_effect": "Single Strand",
+      "description": "Medium-speed chase with 6 dense strands. Rich multi-strand chase for active sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Single Strand_Speed": 35,
+        "E_SLIDER_Number_Chases": 6
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "verse",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Chase Medium Quad",
+      "base_effect": "Single Strand",
+      "description": "Medium-slow chase with 4 strands. Balanced quad-strand pattern for mid-energy sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Single Strand_Speed": 30,
+        "E_SLIDER_Number_Chases": 4
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "bridge",
+          "chorus"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Chase Trio Fast",
+      "base_effect": "Single Strand",
+      "description": "Fast 3-strand chase. Quick triple chase for energetic but focused sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Single Strand_Speed": 40,
+        "E_SLIDER_Number_Chases": 3
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Chase Slow Quad",
+      "base_effect": "Single Strand",
+      "description": "Slow 4-strand chase. Gentle quad chase for calm verses and ambient fills.",
+      "parameter_overrides": {
+        "E_SLIDER_Single Strand_Speed": 25,
+        "E_SLIDER_Number_Chases": 4
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "intro",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
       }
     }
   ]

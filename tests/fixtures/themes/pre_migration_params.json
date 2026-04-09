@@ -1,0 +1,662 @@
+{
+  "schema_version": "1.0.0",
+  "themes": {
+    "Stellar Wind": {
+      "primary.0": {
+        "effect": "Butterfly",
+        "params": {
+          "E_SLIDER_Butterfly_Speed": 15,
+          "E_SLIDER_Butterfly_Chunks": 3
+        }
+      },
+      "primary.1": {
+        "effect": "Shockwave",
+        "params": {
+          "E_SLIDER_Shockwave_Start_Width": 5,
+          "E_SLIDER_Shockwave_End_Radius": 80
+        }
+      },
+      "primary.2": {
+        "effect": "Ripple",
+        "params": {
+          "E_SLIDER_Ripple_Thickness": 4,
+          "E_SLIDER_Ripple_Movement": 20
+        }
+      },
+      "variant.0.0": {
+        "effect": "Wave",
+        "params": {
+          "E_SLIDER_Wave_Speed": 8,
+          "E_SLIDER_Wave_Number_Of_Waves": 2
+        }
+      },
+      "variant.1.0": {
+        "effect": "Spirals",
+        "params": {
+          "E_SLIDER_Spirals_PaletteRepeat": 3,
+          "E_SLIDER_Spirals_Direction": 1,
+          "E_SLIDER_Spirals_Speed": 10
+        }
+      }
+    },
+    "Aurora": {
+      "primary.0": {
+        "effect": "Color Wash",
+        "params": {
+          "E_SLIDER_Color Wash_Cycles": 2,
+          "E_CHECKBOX_Color Wash_Shimmer": 1
+        }
+      },
+      "primary.1": {
+        "effect": "Pinwheel",
+        "params": {
+          "E_SLIDER_Pinwheel_Arms": 4,
+          "E_SLIDER_Pinwheel_Speed": 15,
+          "E_SLIDER_Pinwheel_Twist": 20
+        }
+      },
+      "variant.0.0": {
+        "effect": "Wave",
+        "params": {
+          "E_SLIDER_Wave_Speed": 6,
+          "E_SLIDER_Wave_Number_Of_Waves": 2
+        }
+      },
+      "variant.1.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 10,
+          "E_SLIDER_Plasma_Line_Density": 3
+        }
+      }
+    },
+    "Bio-Lume": {
+      "primary.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 15,
+          "E_SLIDER_Plasma_Line_Density": 4
+        }
+      },
+      "primary.1": {
+        "effect": "Ripple",
+        "params": {
+          "E_SLIDER_Ripple_Thickness": 5,
+          "E_SLIDER_Ripple_Movement": 15
+        }
+      },
+      "variant.0.0": {
+        "effect": "Liquid",
+        "params": {
+          "E_SLIDER_Liquid_Speed": 10
+        }
+      },
+      "variant.1.0": {
+        "effect": "Tendril",
+        "params": {
+          "E_SLIDER_Tendril_Speed": 12,
+          "E_SLIDER_Tendril_Length": 50
+        }
+      }
+    },
+    "Inferno": {
+      "primary.0": {
+        "effect": "Fire",
+        "params": {
+          "E_SLIDER_Fire_Height": 80,
+          "E_CHOICE_Fire_Location": "Bottom"
+        }
+      },
+      "primary.1": {
+        "effect": "Shockwave",
+        "params": {
+          "E_SLIDER_Shockwave_Start_Width": 8,
+          "E_SLIDER_Shockwave_End_Radius": 100,
+          "E_SLIDER_Shockwave_Speed": 70
+        }
+      },
+      "primary.2": {
+        "effect": "Strobe",
+        "params": {
+          "E_SLIDER_Strobe_Speed": 60,
+          "E_SLIDER_Strobe_Number": 3
+        }
+      },
+      "variant.0.0": {
+        "effect": "Meteors",
+        "params": {
+          "E_SLIDER_Meteors_Count": 10,
+          "E_SLIDER_Meteors_Length": 12,
+          "E_SLIDER_Meteors_Speed": 45
+        }
+      },
+      "variant.1.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 40,
+          "E_SLIDER_Plasma_Line_Density": 6
+        }
+      }
+    },
+    "Molten Metal": {
+      "primary.0": {
+        "effect": "Fire",
+        "params": {
+          "E_SLIDER_Fire_Height": 60,
+          "E_CHOICE_Fire_Location": "Bottom"
+        }
+      },
+      "primary.1": {
+        "effect": "Fan",
+        "params": {
+          "E_SLIDER_Fan_Num_Blades": 6,
+          "E_SLIDER_Fan_Duration": 50
+        }
+      },
+      "variant.0.0": {
+        "effect": "Liquid",
+        "params": {
+          "E_SLIDER_Liquid_Speed": 25
+        }
+      },
+      "variant.1.0": {
+        "effect": "Bars",
+        "params": {
+          "E_CHOICE_Bars_Direction": "up",
+          "E_SLIDER_Bars_BarCount": 4
+        }
+      }
+    },
+    "Tracer Fire": {
+      "primary.0": {
+        "effect": "Meteors",
+        "params": {
+          "E_SLIDER_Meteors_Count": 8,
+          "E_SLIDER_Meteors_Length": 15,
+          "E_SLIDER_Meteors_Speed": 40
+        }
+      },
+      "primary.1": {
+        "effect": "Strobe",
+        "params": {
+          "E_SLIDER_Strobe_Speed": 80,
+          "E_SLIDER_Strobe_Number": 3
+        }
+      },
+      "variant.0.0": {
+        "effect": "Single Strand",
+        "params": {
+          "E_SLIDER_Single Strand_Speed": 50,
+          "E_SLIDER_Number_Chases": 5
+        }
+      },
+      "variant.1.0": {
+        "effect": "Bars",
+        "params": {
+          "E_CHOICE_Bars_Direction": "right",
+          "E_SLIDER_Bars_BarCount": 2
+        }
+      }
+    },
+    "The Void": {
+      "primary.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 8,
+          "E_SLIDER_Plasma_Line_Density": 2
+        }
+      },
+      "primary.1": {
+        "effect": "Spirals",
+        "params": {
+          "E_SLIDER_Spirals_PaletteRepeat": 3,
+          "E_SLIDER_Spirals_Speed": 8
+        }
+      },
+      "variant.0.0": {
+        "effect": "Butterfly",
+        "params": {
+          "E_SLIDER_Butterfly_Speed": 5,
+          "E_SLIDER_Butterfly_Chunks": 2
+        }
+      },
+      "variant.1.0": {
+        "effect": "Color Wash",
+        "params": {
+          "E_SLIDER_Color Wash_Cycles": 1,
+          "E_CHECKBOX_Color Wash_Shimmer": 0
+        }
+      }
+    },
+    "Glitch City": {
+      "primary.0": {
+        "effect": "Bars",
+        "params": {
+          "E_CHOICE_Bars_Direction": "up",
+          "E_SLIDER_Bars_BarCount": 8
+        }
+      },
+      "primary.1": {
+        "effect": "Strobe",
+        "params": {
+          "E_SLIDER_Strobe_Speed": 40,
+          "E_SLIDER_Strobe_Number": 2
+        }
+      },
+      "variant.0.0": {
+        "effect": "Marquee",
+        "params": {
+          "E_SLIDER_Marquee_Band_Size": 3,
+          "E_SLIDER_Marquee_Speed": 30,
+          "E_SLIDER_Marquee_Stagger": 5
+        }
+      },
+      "variant.1.0": {
+        "effect": "Single Strand",
+        "params": {
+          "E_SLIDER_Single Strand_Speed": 35,
+          "E_SLIDER_Number_Chases": 6
+        }
+      }
+    },
+    "The Kraken": {
+      "primary.0": {
+        "effect": "Liquid",
+        "params": {
+          "E_SLIDER_Liquid_Speed": 12
+        }
+      },
+      "primary.1": {
+        "effect": "Spirals",
+        "params": {
+          "E_SLIDER_Spirals_PaletteRepeat": 2,
+          "E_SLIDER_Spirals_Speed": 12
+        }
+      },
+      "variant.0.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 8,
+          "E_SLIDER_Plasma_Line_Density": 5
+        }
+      },
+      "variant.1.0": {
+        "effect": "Wave",
+        "params": {
+          "E_SLIDER_Wave_Speed": 6,
+          "E_SLIDER_Wave_Number_Of_Waves": 3
+        }
+      }
+    },
+    "Cyber Grid": {
+      "primary.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 12,
+          "E_SLIDER_Plasma_Line_Density": 4
+        }
+      },
+      "primary.1": {
+        "effect": "Pinwheel",
+        "params": {
+          "E_SLIDER_Pinwheel_Arms": 6,
+          "E_SLIDER_Pinwheel_Speed": 15,
+          "E_SLIDER_Pinwheel_Twist": 25
+        }
+      },
+      "variant.0.0": {
+        "effect": "Pinwheel",
+        "params": {
+          "E_SLIDER_Pinwheel_Arms": 6,
+          "E_SLIDER_Pinwheel_Twist": 30,
+          "E_SLIDER_Pinwheel_Speed": 15
+        }
+      },
+      "variant.1.0": {
+        "effect": "Fan",
+        "params": {
+          "E_SLIDER_Fan_Num_Blades": 4,
+          "E_SLIDER_Fan_Duration": 80
+        }
+      }
+    },
+    "Scanning Beam": {
+      "primary.0": {
+        "effect": "Bars",
+        "params": {
+          "E_SLIDER_Bars_BarCount": 1,
+          "E_CHOICE_Bars_Direction": "left"
+        }
+      },
+      "primary.1": {
+        "effect": "Single Strand",
+        "params": {
+          "E_SLIDER_Single Strand_Speed": 30,
+          "E_SLIDER_Number_Chases": 4
+        }
+      },
+      "variant.0.0": {
+        "effect": "Wave",
+        "params": {
+          "E_SLIDER_Wave_Speed": 15,
+          "E_SLIDER_Wave_Number_Of_Waves": 1
+        }
+      },
+      "variant.1.0": {
+        "effect": "Fill",
+        "params": {
+          "E_SLIDER_Fill_Position": 50,
+          "E_SLIDER_Fill_Band_Size": 15
+        }
+      }
+    },
+    "The Zipper": {
+      "primary.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 12,
+          "E_SLIDER_Plasma_Line_Density": 3
+        }
+      },
+      "primary.1": {
+        "effect": "Single Strand",
+        "params": {
+          "E_SLIDER_Single Strand_Speed": 40,
+          "E_SLIDER_Number_Chases": 3
+        }
+      },
+      "variant.0.0": {
+        "effect": "Liquid",
+        "params": {
+          "E_SLIDER_Liquid_Speed": 10
+        }
+      },
+      "variant.1.0": {
+        "effect": "Color Wash",
+        "params": {
+          "E_SLIDER_Color Wash_Cycles": 2,
+          "E_CHECKBOX_Color Wash_Shimmer": 1
+        }
+      }
+    },
+    "Winter Wonderland": {
+      "primary.0": {
+        "effect": "Color Wash",
+        "params": {
+          "E_SLIDER_Color Wash_Cycles": 1,
+          "E_CHECKBOX_Color Wash_Shimmer": 0
+        }
+      },
+      "primary.1": {
+        "effect": "Shockwave",
+        "params": {
+          "E_SLIDER_Shockwave_Start_Width": 4,
+          "E_SLIDER_Shockwave_End_Radius": 60
+        }
+      },
+      "primary.2": {
+        "effect": "Ripple",
+        "params": {
+          "E_SLIDER_Ripple_Thickness": 3,
+          "E_SLIDER_Ripple_Movement": 15
+        }
+      },
+      "variant.0.0": {
+        "effect": "Butterfly",
+        "params": {
+          "E_SLIDER_Butterfly_Speed": 8,
+          "E_SLIDER_Butterfly_Chunks": 4
+        }
+      },
+      "variant.1.0": {
+        "effect": "Wave",
+        "params": {
+          "E_SLIDER_Wave_Speed": 6,
+          "E_SLIDER_Wave_Number_Of_Waves": 2
+        }
+      }
+    },
+    "Candy Cane Chase": {
+      "primary.0": {
+        "effect": "Single Strand",
+        "params": {
+          "E_SLIDER_Single Strand_Speed": 25,
+          "E_SLIDER_Number_Chases": 4
+        }
+      },
+      "primary.1": {
+        "effect": "Marquee",
+        "params": {
+          "E_SLIDER_Marquee_Band_Size": 6,
+          "E_SLIDER_Marquee_Speed": 15,
+          "E_SLIDER_Marquee_Stagger": 0
+        }
+      },
+      "variant.0.0": {
+        "effect": "Bars",
+        "params": {
+          "E_CHOICE_Bars_Direction": "right",
+          "E_SLIDER_Bars_BarCount": 4
+        }
+      },
+      "variant.1.0": {
+        "effect": "Spirals",
+        "params": {
+          "E_SLIDER_Spirals_PaletteRepeat": 5,
+          "E_SLIDER_Spirals_Direction": 1,
+          "E_SLIDER_Spirals_Speed": 25
+        }
+      }
+    },
+    "Warm Glow": {
+      "primary.0": {
+        "effect": "Fire",
+        "params": {
+          "E_SLIDER_Fire_Height": 30,
+          "E_CHOICE_Fire_Location": "Bottom"
+        }
+      },
+      "primary.1": {
+        "effect": "Ripple",
+        "params": {
+          "E_SLIDER_Ripple_Thickness": 4,
+          "E_SLIDER_Ripple_Movement": 10
+        }
+      },
+      "variant.0.0": {
+        "effect": "Color Wash",
+        "params": {
+          "E_SLIDER_Color Wash_Cycles": 1,
+          "E_CHECKBOX_Color Wash_Shimmer": 1
+        }
+      },
+      "variant.1.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 8,
+          "E_SLIDER_Plasma_Line_Density": 2
+        }
+      }
+    },
+    "North Star": {
+      "primary.0": {
+        "effect": "Pinwheel",
+        "params": {
+          "E_SLIDER_Pinwheel_Arms": 8,
+          "E_SLIDER_Pinwheel_Twist": 20,
+          "E_SLIDER_Pinwheel_Speed": 10
+        }
+      },
+      "primary.1": {
+        "effect": "Ripple",
+        "params": {
+          "E_SLIDER_Ripple_Movement": 20,
+          "E_SLIDER_Ripple_Thickness": 4
+        }
+      },
+      "variant.0.0": {
+        "effect": "Fan",
+        "params": {
+          "E_SLIDER_Fan_Num_Blades": 8,
+          "E_SLIDER_Fan_Duration": 60
+        }
+      },
+      "variant.1.0": {
+        "effect": "Fan",
+        "params": {
+          "E_SLIDER_Fan_Num_Blades": 6,
+          "E_SLIDER_Fan_Duration": 80
+        }
+      }
+    },
+    "Festive Flash": {
+      "primary.0": {
+        "effect": "Shockwave",
+        "params": {
+          "E_SLIDER_Shockwave_Start_Width": 8,
+          "E_SLIDER_Shockwave_End_Radius": 80,
+          "E_SLIDER_Shockwave_Speed": 60
+        }
+      },
+      "primary.1": {
+        "effect": "Strobe",
+        "params": {
+          "E_SLIDER_Strobe_Speed": 50,
+          "E_SLIDER_Strobe_Number": 2
+        }
+      },
+      "variant.0.0": {
+        "effect": "Meteors",
+        "params": {
+          "E_SLIDER_Meteors_Count": 10,
+          "E_SLIDER_Meteors_Length": 10,
+          "E_SLIDER_Meteors_Speed": 50
+        }
+      },
+      "variant.1.0": {
+        "effect": "Fireworks",
+        "params": {}
+      }
+    },
+    "Silent Night": {
+      "primary.0": {
+        "effect": "Color Wash",
+        "params": {
+          "E_SLIDER_Color Wash_Cycles": 1,
+          "E_CHECKBOX_Color Wash_Shimmer": 0
+        }
+      },
+      "primary.1": {
+        "effect": "Ripple",
+        "params": {
+          "E_SLIDER_Ripple_Thickness": 3,
+          "E_SLIDER_Ripple_Movement": 10
+        }
+      },
+      "variant.0.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 5,
+          "E_SLIDER_Plasma_Line_Density": 2
+        }
+      },
+      "variant.1.0": {
+        "effect": "Butterfly",
+        "params": {
+          "E_SLIDER_Butterfly_Speed": 6,
+          "E_SLIDER_Butterfly_Chunks": 2
+        }
+      }
+    },
+    "Haunted Pulse": {
+      "primary.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 10,
+          "E_SLIDER_Plasma_Line_Density": 3
+        }
+      },
+      "primary.1": {
+        "effect": "Strobe",
+        "params": {
+          "E_SLIDER_Strobe_Speed": 15,
+          "E_SLIDER_Strobe_Number": 1
+        }
+      },
+      "variant.0.0": {
+        "effect": "Liquid",
+        "params": {
+          "E_SLIDER_Liquid_Speed": 8
+        }
+      },
+      "variant.1.0": {
+        "effect": "Fire",
+        "params": {
+          "E_SLIDER_Fire_Height": 25,
+          "E_CHOICE_Fire_Location": "Bottom"
+        }
+      }
+    },
+    "Jack-o-Lantern": {
+      "primary.0": {
+        "effect": "Fire",
+        "params": {
+          "E_SLIDER_Fire_Height": 70,
+          "E_CHOICE_Fire_Location": "Bottom"
+        }
+      },
+      "primary.1": {
+        "effect": "Shockwave",
+        "params": {
+          "E_SLIDER_Shockwave_Start_Width": 6,
+          "E_SLIDER_Shockwave_End_Radius": 90,
+          "E_SLIDER_Shockwave_Speed": 50
+        }
+      },
+      "variant.0.0": {
+        "effect": "Meteors",
+        "params": {
+          "E_SLIDER_Meteors_Count": 8,
+          "E_SLIDER_Meteors_Length": 15,
+          "E_SLIDER_Meteors_Speed": 35
+        }
+      },
+      "variant.1.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 30,
+          "E_SLIDER_Plasma_Line_Density": 5
+        }
+      }
+    },
+    "Graveyard Fog": {
+      "primary.0": {
+        "effect": "Liquid",
+        "params": {
+          "E_SLIDER_Liquid_Speed": 6
+        }
+      },
+      "primary.1": {
+        "effect": "Spirals",
+        "params": {
+          "E_SLIDER_Spirals_PaletteRepeat": 2,
+          "E_SLIDER_Spirals_Speed": 6
+        }
+      },
+      "variant.0.0": {
+        "effect": "Plasma",
+        "params": {
+          "E_SLIDER_Plasma_Speed": 5,
+          "E_SLIDER_Plasma_Line_Density": 2
+        }
+      },
+      "variant.1.0": {
+        "effect": "Color Wash",
+        "params": {
+          "E_SLIDER_Color Wash_Cycles": 1,
+          "E_CHECKBOX_Color Wash_Shimmer": 0
+        }
+      }
+    }
+  }
+}

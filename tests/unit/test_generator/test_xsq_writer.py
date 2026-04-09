@@ -24,7 +24,7 @@ def _make_theme() -> Theme:
         occasion="general",
         genre="any",
         intent="test",
-        layers=[EffectLayer(effect="Fire")],
+        layers=[EffectLayer(variant="Fire")],
         palette=["#FF0000", "#00FF00"],
     )
 

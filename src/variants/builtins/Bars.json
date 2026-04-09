@@ -17,13 +17,19 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": "radial",
-        "section_roles": ["verse", "intro"],
+        "section_roles": [
+          "verse",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Bars_Direction",
-        "values": ["expand", "compress"],
+        "values": [
+          "expand",
+          "compress"
+        ],
         "mode": "alternate"
       }
     },
@@ -43,13 +49,20 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "radial",
-        "section_roles": ["verse", "chorus", "bridge"],
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Bars_Direction",
-        "values": ["expand", "compress"],
+        "values": [
+          "expand",
+          "compress"
+        ],
         "mode": "alternate"
       }
     },
@@ -69,13 +82,19 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "vertical",
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Bars_Direction",
-        "values": ["up", "down"],
+        "values": [
+          "up",
+          "down"
+        ],
         "mode": "alternate"
       }
     },
@@ -95,13 +114,20 @@
         "energy_level": "low",
         "speed_feel": "moderate",
         "direction": "vertical",
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Bars_Direction",
-        "values": ["up", "down"],
+        "values": [
+          "up",
+          "down"
+        ],
         "mode": "alternate"
       }
     },
@@ -121,14 +147,132 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "vertical",
-        "section_roles": ["verse", "chorus", "bridge"],
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Bars_Direction",
-        "values": ["up", "down"],
+        "values": [
+          "up",
+          "down"
+        ],
         "mode": "alternate"
+      }
+    },
+    {
+      "name": "Bars Up Quad",
+      "base_effect": "Bars",
+      "description": "Four bars sweeping upward. Multi-bar upward sweep for medium-energy sections.",
+      "parameter_overrides": {
+        "E_CHOICE_Bars_Direction": "up",
+        "E_SLIDER_Bars_BarCount": 4
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Bars Right Dual",
+      "base_effect": "Bars",
+      "description": "Two bars moving right. Simple dual rightward sweep for subtle prop animation.",
+      "parameter_overrides": {
+        "E_CHOICE_Bars_Direction": "right",
+        "E_SLIDER_Bars_BarCount": 2
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "intro",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Bars Up Dense",
+      "base_effect": "Bars",
+      "description": "Eight bars sweeping upward densely. Dense upward bar wash for high-energy glitch sections.",
+      "parameter_overrides": {
+        "E_CHOICE_Bars_Direction": "up",
+        "E_SLIDER_Bars_BarCount": 8
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Bars Left Single",
+      "base_effect": "Bars",
+      "description": "Single bar sweeping left. Clean minimal leftward scan for subtle scanning effects.",
+      "parameter_overrides": {
+        "E_CHOICE_Bars_Direction": "left",
+        "E_SLIDER_Bars_BarCount": 1
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Bars Right Quad",
+      "base_effect": "Bars",
+      "description": "Four bars sweeping right. Active multi-bar rightward sweep for mid-energy sections.",
+      "parameter_overrides": {
+        "E_CHOICE_Bars_Direction": "right",
+        "E_SLIDER_Bars_BarCount": 4
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
       }
     }
   ]

@@ -99,6 +99,78 @@
         "values": ["Left to Right", "Right to Left"],
         "mode": "alternate"
       }
+    },
+    {
+      "name": "Wave Dual Medium",
+      "base_effect": "Wave",
+      "description": "Two waves at medium speed. Balanced wave motion for mid-energy sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Wave_Speed": 8,
+        "E_SLIDER_Wave_Number_Of_Waves": 2
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Wave Dual Slow",
+      "base_effect": "Wave",
+      "description": "Two slow gentle waves. Calm undulating motion for quiet sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Wave_Speed": 6,
+        "E_SLIDER_Wave_Number_Of_Waves": 2
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": ["verse", "intro", "outro", "bridge"],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Wave Triple Slow",
+      "base_effect": "Wave",
+      "description": "Three slow waves creating rich layered motion. Dense wave texture for ambient sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Wave_Speed": 6,
+        "E_SLIDER_Wave_Number_Of_Waves": 3
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": ["verse", "bridge", "intro"],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Wave Single Fast",
+      "base_effect": "Wave",
+      "description": "Single fast wave sweep. Clean rapid wave for scanning beam and linear prop effects.",
+      "parameter_overrides": {
+        "E_SLIDER_Wave_Speed": 15,
+        "E_SLIDER_Wave_Number_Of_Waves": 1
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "build", "verse"],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
     }
   ]
 }

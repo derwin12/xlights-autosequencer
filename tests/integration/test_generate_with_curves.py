@@ -96,7 +96,9 @@ def _build(tmp_path: Path, curves_mode: str = "all") -> SequencePlan:
     groups = _make_groups()
     hierarchy = _make_hierarchy()
     effect_lib = load_effect_library()
-    theme_lib = load_theme_library(effect_library=effect_lib)
+    from src.variants.library import load_variant_library
+    variant_lib = load_variant_library(effect_library=effect_lib)
+    theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
     config = GenerationConfig(
         audio_path=tmp_path / "test.mp3",
         layout_path=tmp_path / "layout.xml",
@@ -243,8 +245,10 @@ class TestXsqCurveEncoding:
         props = _make_props()
         groups = _make_groups()
         hierarchy = _make_hierarchy()
+        from src.variants.library import load_variant_library
         effect_lib = load_effect_library()
-        theme_lib = load_theme_library(effect_library=effect_lib)
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
         config = GenerationConfig(
             audio_path=tmp_path / "test.mp3",
             layout_path=tmp_path / "layout.xml",

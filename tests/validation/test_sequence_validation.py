@@ -23,6 +23,7 @@ from src.generator.plan import build_plan
 from src.grouper.grouper import PowerGroup
 from src.grouper.layout import Prop
 from src.themes.library import load_theme_library
+from src.variants.library import load_variant_library
 from src.themes.models import EffectLayer, Theme
 from src.validation.baseline import (
     Baseline,
@@ -63,7 +64,7 @@ def _make_theme(name: str, mood: str = "structural") -> Theme:
         occasion="general",
         genre="any",
         intent="Test theme",
-        layers=[EffectLayer(effect="Color Wash")],
+        layers=[EffectLayer(variant="Color Wash")],
         palette=["#FF0000", "#00FF00", "#0000FF"],
     )
 
@@ -615,7 +616,8 @@ class TestFullPipelineValidation:
     def test_real_plan_produces_valid_report(self, tmp_path: Path):
         hierarchy = _make_hierarchy()
         effect_lib = load_effect_library()
-        theme_lib = load_theme_library(effect_library=effect_lib)
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
         config = GenerationConfig(
             audio_path=tmp_path / "test.mp3",
             layout_path=tmp_path / "layout.xml",
@@ -633,7 +635,8 @@ class TestFullPipelineValidation:
         """Full workflow: generate -> report -> save baseline -> re-generate -> compare."""
         hierarchy = _make_hierarchy()
         effect_lib = load_effect_library()
-        theme_lib = load_theme_library(effect_library=effect_lib)
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
         config = GenerationConfig(
             audio_path=tmp_path / "test.mp3",
             layout_path=tmp_path / "layout.xml",

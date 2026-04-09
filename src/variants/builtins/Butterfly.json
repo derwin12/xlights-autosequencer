@@ -18,7 +18,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": "fixed",
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -40,7 +43,11 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": "fixed",
-        "section_roles": ["verse", "bridge", "intro"],
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -62,7 +69,11 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": "fixed",
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -84,7 +95,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "fixed",
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -106,7 +120,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "fixed",
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -128,7 +145,98 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "fixed",
-        "section_roles": ["chorus", "build"],
+        "section_roles": [
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Butterfly Medium Fast",
+      "base_effect": "Butterfly",
+      "description": "Three-chunk butterfly at fast speed. Active butterfly animation for energetic sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Butterfly_Chunks": 3,
+        "E_SLIDER_Butterfly_Speed": 15
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Butterfly Sparse Slow",
+      "base_effect": "Butterfly",
+      "description": "Two-chunk butterfly at very slow speed. Gentle drifting butterfly for calm ambient sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Butterfly_Chunks": 2,
+        "E_SLIDER_Butterfly_Speed": 5
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "intro",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Butterfly Dense Medium",
+      "base_effect": "Butterfly",
+      "description": "Four-chunk butterfly at medium speed. Dense butterfly pattern for mid-energy sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Butterfly_Chunks": 4,
+        "E_SLIDER_Butterfly_Speed": 8
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Butterfly Sparse Medium",
+      "base_effect": "Butterfly",
+      "description": "Two-chunk butterfly at medium-slow speed. Subtle sparse butterfly for quiet verses.",
+      "parameter_overrides": {
+        "E_SLIDER_Butterfly_Chunks": 2,
+        "E_SLIDER_Butterfly_Speed": 6
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

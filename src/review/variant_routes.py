@@ -199,6 +199,35 @@ def query_variants():
     })
 
 
+@variant_bp.route("/api/list-grouped", methods=["GET"])
+def list_grouped():
+    """Return all variants grouped by base_effect, for use in theme editor dropdowns.
+
+    Response: { "groups": [ { "effect": str, "variants": [ { "name", "description", "energy_level" } ] } ] }
+    """
+    lib = _get_library()
+    by_effect: dict[str, list] = {}
+    for v in lib.variants.values():
+        by_effect.setdefault(v.base_effect, []).append(v)
+
+    groups = []
+    for effect_name in sorted(by_effect):
+        variants_list = sorted(by_effect[effect_name], key=lambda v: v.name)
+        groups.append({
+            "effect": effect_name,
+            "variants": [
+                {
+                    "name": v.name,
+                    "description": v.description,
+                    "energy_level": v.tags.energy_level if v.tags else None,
+                }
+                for v in variants_list
+            ],
+        })
+
+    return jsonify({"groups": groups})
+
+
 @variant_bp.route("/coverage", methods=["GET"])
 def variant_coverage():
     """Return variant coverage statistics across all catalogued base effects."""

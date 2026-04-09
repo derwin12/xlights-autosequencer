@@ -254,6 +254,28 @@
           "choices": null,
           "description": "Reverse the direction of horizontal/vertical fades",
           "supports_value_curve": false
+        },
+        {
+          "name": "Color_Wash_Cycles",
+          "storage_name": "E_SLIDER_Color Wash_Cycles",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "description": "Number of color fade cycles per second",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Color_Wash_Shimmer",
+          "storage_name": "E_CHECKBOX_Color Wash_Shimmer",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": 0,
+          "min": null,
+          "max": null,
+          "description": "Enable shimmer/sparkle overlay on the color wash",
+          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -534,6 +556,28 @@
           "choices": null,
           "description": "Trigger strobe flashes from audio level (music reactive)",
           "supports_value_curve": false
+        },
+        {
+          "name": "Strobe_Number",
+          "storage_name": "E_SLIDER_Strobe_Number",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 1,
+          "min": 1,
+          "max": 5,
+          "description": "Number of simultaneous strobe sources",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Strobe_Speed",
+          "storage_name": "E_SLIDER_Strobe_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 30,
+          "min": 0,
+          "max": 100,
+          "description": "Flash rate of the strobe effect",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -677,7 +721,7 @@
           "value_type": "int",
           "default": 1,
           "min": 1,
-          "max": 5,
+          "max": 50,
           "choices": null,
           "description": "Number of color bars visible at once",
           "supports_value_curve": true
@@ -2022,6 +2066,17 @@
           "choices": null,
           "description": "Enable 3D depth shading on ripples",
           "supports_value_curve": false
+        },
+        {
+          "name": "Ripple_Movement_Speed",
+          "storage_name": "E_SLIDER_Ripple_Movement",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 15,
+          "min": 0,
+          "max": 100,
+          "description": "Speed of ripple expansion or contraction",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -2361,6 +2416,17 @@
           "choices": null,
           "description": "Number of shockwave expansion cycles during the effect",
           "supports_value_curve": false
+        },
+        {
+          "name": "Shockwave_Speed",
+          "storage_name": "E_SLIDER_Shockwave_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 50,
+          "min": 0,
+          "max": 100,
+          "description": "Expansion speed of the shockwave ring",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -2523,6 +2589,39 @@
           "max": 200,
           "choices": null,
           "description": "Vertical movement speed of the spirals (divided by 10 for float, negative = down)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Spirals_Direction_Amount",
+          "storage_name": "E_SLIDER_Spirals_Direction",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "description": "Direction of spiral rotation (0=CCW, 1=CW)",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Spirals_PaletteRepeat",
+          "storage_name": "E_SLIDER_Spirals_PaletteRepeat",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 3,
+          "min": 1,
+          "max": 10,
+          "description": "Number of times the color palette repeats along the spiral",
+          "supports_value_curve": true
+        },
+        {
+          "name": "Spirals_Speed",
+          "storage_name": "E_SLIDER_Spirals_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 100,
+          "description": "Animation speed of the spirals",
           "supports_value_curve": true
         }
       ],
@@ -2687,6 +2786,17 @@
           "choices": null,
           "description": "Mirror the wave pattern vertically for symmetric effect",
           "supports_value_curve": false
+        },
+        {
+          "name": "Wave_Number_Of_Waves",
+          "storage_name": "E_SLIDER_Wave_Number_Of_Waves",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 2,
+          "min": 1,
+          "max": 5,
+          "description": "Number of wave peaks visible simultaneously",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -3293,6 +3403,17 @@
           "choices": null,
           "description": "Mix colors when particles from different sources interact",
           "supports_value_curve": false
+        },
+        {
+          "name": "Liquid_Speed",
+          "storage_name": "E_SLIDER_Liquid_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 10,
+          "min": 0,
+          "max": 100,
+          "description": "Overall speed of the liquid simulation",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -4091,6 +4212,17 @@
           ],
           "description": "Chase direction pattern",
           "supports_value_curve": false
+        },
+        {
+          "name": "Single_Strand_Speed",
+          "storage_name": "E_SLIDER_Single Strand_Speed",
+          "widget_type": "slider",
+          "value_type": "int",
+          "default": 30,
+          "min": 0,
+          "max": 100,
+          "description": "Overall animation speed of the chase",
+          "supports_value_curve": true
         }
       ],
       "prop_suitability": {

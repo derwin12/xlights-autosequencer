@@ -64,7 +64,7 @@ def load_theme_library(
     builtin_path: str | Path | None = None,
     custom_dir: str | Path | None = None,
     effect_library: EffectLibrary | None = None,
-    variant_library=None,
+    variant_library=...,  # sentinel — callers must pass explicitly
 ) -> ThemeLibrary:
     """Load the theme library from built-in JSON + optional custom overrides.
 
@@ -72,8 +72,14 @@ def load_theme_library(
         builtin_path: Path to the built-in themes JSON. Defaults to bundled file.
         custom_dir: Path to custom overrides directory. Defaults to ~/.xlight/custom_themes/.
         effect_library: Loaded effect library for validation. If None, loads automatically.
-        variant_library: Optional VariantLibrary for variant_ref validation.
+        variant_library: VariantLibrary for variant_ref validation. Required.
     """
+    # variant_library is required — guard against accidental None or missing arg
+    if variant_library is ...:
+        raise ValueError("variant_library is required for theme loading")
+    if variant_library is None:
+        raise ValueError("variant_library is required for theme loading")
+
     builtin_path = Path(builtin_path) if builtin_path else _BUILTIN_PATH
     custom_dir = Path(custom_dir) if custom_dir else _DEFAULT_CUSTOM_DIR
 
@@ -90,7 +96,7 @@ def load_theme_library(
     themes: dict[str, Theme] = {}
 
     for name, data in raw.get("themes", {}).items():
-        errors = validate_theme(data, effect_library, variant_library=variant_library)
+        errors = validate_theme(data, effect_library, variant_library)
         if errors:
             logger.warning("Built-in theme '%s' has validation errors: %s", name, errors)
             continue
@@ -102,7 +108,7 @@ def load_theme_library(
             try:
                 with open(custom_file, "r", encoding="utf-8") as f:
                     custom_data = json.load(f)
-                errors = validate_theme(custom_data, effect_library, variant_library=variant_library)
+                errors = validate_theme(custom_data, effect_library, variant_library)
                 if errors:
                     logger.warning(
                         "Skipping invalid custom theme '%s': %s",

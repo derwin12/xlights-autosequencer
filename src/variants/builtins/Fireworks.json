@@ -25,6 +25,21 @@
         "scope": "single-prop",
         "genre_affinity": "any"
       }
+    },
+    {
+      "name": "Fireworks Default",
+      "base_effect": "Fireworks",
+      "description": "Default fireworks burst with no parameter overrides. Standard fireworks display for festive celebration moments.",
+      "parameter_overrides": {},
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
     }
   ]
 }

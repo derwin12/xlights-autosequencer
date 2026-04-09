@@ -14,6 +14,8 @@ from src.generator.models import (
 )
 from src.grouper.grouper import PowerGroup
 from src.themes.models import EffectLayer, Theme
+from src.variants.library import VariantLibrary
+from src.variants.models import EffectVariant, VariantTags
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -49,12 +51,33 @@ def _make_library(*effects: EffectDefinition) -> EffectLibrary:
     )
 
 
+def _make_variant_library(*effect_names: str) -> VariantLibrary:
+    """Create a VariantLibrary mapping each effect name to a variant of the same name."""
+    if not effect_names:
+        effect_names = ("Color Wash",)
+    variants = {}
+    for name in effect_names:
+        v = EffectVariant(
+            name=name,
+            base_effect=name,
+            description=f"test variant for {name}",
+            parameter_overrides={},
+            tags=VariantTags(),
+        )
+        variants[name] = v
+    return VariantLibrary(
+        schema_version="1.0.0",
+        variants=variants,
+        builtin_names=set(effect_names),
+    )
+
+
 def _make_theme(
     layers: list[EffectLayer] | None = None,
     palette: list[str] | None = None,
 ) -> Theme:
     if layers is None:
-        layers = [EffectLayer(effect="Color Wash")]
+        layers = [EffectLayer(variant="Color Wash")]
     if palette is None:
         palette = ["#ff0000", "#00ff00"]
     return Theme(
@@ -150,15 +173,16 @@ class TestLayerToTierMapping:
     def test_base_layer_on_tier_1(self) -> None:
         """Two-layer theme places bottom on low tiers, top on high tiers."""
         layers = [
-            EffectLayer(effect="Color Wash"),   # bottom → tiers 1, 2
-            EffectLayer(effect="Twinkle"),       # top → tiers 7, 8
+            EffectLayer(variant="Color Wash"),   # bottom → tiers 1, 2
+            EffectLayer(variant="Twinkle"),       # top → tiers 7, 8
         ]
         assignment = _make_assignment(layers=layers)
         groups = _make_groups()
         library = _make_library(_make_effect("Color Wash"), _make_effect("Twinkle"))
+        variant_library = _make_variant_library("Color Wash", "Twinkle")
         hierarchy = _make_hierarchy(beat_times=[0, 500, 1000, 1500])
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         tier_of_group = {g.name: g.tier for g in groups}
         used_tiers: set[int] = set()
@@ -178,9 +202,10 @@ class TestDurationTypeSection:
         assignment = _make_assignment(start_ms=1000, end_ms=5000)
         groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
         library = _make_library(_make_effect("Color Wash", duration_type="section"))
+        variant_library = _make_variant_library("Color Wash")
         hierarchy = _make_hierarchy(beat_times=[1000, 1500, 2000, 2500, 3000])
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         # Should have exactly one placement for the group
         all_placements = [p for ps in result.values() for p in ps]
@@ -199,12 +224,13 @@ class TestDurationTypeBeat:
     def test_duration_type_beat(self) -> None:
         beat_times = [0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500]
         assignment = _make_assignment(start_ms=0, end_ms=5000, energy_score=100,
-                                      layers=[EffectLayer(effect="Strobe")])
+                                      layers=[EffectLayer(variant="Strobe")])
         groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
         library = _make_library(_make_effect("Strobe", duration_type="beat"))
+        variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=5000)
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         beat_placements = [p for p in all_placements if p.effect_name == "Strobe"]
@@ -222,12 +248,13 @@ class TestEnergyDrivenDensity:
         """Energy 80+ should use ~90% of beat marks."""
         beat_times = list(range(0, 10000, 500))  # 20 beats
         assignment = _make_assignment(start_ms=0, end_ms=10000, energy_score=85,
-                                      layers=[EffectLayer(effect="Strobe")])
+                                      layers=[EffectLayer(variant="Strobe")])
         groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
         library = _make_library(_make_effect("Strobe", duration_type="beat"))
+        variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=10000)
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         beat_placements = [p for p in all_placements if p.effect_name == "Strobe"]
@@ -238,12 +265,13 @@ class TestEnergyDrivenDensity:
         """Energy 20 should use ~50% of beat marks."""
         beat_times = list(range(0, 10000, 500))  # 20 beats
         assignment = _make_assignment(start_ms=0, end_ms=10000, energy_score=20,
-                                      layers=[EffectLayer(effect="Strobe")])
+                                      layers=[EffectLayer(variant="Strobe")])
         groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
         library = _make_library(_make_effect("Strobe", duration_type="beat"))
+        variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=10000)
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         beat_placements = [p for p in all_placements if p.effect_name == "Strobe"]
@@ -258,9 +286,10 @@ class TestFadeCalculation:
         assignment = _make_assignment(start_ms=0, end_ms=10000)
         groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
         library = _make_library(_make_effect("Color Wash", duration_type="section"))
+        variant_library = _make_variant_library("Color Wash")
         hierarchy = _make_hierarchy()
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0, "Should produce at least one placement"
@@ -275,12 +304,13 @@ class TestFadeCalculation:
     def test_fade_calculation_beat(self) -> None:
         beat_times = [0, 500, 1000, 1500]
         assignment = _make_assignment(start_ms=0, end_ms=2000, energy_score=100,
-                                      layers=[EffectLayer(effect="Strobe")])
+                                      layers=[EffectLayer(variant="Strobe")])
         groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
         library = _make_library(_make_effect("Strobe", duration_type="beat"))
+        variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=2000)
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0, "Should produce at least one placement"
@@ -296,12 +326,13 @@ class TestFrameAlignment:
         # Use beat times that are NOT multiples of 25 to verify alignment
         beat_times = [0, 503, 1007, 1511, 2013]
         assignment = _make_assignment(start_ms=0, end_ms=2500, energy_score=100,
-                                      layers=[EffectLayer(effect="Strobe")])
+                                      layers=[EffectLayer(variant="Strobe")])
         groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
         library = _make_library(_make_effect("Strobe", duration_type="beat"))
+        variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=2500)
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0, "Should produce at least one placement"
@@ -321,12 +352,81 @@ class TestFlatModelFallback:
         assignment = _make_assignment(start_ms=0, end_ms=5000)
         groups: list[PowerGroup] = []
         library = _make_library(_make_effect("Color Wash", duration_type="section"))
+        variant_library = _make_variant_library("Color Wash")
         hierarchy = _make_hierarchy()
 
-        result = place_effects(assignment, groups, library, hierarchy)
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         # With no groups, the result should still contain placements
         # keyed by individual model names rather than group names
         assert len(result) > 0, "Should produce placements even with no groups"
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0, "Should produce at least one placement in flat mode"
+
+
+# ── T007: theme-variant-separation refactor contracts ────────────────────────
+# These tests FAIL against the current implementation.  They document the
+# expected post-refactor behaviour so that once the refactor lands all three
+# should turn green.
+
+
+class TestVariantLibraryResolution:
+    """T007-1: place_effects resolves variant parameters from variant_library."""
+
+    def test_place_effects_resolves_variant_from_library(self) -> None:
+        """Variant parameters must come from variant_library."""
+        fire_def = _make_effect("Fire", xlights_id="eff_FIRE", duration_type="section")
+        library = _make_library(fire_def)
+
+        variant = EffectVariant(
+            name="fire-refactor-test",
+            base_effect="Fire",
+            description="test",
+            parameter_overrides={"E_SLIDER_Fire_Height": 99},
+            tags=VariantTags(),
+        )
+        variant_lib = VariantLibrary(
+            schema_version="1.0.0",
+            variants={"fire-refactor-test": variant},
+            builtin_names=set(),
+        )
+
+        layer = EffectLayer(variant="fire-refactor-test")
+        assert not hasattr(layer, "parameter_overrides"), (
+            "Post-refactor EffectLayer must NOT have a parameter_overrides attribute."
+        )
+
+        assignment = _make_assignment(layers=[layer])
+        groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
+        hierarchy = _make_hierarchy()
+
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_lib)
+        all_placements = [p for ps in result.values() for p in ps]
+        assert len(all_placements) > 0
+
+        found = any(p.parameters.get("E_SLIDER_Fire_Height") == 99 for p in all_placements)
+        assert found, (
+            "Expected E_SLIDER_Fire_Height=99 from variant_library, "
+            f"got: {[p.parameters for p in all_placements]}"
+        )
+
+
+class TestApplyVariationRemoved:
+    """T007-2: _apply_variation must not exist after the refactor."""
+
+    def test_apply_variation_removed(self) -> None:
+        """_apply_variation must not be importable from effect_placer after the refactor."""
+        with pytest.raises(ImportError):
+            from src.generator.effect_placer import _apply_variation  # noqa: F401
+
+
+class TestNoParameterOverridesOnLayer:
+    """T007-3: EffectLayer must not have a parameter_overrides attribute post-refactor."""
+
+    def test_place_effects_no_parameter_overrides_on_layer(self) -> None:
+        """EffectLayer instances must have no parameter_overrides attribute."""
+        layer = EffectLayer(variant="Color Wash")
+        assert not hasattr(layer, "parameter_overrides"), (
+            "Post-refactor EffectLayer must NOT have a parameter_overrides field."
+        )

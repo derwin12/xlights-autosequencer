@@ -17,7 +17,7 @@ class TestSaveTheme:
             "occasion": "general",
             "genre": "any",
             "intent": "Test theme",
-            "layers": [{"effect": "On", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
             "palette": ["#FF0000", "#00FF00"],
         }
         result = save_theme(theme_data, custom_dir=tmp_path)
@@ -32,7 +32,7 @@ class TestSaveTheme:
             "occasion": "general",
             "genre": "any",
             "intent": "Test",
-            "layers": [{"effect": "On", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
             "palette": ["#FF0000", "#00FF00"],
         }
         result = save_theme(theme_data, custom_dir=tmp_path)
@@ -45,10 +45,10 @@ class TestSaveTheme:
             "occasion": "halloween",
             "genre": "rock",
             "intent": "Spooky",
-            "layers": [{"effect": "Fire", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
             "palette": ["#000000", "#FF0000"],
             "accent_palette": ["#440000", "#880000"],
-            "variants": [],
+            "alternates": [],
         }
         result = save_theme(theme_data, custom_dir=tmp_path)
         with open(result["file_path"], "r") as f:
@@ -65,7 +65,7 @@ class TestSaveTheme:
             "occasion": "general",
             "genre": "any",
             "intent": "Test",
-            "layers": [{"effect": "On", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
             "palette": ["#FF0000", "#00FF00"],
         }
         result = save_theme(theme_data, custom_dir=target)
@@ -79,7 +79,7 @@ class TestSaveTheme:
             "occasion": "general",
             "genre": "any",
             "intent": "Version 1",
-            "layers": [{"effect": "On", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
             "palette": ["#FF0000", "#00FF00"],
         }
         save_theme(theme_data, custom_dir=tmp_path)
@@ -96,7 +96,7 @@ class TestSaveTheme:
             "occasion": "general",
             "genre": "rock",
             "intent": "Test",
-            "layers": [{"effect": "Fire", "blend_mode": "Normal", "parameter_overrides": {}}],
+            "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
             "palette": ["#FF0000", "#0000FF"],
         }
         result = save_theme(theme_data, custom_dir=tmp_path)
@@ -126,7 +126,7 @@ class TestRenameTheme:
         old_file.write_text(json.dumps({"name": "Old Name", "mood": "ethereal"}))
         new_data = {"name": "New Name", "mood": "ethereal",
                     "occasion": "general", "genre": "any", "intent": "Renamed",
-                    "layers": [{"effect": "On", "blend_mode": "Normal", "parameter_overrides": {}}],
+                    "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
                     "palette": ["#FF0000", "#00FF00"]}
         result = rename_theme("Old Name", new_data, custom_dir=tmp_path)
         assert result["success"] is True

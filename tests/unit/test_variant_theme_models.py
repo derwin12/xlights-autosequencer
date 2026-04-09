@@ -1,7 +1,6 @@
-"""Unit tests for EffectLayer.variant_ref field and theme validation with variants."""
+"""Unit tests for new EffectLayer model (variant field) and theme validation."""
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 import pytest
@@ -21,11 +20,12 @@ def effect_lib():
 
 
 @pytest.fixture
-def variant_lib():
-    return load_variant_library(builtin_path=VARIANTS_FIXTURE)
+def variant_lib(effect_lib):
+    return load_variant_library(builtin_path=VARIANTS_FIXTURE, effect_library=effect_lib)
 
 
 def _valid_theme() -> dict:
+    """A minimal valid theme dict using new variant-only layer format."""
     return {
         "name": "Test",
         "mood": "aggressive",
@@ -33,132 +33,84 @@ def _valid_theme() -> dict:
         "genre": "any",
         "intent": "Testing",
         "layers": [
-            {"effect": "Fire", "blend_mode": "Normal", "parameter_overrides": {}},
+            {"variant": "Fire Blaze High", "blend_mode": "Normal"},
         ],
         "palette": ["#FF0000", "#00FF00"],
     }
 
 
-class TestEffectLayerVariantRef:
-    def test_from_dict_with_variant_ref(self):
-        data = {
-            "effect": "Meteors",
-            "blend_mode": "Normal",
-            "parameter_overrides": {},
-            "variant_ref": "meteors-fast-down",
-        }
-        layer = EffectLayer.from_dict(data)
-        assert layer.variant_ref == "meteors-fast-down"
+class TestEffectLayerVariantField:
+    """Tests for new EffectLayer.variant field (replaces effect + parameter_overrides + variant_ref)."""
 
-    def test_from_dict_without_variant_ref_defaults_to_none(self):
-        data = {
-            "effect": "Fire",
-            "blend_mode": "Normal",
-            "parameter_overrides": {},
-        }
+    def test_from_dict_with_variant(self):
+        data = {"variant": "meteors-fast-down", "blend_mode": "Normal"}
         layer = EffectLayer.from_dict(data)
-        assert layer.variant_ref is None
+        assert layer.variant == "meteors-fast-down"
 
-    def test_from_dict_explicit_none_variant_ref(self):
-        data = {
-            "effect": "Bars",
-            "blend_mode": "Normal",
-            "parameter_overrides": {},
-            "variant_ref": None,
-        }
+    def test_from_dict_defaults_blend_mode(self):
+        data = {"variant": "Fire Blaze High"}
         layer = EffectLayer.from_dict(data)
-        assert layer.variant_ref is None
+        assert layer.blend_mode == "Normal"
 
-    def test_to_dict_includes_variant_ref_when_set(self):
-        layer = EffectLayer(
-            effect="Meteors",
-            blend_mode="Normal",
-            parameter_overrides={},
-            variant_ref="meteors-fast-down",
-        )
+    def test_to_dict_includes_variant(self):
+        layer = EffectLayer(variant="meteors-fast-down", blend_mode="Additive")
         d = layer.to_dict()
-        assert "variant_ref" in d
-        assert d["variant_ref"] == "meteors-fast-down"
+        assert d["variant"] == "meteors-fast-down"
+        assert d["blend_mode"] == "Additive"
 
-    def test_to_dict_includes_variant_ref_when_none(self):
-        layer = EffectLayer(
-            effect="Fire",
-            blend_mode="Normal",
-            parameter_overrides={},
-            variant_ref=None,
-        )
+    def test_to_dict_has_no_effect_or_parameter_overrides(self):
+        layer = EffectLayer(variant="Fire Blaze High")
         d = layer.to_dict()
-        assert "variant_ref" in d
-        assert d["variant_ref"] is None
+        assert "effect" not in d
+        assert "parameter_overrides" not in d
+        assert "variant_ref" not in d
 
-    def test_roundtrip_preserves_variant_ref(self):
-        original = EffectLayer(
-            effect="Bars",
-            blend_mode="Additive",
-            parameter_overrides={"E_SLIDER_Bars_BarCount": 5},
-            variant_ref="bars-triple",
-        )
-        d = original.to_dict()
-        restored = EffectLayer.from_dict(d)
-        assert restored.variant_ref == "bars-triple"
-        assert restored.effect == "Bars"
-        assert restored.parameter_overrides == {"E_SLIDER_Bars_BarCount": 5}
+    def test_roundtrip_preserves_variant(self):
+        original = EffectLayer(variant="bars-triple", blend_mode="Additive",
+                               effect_pool=["bars-triple", "fire-low-flicker"])
+        restored = EffectLayer.from_dict(original.to_dict())
+        assert restored.variant == "bars-triple"
+        assert restored.blend_mode == "Additive"
+        assert restored.effect_pool == ["bars-triple", "fire-low-flicker"]
+
+    def test_no_parameter_overrides_field(self):
+        layer = EffectLayer(variant="Fire Blaze High")
+        assert not hasattr(layer, "parameter_overrides")
+
+    def test_no_effect_field(self):
+        layer = EffectLayer(variant="Fire Blaze High")
+        assert not hasattr(layer, "effect")
+
+    def test_no_variant_ref_field(self):
+        layer = EffectLayer(variant="Fire Blaze High")
+        assert not hasattr(layer, "variant_ref")
 
 
 class TestValidateThemeWithVariants:
-    def test_valid_variant_ref_passes(self, effect_lib, variant_lib):
+    """Tests for validate_theme with new variant-only layer format."""
+
+    def test_valid_variant_passes(self, effect_lib, variant_lib):
         data = _valid_theme()
-        data["layers"][0] = {
-            "effect": "Bars",
-            "blend_mode": "Normal",
-            "parameter_overrides": {},
-            "variant_ref": "bars-triple",
-        }
-        errors = validate_theme(data, effect_lib, variant_library=variant_lib)
+        errors = validate_theme(data, effect_lib, variant_lib)
         assert errors == []
 
-    def test_missing_variant_ref_is_warning_not_error(self, effect_lib, variant_lib, caplog):
-        """variant_ref pointing to nonexistent variant emits a WARNING, not an error."""
+    def test_missing_variant_is_error(self, effect_lib, variant_lib):
+        """variant pointing to nonexistent variant is a hard error."""
         data = _valid_theme()
-        data["layers"][0]["variant_ref"] = "nonexistent-variant"
-        with caplog.at_level(logging.WARNING, logger="src.themes.validator"):
-            errors = validate_theme(data, effect_lib, variant_library=variant_lib)
-        # Must not be in errors list (not a hard failure)
-        error_texts = " ".join(errors)
-        assert "nonexistent-variant" not in error_texts
-        # Must have logged a warning
-        assert any("nonexistent-variant" in r.message for r in caplog.records)
+        data["layers"][0]["variant"] = "nonexistent-variant"
+        errors = validate_theme(data, effect_lib, variant_lib)
+        assert any("nonexistent-variant" in e for e in errors)
 
-    def test_variant_base_effect_mismatch_is_error(self, effect_lib, variant_lib):
-        """variant_ref whose base_effect doesn't match the layer effect is an error."""
+    def test_valid_bars_variant_passes(self, effect_lib, variant_lib):
         data = _valid_theme()
-        # Layer uses Fire, but meteors-fast-down is for Meteors
-        data["layers"][0]["variant_ref"] = "meteors-fast-down"
-        errors = validate_theme(data, effect_lib, variant_library=variant_lib)
-        assert any(
-            "meteors-fast-down" in e or "base_effect" in e.lower() or "mismatch" in e.lower()
-            for e in errors
-        )
-
-    def test_no_variant_library_ignores_variant_ref(self, effect_lib):
-        """Without variant_library, variant_ref is silently ignored."""
-        data = _valid_theme()
-        data["layers"][0]["variant_ref"] = "whatever"
-        errors = validate_theme(data, effect_lib)
+        data["layers"][0] = {"variant": "bars-triple", "blend_mode": "Normal"}
+        errors = validate_theme(data, effect_lib, variant_lib)
         assert errors == []
 
-    def test_variant_ref_none_with_variant_library_passes(self, effect_lib, variant_lib):
-        """variant_ref=None with variant_library provided causes no issue."""
+    def test_valid_meteors_variant_passes(self, effect_lib, variant_lib):
         data = _valid_theme()
-        data["layers"][0]["variant_ref"] = None
-        errors = validate_theme(data, effect_lib, variant_library=variant_lib)
-        assert errors == []
-
-    def test_matching_effect_and_variant_passes(self, effect_lib, variant_lib):
-        """Fire layer with fire-low-flicker variant passes."""
-        data = _valid_theme()
-        data["layers"][0]["variant_ref"] = "fire-low-flicker"
-        errors = validate_theme(data, effect_lib, variant_library=variant_lib)
+        data["layers"][0] = {"variant": "meteors-fast-down", "blend_mode": "Normal"}
+        errors = validate_theme(data, effect_lib, variant_lib)
         assert errors == []
 
 
@@ -166,56 +118,31 @@ class TestEffectLayerEffectPool:
     """Tests for EffectLayer.effect_pool field."""
 
     def test_from_dict_with_effect_pool(self):
-        data = {
-            "effect": "Fire",
-            "effect_pool": ["variant-a", "variant-b"],
-        }
+        data = {"variant": "Fire Blaze High", "effect_pool": ["variant-a", "variant-b"]}
         layer = EffectLayer.from_dict(data)
         assert layer.effect_pool == ["variant-a", "variant-b"]
 
     def test_from_dict_without_effect_pool_defaults_to_empty_list(self):
-        data = {"effect": "Fire", "blend_mode": "Normal", "parameter_overrides": {}}
+        data = {"variant": "Fire Blaze High", "blend_mode": "Normal"}
         layer = EffectLayer.from_dict(data)
         assert layer.effect_pool == []
 
     def test_to_dict_includes_effect_pool_when_populated(self):
-        layer = EffectLayer(
-            effect="Fire",
-            effect_pool=["meteors-fast-down", "fire-low-flicker"],
-        )
+        layer = EffectLayer(variant="Fire Blaze High",
+                            effect_pool=["meteors-fast-down", "fire-low-flicker"])
         d = layer.to_dict()
         assert "effect_pool" in d
         assert d["effect_pool"] == ["meteors-fast-down", "fire-low-flicker"]
 
     def test_to_dict_includes_effect_pool_as_empty_list_when_not_set(self):
-        layer = EffectLayer(effect="Fire")
+        layer = EffectLayer(variant="Fire Blaze High")
         d = layer.to_dict()
         assert "effect_pool" in d
         assert d["effect_pool"] == []
 
-    def test_backward_compat_existing_dict_without_effect_pool(self):
-        """Dicts saved before effect_pool was added still parse correctly."""
-        data = {
-            "effect": "Bars",
-            "blend_mode": "Additive",
-            "parameter_overrides": {"E_SLIDER_Bars_BarCount": 5},
-            "variant_ref": "bars-triple",
-        }
-        layer = EffectLayer.from_dict(data)
-        assert layer.effect == "Bars"
-        assert layer.blend_mode == "Additive"
-        assert layer.variant_ref == "bars-triple"
-        assert layer.effect_pool == []
-
     def test_roundtrip_preserves_effect_pool(self):
-        original = EffectLayer(
-            effect="Meteors",
-            blend_mode="Normal",
-            parameter_overrides={},
-            variant_ref="meteors-fast-down",
-            effect_pool=["meteors-fast-down", "meteors-slow-up"],
-        )
-        d = original.to_dict()
-        restored = EffectLayer.from_dict(d)
-        assert restored.effect_pool == ["meteors-fast-down", "meteors-slow-up"]
-        assert restored.variant_ref == "meteors-fast-down"
+        original = EffectLayer(variant="meteors-fast-down",
+                               effect_pool=["meteors-fast-down", "fire-low-flicker"])
+        restored = EffectLayer.from_dict(original.to_dict())
+        assert restored.effect_pool == ["meteors-fast-down", "fire-low-flicker"]
+        assert restored.variant == "meteors-fast-down"

@@ -8,9 +8,11 @@ import pytest
 
 from src.effects.library import load_effect_library
 from src.themes.library import load_theme_library
+from src.variants.library import load_variant_library
 
 THEMES_FIXTURE = Path(__file__).parent.parent / "fixtures" / "themes" / "minimal_themes.json"
-EFFECTS_FIXTURE = Path(__file__).parent.parent / "fixtures" / "effects" / "minimal_library.json"
+EFFECTS_FIXTURE = Path(__file__).parent.parent / "fixtures" / "effects" / "minimal_library_with_meteors.json"
+VARIANTS_FIXTURE = Path(__file__).parent.parent / "fixtures" / "variants" / "builtin_variants_minimal.json"
 CUSTOM_THEME_FIXTURE = Path(__file__).parent.parent / "fixtures" / "themes" / "valid_custom_theme.json"
 
 
@@ -21,15 +23,21 @@ def app(tmp_path):
 
     # Pre-load libraries from fixtures
     effect_lib = load_effect_library(builtin_path=EFFECTS_FIXTURE)
+    variant_lib = load_variant_library(
+        builtin_path=VARIANTS_FIXTURE,
+        effect_library=effect_lib,
+    )
     theme_lib = load_theme_library(
         builtin_path=THEMES_FIXTURE,
         custom_dir=tmp_path,
         effect_library=effect_lib,
+        variant_library=variant_lib,
     )
 
     # Inject into module-level state
     tr._library = theme_lib
     tr._effect_library = effect_lib
+    tr._variant_library = variant_lib
     tr._custom_dir = tmp_path
     tr._builtin_path = THEMES_FIXTURE
 
@@ -41,6 +49,7 @@ def app(tmp_path):
     # Cleanup
     tr._library = None
     tr._effect_library = None
+    tr._variant_library = None
     tr._custom_dir = None
     tr._builtin_path = None
     tr._builtin_names_cache = None
@@ -133,10 +142,10 @@ VALID_THEME = {
     "occasion": "general",
     "genre": "any",
     "intent": "Test theme for save",
-    "layers": [{"effect": "On", "blend_mode": "Normal", "parameter_overrides": {}}],
+    "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
     "palette": ["#FF0000", "#00FF00"],
     "accent_palette": [],
-    "variants": [],
+    "alternates": [],
 }
 
 
@@ -260,8 +269,13 @@ class TestScaleValidation:
         import time
         from src.effects.library import load_effect_library
         from src.themes.library import load_theme_library
+        from src.variants.library import load_variant_library
 
         effect_lib = load_effect_library(builtin_path=EFFECTS_FIXTURE)
+        variant_lib = load_variant_library(
+            builtin_path=VARIANTS_FIXTURE,
+            effect_library=effect_lib,
+        )
 
         # Create 100 custom theme files
         for i in range(100):
@@ -271,7 +285,7 @@ class TestScaleValidation:
                 "occasion": "general",
                 "genre": "any",
                 "intent": f"Scale test theme number {i}",
-                "layers": [{"effect": "On", "blend_mode": "Normal", "parameter_overrides": {}}],
+                "layers": [{"variant": "Fire Blaze High", "blend_mode": "Normal"}],
                 "palette": ["#FF0000", "#00FF00", "#0000FF"],
             }
             (tmp_path / f"scale-test-{i:03d}.json").write_text(json.dumps(theme))
@@ -281,6 +295,7 @@ class TestScaleValidation:
             builtin_path=THEMES_FIXTURE,
             custom_dir=tmp_path,
             effect_library=effect_lib,
+            variant_library=variant_lib,
         )
         elapsed = time.monotonic() - start
 
@@ -288,3 +303,101 @@ class TestScaleValidation:
         custom_count = sum(1 for t in lib.themes.values() if t.name.startswith("Scale Test"))
         assert custom_count == 100
         assert elapsed < 2.0, f"Loading 100 themes took {elapsed:.2f}s (limit: 2s)"
+
+
+# ---------------------------------------------------------------------------
+# T041: Save/load round-trip with new variant-only layer format
+# ---------------------------------------------------------------------------
+
+ROUND_TRIP_THEME = {
+    "name": "Round Trip Theme",
+    "mood": "ethereal",
+    "occasion": "general",
+    "genre": "any",
+    "intent": "Round-trip test",
+    "layers": [
+        {"variant": "Fire Blaze High", "blend_mode": "Normal"},
+        {"variant": "Meteors Gentle Rain", "blend_mode": "Additive"},
+    ],
+    "palette": ["#FF0000", "#00FF00", "#0000FF"],
+    "accent_palette": [],
+    "alternates": [
+        {
+            "layers": [
+                {"variant": "Bars Sweep Left", "blend_mode": "Normal"},
+            ]
+        }
+    ],
+}
+
+
+class TestSaveLoadRoundTrip:
+    """T041: Verify theme save/load round-trip preserves new variant-only format."""
+
+    def test_save_then_list_has_variant_field(self, client, tmp_path):
+        """Saved theme appears in /api/list with variant field on each layer."""
+        resp = client.post("/themes/api/save", json={"theme": ROUND_TRIP_THEME})
+        assert resp.status_code == 200
+
+        import src.review.theme_routes as tr
+        tr._reload_library()
+
+        resp = client.get("/themes/api/list")
+        themes = resp.get_json()["themes"]
+        saved = next((t for t in themes if t["name"] == "Round Trip Theme"), None)
+        assert saved is not None, "Round Trip Theme not found in /api/list"
+
+        for layer in saved["layers"]:
+            assert "variant" in layer, f"Layer missing 'variant' field: {layer}"
+            assert "effect" not in layer, f"Layer should not have 'effect' field: {layer}"
+            assert "parameter_overrides" not in layer, (
+                f"Layer should not have 'parameter_overrides' field: {layer}"
+            )
+
+    def test_save_then_list_preserves_blend_mode(self, client, tmp_path):
+        """Blend mode is preserved through save/load."""
+        resp = client.post("/themes/api/save", json={"theme": ROUND_TRIP_THEME})
+        assert resp.status_code == 200
+
+        import src.review.theme_routes as tr
+        tr._reload_library()
+
+        resp = client.get("/themes/api/list")
+        themes = resp.get_json()["themes"]
+        saved = next(t for t in themes if t["name"] == "Round Trip Theme")
+
+        assert saved["layers"][0]["blend_mode"] == "Normal"
+        assert saved["layers"][1]["blend_mode"] == "Additive"
+
+    def test_save_then_list_preserves_alternates(self, client, tmp_path):
+        """Alternates (variant layers) are preserved through save/load."""
+        resp = client.post("/themes/api/save", json={"theme": ROUND_TRIP_THEME})
+        assert resp.status_code == 200
+
+        import src.review.theme_routes as tr
+        tr._reload_library()
+
+        resp = client.get("/themes/api/list")
+        themes = resp.get_json()["themes"]
+        saved = next(t for t in themes if t["name"] == "Round Trip Theme")
+
+        assert "alternates" in saved, "Response should have 'alternates' key (not 'variants')"
+        assert "variants" not in saved, "Response should NOT have old 'variants' key"
+        assert len(saved["alternates"]) == 1
+        alt_layer = saved["alternates"][0]["layers"][0]
+        assert alt_layer["variant"] == "Bars Sweep Left"
+
+    def test_saved_layer_variant_names_match_input(self, client, tmp_path):
+        """Variant names in response exactly match what was saved."""
+        resp = client.post("/themes/api/save", json={"theme": ROUND_TRIP_THEME})
+        assert resp.status_code == 200
+
+        import src.review.theme_routes as tr
+        tr._reload_library()
+
+        resp = client.get("/themes/api/list")
+        themes = resp.get_json()["themes"]
+        saved = next(t for t in themes if t["name"] == "Round Trip Theme")
+
+        assert saved["layers"][0]["variant"] == "Fire Blaze High"
+        assert saved["layers"][1]["variant"] == "Meteors Gentle Rain"

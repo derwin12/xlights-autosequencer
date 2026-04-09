@@ -18,7 +18,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -40,7 +43,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -62,7 +68,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "build"],
+        "section_roles": [
+          "chorus",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -84,7 +93,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -106,7 +118,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["outro", "bridge"],
+        "section_roles": [
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -130,7 +145,120 @@
         "energy_level": "high",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "drop"],
+        "section_roles": [
+          "chorus",
+          "drop"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Ripple Fast Medium",
+      "base_effect": "Ripple",
+      "description": "Fast ripple with medium thickness. Dynamic ripple expansion for energetic sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Ripple_Movement": 20,
+        "E_SLIDER_Ripple_Thickness": 4
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Ripple Medium Thick",
+      "base_effect": "Ripple",
+      "description": "Medium-speed ripple with thick rings. Bold visible ripple for mid-energy sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Ripple_Movement": 15,
+        "E_SLIDER_Ripple_Thickness": 5
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Ripple Medium Thin",
+      "base_effect": "Ripple",
+      "description": "Medium-speed ripple with thin rings. Subtle ripple motion for background fill.",
+      "parameter_overrides": {
+        "E_SLIDER_Ripple_Movement": 15,
+        "E_SLIDER_Ripple_Thickness": 3
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Ripple Slow Medium",
+      "base_effect": "Ripple",
+      "description": "Slow ripple with medium thickness. Calm expanding rings for ambient sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Ripple_Movement": 10,
+        "E_SLIDER_Ripple_Thickness": 4
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "intro",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Ripple Slow Thin",
+      "base_effect": "Ripple",
+      "description": "Slow ripple with thin rings. Very subtle minimal ripple for quiet passages.",
+      "parameter_overrides": {
+        "E_SLIDER_Ripple_Movement": 10,
+        "E_SLIDER_Ripple_Thickness": 3
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "intro",
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

@@ -14,6 +14,7 @@ import pytest
 from src.effects.library import load_effect_library
 from src.generator.plan import build_plan
 from src.themes.library import load_theme_library
+from src.variants.library import load_variant_library
 from src.validation.baseline import (
     Baseline,
     compare_against_baseline,
@@ -36,7 +37,8 @@ from src.validation.scorers import ALL_SCORERS
 def _run_scenario(scenario: ValidationScenario, tmp_path: Path) -> ValidationReport:
     """Run a scenario through the full pipeline and generate a validation report."""
     effect_lib = load_effect_library()
-    theme_lib = load_theme_library(effect_library=effect_lib)
+    variant_lib = load_variant_library(effect_library=effect_lib)
+    theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
     config = scenario.make_config(tmp_path)
 
     plan = build_plan(

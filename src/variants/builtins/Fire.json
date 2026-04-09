@@ -16,7 +16,11 @@
         "energy_level": "low",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["verse", "bridge", "intro"],
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -35,7 +39,121 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "build", "drop"],
+        "section_roles": [
+          "chorus",
+          "build",
+          "drop"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Fire Tall",
+      "base_effect": "Fire",
+      "description": "Very tall flames filling most of the prop. Maximum fire presence for intense sections.",
+      "parameter_overrides": {
+        "E_CHOICE_Fire_Location": "Bottom",
+        "E_SLIDER_Fire_Height": 80
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Fire High",
+      "base_effect": "Fire",
+      "description": "High flames reaching the upper portion of the prop. Strong fire effect for energetic moments.",
+      "parameter_overrides": {
+        "E_CHOICE_Fire_Location": "Bottom",
+        "E_SLIDER_Fire_Height": 60
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Fire Low",
+      "base_effect": "Fire",
+      "description": "Low flames at the base of the prop. Subtle warm glow for ambient sections.",
+      "parameter_overrides": {
+        "E_CHOICE_Fire_Location": "Bottom",
+        "E_SLIDER_Fire_Height": 30
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "intro",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Fire Ember",
+      "base_effect": "Fire",
+      "description": "Minimal ember-like flames hugging the bottom. Barely-there fire for very quiet passages.",
+      "parameter_overrides": {
+        "E_CHOICE_Fire_Location": "Bottom",
+        "E_SLIDER_Fire_Height": 25
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "intro",
+          "outro",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Fire Intense",
+      "base_effect": "Fire",
+      "description": "Intense tall flames covering most of the prop height. High-energy fire for peak moments.",
+      "parameter_overrides": {
+        "E_CHOICE_Fire_Location": "Bottom",
+        "E_SLIDER_Fire_Height": 70
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

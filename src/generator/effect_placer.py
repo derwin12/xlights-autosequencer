@@ -154,10 +154,10 @@ def place_effects(
     section = assignment.section
     theme = assignment.theme
 
-    # Use variant layers for repeated sections (variation_seed > 0)
-    if assignment.variation_seed > 0 and theme.variants:
-        variant_idx = (assignment.variation_seed - 1) % len(theme.variants)
-        layers = theme.variants[variant_idx].layers
+    # Use alternate layers for repeated sections (variation_seed > 0)
+    if assignment.variation_seed > 0 and theme.alternates:
+        variant_idx = (assignment.variation_seed - 1) % len(theme.alternates)
+        layers = theme.alternates[variant_idx].layers
     else:
         layers = theme.layers
 
@@ -205,12 +205,17 @@ def place_effects(
 
     # If no groups provided, create a pseudo-group for each model
     if not groups:
-        return _flat_model_fallback(assignment, effect_library, hierarchy)
+        return _flat_model_fallback(assignment, effect_library, hierarchy, variant_library=variant_library)
 
     result: dict[str, list[EffectPlacement]] = {}
 
     for layer_idx, layer in enumerate(layers):
-        effect_def = effect_library.effects.get(layer.effect)
+        # Resolve variant → effect_def
+        layer_variant = variant_library.get(layer.variant) if variant_library is not None else None
+        if layer_variant is None:
+            logger.warning("variant '%s' not found in variant library — skipping layer", layer.variant)
+            continue
+        effect_def = effect_library.effects.get(layer_variant.base_effect)
         if effect_def is None:
             continue
 
@@ -284,7 +289,7 @@ def place_effects(
 
             # Tier 6-7 effect rotation (fallback): cycle through prop-effect pool
             if tier in (6, 7) and groups_for_tier:
-                pool = _build_effect_pool(effect_library, exclude={layer.effect})
+                pool = _build_effect_pool(effect_library, exclude={layer_variant.base_effect})
                 if pool:
                     for gi, group in enumerate(groups_for_tier):
                         rotated_def = pool[gi % len(pool)]
@@ -311,6 +316,7 @@ def place_effects(
                 chase_result = _place_chase_across_groups(
                     effect_def, layer, groups_for_tier,
                     assignment.section, hierarchy, tier_palette,
+                    variant_library=variant_library,
                 )
                 for gname, placements in chase_result.items():
                     result.setdefault(gname, []).extend(placements)
@@ -432,28 +438,14 @@ def _place_effect_on_group(
     end_ms = section.end_ms
     duration_type = effect_def.duration_type
 
-    # Resolution chain:
-    # 1. Start with empty base
-    # 2. Apply variant overrides (if variant_ref is set and found in library)
-    # 3. Apply layer.parameter_overrides on top
+    # Resolve parameters from the variant (variant exclusively owns parameter config)
     params: dict[str, Any] = {}
     direction_cycle: dict | None = None
-    if layer.variant_ref is not None and variant_library is not None:
-        variant = variant_library.get(layer.variant_ref)
-        if variant is None:
-            logger.warning(
-                "variant_ref '%s' not found in variant library — "
-                "falling back to base effect defaults",
-                layer.variant_ref,
-            )
-        else:
-            params.update(variant.parameter_overrides)
+    if variant_library is not None:
+        variant = variant_library.get(layer.variant)
+        if variant is not None:
+            params = dict(variant.parameter_overrides)
             direction_cycle = variant.direction_cycle
-    params.update(layer.parameter_overrides)
-
-    # Apply variation via seed (small parameter tweaks for repeated sections)
-    if variation_seed > 0:
-        params = _apply_variation(params, variation_seed)
 
     # Resolve palette: blend with chord colors if available
     resolved_palette = _resolve_palette(palette, chord_marks, tension_curve, start_ms, end_ms, chord_weight)
@@ -503,6 +495,7 @@ def _place_chase_across_groups(
     section: SectionEnergy,
     hierarchy: HierarchyResult,
     palette: list[str],
+    variant_library=None,
 ) -> dict[str, list[EffectPlacement]]:
     """Chase pattern: assign each beat to one group in round-robin order.
 
@@ -516,7 +509,11 @@ def _place_chase_across_groups(
     marks = _marks_in_range(beats_track.marks, section.start_ms, section.end_ms)
     marks = _apply_density_filter(marks, section.energy_score)
 
-    params = dict(layer.parameter_overrides)
+    params: dict[str, Any] = {}
+    if variant_library is not None:
+        variant = variant_library.get(layer.variant)
+        if variant is not None:
+            params = dict(variant.parameter_overrides)
     result: dict[str, list[EffectPlacement]] = {}
     num_groups = len(groups)
 
@@ -776,31 +773,22 @@ def _apply_density_filter(
     return [marks[int(i * step)] for i in range(keep_count)]
 
 
-def _apply_variation(params: dict[str, Any], seed: int) -> dict[str, Any]:
-    """Apply small parameter tweaks for repeated sections."""
-    rng = random.Random(seed)
-    result = dict(params)
-    for key, val in result.items():
-        if isinstance(val, (int, float)):
-            tweak = rng.uniform(-0.05, 0.05) * val if val != 0 else rng.uniform(-1, 1)
-            result[key] = type(val)(val + tweak)
-    return result
-
 
 def _flat_model_fallback(
     assignment: SectionAssignment,
     effect_library: EffectLibrary,
     hierarchy: HierarchyResult,
+    variant_library=None,
 ) -> dict[str, list[EffectPlacement]]:
     """Fallback when no power groups exist — distribute across models directly."""
     theme = assignment.theme
     section = assignment.section
     result: dict[str, list[EffectPlacement]] = {}
 
-    # Use variant layers for repeated sections
-    if assignment.variation_seed > 0 and theme.variants:
-        variant_idx = (assignment.variation_seed - 1) % len(theme.variants)
-        layers = theme.variants[variant_idx].layers
+    # Use alternate layers for repeated sections
+    if assignment.variation_seed > 0 and theme.alternates:
+        variant_idx = (assignment.variation_seed - 1) % len(theme.alternates)
+        layers = theme.alternates[variant_idx].layers
     else:
         layers = theme.layers
 
@@ -808,14 +796,17 @@ def _flat_model_fallback(
         return result
 
     layer = layers[0]
-    effect_def = effect_library.effects.get(layer.effect)
+    layer_variant = variant_library.get(layer.variant) if variant_library is not None else None
+    if layer_variant is None:
+        return result
+    effect_def = effect_library.effects.get(layer_variant.base_effect)
     if effect_def is None:
         return result
 
     # Use a synthetic group with no members (direct placement)
     placement = _make_placement(
         effect_def, "ALL_MODELS", section.start_ms, section.end_ms,
-        dict(layer.parameter_overrides), theme.palette, layer.blend_mode,
+        dict(layer_variant.parameter_overrides), theme.palette, layer.blend_mode,
         effect_def.duration_type,
     )
     result["ALL_MODELS"] = [placement]

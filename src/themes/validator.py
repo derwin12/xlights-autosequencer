@@ -19,7 +19,7 @@ _REQUIRED_FIELDS = ("name", "mood", "intent", "layers", "palette")
 def validate_theme(
     data: dict,
     effect_library: EffectLibrary,
-    variant_library=None,
+    variant_library,
 ) -> list[str]:
     """Validate a parsed theme definition dict. Returns list of error messages."""
     errors: list[str] = []
@@ -56,75 +56,75 @@ def validate_theme(
             errors.append(f"Bottom layer blend_mode must be 'Normal', got '{bottom_blend}'")
 
         for i, layer in enumerate(layers):
-            effect_name = layer.get("effect", "")
+            variant_name = layer.get("variant", "")
 
-            # Check effect exists in library
-            effect_def = effect_library.get(effect_name)
-            if effect_def is None:
-                errors.append(f"Layer {i}: effect '{effect_name}' not found in effect library")
-            elif i == 0 and effect_def.layer_role == "modifier":
-                errors.append(
-                    f"Layer {i}: modifier effect '{effect_name}' cannot be on the bottom layer"
-                )
+            # Validate variant exists in variant library
+            variant = variant_library.get(variant_name)
+            if variant is None:
+                errors.append(f"Layer {i}: variant '{variant_name}' not found in variant library")
+                # Cannot derive effect — skip effect-dependent checks for this layer
+            else:
+                # Derive effect from variant's base_effect
+                effect_name = variant.base_effect
+                effect_def = effect_library.get(effect_name)
+                if effect_def is None:
+                    errors.append(
+                        f"Layer {i}: variant '{variant_name}' references base_effect "
+                        f"'{effect_name}' not found in effect library"
+                    )
+                elif i == 0 and effect_def.layer_role == "modifier":
+                    errors.append(
+                        f"Layer {i}: modifier effect '{effect_name}' (via variant "
+                        f"'{variant_name}') cannot be on the bottom layer"
+                    )
 
             # Check blend mode
             blend = layer.get("blend_mode", "Normal")
             if blend not in VALID_BLEND_MODES:
                 errors.append(f"Layer {i}: invalid blend_mode '{blend}'")
 
-            # Check effect_pool entries (optional)
+            # Check effect_pool entries
             effect_pool = layer.get("effect_pool", [])
-            if effect_pool and variant_library is not None:
-                for pool_entry in effect_pool:
-                    if variant_library.get(pool_entry) is None:
-                        logger.warning(
-                            "Layer %d: effect_pool entry '%s' not found in variant library",
-                            i, pool_entry,
-                        )
-
-            # Check variant_ref (optional)
-            variant_ref = layer.get("variant_ref")
-            if variant_ref is not None and variant_library is not None:
-                variant = variant_library.get(variant_ref)
-                if variant is None:
-                    logger.warning(
-                        "Layer %d: variant_ref '%s' not found in variant library — "
-                        "effect will fall back to base defaults",
-                        i, variant_ref,
-                    )
-                elif variant.base_effect != effect_name:
+            for pool_entry in effect_pool:
+                if variant_library.get(pool_entry) is None:
                     errors.append(
-                        f"Layer {i}: variant_ref '{variant_ref}' has base_effect "
-                        f"'{variant.base_effect}' but layer effect is '{effect_name}' — "
-                        "base_effect mismatch"
+                        f"Layer {i}: effect_pool entry '{pool_entry}' not found in variant library"
                     )
 
-    # Variants (optional)
-    for vi, variant in enumerate(data.get("variants", [])):
-        v_layers = variant.get("layers", [])
-        if not v_layers:
-            errors.append(f"Variant {vi}: must have at least one layer")
+    # Alternates (optional)
+    for vi, alternate in enumerate(data.get("alternates", [])):
+        a_layers = alternate.get("layers", [])
+        if not a_layers:
+            errors.append(f"Alternate {vi}: must have at least one layer")
             continue
-        v_bottom_blend = v_layers[0].get("blend_mode", "Normal")
-        if v_bottom_blend != "Normal":
+        a_bottom_blend = a_layers[0].get("blend_mode", "Normal")
+        if a_bottom_blend != "Normal":
             errors.append(
-                f"Variant {vi} layer 0: bottom blend_mode must be 'Normal', got '{v_bottom_blend}'"
+                f"Alternate {vi} layer 0: bottom blend_mode must be 'Normal', got '{a_bottom_blend}'"
             )
-        for j, v_layer in enumerate(v_layers):
-            v_effect_name = v_layer.get("effect", "")
-            v_effect_def = effect_library.get(v_effect_name)
-            if v_effect_def is None:
+        for j, a_layer in enumerate(a_layers):
+            a_variant_name = a_layer.get("variant", "")
+            a_variant = variant_library.get(a_variant_name)
+            if a_variant is None:
                 errors.append(
-                    f"Variant {vi} layer {j}: effect '{v_effect_name}' not found in effect library"
+                    f"Alternate {vi} layer {j}: variant '{a_variant_name}' not found in variant library"
                 )
-            elif j == 0 and v_effect_def.layer_role == "modifier":
-                errors.append(
-                    f"Variant {vi} layer {j}: modifier effect '{v_effect_name}' "
-                    "cannot be on the bottom layer"
-                )
-            v_blend = v_layer.get("blend_mode", "Normal")
-            if v_blend not in VALID_BLEND_MODES:
-                errors.append(f"Variant {vi} layer {j}: invalid blend_mode '{v_blend}'")
+            else:
+                a_effect_name = a_variant.base_effect
+                a_effect_def = effect_library.get(a_effect_name)
+                if a_effect_def is None:
+                    errors.append(
+                        f"Alternate {vi} layer {j}: variant '{a_variant_name}' references "
+                        f"base_effect '{a_effect_name}' not found in effect library"
+                    )
+                elif j == 0 and a_effect_def.layer_role == "modifier":
+                    errors.append(
+                        f"Alternate {vi} layer {j}: modifier effect '{a_effect_name}' "
+                        f"(via variant '{a_variant_name}') cannot be on the bottom layer"
+                    )
+            a_blend = a_layer.get("blend_mode", "Normal")
+            if a_blend not in VALID_BLEND_MODES:
+                errors.append(f"Alternate {vi} layer {j}: invalid blend_mode '{a_blend}'")
 
     # Palette
     palette = data.get("palette", [])

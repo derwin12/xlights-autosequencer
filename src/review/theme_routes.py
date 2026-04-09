@@ -11,6 +11,7 @@ from src.effects.library import EffectLibrary, load_effect_library
 from src.themes.library import ThemeLibrary, load_theme_library
 from src.themes.models import VALID_BLEND_MODES, VALID_GENRES, VALID_MOODS, VALID_OCCASIONS
 from src.themes.writer import slugify as slugify_name
+from src.variants.library import VariantLibrary, load_variant_library
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ theme_bp = Blueprint("themes", __name__, url_prefix="/themes")
 # Module-level library references (lazy-loaded on first request)
 _library: ThemeLibrary | None = None
 _effect_library: EffectLibrary | None = None
+_variant_library: VariantLibrary | None = None
 
 # Overridable paths (set by tests to use fixtures/tmp dirs)
 _custom_dir: str | Path | None = None
@@ -37,7 +39,10 @@ def _get_library() -> ThemeLibrary:
     """Return the theme library, loading lazily on first call."""
     global _library
     if _library is None:
-        kwargs = {}
+        kwargs: dict = {
+            "effect_library": _get_effect_library(),
+            "variant_library": _get_variant_library(),
+        }
         if _builtin_path:
             kwargs["builtin_path"] = _builtin_path
         if _custom_dir:
@@ -54,11 +59,22 @@ def _get_effect_library() -> EffectLibrary:
     return _effect_library
 
 
+def _get_variant_library() -> VariantLibrary:
+    """Return the variant library, loading lazily on first call."""
+    global _variant_library
+    if _variant_library is None:
+        _variant_library = load_variant_library(effect_library=_get_effect_library())
+    return _variant_library
+
+
 def _reload_library() -> ThemeLibrary:
     """Reload the theme library from disk after a write operation."""
     global _library, _builtin_names_cache
     _builtin_names_cache = None
-    kwargs = {"effect_library": _get_effect_library()}
+    kwargs = {
+        "effect_library": _get_effect_library(),
+        "variant_library": _get_variant_library(),
+    }
     if _builtin_path:
         kwargs["builtin_path"] = _builtin_path
     if _custom_dir:
@@ -203,7 +219,7 @@ def api_save_theme():
 
     # Structural validation
     elib = _get_effect_library()
-    errors = validate_theme(theme_data, elib)
+    errors = validate_theme(theme_data, elib, _get_variant_library())
     if errors:
         return jsonify({
             "error": "Theme validation failed",
@@ -254,7 +270,7 @@ def api_validate_theme():
 
     # Structural validation
     elib = _get_effect_library()
-    errors.extend(validate_theme(theme_data, elib))
+    errors.extend(validate_theme(theme_data, elib, _get_variant_library()))
 
     return jsonify({"valid": len(errors) == 0, "errors": errors})
 
@@ -338,8 +354,8 @@ def api_theme_effect_pools(name):
     for i, layer in enumerate(theme.layers):
         layers.append({
             "index": i,
-            "effect": layer.effect,
-            "effect_pool": getattr(layer, "effect_pool", []),
-            "variant_ref": layer.variant_ref,
+            "variant": layer.variant,
+            "blend_mode": layer.blend_mode,
+            "effect_pool": layer.effect_pool,
         })
     return jsonify({"theme": theme.name, "layers": layers})

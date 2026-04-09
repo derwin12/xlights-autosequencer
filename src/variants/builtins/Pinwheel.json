@@ -21,7 +21,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -46,7 +49,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -71,7 +77,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -96,7 +105,11 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -121,7 +134,10 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro"],
+        "section_roles": [
+          "verse",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -146,7 +162,102 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Pinwheel 4-Arm Twist",
+      "base_effect": "Pinwheel",
+      "description": "Four-arm pinwheel with medium twist at moderate speed. Balanced spinning pattern for mid-energy sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Pinwheel_Arms": 4,
+        "E_SLIDER_Pinwheel_Speed": 15,
+        "E_SLIDER_Pinwheel_Twist": 20
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Pinwheel 6-Arm Medium",
+      "base_effect": "Pinwheel",
+      "description": "Six-arm pinwheel with medium twist. Rich multi-arm rotation for active background sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Pinwheel_Arms": 6,
+        "E_SLIDER_Pinwheel_Speed": 15,
+        "E_SLIDER_Pinwheel_Twist": 25
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Pinwheel 6-Arm Twist",
+      "base_effect": "Pinwheel",
+      "description": "Six-arm pinwheel with strong twist. Dynamic high-twist rotation for energetic fill.",
+      "parameter_overrides": {
+        "E_SLIDER_Pinwheel_Arms": 6,
+        "E_SLIDER_Pinwheel_Speed": 15,
+        "E_SLIDER_Pinwheel_Twist": 30
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Pinwheel 8-Arm Slow",
+      "base_effect": "Pinwheel",
+      "description": "Eight-arm pinwheel at slow speed with medium twist. Dense slow-spinning pattern for ambient backgrounds.",
+      "parameter_overrides": {
+        "E_SLIDER_Pinwheel_Arms": 8,
+        "E_SLIDER_Pinwheel_Speed": 10,
+        "E_SLIDER_Pinwheel_Twist": 20
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "intro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

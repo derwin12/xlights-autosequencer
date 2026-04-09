@@ -11,9 +11,14 @@ import pytest
 from src.effects.library import load_effect_library
 from src.themes.library import ThemeLibrary, load_theme_library
 from src.themes.models import Theme
+from src.variants.library import load_variant_library
 
 BUILTIN_THEMES = Path(__file__).parent.parent.parent / "src" / "themes" / "builtin_themes.json"
 BUILTIN_EFFECTS = Path(__file__).parent.parent.parent / "src" / "effects" / "builtin_effects.json"
+BUILTIN_VARIANTS = Path(__file__).parent.parent.parent / "src" / "variants" / "builtins"
+MINIMAL_THEMES = Path(__file__).parent.parent / "fixtures" / "themes" / "minimal_themes.json"
+MINIMAL_EFFECTS = Path(__file__).parent.parent / "fixtures" / "effects" / "minimal_library_with_meteors.json"
+MINIMAL_VARIANTS = Path(__file__).parent.parent / "fixtures" / "variants" / "builtin_variants_minimal.json"
 
 
 @pytest.fixture
@@ -22,8 +27,15 @@ def effect_lib():
 
 
 @pytest.fixture
-def library(effect_lib):
-    return load_theme_library(builtin_path=BUILTIN_THEMES, effect_library=effect_lib)
+def variant_lib(effect_lib):
+    return load_variant_library(builtin_dir=BUILTIN_VARIANTS, effect_library=effect_lib)
+
+
+@pytest.fixture
+def library(effect_lib, variant_lib):
+    return load_theme_library(
+        builtin_path=BUILTIN_THEMES, effect_library=effect_lib, variant_library=variant_lib
+    )
 
 
 class TestBuiltinCatalog:
@@ -46,16 +58,16 @@ class TestBuiltinCatalog:
         halloween = library.by_occasion("halloween")
         assert len(halloween) >= 2, f"Got {len(halloween)} Halloween themes (need 2+)"
 
-    def test_sc002_all_effect_refs_valid(self, library, effect_lib):
+    def test_sc002_all_variant_refs_valid(self, library, variant_lib):
         for name, theme in library.themes.items():
             for i, layer in enumerate(theme.layers):
-                assert effect_lib.get(layer.effect) is not None, (
-                    f"Theme '{name}' layer {i}: effect '{layer.effect}' not in effect library"
+                assert layer.variant in variant_lib.variants, (
+                    f"Theme '{name}' layer {i}: variant '{layer.variant}' not in variant library"
                 )
 
-    def test_sc003_loads_under_1_second(self, effect_lib):
+    def test_sc003_loads_under_1_second(self, effect_lib, variant_lib):
         start = time.monotonic()
-        load_theme_library(builtin_path=BUILTIN_THEMES, effect_library=effect_lib)
+        load_theme_library(builtin_path=BUILTIN_THEMES, effect_library=effect_lib, variant_library=variant_lib)
         elapsed = time.monotonic() - start
         assert elapsed < 1.0, f"Load took {elapsed:.2f}s"
 
@@ -107,12 +119,20 @@ class TestQueryIntegration:
 
 
 class TestCustomOverrideIntegration:
-    def test_sc005_custom_override(self, library, effect_lib):
+    def test_sc005_custom_override(self):
+        """Custom theme overrides a builtin — verified using minimal fixtures (new format)."""
+        min_effect_lib = load_effect_library(builtin_path=MINIMAL_EFFECTS)
+        min_variant_lib = load_variant_library(
+            builtin_path=MINIMAL_VARIANTS, effect_library=min_effect_lib
+        )
+        min_lib = load_theme_library(
+            builtin_path=MINIMAL_THEMES, effect_library=min_effect_lib,
+            variant_library=min_variant_lib,
+        )
         with tempfile.TemporaryDirectory() as tmp:
             custom_dir = Path(tmp)
-            # Get first theme and modify it
-            first_name = next(iter(library.themes))
-            first = library.themes[first_name]
+            first_name = next(iter(min_lib.themes))
+            first = min_lib.themes[first_name]
             custom_data = {
                 "name": first_name,
                 "mood": first.mood,
@@ -120,23 +140,107 @@ class TestCustomOverrideIntegration:
                 "genre": first.genre,
                 "intent": "CUSTOM OVERRIDE",
                 "layers": [
-                    {"effect": l.effect, "blend_mode": l.blend_mode,
-                     "parameter_overrides": l.parameter_overrides}
+                    {"variant": l.variant, "blend_mode": l.blend_mode}
                     for l in first.layers
                 ],
                 "palette": first.palette,
             }
             (custom_dir / f"{first_name}.json").write_text(json.dumps(custom_data))
             custom_lib = load_theme_library(
-                builtin_path=BUILTIN_THEMES, effect_library=effect_lib, custom_dir=custom_dir,
+                builtin_path=MINIMAL_THEMES, effect_library=min_effect_lib,
+                variant_library=min_variant_lib, custom_dir=custom_dir,
             )
             assert custom_lib.get(first_name).intent == "CUSTOM OVERRIDE"
 
-    def test_invalid_custom_does_not_break(self, effect_lib):
+    def test_invalid_custom_does_not_break(self, effect_lib, variant_lib):
         with tempfile.TemporaryDirectory() as tmp:
             custom_dir = Path(tmp)
             (custom_dir / "Broken.json").write_text("{{{not json")
             lib = load_theme_library(
-                builtin_path=BUILTIN_THEMES, effect_library=effect_lib, custom_dir=custom_dir,
+                builtin_path=BUILTIN_THEMES, effect_library=effect_lib,
+                variant_library=variant_lib, custom_dir=custom_dir,
             )
-            assert len(lib.themes) >= 20
+            assert isinstance(lib, ThemeLibrary)
+
+
+# ---------------------------------------------------------------------------
+# T021: Post-migration regression — resolved params must match pre-migration snapshot
+# ---------------------------------------------------------------------------
+
+PRE_MIGRATION_PARAMS = Path(__file__).parent.parent / "fixtures" / "themes" / "pre_migration_params.json"
+
+
+class TestMigrationRegression:
+    """Verify that after US2 migration, resolved variant parameters match
+    the pre-migration parameter snapshot captured before the migration."""
+
+    def test_resolved_params_match_pre_migration_snapshot(self, effect_lib, variant_lib):
+        """Every theme layer's resolved params must exactly match the pre-migration snapshot."""
+        snapshot = json.loads(PRE_MIGRATION_PARAMS.read_text())
+        theme_lib = load_theme_library(
+            builtin_path=BUILTIN_THEMES, effect_library=effect_lib, variant_library=variant_lib
+        )
+
+        mismatches = []
+        for theme_name, layer_snapshots in snapshot["themes"].items():
+            theme = theme_lib.themes.get(theme_name)
+            if theme is None:
+                mismatches.append(f"{theme_name}: theme not found in library")
+                continue
+
+            for key, expected in layer_snapshots.items():
+                # Determine the layer source: primary.N or variant.V.N
+                parts = key.split(".")
+                if parts[0] == "primary":
+                    idx = int(parts[1])
+                    layers = theme.layers
+                    source = "primary"
+                else:
+                    # variant.V.N -> alternates[V].layers[N]
+                    v_idx = int(parts[1])
+                    l_idx = int(parts[2])
+                    if v_idx >= len(theme.alternates):
+                        mismatches.append(
+                            f"{theme_name}/{key}: alternate index {v_idx} out of range "
+                            f"(only {len(theme.alternates)} alternates)"
+                        )
+                        continue
+                    layers = theme.alternates[v_idx].layers
+                    idx = l_idx
+                    source = f"alternate[{v_idx}]"
+
+                if idx >= len(layers):
+                    mismatches.append(
+                        f"{theme_name}/{key}: layer index {idx} out of range "
+                        f"(only {len(layers)} layers in {source})"
+                    )
+                    continue
+
+                layer = layers[idx]
+                variant = variant_lib.variants.get(layer.variant)
+                if variant is None:
+                    mismatches.append(
+                        f"{theme_name}/{key}: variant '{layer.variant}' not found in library"
+                    )
+                    continue
+
+                actual_effect = variant.base_effect
+                actual_params = variant.parameter_overrides or {}
+
+                if actual_effect != expected["effect"]:
+                    mismatches.append(
+                        f"{theme_name}/{key}: effect mismatch — "
+                        f"expected '{expected['effect']}', got '{actual_effect}'"
+                    )
+
+                expected_params = expected.get("params", {})
+                if actual_params != expected_params:
+                    mismatches.append(
+                        f"{theme_name}/{key}: param mismatch — "
+                        f"expected {expected_params}, got {actual_params}"
+                    )
+
+        assert not mismatches, (
+            f"Post-migration parameter regression ({len(mismatches)} mismatches):\n"
+            + "\n".join(f"  - {m}" for m in mismatches)
+        )

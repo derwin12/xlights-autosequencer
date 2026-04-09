@@ -9,16 +9,8 @@
       "intent": "Gentle ambient theme for testing",
       "layers": [
         {
-          "effect": "Bars",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Bars_BarCount": 3
-          }
-        },
-        {
-          "effect": "On",
-          "blend_mode": "Additive",
-          "parameter_overrides": {}
+          "variant": "Bars Sweep Left",
+          "blend_mode": "Normal"
         }
       ],
       "palette": ["#4488FF", "#88CCFF", "#FFFFFF"]
@@ -31,11 +23,8 @@
       "intent": "High energy theme for testing",
       "layers": [
         {
-          "effect": "Fire",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Fire_Height": 80
-          }
+          "variant": "Fire Blaze High",
+          "blend_mode": "Normal"
         }
       ],
       "palette": ["#FF4400", "#FF8800", "#FFCC00"]
@@ -48,16 +37,12 @@
       "intent": "Holiday test theme",
       "layers": [
         {
-          "effect": "On",
-          "blend_mode": "Normal",
-          "parameter_overrides": {}
+          "variant": "Meteors Gentle Rain",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Bars",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_CHOICE_Bars_Direction": "up"
-          }
+          "variant": "Bars Sweep Left",
+          "blend_mode": "Additive"
         }
       ],
       "palette": ["#FF0000", "#00FF00", "#FFD700"]

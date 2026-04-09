@@ -20,7 +20,11 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["drop", "chorus", "build"],
+        "section_roles": [
+          "drop",
+          "chorus",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -44,7 +48,10 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["drop", "chorus"],
+        "section_roles": [
+          "drop",
+          "chorus"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -68,7 +75,10 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["drop", "build"],
+        "section_roles": [
+          "drop",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -92,7 +102,10 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["drop", "chorus"],
+        "section_roles": [
+          "drop",
+          "chorus"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -114,7 +127,123 @@
         "energy_level": "high",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["drop", "build"],
+        "section_roles": [
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shockwave Medium Thin",
+      "base_effect": "Shockwave",
+      "description": "Medium-radius shockwave with thin ring. Clean expanding ring for moderate impact moments.",
+      "parameter_overrides": {
+        "E_SLIDER_Shockwave_End_Radius": 80,
+        "E_SLIDER_Shockwave_Start_Width": 5
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shockwave Full Fast",
+      "base_effect": "Shockwave",
+      "description": "Full-radius fast shockwave with thick ring. Maximum impact shockwave for peak drop moments.",
+      "parameter_overrides": {
+        "E_SLIDER_Shockwave_End_Radius": 100,
+        "E_SLIDER_Shockwave_Speed": 70,
+        "E_SLIDER_Shockwave_Start_Width": 8
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "drop",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shockwave Small Thin",
+      "base_effect": "Shockwave",
+      "description": "Small-radius shockwave with thin ring. Subtle compact pulse for gentler impact accents.",
+      "parameter_overrides": {
+        "E_SLIDER_Shockwave_End_Radius": 60,
+        "E_SLIDER_Shockwave_Start_Width": 4
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shockwave Medium Fast",
+      "base_effect": "Shockwave",
+      "description": "Medium-radius fast shockwave with thick ring. Bold rapid pulse for festive high-energy moments.",
+      "parameter_overrides": {
+        "E_SLIDER_Shockwave_End_Radius": 80,
+        "E_SLIDER_Shockwave_Speed": 60,
+        "E_SLIDER_Shockwave_Start_Width": 8
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shockwave Large Medium",
+      "base_effect": "Shockwave",
+      "description": "Large-radius medium-speed shockwave with medium thickness. Wide sweep for dramatic chorus impacts.",
+      "parameter_overrides": {
+        "E_SLIDER_Shockwave_End_Radius": 90,
+        "E_SLIDER_Shockwave_Speed": 50,
+        "E_SLIDER_Shockwave_Start_Width": 6
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

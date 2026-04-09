@@ -1,6 +1,6 @@
 # XLight AutoSequencer Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-01
+Auto-generated from all feature plans. Last updated: 2026-04-09
 
 ## Active Technologies
 - Python 3.11+ + demucs (new), vamp, librosa, madmom, click, Flask (008-stem-separation)
@@ -35,6 +35,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-01
 - JSON files (analysis cache, library index, stem manifests) (023-devcontainer-path-resolution)
 - Python 3.11+ (backend), Vanilla JavaScript ES2020+ (frontend) + Flask 3+ (web server), click 8+ (CLI), mutagen (ID3 tags), existing analysis pipeline (027-unified-dashboard)
 - JSON files — `~/.xlight/library.json` (song library), `~/.xlight/custom_themes/*.json` (custom themes), `src/themes/builtin_themes.json` (built-in themes, read-only) (027-unified-dashboard)
+- Python 3.11+ (backend), Vanilla JavaScript ES2020+ (frontend) + Flask 3+ (web server), click 8+ (CLI), existing analysis pipeline (033-theme-variant-separation)
+- JSON files (builtin_themes.json, variant builtins/*.json, custom themes/variants) (033-theme-variant-separation)
 
 - **Language**: Python 3.11+
 - **Audio analysis**: vamp (Python host), librosa 0.10+, madmom 0.16+
@@ -124,8 +126,8 @@ already been tried and why.
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
+- 033-theme-variant-separation: Added Python 3.11+ (backend), Vanilla JavaScript ES2020+ (frontend) + Flask 3+ (web server), click 8+ (CLI), existing analysis pipeline
 - 027-unified-dashboard: Added Python 3.11+ (backend), Vanilla JavaScript ES2020+ (frontend) + Flask 3+ (web server), click 8+ (CLI), mutagen (ID3 tags), existing analysis pipeline
-- 023-devcontainer-path-resolution: Added Python 3.11+ + pathlib (stdlib), os (stdlib), hashlib (stdlib) — no new dependencies
 - 023-devcontainer-path-resolution: Added Python 3.11+ + pathlib (stdlib), os (stdlib), hashlib (stdlib) — no new dependencies
   `htdemucs_6s` separates audio into 6 stems (drums, bass, vocals, guitar, piano, other).
   Algorithms route to their preferred stem via `Algorithm.preferred_stem` class attribute.

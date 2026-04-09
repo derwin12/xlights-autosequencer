@@ -1,5 +1,4 @@
 {
-  "schema_version": "1.0.0",
   "themes": {
     "Stellar Wind": {
       "name": "Stellar Wind",
@@ -9,28 +8,16 @@
       "intent": "Deep space and slow, infinite movement \u2014 shooting stars over shifting nebula gas",
       "layers": [
         {
-          "effect": "Butterfly",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Butterfly_Speed": 15,
-            "E_SLIDER_Butterfly_Chunks": 3
-          }
+          "variant": "Butterfly Medium Fast",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Shockwave",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Shockwave_Start_Width": 5,
-            "E_SLIDER_Shockwave_End_Radius": 80
-          }
+          "variant": "Shockwave Medium Thin",
+          "blend_mode": "Additive"
         },
         {
-          "effect": "Ripple",
+          "variant": "Ripple Fast Medium",
           "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Ripple_Thickness": 4,
-            "E_SLIDER_Ripple_Movement": 20
-          },
           "effect_pool": [
             "Ripple Circle",
             "Ripple Star",
@@ -38,29 +25,20 @@
           ]
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Wave",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Wave_Speed": 8,
-                "E_SLIDER_Wave_Number_Of_Waves": 2
-              }
+              "variant": "Wave Dual Medium",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Spirals",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Spirals_PaletteRepeat": 3,
-                "E_SLIDER_Spirals_Direction": 1,
-                "E_SLIDER_Spirals_Speed": 10
-              }
+              "variant": "Spirals Directed Medium",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -86,45 +64,28 @@
       "intent": "Shimmering, vertical curtains of the Northern Lights that breathe with the music",
       "layers": [
         {
-          "effect": "Color Wash",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Color Wash_Cycles": 2,
-            "E_CHECKBOX_Color Wash_Shimmer": 1
-          }
+          "variant": "Color Wash Shimmer Cycles",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Pinwheel",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Pinwheel_Arms": 4,
-            "E_SLIDER_Pinwheel_Speed": 15,
-            "E_SLIDER_Pinwheel_Twist": 20
-          }
+          "variant": "Pinwheel 4-Arm Twist",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Wave",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Wave_Speed": 6,
-                "E_SLIDER_Wave_Number_Of_Waves": 2
-              }
+              "variant": "Wave Dual Slow",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Plasma",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Plasma_Speed": 10,
-                "E_SLIDER_Plasma_Line_Density": 3
-              }
+              "variant": "Plasma Drift",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -150,43 +111,28 @@
       "intent": "Pulsing deep-sea creatures or glowing forests \u2014 organic, living movement",
       "layers": [
         {
-          "effect": "Plasma",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Plasma_Speed": 15,
-            "E_SLIDER_Plasma_Line_Density": 4
-          }
+          "variant": "Plasma Pulse",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Ripple",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Ripple_Thickness": 5,
-            "E_SLIDER_Ripple_Movement": 15
-          }
+          "variant": "Ripple Medium Thick",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Liquid",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Liquid_Speed": 10
-              }
+              "variant": "Liquid Flow",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Tendril",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Tendril_Speed": 12,
-                "E_SLIDER_Tendril_Length": 50
-              }
+              "variant": "Tendril Medium",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -212,21 +158,12 @@
       "intent": "Raw power \u2014 house looks like it is on fire and exploding",
       "layers": [
         {
-          "effect": "Fire",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Fire_Height": 80,
-            "E_CHOICE_Fire_Location": "Bottom"
-          }
+          "variant": "Fire Tall",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Shockwave",
+          "variant": "Shockwave Full Fast",
           "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Shockwave_Start_Width": 8,
-            "E_SLIDER_Shockwave_End_Radius": 100,
-            "E_SLIDER_Shockwave_Speed": 70
-          },
           "effect_pool": [
             "Fire Medium",
             "Fire Music-Reactive",
@@ -235,37 +172,24 @@
           ]
         },
         {
-          "effect": "Strobe",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Strobe_Speed": 60,
-            "E_SLIDER_Strobe_Number": 3
-          }
+          "variant": "Strobe Triple Fast",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Meteors",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Meteors_Count": 10,
-                "E_SLIDER_Meteors_Length": 12,
-                "E_SLIDER_Meteors_Speed": 45
-              }
+              "variant": "Meteors Fast Dense",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Plasma",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Plasma_Speed": 40,
-                "E_SLIDER_Plasma_Line_Density": 6
-              }
+              "variant": "Plasma Storm",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -291,43 +215,28 @@
       "intent": "High-contrast, glowing-hot textures that feel heavy and industrial",
       "layers": [
         {
-          "effect": "Fire",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Fire_Height": 60,
-            "E_CHOICE_Fire_Location": "Bottom"
-          }
+          "variant": "Fire High",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Fan",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Fan_Num_Blades": 6,
-            "E_SLIDER_Fan_Duration": 50
-          }
+          "variant": "Fan 6-Blade Medium",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Liquid",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Liquid_Speed": 25
-              }
+              "variant": "Liquid Surge",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Bars",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_CHOICE_Bars_Direction": "up",
-                "E_SLIDER_Bars_BarCount": 4
-              }
+              "variant": "Bars Up Quad",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -353,45 +262,28 @@
       "intent": "Sharp, fast, directional bullets of light \u2014 combat aesthetic",
       "layers": [
         {
-          "effect": "Meteors",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Meteors_Count": 8,
-            "E_SLIDER_Meteors_Length": 15,
-            "E_SLIDER_Meteors_Speed": 40
-          }
+          "variant": "Meteors Long Trail",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Strobe",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Strobe_Speed": 80,
-            "E_SLIDER_Strobe_Number": 3
-          }
+          "variant": "Strobe Triple Intense",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Single Strand",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Single Strand_Speed": 50,
-                "E_SLIDER_Number_Chases": 5
-              }
+              "variant": "Chase Fast Multi",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Bars",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_CHOICE_Bars_Direction": "right",
-                "E_SLIDER_Bars_BarCount": 2
-              }
+              "variant": "Bars Right Dual",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -417,44 +309,28 @@
       "intent": "Negative space where lights feel like they are disappearing into a black hole",
       "layers": [
         {
-          "effect": "Plasma",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Plasma_Speed": 8,
-            "E_SLIDER_Plasma_Line_Density": 2
-          }
+          "variant": "Plasma Gentle",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Spirals",
-          "blend_mode": "Subtractive",
-          "parameter_overrides": {
-            "E_SLIDER_Spirals_PaletteRepeat": 3,
-            "E_SLIDER_Spirals_Speed": 8
-          }
+          "variant": "Spirals Dense Slow",
+          "blend_mode": "Subtractive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Butterfly",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Butterfly_Speed": 5,
-                "E_SLIDER_Butterfly_Chunks": 2
-              }
+              "variant": "Butterfly Sparse Slow",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Color Wash",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Color Wash_Cycles": 1,
-                "E_CHECKBOX_Color Wash_Shimmer": 0
-              }
+              "variant": "Color Wash Smooth",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -470,8 +346,7 @@
         "#FF1133",
         "#880022",
         "#AA0033"
-      ],
-      "transition_mode": "dramatic"
+      ]
     },
     "Glitch City": {
       "name": "Glitch City",
@@ -481,45 +356,28 @@
       "intent": "Broken, stuttering aesthetic like a malfunctioning computer",
       "layers": [
         {
-          "effect": "Bars",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_CHOICE_Bars_Direction": "up",
-            "E_SLIDER_Bars_BarCount": 8
-          }
+          "variant": "Bars Up Dense",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Strobe",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Strobe_Speed": 40,
-            "E_SLIDER_Strobe_Number": 2
-          }
+          "variant": "Strobe Dual Medium",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Marquee",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Marquee_Band_Size": 3,
-                "E_SLIDER_Marquee_Speed": 30,
-                "E_SLIDER_Marquee_Stagger": 5
-              }
+              "variant": "Marquee Thin Fast",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Single Strand",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Single Strand_Speed": 35,
-                "E_SLIDER_Number_Chases": 6
-              }
+              "variant": "Chase Multi Dense",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -535,8 +393,7 @@
         "#FF33AA",
         "#CC00CC",
         "#FF66DD"
-      ],
-      "transition_mode": "none"
+      ]
     },
     "The Kraken": {
       "name": "The Kraken",
@@ -546,43 +403,28 @@
       "intent": "Organic, writhing movement that feels claustrophobic \u2014 tentacles in the deep",
       "layers": [
         {
-          "effect": "Liquid",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Liquid_Speed": 12
-          }
+          "variant": "Liquid Current",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Spirals",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Spirals_PaletteRepeat": 2,
-            "E_SLIDER_Spirals_Speed": 12
-          }
+          "variant": "Spirals Medium",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Plasma",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Plasma_Speed": 8,
-                "E_SLIDER_Plasma_Line_Density": 5
-              }
+              "variant": "Plasma Dense Slow",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Wave",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Wave_Speed": 6,
-                "E_SLIDER_Wave_Number_Of_Waves": 3
-              }
+              "variant": "Wave Triple Slow",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -608,51 +450,33 @@
       "intent": "Precise, mathematical beauty \u2014 Tron-inspired symmetry",
       "layers": [
         {
-          "effect": "Plasma",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Plasma_Speed": 12,
-            "E_SLIDER_Plasma_Line_Density": 4
-          }
+          "variant": "Plasma Grid",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Pinwheel",
+          "variant": "Pinwheel 6-Arm Medium",
           "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Pinwheel_Arms": 6,
-            "E_SLIDER_Pinwheel_Speed": 15,
-            "E_SLIDER_Pinwheel_Twist": 25
-          },
           "effect_pool": [
             "Bars Single 3D Half-Cycle",
             "Bars Quad 3D Vertical",
-            "Single Strand Rainbow Chase"
+            "Chase Left-Right Medium"
           ]
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Pinwheel",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Pinwheel_Arms": 6,
-                "E_SLIDER_Pinwheel_Twist": 30,
-                "E_SLIDER_Pinwheel_Speed": 15
-              }
+              "variant": "Pinwheel 6-Arm Twist",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Fan",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Fan_Num_Blades": 4,
-                "E_SLIDER_Fan_Duration": 80
-              }
+              "variant": "Fan 4-Blade Slow",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -678,44 +502,28 @@
       "intent": "Sweeping searchlight effect that defines the house shape",
       "layers": [
         {
-          "effect": "Bars",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Bars_BarCount": 1,
-            "E_CHOICE_Bars_Direction": "left"
-          }
+          "variant": "Bars Left Single",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Single Strand",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Single Strand_Speed": 30,
-            "E_SLIDER_Number_Chases": 4
-          }
+          "variant": "Chase Medium Quad",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Wave",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Wave_Speed": 15,
-                "E_SLIDER_Wave_Number_Of_Waves": 1
-              }
+              "variant": "Wave Single Fast",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Fill",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Fill_Position": 50,
-                "E_SLIDER_Fill_Band_Size": 15
-              }
+              "variant": "Fill Center Band",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -741,43 +549,28 @@
       "intent": "Interlocked movement across props \u2014 morphs that zip back and forth",
       "layers": [
         {
-          "effect": "Plasma",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Plasma_Speed": 12,
-            "E_SLIDER_Plasma_Line_Density": 3
-          }
+          "variant": "Plasma Weave",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Single Strand",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Single Strand_Speed": 40,
-            "E_SLIDER_Number_Chases": 3
-          }
+          "variant": "Chase Trio Fast",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Liquid",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Liquid_Speed": 10
-              }
+              "variant": "Liquid Flow",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Color Wash",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Color Wash_Cycles": 2,
-                "E_CHECKBOX_Color Wash_Shimmer": 1
-              }
+              "variant": "Color Wash Shimmer Cycles",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -803,52 +596,32 @@
       "intent": "Gentle snowfall over twinkling cool blue lights \u2014 peaceful winter scene",
       "layers": [
         {
-          "effect": "Color Wash",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Color Wash_Cycles": 1,
-            "E_CHECKBOX_Color Wash_Shimmer": 0
-          }
+          "variant": "Color Wash Smooth",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Shockwave",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Shockwave_Start_Width": 4,
-            "E_SLIDER_Shockwave_End_Radius": 60
-          }
+          "variant": "Shockwave Small Thin",
+          "blend_mode": "Additive"
         },
         {
-          "effect": "Ripple",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Ripple_Thickness": 3,
-            "E_SLIDER_Ripple_Movement": 15
-          }
+          "variant": "Ripple Medium Thin",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Butterfly",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Butterfly_Speed": 8,
-                "E_SLIDER_Butterfly_Chunks": 4
-              }
+              "variant": "Butterfly Dense Medium",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Wave",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Wave_Speed": 6,
-                "E_SLIDER_Wave_Number_Of_Waves": 2
-              }
+              "variant": "Wave Dual Slow",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -874,46 +647,28 @@
       "intent": "Classic candy cane stripes chasing along the roofline \u2014 fun and festive",
       "layers": [
         {
-          "effect": "Single Strand",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Single Strand_Speed": 25,
-            "E_SLIDER_Number_Chases": 4
-          }
+          "variant": "Chase Slow Quad",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Marquee",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Marquee_Band_Size": 6,
-            "E_SLIDER_Marquee_Speed": 15,
-            "E_SLIDER_Marquee_Stagger": 0
-          }
+          "variant": "Marquee Thick Slow",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Bars",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_CHOICE_Bars_Direction": "right",
-                "E_SLIDER_Bars_BarCount": 4
-              }
+              "variant": "Bars Right Quad",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Spirals",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Spirals_PaletteRepeat": 5,
-                "E_SLIDER_Spirals_Direction": 1,
-                "E_SLIDER_Spirals_Speed": 25
-              }
+              "variant": "Spirals Fast Dense",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -939,44 +694,28 @@
       "intent": "Slow golden fire with warm twinkle \u2014 cozy fireplace warmth on a cold night",
       "layers": [
         {
-          "effect": "Fire",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Fire_Height": 30,
-            "E_CHOICE_Fire_Location": "Bottom"
-          }
+          "variant": "Fire Low",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Ripple",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Ripple_Thickness": 4,
-            "E_SLIDER_Ripple_Movement": 10
-          }
+          "variant": "Ripple Slow Medium",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Color Wash",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Color Wash_Cycles": 1,
-                "E_CHECKBOX_Color Wash_Shimmer": 1
-              }
+              "variant": "Color Wash Shimmer",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Plasma",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Plasma_Speed": 8,
-                "E_SLIDER_Plasma_Line_Density": 2
-              }
+              "variant": "Plasma Gentle",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -1002,45 +741,28 @@
       "intent": "Radiant star burst with expanding ripples \u2014 guiding light of the season",
       "layers": [
         {
-          "effect": "Pinwheel",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Pinwheel_Arms": 8,
-            "E_SLIDER_Pinwheel_Twist": 20,
-            "E_SLIDER_Pinwheel_Speed": 10
-          }
+          "variant": "Pinwheel 8-Arm Slow",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Ripple",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Ripple_Movement": 20,
-            "E_SLIDER_Ripple_Thickness": 4
-          }
+          "variant": "Ripple Fast Medium",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Fan",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Fan_Num_Blades": 8,
-                "E_SLIDER_Fan_Duration": 60
-              }
+              "variant": "Fan 8-Blade",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Fan",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Fan_Num_Blades": 6,
-                "E_SLIDER_Fan_Duration": 80
-              }
+              "variant": "Fan 6-Blade Slow",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -1066,43 +788,28 @@
       "intent": "High-energy holiday hype \u2014 shockwaves and strobes in classic Christmas colors",
       "layers": [
         {
-          "effect": "Shockwave",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Shockwave_Start_Width": 8,
-            "E_SLIDER_Shockwave_End_Radius": 80,
-            "E_SLIDER_Shockwave_Speed": 60
-          }
+          "variant": "Shockwave Medium Fast",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Strobe",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Strobe_Speed": 50,
-            "E_SLIDER_Strobe_Number": 2
-          }
+          "variant": "Strobe Dual Fast",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Meteors",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Meteors_Count": 10,
-                "E_SLIDER_Meteors_Length": 10,
-                "E_SLIDER_Meteors_Speed": 50
-              }
+              "variant": "Meteors Fast Flash",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Fireworks",
-              "blend_mode": "Normal",
-              "parameter_overrides": {}
+              "variant": "Fireworks Default",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -1128,44 +835,28 @@
       "intent": "Slow, peaceful color wash with gentle snowfall \u2014 contemplative holiday stillness",
       "layers": [
         {
-          "effect": "Color Wash",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Color Wash_Cycles": 1,
-            "E_CHECKBOX_Color Wash_Shimmer": 0
-          }
+          "variant": "Color Wash Smooth",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Ripple",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Ripple_Thickness": 3,
-            "E_SLIDER_Ripple_Movement": 10
-          }
+          "variant": "Ripple Slow Thin",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Plasma",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Plasma_Speed": 5,
-                "E_SLIDER_Plasma_Line_Density": 2
-              }
+              "variant": "Plasma Ethereal",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Butterfly",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Butterfly_Speed": 6,
-                "E_SLIDER_Butterfly_Chunks": 2
-              }
+              "variant": "Butterfly Sparse Medium",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -1191,43 +882,28 @@
       "intent": "Eerie purple plasma with unsettling slow strobe flickers \u2014 haunted house ambiance",
       "layers": [
         {
-          "effect": "Plasma",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Plasma_Speed": 10,
-            "E_SLIDER_Plasma_Line_Density": 3
-          }
+          "variant": "Plasma Drift",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Strobe",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Strobe_Speed": 15,
-            "E_SLIDER_Strobe_Number": 1
-          }
+          "variant": "Strobe Single Slow",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Liquid",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Liquid_Speed": 8
-              }
+              "variant": "Liquid Drift",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Fire",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Fire_Height": 25,
-                "E_CHOICE_Fire_Location": "Bottom"
-              }
+              "variant": "Fire Ember",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -1253,46 +929,28 @@
       "intent": "Blazing orange fire with explosive shockwaves \u2014 carved pumpkin brought to life",
       "layers": [
         {
-          "effect": "Fire",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Fire_Height": 70,
-            "E_CHOICE_Fire_Location": "Bottom"
-          }
+          "variant": "Fire Intense",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Shockwave",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Shockwave_Start_Width": 6,
-            "E_SLIDER_Shockwave_End_Radius": 90,
-            "E_SLIDER_Shockwave_Speed": 50
-          }
+          "variant": "Shockwave Large Medium",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Meteors",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Meteors_Count": 8,
-                "E_SLIDER_Meteors_Length": 15,
-                "E_SLIDER_Meteors_Speed": 35
-              }
+              "variant": "Meteors Long Slow",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Plasma",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Plasma_Speed": 30,
-                "E_SLIDER_Plasma_Line_Density": 5
-              }
+              "variant": "Plasma Surge",
+              "blend_mode": "Normal"
             }
           ]
         }
@@ -1318,43 +976,28 @@
       "intent": "Low creeping fog with tendrils reaching through the darkness \u2014 graveyard at midnight",
       "layers": [
         {
-          "effect": "Liquid",
-          "blend_mode": "Normal",
-          "parameter_overrides": {
-            "E_SLIDER_Liquid_Speed": 6
-          }
+          "variant": "Liquid Creep",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Spirals",
-          "blend_mode": "Additive",
-          "parameter_overrides": {
-            "E_SLIDER_Spirals_PaletteRepeat": 2,
-            "E_SLIDER_Spirals_Speed": 6
-          }
+          "variant": "Spirals Sparse Slow",
+          "blend_mode": "Additive"
         }
       ],
-      "variants": [
+      "alternates": [
         {
           "layers": [
             {
-              "effect": "Plasma",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Plasma_Speed": 5,
-                "E_SLIDER_Plasma_Line_Density": 2
-              }
+              "variant": "Plasma Ethereal",
+              "blend_mode": "Normal"
             }
           ]
         },
         {
           "layers": [
             {
-              "effect": "Color Wash",
-              "blend_mode": "Normal",
-              "parameter_overrides": {
-                "E_SLIDER_Color Wash_Cycles": 1,
-                "E_CHECKBOX_Color Wash_Shimmer": 0
-              }
+              "variant": "Color Wash Smooth",
+              "blend_mode": "Normal"
             }
           ]
         }

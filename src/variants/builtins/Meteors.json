@@ -20,7 +20,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -42,7 +45,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["build", "chorus"],
+        "section_roles": [
+          "build",
+          "chorus"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -65,7 +71,11 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "bridge", "outro"],
+        "section_roles": [
+          "verse",
+          "bridge",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -89,7 +99,10 @@
         "energy_level": "high",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "drop"],
+        "section_roles": [
+          "chorus",
+          "drop"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -113,7 +126,103 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["drop", "chorus", "build"],
+        "section_roles": [
+          "drop",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Meteors Fast Dense",
+      "base_effect": "Meteors",
+      "description": "Fast dense meteors with medium trails. Many meteors streaking at high speed.",
+      "parameter_overrides": {
+        "E_SLIDER_Meteors_Count": 10,
+        "E_SLIDER_Meteors_Length": 12,
+        "E_SLIDER_Meteors_Speed": 45
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Meteors Long Trail",
+      "base_effect": "Meteors",
+      "description": "Meteors with long trailing tails at medium-fast speed. Elegant streaking motion for mid-high sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Meteors_Count": 8,
+        "E_SLIDER_Meteors_Length": 15,
+        "E_SLIDER_Meteors_Speed": 40
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Meteors Fast Flash",
+      "base_effect": "Meteors",
+      "description": "Maximum speed meteors with short trails. Rapid flashing meteor burst for peak moments.",
+      "parameter_overrides": {
+        "E_SLIDER_Meteors_Count": 10,
+        "E_SLIDER_Meteors_Length": 10,
+        "E_SLIDER_Meteors_Speed": 50
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Meteors Long Slow",
+      "base_effect": "Meteors",
+      "description": "Long-tailed meteors at medium speed. Graceful slow streaks for active verses.",
+      "parameter_overrides": {
+        "E_SLIDER_Meteors_Count": 8,
+        "E_SLIDER_Meteors_Length": 15,
+        "E_SLIDER_Meteors_Speed": 35
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

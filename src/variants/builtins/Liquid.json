@@ -24,7 +24,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -52,7 +55,115 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Liquid Flow",
+      "base_effect": "Liquid",
+      "description": "Moderate liquid flow. Balanced fluid motion for general use.",
+      "parameter_overrides": {
+        "E_SLIDER_Liquid_Speed": 10
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Liquid Surge",
+      "base_effect": "Liquid",
+      "description": "Fast surging liquid. High-energy fluid rush for intense sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Liquid_Speed": 25
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Liquid Current",
+      "base_effect": "Liquid",
+      "description": "Medium-fast liquid current. Active flowing energy for mid-high sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Liquid_Speed": 12
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Liquid Drift",
+      "base_effect": "Liquid",
+      "description": "Slow drifting liquid. Gentle motion for calm ambient sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Liquid_Speed": 8
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Liquid Creep",
+      "base_effect": "Liquid",
+      "description": "Very slow creeping liquid. Minimal motion for the quietest passages.",
+      "parameter_overrides": {
+        "E_SLIDER_Liquid_Speed": 6
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "intro",
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

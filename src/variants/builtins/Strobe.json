@@ -15,7 +15,121 @@
         "energy_level": "high",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["drop", "build", "chorus"],
+        "section_roles": [
+          "drop",
+          "build",
+          "chorus"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Strobe Triple Fast",
+      "base_effect": "Strobe",
+      "description": "Three strobes at fast flash rate. High-energy triple strobe for intense sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Strobe_Number": 3,
+        "E_SLIDER_Strobe_Speed": 60
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Strobe Triple Intense",
+      "base_effect": "Strobe",
+      "description": "Three strobes at maximum intensity. Extreme strobe burst for peak impact moments.",
+      "parameter_overrides": {
+        "E_SLIDER_Strobe_Number": 3,
+        "E_SLIDER_Strobe_Speed": 80
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "drop",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Strobe Dual Medium",
+      "base_effect": "Strobe",
+      "description": "Two strobes at medium flash rate. Balanced dual strobe for active sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Strobe_Number": 2,
+        "E_SLIDER_Strobe_Speed": 40
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Strobe Dual Fast",
+      "base_effect": "Strobe",
+      "description": "Two strobes at fast flash rate. Quick dual strobe for high-energy emphasis.",
+      "parameter_overrides": {
+        "E_SLIDER_Strobe_Number": 2,
+        "E_SLIDER_Strobe_Speed": 50
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Strobe Single Slow",
+      "base_effect": "Strobe",
+      "description": "Single strobe at slow flash rate. Subtle single flash for atmospheric accent.",
+      "parameter_overrides": {
+        "E_SLIDER_Strobe_Number": 1,
+        "E_SLIDER_Strobe_Speed": 15
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

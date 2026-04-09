@@ -11,22 +11,21 @@
       "accent_palette": ["#FFFFFF", "#CCCCCC"],
       "layers": [
         {
-          "effect": "Color Wash",
-          "blend_mode": "Normal",
-          "parameter_overrides": {}
+          "variant": "Color Wash Circular",
+          "blend_mode": "Normal"
         },
         {
-          "effect": "Fire",
+          "variant": "Fire Medium",
           "blend_mode": "Normal",
-          "parameter_overrides": {},
           "effect_pool": [
             "Fire Medium",
             "Meteors Sparse Explode",
-            "Spirals 3D Blend",
-            "Ripple Circle"
+            "Meteors Medium Rain",
+            "Fire Music-Reactive"
           ]
         }
-      ]
+      ],
+      "alternates": []
     }
   }
 }

@@ -21,7 +21,7 @@ def _make_theme(
         genre=genre,
         intent=f"Test theme {name}",
         layers=[
-            EffectLayer(effect="Color Wash", blend_mode="Normal"),
+            EffectLayer(variant="Color Wash", blend_mode="Normal"),
         ],
         palette=["#FF0000", "#00FF00"],
     )

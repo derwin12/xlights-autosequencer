@@ -145,20 +145,15 @@ def build_plan(
                     assignments[idx].theme = theme
 
     # 3b. Load variant library and build rotation plan
-    variant_library = None
-    rotation_plan = None
-    try:
-        from src.variants.library import load_variant_library
+    from src.variants.library import load_variant_library
 
-        variant_library = load_variant_library(effect_library=effect_library)
-        rotation_engine = RotationEngine(variant_library, effect_library)
-        rotation_plan = rotation_engine.build_rotation_plan(
-            sections=[a.section for a in assignments],
-            groups=groups,
-            theme_assignments=assignments,
-        )
-    except Exception:
-        logger.debug("Variant library unavailable — falling back to pool rotation")
+    variant_library = load_variant_library(effect_library=effect_library)
+    rotation_engine = RotationEngine(variant_library, effect_library)
+    rotation_plan = rotation_engine.build_rotation_plan(
+        sections=[a.section for a in assignments],
+        groups=groups,
+        theme_assignments=assignments,
+    )
 
     # 4. Place effects for each section
     model_names = [p.name for p in props]
@@ -281,8 +276,11 @@ def generate_sequence(config: GenerationConfig) -> Path:
     groups = generate_groups(props)
 
     # Load libraries
+    from src.variants.library import load_variant_library
+
     effect_library = load_effect_library()
-    theme_library = load_theme_library(effect_library=effect_library)
+    variant_library = load_variant_library(effect_library=effect_library)
+    theme_library = load_theme_library(effect_library=effect_library, variant_library=variant_library)
 
     # Build plan
     plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library)
@@ -324,8 +322,11 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
     groups = generate_groups(props)
 
     # Load libraries
+    from src.variants.library import load_variant_library
+
     effect_library = load_effect_library()
-    theme_library = load_theme_library(effect_library=effect_library)
+    variant_library = load_variant_library(effect_library=effect_library)
+    theme_library = load_theme_library(effect_library=effect_library, variant_library=variant_library)
 
     # Derive section energies
     section_energies = derive_section_energies(

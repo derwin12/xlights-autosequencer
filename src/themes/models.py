@@ -23,39 +23,33 @@ VALID_BLEND_MODES: list[str] = [
 
 @dataclass
 class EffectLayer:
-    effect: str
+    variant: str
     blend_mode: str = "Normal"
-    parameter_overrides: dict[str, int | float | bool | str] = field(default_factory=dict)
-    variant_ref: str | None = None
     effect_pool: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict) -> EffectLayer:
         return cls(
-            effect=data["effect"],
+            variant=data["variant"],
             blend_mode=data.get("blend_mode", "Normal"),
-            parameter_overrides=data.get("parameter_overrides", {}),
-            variant_ref=data.get("variant_ref", None),
             effect_pool=data.get("effect_pool", []),
         )
 
     def to_dict(self) -> dict:
         return {
-            "effect": self.effect,
+            "variant": self.variant,
             "blend_mode": self.blend_mode,
-            "parameter_overrides": self.parameter_overrides,
-            "variant_ref": self.variant_ref,
             "effect_pool": self.effect_pool,
         }
 
 
 @dataclass
-class ThemeVariant:
+class ThemeAlternate:
     """Alternate layer set for a theme — same palette/mood, different visuals."""
     layers: list[EffectLayer]
 
     @classmethod
-    def from_dict(cls, data: dict) -> ThemeVariant:
+    def from_dict(cls, data: dict) -> ThemeAlternate:
         return cls(
             layers=[EffectLayer.from_dict(l) for l in data["layers"]],
         )
@@ -71,7 +65,7 @@ class Theme:
     layers: list[EffectLayer]
     palette: list[str]
     accent_palette: list[str] = field(default_factory=list)
-    variants: list[ThemeVariant] = field(default_factory=list)
+    alternates: list[ThemeAlternate] = field(default_factory=list)
     transition_mode: str | None = None
 
     def __post_init__(self) -> None:
@@ -94,7 +88,7 @@ class Theme:
             layers=[EffectLayer.from_dict(l) for l in data["layers"]],
             palette=data["palette"],
             accent_palette=data.get("accent_palette", []),
-            variants=[ThemeVariant.from_dict(v) for v in data.get("variants", [])],
+            alternates=[ThemeAlternate.from_dict(a) for a in data.get("alternates", [])],
             transition_mode=data.get("transition_mode", None),
         )
 
@@ -108,7 +102,7 @@ class Theme:
             "layers": [l.to_dict() for l in self.layers],
             "palette": self.palette,
             "accent_palette": self.accent_palette,
-            "variants": [{"layers": [l.to_dict() for l in v.layers]} for v in self.variants],
+            "alternates": [{"layers": [l.to_dict() for l in a.layers]} for a in self.alternates],
         }
         if self.transition_mode is not None:
             d["transition_mode"] = self.transition_mode

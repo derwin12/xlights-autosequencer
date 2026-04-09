@@ -37,6 +37,7 @@ def app(tmp_path):
     # Wire theme routes
     tr._library = None  # force re-load
     tr._effect_library = effect_lib
+    tr._variant_library = variant_lib
     tr._custom_dir = tmp_path / "custom_themes"
     tr._builtin_path = THEMES_FIXTURE
     tr._builtin_names_cache = None
@@ -103,30 +104,23 @@ class TestVariantPickerFetchesByEffect:
         assert data["variants"] == []
 
 
-class TestSaveThemeWithVariantRef:
-    """T005: Saving a theme with variant_ref preserves it."""
+class TestSaveThemeWithVariant:
+    """T005: Saving a theme with variant field persists and reloads correctly."""
 
-    def _make_theme(self, name, variant_ref=None):
-        layer = {
-            "effect": "Fire",
-            "blend_mode": "Normal",
-            "parameter_overrides": {"E_SLIDER_Fire_Height": 85},
-        }
-        if variant_ref is not None:
-            layer["variant_ref"] = variant_ref
+    def _make_theme(self, name, variant="Fire Blaze High"):
         return {
             "name": name,
             "mood": "aggressive",
             "occasion": "general",
             "genre": "any",
-            "intent": "Test theme with variant ref",
+            "intent": "Test theme with variant layer",
             "palette": ["#FF4400", "#FF8800"],
-            "layers": [layer],
-            "variants": [],
+            "layers": [{"variant": variant, "blend_mode": "Normal"}],
+            "alternates": [],
         }
 
-    def test_save_theme_with_variant_ref(self, client):
-        theme = self._make_theme("Variant Test Theme", variant_ref="Fire Blaze High")
+    def test_save_theme_with_variant(self, client):
+        theme = self._make_theme("Variant Test Theme")
         resp = client.post(
             "/themes/api/save",
             json={"theme": theme},
@@ -136,60 +130,42 @@ class TestSaveThemeWithVariantRef:
         data = resp.get_json()
         assert data["success"] is True
 
-    def test_saved_variant_ref_appears_in_list(self, client):
-        theme = self._make_theme("VRef Persist Test", variant_ref="Fire Blaze High")
+    def test_saved_variant_appears_in_list(self, client):
+        theme = self._make_theme("VRef Persist Test")
         client.post("/themes/api/save", json={"theme": theme}, content_type="application/json")
 
-        # Reload and check
         list_resp = client.get("/themes/api/list")
         themes = list_resp.get_json()["themes"]
         saved = next(t for t in themes if t["name"] == "VRef Persist Test")
-        assert saved["layers"][0]["variant_ref"] == "Fire Blaze High"
+        assert saved["layers"][0]["variant"] == "Fire Blaze High"
 
-    def test_save_theme_without_variant_ref(self, client):
-        theme = self._make_theme("No VRef Theme")
+    def test_save_theme_with_bars_variant(self, client):
+        theme = self._make_theme("Bars Theme", variant="Bars Sweep Left")
         resp = client.post("/themes/api/save", json={"theme": theme}, content_type="application/json")
         assert resp.status_code == 200
 
         list_resp = client.get("/themes/api/list")
         themes = list_resp.get_json()["themes"]
-        saved = next(t for t in themes if t["name"] == "No VRef Theme")
-        # variant_ref should be None/null
-        assert saved["layers"][0].get("variant_ref") is None
+        saved = next(t for t in themes if t["name"] == "Bars Theme")
+        assert saved["layers"][0]["variant"] == "Bars Sweep Left"
 
-    def test_save_theme_with_missing_variant_ref_still_loads(self, client):
-        """A theme with a variant_ref pointing to a nonexistent variant should still
-        load successfully — the variant_ref is preserved but has no effect on validation."""
-        theme = self._make_theme("Broken VRef Theme", variant_ref="No Such Variant")
-        resp = client.post("/themes/api/save", json={"theme": theme}, content_type="application/json")
-        # The save should succeed — missing variant_ref is a warning, not an error
-        assert resp.status_code == 200
-
-        list_resp = client.get("/themes/api/list")
-        themes = list_resp.get_json()["themes"]
-        saved = next(t for t in themes if t["name"] == "Broken VRef Theme")
-        # The variant_ref should be preserved even though the variant doesn't exist
-        assert saved["layers"][0]["variant_ref"] == "No Such Variant"
-
-    def test_variant_ref_null_when_cleared(self, client):
-        """Saving a theme with variant_ref=null should clear it."""
-        # First save with a variant_ref
-        theme = self._make_theme("Clear VRef Theme", variant_ref="Fire Blaze High")
+    def test_save_theme_update_preserves_variant(self, client):
+        """Saving a theme update preserves the variant field."""
+        theme = self._make_theme("Update Test Theme")
         client.post("/themes/api/save", json={"theme": theme}, content_type="application/json")
 
-        # Now save again without variant_ref
-        theme2 = self._make_theme("Clear VRef Theme", variant_ref=None)
+        theme2 = self._make_theme("Update Test Theme", variant="Bars Sweep Left")
         resp = client.post(
             "/themes/api/save",
-            json={"theme": theme2, "original_name": "Clear VRef Theme"},
+            json={"theme": theme2, "original_name": "Update Test Theme"},
             content_type="application/json",
         )
         assert resp.status_code == 200
 
         list_resp = client.get("/themes/api/list")
         themes = list_resp.get_json()["themes"]
-        saved = next(t for t in themes if t["name"] == "Clear VRef Theme")
-        assert saved["layers"][0].get("variant_ref") is None
+        saved = next(t for t in themes if t["name"] == "Update Test Theme")
+        assert saved["layers"][0]["variant"] == "Bars Sweep Left"
 
 
 class TestContextAwareScoring:

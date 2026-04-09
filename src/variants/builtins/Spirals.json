@@ -18,7 +18,11 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["verse", "chorus", "bridge"],
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -40,7 +44,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -63,7 +70,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro"],
+        "section_roles": [
+          "verse",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -85,7 +95,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -108,7 +121,11 @@
         "energy_level": "high",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "build", "drop"],
+        "section_roles": [
+          "chorus",
+          "build",
+          "drop"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -131,7 +148,11 @@
         "energy_level": "high",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "build", "drop"],
+        "section_roles": [
+          "chorus",
+          "build",
+          "drop"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -154,7 +175,122 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Spirals Directed Medium",
+      "base_effect": "Spirals",
+      "description": "Directional spirals at medium speed with 3 palette repeats. Structured spiral motion for mid-energy sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Spirals_Direction": 1,
+        "E_SLIDER_Spirals_PaletteRepeat": 3,
+        "E_SLIDER_Spirals_Speed": 10
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Spirals Dense Slow",
+      "base_effect": "Spirals",
+      "description": "Dense spirals with 3 palette repeats moving slowly. Rich textured background for calm sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Spirals_PaletteRepeat": 3,
+        "E_SLIDER_Spirals_Speed": 8
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Spirals Medium",
+      "base_effect": "Spirals",
+      "description": "Two-repeat spirals at medium-fast speed. Balanced spiral animation for general use.",
+      "parameter_overrides": {
+        "E_SLIDER_Spirals_PaletteRepeat": 2,
+        "E_SLIDER_Spirals_Speed": 12
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Spirals Fast Dense",
+      "base_effect": "Spirals",
+      "description": "Fast directional spirals with high palette density. High-energy spiral rush for peak sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Spirals_Direction": 1,
+        "E_SLIDER_Spirals_PaletteRepeat": 5,
+        "E_SLIDER_Spirals_Speed": 25
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": [
+          "chorus",
+          "drop",
+          "build"
+        ],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Spirals Sparse Slow",
+      "base_effect": "Spirals",
+      "description": "Sparse slow spirals with 2 palette repeats. Minimal gentle spiral for quiet ambient fills.",
+      "parameter_overrides": {
+        "E_SLIDER_Spirals_PaletteRepeat": 2,
+        "E_SLIDER_Spirals_Speed": 6
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": [
+          "intro",
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

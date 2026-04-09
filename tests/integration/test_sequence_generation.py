@@ -14,6 +14,7 @@ from src.generator.xsq_writer import write_xsq
 from src.grouper.grouper import PowerGroup
 from src.grouper.layout import Prop
 from src.themes.library import load_theme_library
+from src.variants.library import load_variant_library
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -119,7 +120,8 @@ def _generate(tmp_path: Path, hierarchy: HierarchyResult,
         groups = _make_groups()
 
     effect_lib = load_effect_library()
-    theme_lib = load_theme_library(effect_library=effect_lib)
+    variant_lib = load_variant_library(effect_library=effect_lib)
+    theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
     config = GenerationConfig(
         audio_path=tmp_path / "test.mp3",
         layout_path=tmp_path / "layout.xml",
@@ -224,7 +226,8 @@ class TestEdgeCases:
         hierarchy = _make_hierarchy(with_sections=False)
         # With no sections, the plan should still work (empty or single-section fallback)
         effect_lib = load_effect_library()
-        theme_lib = load_theme_library(effect_library=effect_lib)
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
         config = GenerationConfig(
             audio_path=tmp_path / "test.mp3",
             layout_path=tmp_path / "layout.xml",

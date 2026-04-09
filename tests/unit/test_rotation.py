@@ -300,13 +300,13 @@ class TestSelectVariantForGroup:
             occasion="general",
             genre="rock",
             intent="high energy test",
-            layers=[EffectLayer(effect="Fire")],
+            layers=[EffectLayer(variant="Fire")],
             palette=["#FF0000", "#FF6600"],
         )
 
     @staticmethod
     def _layer() -> EffectLayer:
-        return EffectLayer(effect="Fire")
+        return EffectLayer(variant="Fire")
 
     def test_returns_top_scoring_variant(self, engine):
         """High-energy section should select a variant tagged high or adjacent energy."""
@@ -400,7 +400,7 @@ class TestIntraSectionVariety:
         return Theme(
             name="TestTheme", mood="aggressive", occasion="general",
             genre="rock", intent="high energy test",
-            layers=[EffectLayer(effect="Fire")], palette=["#FF0000", "#FF6600"],
+            layers=[EffectLayer(variant="Fire")], palette=["#FF0000", "#FF6600"],
         )
 
     def test_four_groups_get_at_least_three_distinct_variants(self, engine):
@@ -476,7 +476,7 @@ class TestCrossSectionVariety:
         return Theme(
             name="TestTheme", mood="aggressive", occasion="general",
             genre="rock", intent="test",
-            layers=[EffectLayer(effect="Fire")], palette=["#FF0000", "#FF6600"],
+            layers=[EffectLayer(variant="Fire")], palette=["#FF0000", "#FF6600"],
         )
 
     def test_repeated_verse_sections_differ_50_percent(self, engine):
@@ -556,7 +556,7 @@ class TestSymmetryEnforcement:
         return Theme(
             name="TestTheme", mood="aggressive", occasion="general",
             genre="rock", intent="test",
-            layers=[EffectLayer(effect="Fire")], palette=["#FF0000", "#FF6600"],
+            layers=[EffectLayer(variant="Fire")], palette=["#FF0000", "#FF6600"],
         )
 
     def test_symmetry_pair_gets_same_variant(self, engine):
@@ -621,7 +621,7 @@ class TestTransitionContinuity:
         return Theme(
             name="TestTheme", mood="aggressive", occasion="general",
             genre="rock", intent="test",
-            layers=[EffectLayer(effect="Fire")], palette=["#FF0000", "#FF6600"],
+            layers=[EffectLayer(variant="Fire")], palette=["#FF0000", "#FF6600"],
         )
 
     def test_adjacent_sections_share_variant(self, engine):
@@ -689,14 +689,14 @@ class TestEffectPoolSelection:
         return Theme(
             name="TestTheme", mood="aggressive", occasion="general",
             genre="rock", intent="pool test",
-            layers=[EffectLayer(effect="Fire")],
+            layers=[EffectLayer(variant="Fire")],
             palette=["#FF0000", "#FF6600"],
         )
 
     def test_pool_restricts_selection(self, engine):
         """When a layer has effect_pool, only pool variants should be selected."""
         pool_names = ["Fire Blaze High", "Meteors Gentle Rain"]
-        layer = EffectLayer(effect="Fire", effect_pool=pool_names)
+        layer = EffectLayer(variant="Fire", effect_pool=pool_names)
 
         section = self._section(energy_score=80)
         group = self._group(tier=6, prop_type="matrix")
@@ -711,7 +711,7 @@ class TestEffectPoolSelection:
 
     def test_pool_fallback_to_library(self, engine):
         """When pool contains only non-existent variants, fall back to library scoring."""
-        layer = EffectLayer(effect="Fire", effect_pool=["nonexistent-variant"])
+        layer = EffectLayer(variant="Fire", effect_pool=["nonexistent-variant"])
 
         section = self._section(energy_score=80)
         group = self._group(tier=6, prop_type="matrix")

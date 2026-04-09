@@ -17,6 +17,24 @@
         "scope": "single-prop",
         "genre_affinity": "any"
       }
+    },
+    {
+      "name": "Tendril Medium",
+      "base_effect": "Tendril",
+      "description": "Medium-length tendril at moderate speed. Balanced organic waving motion for ethereal ambient sections.",
+      "parameter_overrides": {
+        "E_SLIDER_Tendril_Length": 50,
+        "E_SLIDER_Tendril_Speed": 12
+      },
+      "tags": {
+        "tier_affinity": "background",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "bridge", "intro"],
+        "scope": "single-prop",
+        "genre_affinity": "any"
+      }
     }
   ]
 }
