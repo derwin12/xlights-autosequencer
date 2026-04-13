@@ -9,10 +9,15 @@ import os
 import subprocess
 from pathlib import Path
 
-# Path to the .venv-vamp Python interpreter (repo root / .venv-vamp / bin / python)
-# This file lives at src/analyzer/capabilities.py → repo root is 2 levels up.
+# Path to the .venv-vamp Python interpreter.
+# Prefer XLIGHT_VENV_VAMP env var (set by devcontainer to /home/node/.venv-vamp/bin/python)
+# so it survives the workspace bind mount. Falls back to repo-relative path for local dev.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_VAMP_PYTHON = _REPO_ROOT / ".venv-vamp" / "bin" / "python"
+_VAMP_PYTHON = (
+    Path(os.environ["XLIGHT_VENV_VAMP"])
+    if os.environ.get("XLIGHT_VENV_VAMP")
+    else _REPO_ROOT / ".venv-vamp" / "bin" / "python"
+)
 
 
 def _probe_venv_vamp() -> dict[str, bool]:

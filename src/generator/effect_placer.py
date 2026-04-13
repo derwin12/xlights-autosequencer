@@ -18,6 +18,7 @@ from src.generator.chord_colors import (
 )
 from src.generator.models import (
     FRAME_INTERVAL_MS,
+    DurationTarget,
     EffectPlacement,
     SectionAssignment,
     SectionEnergy,
@@ -162,6 +163,64 @@ def compute_music_sparkles(energy_score: int, effect_name: str, rng: random.Rand
     return 0
 
 
+# BPM anchor points for duration scaling
+_DURATION_BPM_SLOW = 80.0    # BPM at or below this → 3000ms base
+_DURATION_BPM_FAST = 140.0   # BPM at or above this → 500ms base
+_DURATION_MS_SLOW = 3000     # Target duration at slow anchor
+_DURATION_MS_FAST = 500      # Target duration at fast anchor
+_DURATION_MIN_MS = 250       # Hard floor (never shorter than this)
+_DURATION_MAX_MS = 8000      # Hard ceiling for non-sustained effects
+
+
+def compute_duration_target(bpm: float, energy_score: int) -> DurationTarget:
+    """Compute a target duration range for a section based on BPM and energy.
+
+    Formula:
+    - BPM <= 80:  base = 3000ms
+    - BPM >= 140: base = 500ms
+    - BPM 80-140: linear interpolation
+    - Energy multiplier: 1.3 - (energy / 100) * 0.6  (range 0.7-1.3)
+    - Clamp final target to [250, 8000]ms
+    """
+    clamped_bpm = max(_DURATION_BPM_SLOW, min(_DURATION_BPM_FAST, bpm))
+    t = (clamped_bpm - _DURATION_BPM_SLOW) / (_DURATION_BPM_FAST - _DURATION_BPM_SLOW)
+    base_ms = _DURATION_MS_SLOW + t * (_DURATION_MS_FAST - _DURATION_MS_SLOW)
+
+    energy_multiplier = 1.3 - (energy_score / 100.0) * 0.6
+    target = max(_DURATION_MIN_MS, min(_DURATION_MAX_MS, round(base_ms * energy_multiplier)))
+
+    return DurationTarget(
+        min_ms=max(_DURATION_MIN_MS, target // 2),
+        target_ms=target,
+        max_ms=min(_DURATION_MAX_MS, target * 2),
+    )
+
+
+def compute_scaled_fades(duration_ms: int) -> tuple[int, int]:
+    """Compute symmetric fade-in/fade-out times proportional to effect duration.
+
+    Rules:
+    - duration < 500ms:   0ms fades (crisp cuts)
+    - duration 500-4000ms: 8% of duration, clamped to [50, 500]ms
+    - duration > 4000ms:  10% of duration, clamped to [200, 2000]ms
+    - Combined fades never exceed 40% of duration
+    """
+    if duration_ms < 500:
+        return 0, 0
+
+    if duration_ms <= 4000:
+        fade = max(50, min(500, round(duration_ms * 0.08)))
+    else:
+        fade = max(200, min(2000, round(duration_ms * 0.10)))
+
+    # Ensure combined fades <= 40% of duration
+    max_each = int(duration_ms * 0.20)  # 20% each = 40% combined
+    fade = min(fade, max_each)
+
+    return fade, fade
+
+
+
 def _build_effect_pool(
     effect_library: EffectLibrary,
     exclude: set[str] | None = None,
@@ -294,6 +353,8 @@ def place_effects(
     working_set: WorkingSet | None = None,
     focused_vocabulary: bool = False,
     palette_restraint: bool = False,
+    duration_scaling: bool = False,
+    bpm: float = 120.0,
 ) -> dict[str, list[EffectPlacement]]:
     """Place effects from theme layers onto power groups, aligned to timing tracks.
 
@@ -426,6 +487,8 @@ def place_effects(
                         danceability=danceability,
                         chord_weight=chord_weight,
                         variant_library=None,  # already resolved
+                        duration_scaling=duration_scaling,
+                        bpm=bpm,
                     )
                     # Override params from variant
                     for p in rot_placements:
@@ -471,6 +534,8 @@ def place_effects(
                             danceability=danceability,
                             chord_weight=chord_weight,
                             variant_library=variant_library,
+                            duration_scaling=duration_scaling,
+                            bpm=bpm,
                         )
                         if rot_placements:
                             result.setdefault(group.name, []).extend(rot_placements)
@@ -494,6 +559,8 @@ def place_effects(
                                 danceability=danceability,
                                 chord_weight=chord_weight,
                                 variant_library=variant_library,
+                                duration_scaling=duration_scaling,
+                                bpm=bpm,
                             )
                             if rot_placements:
                                 result.setdefault(group.name, []).extend(rot_placements)
@@ -561,6 +628,8 @@ def place_effects(
                     chord_weight=chord_weight,
                     variant_library=variant_library,
                     bar_parity=bar_parity,
+                    duration_scaling=duration_scaling,
+                    bpm=bpm,
                 )
                 if placements:
                     result.setdefault(group.name, []).extend(placements)
@@ -667,6 +736,8 @@ def _place_effect_on_group(
     chord_weight: float = 0.4,
     variant_library=None,
     bar_parity: int | None = None,
+    duration_scaling: bool = False,
+    bpm: float = 120.0,
 ) -> list[EffectPlacement]:
     """Create effect placement instances for a group within a section.
 
@@ -690,16 +761,62 @@ def _place_effect_on_group(
     # Resolve palette: blend with chord colors if available
     resolved_palette = _resolve_palette(palette, chord_marks, tension_curve, start_ms, end_ms, chord_weight)
 
+    # Duration scaling: for standard effects, subdivide by BPM and energy target.
+    # Sustained effects (On, Color Wash, etc.) always span full sections.
+    # Accent effects (Shockwave, Strobe, etc.) always use beat placement.
+    duration_behavior = getattr(effect_def, "duration_behavior", "standard")
+    if duration_scaling and bar_parity is None:
+        if duration_behavior == "sustained":
+            placements = [_make_placement(
+                effect_def, group.name, start_ms, end_ms,
+                params, resolved_palette, layer.blend_mode, "section",
+                direction_cycle=direction_cycle,
+            )]
+            if duration_scaling:
+                fade_in, fade_out = compute_scaled_fades(end_ms - start_ms)
+                for p in placements:
+                    p.fade_in_ms = fade_in
+                    p.fade_out_ms = fade_out
+            return placements
+        elif duration_behavior == "accent":
+            accent_placements = _place_per_beat(
+                effect_def, group.name, section, hierarchy,
+                params, resolved_palette, layer.blend_mode,
+                chord_marks=chord_marks, tension_curve=tension_curve,
+                danceability=danceability, chord_weight=chord_weight,
+                direction_cycle=direction_cycle,
+            )
+            # Drop edge-case placements created by frame-alignment at section ends
+            return [p for p in accent_placements if p.end_ms - p.start_ms >= _DURATION_MIN_MS]
+        else:  # standard
+            target = compute_duration_target(bpm, section.energy_score)
+            placements = _place_by_duration(
+                effect_def, group.name, section, hierarchy, target,
+                params, resolved_palette, layer.blend_mode,
+                chord_marks=chord_marks, tension_curve=tension_curve,
+                chord_weight=chord_weight, direction_cycle=direction_cycle,
+            )
+            for p in placements:
+                fade_in, fade_out = compute_scaled_fades(p.end_ms - p.start_ms)
+                p.fade_in_ms = fade_in
+                p.fade_out_ms = fade_out
+            return placements
+
     # When bar_parity is active, force bar-based placement so the parity
     # filter can alternate which bars this group is active on.
     if bar_parity is not None:
-        return _place_per_bar(
+        parity_placements = _place_per_bar(
             effect_def, group.name, section, hierarchy,
             params, resolved_palette, layer.blend_mode,
             chord_marks=chord_marks, tension_curve=tension_curve,
             chord_weight=chord_weight, direction_cycle=direction_cycle,
             bar_parity=bar_parity,
         )
+        if duration_scaling:
+            parity_placements = [
+                p for p in parity_placements if p.end_ms - p.start_ms >= _DURATION_MIN_MS
+            ]
+        return parity_placements
 
     if duration_type == "section":
         return [_make_placement(
@@ -917,6 +1034,112 @@ def _place_per_trigger(
             params, palette, blend_mode, "trigger",
             instance_index=i, direction_cycle=direction_cycle,
         ))
+    return placements
+
+
+def _place_by_duration(
+    effect_def: EffectDefinition,
+    group_name: str,
+    section: SectionEnergy,
+    hierarchy: HierarchyResult,
+    target: DurationTarget,
+    params: dict[str, Any],
+    palette: list[str],
+    blend_mode: str,
+    chord_marks: list[TimingMark] | None = None,
+    tension_curve: list[tuple[int, int]] | None = None,
+    chord_weight: float = 0.4,
+    direction_cycle: dict | None = None,
+) -> list[EffectPlacement]:
+    """Place effects subdivided to approximate a target duration.
+
+    Uses bar marks as subdivision boundaries. When target duration is shorter
+    than the bar length, bars are subdivided into equal segments. When target
+    is longer than a bar, bars are merged until the target is hit.
+    """
+    bars_track = hierarchy.bars
+    section_start = section.start_ms
+    section_end = section.end_ms
+
+    # Collect candidate boundaries from bar marks
+    if bars_track is not None:
+        marks = _marks_in_range(bars_track.marks, section_start, section_end)
+        boundaries = [m.time_ms for m in marks]
+    else:
+        boundaries = []
+
+    # Always include section endpoints
+    if not boundaries or boundaries[0] > section_start:
+        boundaries.insert(0, section_start)
+    if boundaries[-1] < section_end:
+        boundaries.append(section_end)
+
+    placements = []
+    instance_idx = 0
+
+    for i in range(len(boundaries) - 1):
+        seg_start = boundaries[i]
+        seg_end = boundaries[i + 1]
+        seg_dur = seg_end - seg_start
+
+        if seg_dur <= 0:
+            continue
+
+        # If segment is close to target, place as-is
+        if target.min_ms <= seg_dur <= target.max_ms:
+            seg_palette = _resolve_palette(
+                palette, chord_marks, tension_curve, seg_start, seg_end, chord_weight
+            )
+            placements.append(_make_placement(
+                effect_def, group_name, seg_start, seg_end,
+                params, seg_palette, blend_mode, "bar",
+                instance_index=instance_idx, direction_cycle=direction_cycle,
+            ))
+            instance_idx += 1
+
+        # Segment much longer than target — subdivide
+        elif seg_dur > target.max_ms:
+            n_splits = max(2, round(seg_dur / target.target_ms))
+            split_dur = seg_dur // n_splits
+            for j in range(n_splits):
+                sub_start = seg_start + j * split_dur
+                sub_end = seg_start + (j + 1) * split_dur if j < n_splits - 1 else seg_end
+                if sub_end - sub_start < target.min_ms:
+                    continue
+                sub_palette = _resolve_palette(
+                    palette, chord_marks, tension_curve, sub_start, sub_end, chord_weight
+                )
+                placements.append(_make_placement(
+                    effect_def, group_name, sub_start, sub_end,
+                    params, sub_palette, blend_mode, "bar",
+                    instance_index=instance_idx, direction_cycle=direction_cycle,
+                ))
+                instance_idx += 1
+
+        # Segment shorter than minimum — still place if it meets the hard floor
+        elif seg_dur >= _DURATION_MIN_MS:
+            seg_palette = _resolve_palette(
+                palette, chord_marks, tension_curve, seg_start, seg_end, chord_weight
+            )
+            placements.append(_make_placement(
+                effect_def, group_name, seg_start, seg_end,
+                params, seg_palette, blend_mode, "bar",
+                instance_index=instance_idx, direction_cycle=direction_cycle,
+            ))
+            instance_idx += 1
+        # else: segment too short — skip
+
+    # Fallback: if no placements generated, place the whole section
+    if not placements:
+        seg_palette = _resolve_palette(
+            palette, chord_marks, tension_curve, section_start, section_end, chord_weight
+        )
+        placements.append(_make_placement(
+            effect_def, group_name, section_start, section_end,
+            params, seg_palette, blend_mode, "section",
+            direction_cycle=direction_cycle,
+        ))
+
     return placements
 
 

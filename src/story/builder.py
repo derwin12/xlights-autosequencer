@@ -22,6 +22,16 @@ from src.story.stem_curves import extract_stem_curves
 
 SCHEMA_VERSION = "1.0.0"
 
+
+def _portable_audio_path(audio_path: str | Path) -> str:
+    """Return a show-dir-relative path for storage in story JSON.
+
+    Falls back to the absolute path string if the show dir is not known or
+    the audio file lives outside the show dir.
+    """
+    from src.paths import to_show_relative
+    return to_show_relative(audio_path)
+
 # ── Genius label → our role vocabulary ────────────────────────────────────────
 
 _GENIUS_ROLE_MAP = {
@@ -85,7 +95,11 @@ def _try_genius_sections(
     import subprocess as _sp
 
     repo_root = Path(__file__).resolve().parents[2]
-    vamp_python = repo_root / ".venv-vamp" / "bin" / "python"
+    vamp_python = (
+        Path(os.environ["XLIGHT_VENV_VAMP"])
+        if os.environ.get("XLIGHT_VENV_VAMP")
+        else repo_root / ".venv-vamp" / "bin" / "python"
+    )
     if not vamp_python.exists():
         return None
 
@@ -541,7 +555,7 @@ def build_song_story(hierarchy: dict, audio_path: str) -> dict:
         "song": {
             "title": title,
             "artist": artist,
-            "file": str(audio_path),
+            "file": _portable_audio_path(audio_path),
             "source_hash": source_hash,
             "duration_seconds": round(duration_seconds, 3),
             "duration_formatted": duration_formatted,

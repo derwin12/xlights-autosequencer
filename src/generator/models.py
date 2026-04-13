@@ -118,6 +118,15 @@ class XsqDocument:
 
 
 @dataclass
+class DurationTarget:
+    """Target duration range for a section, derived from BPM and energy."""
+
+    min_ms: int    # Minimum allowed effect duration
+    target_ms: int # Ideal effect duration for this section
+    max_ms: int    # Maximum before subdividing further
+
+
+@dataclass
 class WorkingSetEntry:
     """A single effect in a theme's working set with its selection weight."""
 
@@ -154,6 +163,7 @@ class GenerationConfig:
     focused_vocabulary: bool = True     # Derive weighted working set per theme (Phase 1)
     embrace_repetition: bool = True     # Remove intra-section dedup, relax cross-section penalty (Phase 1)
     palette_restraint: bool = True      # Trim active palette colors to 2-4 based on energy/tier
+    duration_scaling: bool = True       # Scale effect durations by BPM and section energy
 
     _VALID_CURVES_MODES = frozenset({"all", "brightness", "speed", "color", "none"})
 

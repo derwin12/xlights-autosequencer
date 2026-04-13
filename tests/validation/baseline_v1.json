@@ -4,9 +4,9 @@
     {
       "scenario_name": "pop_anthem",
       "scores": {
-        "beat_alignment": 100.0,
-        "energy_tracking": 50.0,
-        "effect_variety": 18.5,
+        "beat_alignment": 89.3,
+        "energy_tracking": 72.6,
+        "effect_variety": 18.0,
         "theme_coherence": 100.0,
         "temporal_coverage": 100.0,
         "transition_quality": 100.0,
@@ -14,14 +14,14 @@
         "repetition_avoidance": 100.0,
         "color_usage": 100.0
       },
-      "overall": 78.0
+      "overall": 79.3
     },
     {
       "scenario_name": "christmas_ballad",
       "scores": {
         "beat_alignment": 100.0,
-        "energy_tracking": 33.9,
-        "effect_variety": 20.9,
+        "energy_tracking": 23.2,
+        "effect_variety": 20.5,
         "theme_coherence": 100.0,
         "temporal_coverage": 100.0,
         "transition_quality": 100.0,
@@ -29,14 +29,14 @@
         "repetition_avoidance": 100.0,
         "color_usage": 100.0
       },
-      "overall": 76.0
+      "overall": 74.8
     },
     {
       "scenario_name": "edm_banger",
       "scores": {
-        "beat_alignment": 100.0,
-        "energy_tracking": 75.0,
-        "effect_variety": 18.4,
+        "beat_alignment": 64.8,
+        "energy_tracking": 76.2,
+        "effect_variety": 16.5,
         "theme_coherence": 100.0,
         "temporal_coverage": 100.0,
         "transition_quality": 100.0,
@@ -44,14 +44,14 @@
         "repetition_avoidance": 100.0,
         "color_usage": 100.0
       },
-      "overall": 80.8
+      "overall": 76.8
     },
     {
       "scenario_name": "orchestral_piece",
       "scores": {
         "beat_alignment": 100.0,
-        "energy_tracking": 20.0,
-        "effect_variety": 20.8,
+        "energy_tracking": 31.4,
+        "effect_variety": 20.4,
         "theme_coherence": 100.0,
         "temporal_coverage": 100.0,
         "transition_quality": 100.0,
@@ -59,14 +59,14 @@
         "repetition_avoidance": 100.0,
         "color_usage": 100.0
       },
-      "overall": 74.9
+      "overall": 76.1
     },
     {
       "scenario_name": "short_jingle",
       "scores": {
         "beat_alignment": 100.0,
         "energy_tracking": 75.0,
-        "effect_variety": 26.8,
+        "effect_variety": 25.8,
         "theme_coherence": 100.0,
         "temporal_coverage": 100.0,
         "transition_quality": 100.0,
@@ -74,7 +74,7 @@
         "repetition_avoidance": 100.0,
         "color_usage": 100.0
       },
-      "overall": 82.2
+      "overall": 82.1
     }
   ]
 }

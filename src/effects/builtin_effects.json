@@ -91,7 +91,8 @@
         }
       ],
       "layer_role": "standalone",
-      "duration_type": "section"
+      "duration_type": "section",
+      "duration_behavior": "sustained"
     },
     "Off": {
       "name": "Off",
@@ -162,7 +163,8 @@
       },
       "analysis_mappings": [],
       "layer_role": "standalone",
-      "duration_type": "section"
+      "duration_type": "section",
+      "duration_behavior": "sustained"
     },
     "Color Wash": {
       "name": "Color Wash",
@@ -287,7 +289,8 @@
         }
       ],
       "layer_role": "standalone",
-      "duration_type": "section"
+      "duration_type": "section",
+      "duration_behavior": "sustained"
     },
     "Fill": {
       "name": "Fill",
@@ -407,7 +410,8 @@
         }
       ],
       "layer_role": "either",
-      "duration_type": "section"
+      "duration_type": "section",
+      "duration_behavior": "sustained"
     },
     "Shimmer": {
       "name": "Shimmer",
@@ -589,7 +593,8 @@
         }
       ],
       "layer_role": "either",
-      "duration_type": "trigger"
+      "duration_type": "trigger",
+      "duration_behavior": "accent"
     },
     "Twinkle": {
       "name": "Twinkle",
@@ -2449,7 +2454,8 @@
         }
       ],
       "layer_role": "standalone",
-      "duration_type": "trigger"
+      "duration_type": "trigger",
+      "duration_behavior": "accent"
     },
     "Spirals": {
       "name": "Spirals",
@@ -2669,7 +2675,12 @@
           "default": "None",
           "min": null,
           "max": null,
-          "choices": ["None", "Color 1", "Color 2", "Rainbow"],
+          "choices": [
+            "None",
+            "Color 1",
+            "Color 2",
+            "Rainbow"
+          ],
           "description": "Fill color beneath the wave",
           "supports_value_curve": false
         },
@@ -3106,7 +3117,8 @@
         }
       ],
       "layer_role": "standalone",
-      "duration_type": "trigger"
+      "duration_type": "trigger",
+      "duration_behavior": "accent"
     },
     "Liquid": {
       "name": "Liquid",
@@ -4760,7 +4772,8 @@
         }
       ],
       "layer_role": "standalone",
-      "duration_type": "section"
+      "duration_type": "section",
+      "duration_behavior": "sustained"
     },
     "VU Meter": {
       "name": "VU Meter",
@@ -4931,7 +4944,8 @@
         }
       ],
       "layer_role": "standalone",
-      "duration_type": "section"
+      "duration_type": "section",
+      "duration_behavior": "sustained"
     },
     "Text": {
       "name": "Text",

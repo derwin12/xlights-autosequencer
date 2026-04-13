@@ -180,16 +180,21 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
             # Register in library (best-effort)
             try:
                 from src.library import Library, LibraryEntry
+                from src.paths import to_show_relative
+                abs_src = str(mp3.resolve())
+                abs_ana = str(Path(out_path).resolve())
                 lib_entry = LibraryEntry(
                     source_hash=result.source_hash,
-                    source_file=str(mp3.resolve()),
+                    source_file=abs_src,
                     filename=mp3.name,
-                    analysis_path=str(Path(out_path).resolve()),
+                    analysis_path=abs_ana,
                     duration_ms=result.duration_ms,
                     estimated_tempo_bpm=result.estimated_bpm,
                     track_count=len(result.beats.marks) if result.beats else 0,
                     stem_separation=bool(result.stems_available),
                     analyzed_at=int(time.time() * 1000),
+                    relative_source_file=to_show_relative(abs_src),
+                    relative_analysis_path=to_show_relative(abs_ana),
                 )
                 Library().upsert(lib_entry)
             except Exception:
@@ -1254,10 +1259,14 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
 
         md5 = layout_md5(layout_path)
 
-        # Load or create edits for this layout
+        # Load or create edits for this layout.
+        # Always update layout_path to the current container path — saved edits may
+        # contain a stale host path (e.g. /Users/rob/xLights/...) from a previous session.
         if md5 not in _grouper_edits:
             saved = load_edits(layout_path, all_prop_names)
-            _grouper_edits[md5] = saved if saved is not None else new_edits(layout_path)
+            edits_obj = saved if saved is not None else new_edits(layout_path)
+            edits_obj.layout_path = str(layout_path)
+            _grouper_edits[md5] = edits_obj
 
         edits = _grouper_edits[md5]
         has_saved_edits = any([edits.moves, edits.added_groups, edits.removed_groups, edits.renamed_groups])

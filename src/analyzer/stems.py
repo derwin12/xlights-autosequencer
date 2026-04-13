@@ -158,8 +158,13 @@ class StemSeparator:
         import subprocess as _sp
         import tempfile
 
+        import os as _os
         repo_root = Path(__file__).resolve().parents[2]
-        vamp_python = repo_root / ".venv-vamp" / "bin" / "python"
+        vamp_python = (
+            Path(_os.environ["XLIGHT_VENV_VAMP"])
+            if _os.environ.get("XLIGHT_VENV_VAMP")
+            else repo_root / ".venv-vamp" / "bin" / "python"
+        )
         if not vamp_python.exists():
             raise RuntimeError(
                 ".venv-vamp not found — cannot run demucs. Run ./scripts/install.sh"

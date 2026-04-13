@@ -375,9 +375,11 @@ USER root
 RUN chmod +x /usr/local/bin/xlights-render.sh /usr/local/bin/xlights-check.sh
 USER node
 
-# Create .venv-vamp symlink for the subprocess runner
-RUN mkdir -p /workspace/.venv-vamp/bin && \
-  ln -sf $(which python3) /workspace/.venv-vamp/bin/python
+# Create .venv-vamp outside the workspace bind mount so it survives container restarts.
+# The XLIGHT_VENV_VAMP env var (set in devcontainer.json containerEnv) points the
+# subprocess runner here instead of looking inside /workspace.
+RUN mkdir -p /home/node/.venv-vamp/bin && \
+  ln -sf $(which python3) /home/node/.venv-vamp/bin/python
 
 # Copy and set up firewall script
 COPY init-firewall.sh /usr/local/bin/

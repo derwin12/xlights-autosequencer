@@ -29,19 +29,33 @@ class LibraryEntry:
 
 
 def _entry_from_dict(d: dict) -> LibraryEntry:
-    """Deserialise a raw dict to LibraryEntry, tolerating missing optional fields."""
+    """Deserialise a raw dict to LibraryEntry, tolerating missing optional fields.
+
+    ``source_file`` and ``analysis_path`` are resolved to absolute paths for
+    the current environment: relative fields take priority (cross-env portable),
+    falling back to the stored absolute path (translated if from another env).
+    """
+    from src.paths import resolve_show_path
+
+    rel_src = d.get("relative_source_file")
+    rel_ana = d.get("relative_analysis_path")
+
+    # Prefer relative (portable) over absolute (may be stale/foreign)
+    source_file = str(resolve_show_path(rel_src if rel_src else d["source_file"]))
+    analysis_path = str(resolve_show_path(rel_ana if rel_ana else d["analysis_path"]))
+
     return LibraryEntry(
         source_hash=d["source_hash"],
-        source_file=d["source_file"],
+        source_file=source_file,
         filename=d["filename"],
-        analysis_path=d["analysis_path"],
+        analysis_path=analysis_path,
         duration_ms=d["duration_ms"],
         estimated_tempo_bpm=d["estimated_tempo_bpm"],
         track_count=d["track_count"],
         stem_separation=d["stem_separation"],
         analyzed_at=d["analyzed_at"],
-        relative_source_file=d.get("relative_source_file"),
-        relative_analysis_path=d.get("relative_analysis_path"),
+        relative_source_file=rel_src,
+        relative_analysis_path=rel_ana,
         title=d.get("title"),
         artist=d.get("artist"),
     )

@@ -54,7 +54,8 @@
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
     "XLIGHTS_HOST_USER": "${localEnv:USER}",
-    "XLIGHTS_HOST_SHOW_DIR": "${localEnv:HOME}/xlights"
+    "XLIGHTS_HOST_SHOW_DIR": "${localEnv:HOME}/xlights",
+    "XLIGHT_VENV_VAMP": "/home/node/.venv-vamp/bin/python"
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",

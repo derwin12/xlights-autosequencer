@@ -1,6 +1,6 @@
 # XLight AutoSequencer Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-09
+Auto-generated from all feature plans. Last updated: 2026-04-13
 
 ## Active Technologies
 - Python 3.11+ + demucs (new), vamp, librosa, madmom, click, Flask (008-stem-separation)
@@ -41,6 +41,10 @@ Auto-generated from all feature plans. Last updated: 2026-04-09
 - `~/.xlight/settings.json` (layout path), in-memory `_jobs` dict (generation state), `tempfile.mkdtemp()` (generated `.xsq` files) (034-library-sequence-gen)
 - Python 3.11+ + click 8+ (CLI), Flask 3+ (web server), existing generator pipeline (036-focused-effects-repetition)
 - JSON files (theme definitions, effect definitions, variant library) (036-focused-effects-repetition)
+- Python 3.11+ + Flask 3+ (web server), click 8+ (CLI), existing generator pipeline (038-palette-restraint)
+- JSON files (theme definitions, variant library), XML files (.xsq output) (038-palette-restraint)
+- Python 3.11+ + click 8+, Flask 3+, existing generator pipeline (037-duration-scaling)
+- JSON files (effect definitions, analysis output), XML files (.xsq output) (037-duration-scaling)
 
 - **Language**: Python 3.11+
 - **Audio analysis**: vamp (Python host), librosa 0.10+, madmom 0.16+
@@ -130,9 +134,9 @@ already been tried and why.
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
+- 037-duration-scaling: Added Python 3.11+ + click 8+, Flask 3+, existing generator pipeline
+- 038-palette-restraint: Added Python 3.11+ + Flask 3+ (web server), click 8+ (CLI), existing generator pipeline
 - 036-focused-effects-repetition: Added Python 3.11+ + click 8+ (CLI), Flask 3+ (web server), existing generator pipeline
-- 034-library-sequence-gen: Added Python 3.11+ (backend), Vanilla JavaScript ES2020+ (frontend) + Flask 3+ (web server), existing `src/generator/plan.py` + `src/generator/xsq_writer.py`, `src/library.py` — no new dependencies
-- 033-theme-variant-separation: Added Python 3.11+ (backend), Vanilla JavaScript ES2020+ (frontend) + Flask 3+ (web server), click 8+ (CLI), existing analysis pipeline
   `htdemucs_6s` separates audio into 6 stems (drums, bass, vocals, guitar, piano, other).
   Algorithms route to their preferred stem via `Algorithm.preferred_stem` class attribute.
   Stems are MD5-cached in `.stems/<hash>/` adjacent to the source file. Each `TimingTrack`

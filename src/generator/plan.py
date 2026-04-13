@@ -181,6 +181,8 @@ def build_plan(
             working_set=section_working_set,
             focused_vocabulary=config.focused_vocabulary,
             palette_restraint=config.palette_restraint,
+            duration_scaling=config.duration_scaling,
+            bpm=hierarchy.estimated_bpm,
         )
         assignment.group_effects = group_effects
 
@@ -406,6 +408,8 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
             rotation_plan=rotation_plan,
             section_index=idx,
             palette_restraint=getattr(config, "palette_restraint", True),
+            duration_scaling=getattr(config, "duration_scaling", True),
+            bpm=hierarchy.estimated_bpm,
         )
         assignment.group_effects = group_effects
 

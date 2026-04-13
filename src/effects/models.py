@@ -108,8 +108,9 @@ class EffectDefinition:
     parameters: list[EffectParameter]
     prop_suitability: dict[str, str]
     analysis_mappings: list[AnalysisMapping] = field(default_factory=list)
-    layer_role: str = "standalone"  # standalone, modifier, or either
-    duration_type: str = "section"  # section, bar, beat, or trigger
+    layer_role: str = "standalone"      # standalone, modifier, or either
+    duration_type: str = "section"      # section, bar, beat, or trigger
+    duration_behavior: str = "standard" # standard, sustained, or accent
 
     @classmethod
     def from_dict(cls, data: dict) -> EffectDefinition:
@@ -127,6 +128,7 @@ class EffectDefinition:
             ],
             layer_role=data.get("layer_role", "standalone"),
             duration_type=data.get("duration_type", "section"),
+            duration_behavior=data.get("duration_behavior", "standard"),
         )
 
 

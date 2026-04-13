@@ -138,9 +138,10 @@ class TestToAbsolute:
         assert result == f"{CONTAINER_SHOW}/2024/Christmas/jingle.mp3"
 
     def test_passthrough_on_local_no_show_dir(self):
-        ctx = _ctx_local()
-        # On local with no known show dir, returns the relative path unchanged
-        result = ctx.to_absolute("show/song.mp3")
+        # Simulate a machine where get_show_dir() finds nothing
+        with patch("src.paths.get_show_dir", return_value=None):
+            ctx = _ctx_local()
+            result = ctx.to_absolute("show/song.mp3")
         assert result == "show/song.mp3"
 
 
@@ -324,8 +325,10 @@ class TestLibraryEntryRelativePaths:
 
         entries = lib.all_entries()
         assert len(entries) == 1
-        assert entries[0].source_file == "/new/path/song.mp3"
+        # source_file is resolved via relative_source_file at load time;
+        # the exact absolute path depends on the current show dir
         assert entries[0].relative_source_file == "show/song.mp3"
+        assert entries[0].analyzed_at == 2000  # entry2 replaced entry1
 
 
 # ── Cache fallback ────────────────────────────────────────────────────────────

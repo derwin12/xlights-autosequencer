@@ -82,9 +82,10 @@ def export_path(layout_path: Path) -> Path:
 
 def edits_to_dict(edits: GroupingEdits) -> dict:
     """Serialize GroupingEdits to a JSON-compatible dict."""
+    from src.paths import to_show_relative
     return {
         "layout_md5": edits.layout_md5,
-        "layout_path": edits.layout_path,
+        "layout_path": to_show_relative(edits.layout_path),
         "created_at": edits.created_at,
         "updated_at": edits.updated_at,
         "moves": [
@@ -111,9 +112,10 @@ def edits_to_dict(edits: GroupingEdits) -> dict:
 
 def edits_from_dict(data: dict) -> GroupingEdits:
     """Deserialize GroupingEdits from a JSON-compatible dict."""
+    from src.paths import resolve_show_path
     return GroupingEdits(
         layout_md5=data["layout_md5"],
-        layout_path=data["layout_path"],
+        layout_path=str(resolve_show_path(data["layout_path"])),
         created_at=data["created_at"],
         updated_at=data["updated_at"],
         moves=[

@@ -18,6 +18,33 @@ _session: dict = {
     "edits": None,  # initialized on first edit action
 }
 
+
+def _resolve_audio_path(story: dict) -> Path | None:
+    """Resolve story.song.file to an absolute Path in the current environment.
+
+    Handles:
+    - Show-dir-relative paths (new format): "mp3/song.mp3"
+    - Legacy absolute paths from another environment: "/Users/rob/xLights/..."
+    - Fallback: search adjacent to the story file on disk
+    """
+    from src.paths import resolve_show_path
+
+    raw = story.get("song", {}).get("file", "")
+    if not raw:
+        return None
+
+    p = resolve_show_path(raw)
+    if p.exists():
+        return p
+
+    # Last resort: search adjacent to the story file
+    story_dir = Path(_session.get("story_path", "")).parent
+    for candidate in [story_dir / Path(raw).name, story_dir.parent / Path(raw).name]:
+        if candidate.exists():
+            return candidate
+
+    return p  # return non-existent path; caller emits the error
+
 # Valid section roles (matches lighting_mapper._ROLE_CONFIG keys)
 _VALID_ROLES = {
     "intro", "verse", "pre_chorus", "chorus", "post_chorus",
@@ -116,10 +143,9 @@ def _load_hierarchy(story: dict) -> dict | None:
     """Load the hierarchy JSON for the current song (cached in session)."""
     if "hierarchy" in _session and _session["hierarchy"] is not None:
         return _session["hierarchy"]
-    audio_path = story.get("song", {}).get("file", "")
-    if not audio_path:
+    audio_p = _resolve_audio_path(story)
+    if not audio_p:
         return None
-    audio_p = Path(audio_path)
     # Try standard hierarchy path locations
     for candidate in [
         audio_p.parent / audio_p.stem / f"{audio_p.stem}_hierarchy.json",
@@ -346,25 +372,11 @@ def story_audio():
     if story is None:
         return jsonify({"error": "No story loaded. Call /story/load first."}), 404
 
-    audio_path_str = story.get("song", {}).get("file", "")
-    if not audio_path_str:
+    audio_path = _resolve_audio_path(story)
+    if audio_path is None:
         return jsonify({"error": "Story has no audio file path (song.file is empty)"}), 404
-
-    audio_path = Path(audio_path_str)
     if not audio_path.exists():
-        # Try to find the audio file relative to the story file location
-        story_dir = Path(_session.get("story_path", "")).parent
-        # Try same directory as the story
-        candidate = story_dir / audio_path.name
-        if candidate.exists():
-            audio_path = candidate
-        else:
-            # Try parent directory of the story
-            candidate = story_dir.parent / audio_path.name
-            if candidate.exists():
-                audio_path = candidate
-    if not audio_path.exists():
-        return jsonify({"error": f"Audio file not found: {audio_path_str}"}), 404
+        return jsonify({"error": f"Audio file not found: {story.get('song', {}).get('file', '')}"}), 404
 
     # Detect MIME type by extension
     mime = "audio/mpeg"
@@ -409,7 +421,8 @@ def story_stem_audio(stem_name: str):
         return story_audio()
 
     # Locate stems directory — check several common patterns
-    audio_path_str = story.get("song", {}).get("file", "")
+    _audio_p = _resolve_audio_path(story)
+    audio_path_str = str(_audio_p) if _audio_p else story.get("song", {}).get("file", "")
     story_path_str = _session.get("story_path", "")
     source_hash = story.get("song", {}).get("source_hash", "")
 

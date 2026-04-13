@@ -433,8 +433,13 @@ class MatrixSweepRunner:
         log.info("Local algorithms: %d available", len(algo_map))
 
         # Vamp subprocess setup
+        import os as _os
         _REPO_ROOT = Path(__file__).resolve().parents[2]
-        _VAMP_PYTHON = _REPO_ROOT / ".venv-vamp" / "bin" / "python"
+        _VAMP_PYTHON = (
+            Path(_os.environ["XLIGHT_VENV_VAMP"])
+            if _os.environ.get("XLIGHT_VENV_VAMP")
+            else _REPO_ROOT / ".venv-vamp" / "bin" / "python"
+        )
         _VAMP_RUNNER = Path(__file__).with_name("vamp_runner.py")
         vamp_available = _VAMP_PYTHON.exists()
 
