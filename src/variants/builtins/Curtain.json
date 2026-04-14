@@ -10,14 +10,17 @@
         "E_CHOICE_Curtain_Edge": "center",
         "E_CHOICE_Curtain_Effect": "close",
         "E_SLIDER_Curtain_Swag": 0,
-        "E_TEXTCTRL_Curtain_Speed": 1.0
+        "E_SLIDER_Curtain_Speed": 1.0
       },
       "tags": {
         "tier_affinity": "mid",
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["outro", "bridge"],
+        "section_roles": [
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -31,14 +34,17 @@
         "E_CHOICE_Curtain_Edge": "center",
         "E_CHOICE_Curtain_Effect": "open",
         "E_SLIDER_Curtain_Swag": 0,
-        "E_TEXTCTRL_Curtain_Speed": 8.0
+        "E_SLIDER_Curtain_Speed": 8.0
       },
       "tags": {
         "tier_affinity": "mid",
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "build"],
+        "section_roles": [
+          "chorus",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -52,14 +58,17 @@
         "E_CHOICE_Curtain_Edge": "center",
         "E_CHOICE_Curtain_Effect": "open",
         "E_SLIDER_Curtain_Swag": 0,
-        "E_TEXTCTRL_Curtain_Speed": 1.0
+        "E_SLIDER_Curtain_Speed": 1.0
       },
       "tags": {
         "tier_affinity": "mid",
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["intro", "build"],
+        "section_roles": [
+          "intro",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -73,14 +82,17 @@
         "E_CHOICE_Curtain_Edge": "middle",
         "E_CHOICE_Curtain_Effect": "open then close",
         "E_SLIDER_Curtain_Swag": 0,
-        "E_TEXTCTRL_Curtain_Speed": 0.2
+        "E_SLIDER_Curtain_Speed": 0.2
       },
       "tags": {
         "tier_affinity": "mid",
         "energy_level": "medium",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["chorus", "drop"],
+        "section_roles": [
+          "chorus",
+          "drop"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -94,14 +106,17 @@
         "E_CHOICE_Curtain_Edge": "middle",
         "E_CHOICE_Curtain_Effect": "open then close",
         "E_SLIDER_Curtain_Swag": 0,
-        "E_TEXTCTRL_Curtain_Speed": 1.0
+        "E_SLIDER_Curtain_Speed": 1.0
       },
       "tags": {
         "tier_affinity": "mid",
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -115,14 +130,18 @@
         "E_CHOICE_Curtain_Edge": "top",
         "E_CHOICE_Curtain_Effect": "close",
         "E_SLIDER_Curtain_Swag": 3,
-        "E_TEXTCTRL_Curtain_Speed": 1.0
+        "E_SLIDER_Curtain_Speed": 1.0
       },
       "tags": {
         "tier_affinity": "mid",
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["outro", "bridge", "intro"],
+        "section_roles": [
+          "outro",
+          "bridge",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

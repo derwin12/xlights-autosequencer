@@ -46,9 +46,17 @@ class TestRestrainPalette:
         result = restrain_palette(two_color, energy_score=80, tier=8)
         assert len(result) == 2
 
-    def test_returns_first_n_colors_in_order(self):
+    def test_returns_spread_colors_not_adjacent(self):
+        # Spread selection: for an 8-color palette with target=2, should pick
+        # index 0 (first) and index 7 (last), not two adjacent colors at the start.
         result = restrain_palette(SAMPLE_PALETTE, energy_score=0, tier=8)
-        assert result == SAMPLE_PALETTE[:2]
+        assert result == [SAMPLE_PALETTE[0], SAMPLE_PALETTE[-1]]
+
+    def test_spread_includes_first_and_last(self):
+        # For any target >= 2, spread always anchors at both ends of the palette.
+        result = restrain_palette(SAMPLE_PALETTE, energy_score=50, tier=8)
+        assert result[0] == SAMPLE_PALETTE[0]
+        assert result[-1] == SAMPLE_PALETTE[-1]
 
     def test_never_returns_empty(self):
         result = restrain_palette(["#FF0000"], energy_score=0, tier=1)

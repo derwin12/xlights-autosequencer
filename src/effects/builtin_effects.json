@@ -175,7 +175,7 @@
       "parameters": [
         {
           "name": "ColorWash_Cycles",
-          "storage_name": "E_TEXTCTRL_ColorWash_Cycles",
+          "storage_name": "E_SLIDER_ColorWash_Cycles",
           "widget_type": "textctrl",
           "value_type": "float",
           "default": 1.0,
@@ -247,7 +247,7 @@
         },
         {
           "name": "Color_Wash_Cycles",
-          "storage_name": "E_SLIDER_Color Wash_Cycles",
+          "storage_name": "E_SLIDER_ColorWash_Cycles",
           "widget_type": "slider",
           "value_type": "int",
           "default": 1,
@@ -258,7 +258,7 @@
         },
         {
           "name": "Color_Wash_Shimmer",
-          "storage_name": "E_CHECKBOX_Color Wash_Shimmer",
+          "storage_name": "E_CHECKBOX_ColorWash_Shimmer",
           "widget_type": "checkbox",
           "value_type": "bool",
           "default": 0,
@@ -434,7 +434,7 @@
         },
         {
           "name": "Shimmer_Cycles",
-          "storage_name": "E_TEXTCTRL_Shimmer_Cycles",
+          "storage_name": "E_SLIDER_Shimmer_Cycles",
           "widget_type": "textctrl",
           "value_type": "float",
           "default": 1.0,
@@ -538,28 +538,6 @@
           "choices": null,
           "description": "Trigger strobe flashes from audio level (music reactive)",
           "supports_value_curve": false
-        },
-        {
-          "name": "Strobe_Number",
-          "storage_name": "E_SLIDER_Strobe_Number",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 1,
-          "min": 1,
-          "max": 5,
-          "description": "Number of simultaneous strobe sources",
-          "supports_value_curve": true
-        },
-        {
-          "name": "Strobe_Speed",
-          "storage_name": "E_SLIDER_Strobe_Speed",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 30,
-          "min": 0,
-          "max": 100,
-          "description": "Flash rate of the strobe effect",
-          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -711,7 +689,7 @@
         },
         {
           "name": "Bars_Cycles",
-          "storage_name": "E_TEXTCTRL_Bars_Cycles",
+          "storage_name": "E_SLIDER_Bars_Cycles",
           "widget_type": "textctrl",
           "value_type": "float",
           "default": 1.0,
@@ -798,7 +776,7 @@
         },
         {
           "name": "Bars_Center",
-          "storage_name": "E_TEXTCTRL_Bars_Center",
+          "storage_name": "E_SLIDER_Bars_Center",
           "widget_type": "slider",
           "value_type": "int",
           "default": 0,
@@ -1008,7 +986,7 @@
         },
         {
           "name": "Circles_Collide",
-          "storage_name": "E_CHECKBOX_Circles_Collide",
+          "storage_name": "E_CHECKBOX_Circles_Bounce",
           "widget_type": "checkbox",
           "value_type": "bool",
           "default": true,
@@ -1157,7 +1135,7 @@
         },
         {
           "name": "Curtain_Speed",
-          "storage_name": "E_TEXTCTRL_Curtain_Speed",
+          "storage_name": "E_SLIDER_Curtain_Speed",
           "widget_type": "textctrl",
           "value_type": "float",
           "default": 1.0,
@@ -1248,7 +1226,7 @@
         },
         {
           "name": "Fan_Radius1",
-          "storage_name": "E_SLIDER_Fan_Radius1",
+          "storage_name": "E_SLIDER_Fan_Start_Radius",
           "widget_type": "slider",
           "value_type": "int",
           "default": 1,
@@ -1260,7 +1238,7 @@
         },
         {
           "name": "Fan_Radius2",
-          "storage_name": "E_SLIDER_Fan_Radius2",
+          "storage_name": "E_SLIDER_Fan_End_Radius",
           "widget_type": "slider",
           "value_type": "int",
           "default": 100,
@@ -2052,7 +2030,7 @@
         },
         {
           "name": "Ripple_Movement_Speed",
-          "storage_name": "E_SLIDER_Ripple_Movement",
+          "storage_name": "E_SLIDER_Ripple_Cycles",
           "widget_type": "slider",
           "value_type": "int",
           "default": 15,
@@ -2399,17 +2377,6 @@
           "choices": null,
           "description": "Number of shockwave expansion cycles during the effect",
           "supports_value_curve": false
-        },
-        {
-          "name": "Shockwave_Speed",
-          "storage_name": "E_SLIDER_Shockwave_Speed",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 50,
-          "min": 0,
-          "max": 100,
-          "description": "Expansion speed of the shockwave ring",
-          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -2501,21 +2468,6 @@
           "supports_value_curve": true
         },
         {
-          "name": "Spirals_Direction",
-          "storage_name": "E_CHOICE_Spirals_Direction",
-          "widget_type": "choice",
-          "value_type": "choice",
-          "default": "Up",
-          "min": null,
-          "max": null,
-          "choices": [
-            "Up",
-            "Down"
-          ],
-          "description": "Vertical movement direction of the spirals",
-          "supports_value_curve": false
-        },
-        {
           "name": "Spirals_3D",
           "storage_name": "E_CHECKBOX_Spirals_3D",
           "widget_type": "checkbox",
@@ -2565,7 +2517,7 @@
         },
         {
           "name": "Spirals_Movement",
-          "storage_name": "E_TEXTCTRL_Spirals_Movement",
+          "storage_name": "E_SLIDER_Spirals_Movement",
           "widget_type": "slider",
           "value_type": "int",
           "default": 10,
@@ -2576,36 +2528,14 @@
           "supports_value_curve": true
         },
         {
-          "name": "Spirals_Direction_Amount",
-          "storage_name": "E_SLIDER_Spirals_Direction",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 0,
-          "min": 0,
-          "max": 1,
-          "description": "Direction of spiral rotation (0=CCW, 1=CW)",
-          "supports_value_curve": true
-        },
-        {
           "name": "Spirals_PaletteRepeat",
-          "storage_name": "E_SLIDER_Spirals_PaletteRepeat",
+          "storage_name": "E_SLIDER_Spirals_Count",
           "widget_type": "slider",
           "value_type": "int",
           "default": 3,
           "min": 1,
           "max": 10,
           "description": "Number of times the color palette repeats along the spiral",
-          "supports_value_curve": true
-        },
-        {
-          "name": "Spirals_Speed",
-          "storage_name": "E_SLIDER_Spirals_Speed",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 10,
-          "min": 0,
-          "max": 100,
-          "description": "Animation speed of the spirals",
           "supports_value_curve": true
         }
       ],
@@ -2710,8 +2640,8 @@
         },
         {
           "name": "Wave_Speed",
-          "storage_name": "E_TEXTCTRL_Wave_Speed",
-          "widget_type": "textctrl",
+          "storage_name": "E_SLIDER_Wave_Speed",
+          "widget_type": "slider",
           "value_type": "int",
           "default": 10,
           "min": 0,
@@ -2773,7 +2703,7 @@
         },
         {
           "name": "Wave_Number_Of_Waves",
-          "storage_name": "E_SLIDER_Wave_Number_Of_Waves",
+          "storage_name": "E_SLIDER_Number_Waves",
           "widget_type": "slider",
           "value_type": "int",
           "default": 2,
@@ -2849,8 +2779,8 @@
         },
         {
           "name": "Fire_GrowthCycles",
-          "storage_name": "E_VALUECURVE_Fire_GrowthCycles",
-          "widget_type": "textctrl",
+          "storage_name": "E_SLIDER_Fire_GrowthCycles",
+          "widget_type": "slider",
           "value_type": "float",
           "default": 0.0,
           "min": 0.0,
@@ -2980,7 +2910,7 @@
         },
         {
           "name": "Fireworks_NumberExplosions",
-          "storage_name": "E_SLIDER_Fireworks_Number_Explosions",
+          "storage_name": "E_SLIDER_Fireworks_Explosions",
           "widget_type": "slider",
           "value_type": "int",
           "default": 1,
@@ -3004,8 +2934,8 @@
         },
         {
           "name": "Fireworks_Gravity",
-          "storage_name": "E_SLIDER_Fireworks_Gravity",
-          "widget_type": "slider",
+          "storage_name": "E_CHECKBOX_Fireworks_Gravity",
+          "widget_type": "checkbox",
           "value_type": "int",
           "default": 1,
           "min": 0,
@@ -3163,8 +3093,8 @@
         },
         {
           "name": "Liquid_Size",
-          "storage_name": "E_TEXTCTRL_Size",
-          "widget_type": "textctrl",
+          "storage_name": "E_SLIDER_Size",
+          "widget_type": "slider",
           "value_type": "int",
           "default": 500,
           "min": 1,
@@ -3388,17 +3318,6 @@
           "choices": null,
           "description": "Mix colors when particles from different sources interact",
           "supports_value_curve": false
-        },
-        {
-          "name": "Liquid_Speed",
-          "storage_name": "E_SLIDER_Liquid_Speed",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 10,
-          "min": 0,
-          "max": 100,
-          "description": "Overall speed of the liquid simulation",
-          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
@@ -3518,7 +3437,7 @@
         },
         {
           "name": "Meteors_XOffset",
-          "storage_name": "E_TEXTCTRL_Meteors_XOffset",
+          "storage_name": "E_SLIDER_Meteors_XOffset",
           "widget_type": "slider",
           "value_type": "int",
           "default": 0,
@@ -3530,7 +3449,7 @@
         },
         {
           "name": "Meteors_YOffset",
-          "storage_name": "E_TEXTCTRL_Meteors_YOffset",
+          "storage_name": "E_SLIDER_Meteors_YOffset",
           "widget_type": "slider",
           "value_type": "int",
           "default": 0,
@@ -3652,18 +3571,6 @@
           "supports_value_curve": true
         },
         {
-          "name": "Snowflakes_Accumulate",
-          "storage_name": "E_CHECKBOX_Snowflakes_Accumulate",
-          "widget_type": "checkbox",
-          "value_type": "bool",
-          "default": false,
-          "min": null,
-          "max": null,
-          "choices": null,
-          "description": "Snowflakes accumulate at the bottom instead of disappearing",
-          "supports_value_curve": false
-        },
-        {
           "name": "Falling",
           "storage_name": "E_CHOICE_Falling",
           "widget_type": "choice",
@@ -3735,18 +3642,15 @@
           "supports_value_curve": true
         },
         {
-          "name": "Tree_Style",
-          "storage_name": "E_CHOICE_Tree_Style",
-          "widget_type": "choice",
-          "value_type": "choice",
-          "default": "pointed",
+          "name": "Tree_ShowLights",
+          "storage_name": "E_CHECKBOX_Tree_ShowLights",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
           "min": null,
           "max": null,
-          "choices": [
-            "pointed",
-            "rounded"
-          ],
-          "description": "Visual style of the tree shape",
+          "choices": null,
+          "description": "When enabled, displays additional twinkling Christmas lights on the tree",
           "supports_value_curve": false
         }
       ],
@@ -4197,26 +4101,15 @@
           ],
           "description": "Chase direction pattern",
           "supports_value_curve": false
-        },
-        {
-          "name": "Single_Strand_Speed",
-          "storage_name": "E_SLIDER_Single Strand_Speed",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 30,
-          "min": 0,
-          "max": 100,
-          "description": "Overall animation speed of the chase",
-          "supports_value_curve": true
         }
       ],
       "prop_suitability": {
-        "matrix": "good",
+        "matrix": "possible",
         "outline": "ideal",
         "arch": "ideal",
         "vertical": "ideal",
-        "tree": "ideal",
-        "radial": "good"
+        "tree": "good",
+        "radial": "possible"
       },
       "analysis_mappings": [
         {
@@ -4518,7 +4411,7 @@
         },
         {
           "name": "Warp_Treatment",
-          "storage_name": "E_CHOICE_Warp_Treatment",
+          "storage_name": "E_CHOICE_Warp_Treatment_APPLYLAST",
           "widget_type": "choice",
           "value_type": "choice",
           "default": "constant",
@@ -4536,8 +4429,8 @@
         },
         {
           "name": "Warp_Cycle_Count",
-          "storage_name": "E_TEXTCTRL_Warp_Cycle_Count",
-          "widget_type": "textctrl",
+          "storage_name": "E_SLIDER_Warp_Cycle_Count",
+          "widget_type": "slider",
           "value_type": "float",
           "default": 1.0,
           "min": 0.0,

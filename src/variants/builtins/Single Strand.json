@@ -408,7 +408,7 @@
       "base_effect": "Single Strand",
       "description": "Fast chase with 5 simultaneous strands. High-speed multi-strand chase for peak energy.",
       "parameter_overrides": {
-        "E_SLIDER_Single Strand_Speed": 50,
+        "E_SLIDER_Chase_Rotations": 18,
         "E_SLIDER_Number_Chases": 5
       },
       "tags": {
@@ -430,7 +430,7 @@
       "base_effect": "Single Strand",
       "description": "Medium-speed chase with 6 dense strands. Rich multi-strand chase for active sections.",
       "parameter_overrides": {
-        "E_SLIDER_Single Strand_Speed": 35,
+        "E_SLIDER_Chase_Rotations": 12,
         "E_SLIDER_Number_Chases": 6
       },
       "tags": {
@@ -452,7 +452,6 @@
       "base_effect": "Single Strand",
       "description": "Medium-slow chase with 4 strands. Balanced quad-strand pattern for mid-energy sections.",
       "parameter_overrides": {
-        "E_SLIDER_Single Strand_Speed": 30,
         "E_SLIDER_Number_Chases": 4
       },
       "tags": {
@@ -474,7 +473,7 @@
       "base_effect": "Single Strand",
       "description": "Fast 3-strand chase. Quick triple chase for energetic but focused sections.",
       "parameter_overrides": {
-        "E_SLIDER_Single Strand_Speed": 40,
+        "E_SLIDER_Chase_Rotations": 14,
         "E_SLIDER_Number_Chases": 3
       },
       "tags": {
@@ -496,7 +495,7 @@
       "base_effect": "Single Strand",
       "description": "Slow 4-strand chase. Gentle quad chase for calm verses and ambient fills.",
       "parameter_overrides": {
-        "E_SLIDER_Single Strand_Speed": 25,
+        "E_SLIDER_Chase_Rotations": 7,
         "E_SLIDER_Number_Chases": 4
       },
       "tags": {

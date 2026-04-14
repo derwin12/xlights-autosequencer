@@ -17,7 +17,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHECKBOX_Bars_UseFirstColorForHighlight": "0",
         "E_CHOICE_Bars_Direction": "Left",
         "E_SLIDER_Bars_BarCount": "1",
-        "E_TEXTCTRL_Bars_Cycles": "1.0",
+        "E_SLIDER_Bars_Cycles": "1",
     },
     "Butterfly": {
         "E_CHOICE_Butterfly_Colors": "Palette",
@@ -30,7 +30,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
     "Color Wash": {
         "E_CHECKBOX_ColorWash_HFade": "0",
         "E_CHECKBOX_ColorWash_VFade": "0",
-        "E_TEXTCTRL_ColorWash_Cycles": "1.0",
+        "E_SLIDER_ColorWash_Cycles": "1",
     },
     "Meteors": {
         "E_CHECKBOX_Meteors_UseMusic": "0",
@@ -70,7 +70,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
     "Shimmer": {
         "E_CHECKBOX_Shimmer_Use_All_Colors": "0",
         "E_SLIDER_Shimmer_Duty_Factor": "50",
-        "E_TEXTCTRL_Shimmer_Cycles": "10",
+        "E_SLIDER_Shimmer_Cycles": "10",
     },
     "Strobe": {
         "E_SLIDER_Number_Strobes": "3",
@@ -98,11 +98,10 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHECKBOX_Spirals_Blend": "0",
         "E_CHECKBOX_Spirals_Grow": "0",
         "E_CHECKBOX_Spirals_Shrink": "0",
-        "E_CHOICE_Spirals_Direction": "Up",
         "E_SLIDER_Spirals_Count": "1",
+        "E_SLIDER_Spirals_Movement": "100",
         "E_SLIDER_Spirals_Rotation": "20",
         "E_SLIDER_Spirals_Thickness": "50",
-        "E_TEXTCTRL_Spirals_Movement": "10",
     },
     "Single Strand": {
         "E_CHOICE_SingleStrand_Colors": "Palette",
@@ -129,7 +128,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_SLIDER_Plasma_Style": "1",
     },
     "Garlands": {
-        "E_TEXTCTRL_Garlands_Cycles": "1",
+        "E_SLIDER_Garlands_Cycles": "10",
         "E_SLIDER_Garlands_Spacing": "0",
         "E_SLIDER_Garlands_Type": "0",
     },
@@ -138,16 +137,14 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHOICE_Curtain_Edge": "center",
         "E_CHOICE_Curtain_Effect": "open",
         "E_SLIDER_Curtain_Swag": "3",
-        "E_TEXTCTRL_Curtain_Speed": "1",
+        "E_SLIDER_Curtain_Speed": "1",
     },
     "Circles": {
         "E_CHECKBOX_Circles_Bounce": "0",
-        "E_CHECKBOX_Circles_Collide": "0",
         "E_CHECKBOX_Circles_Linear_Fade": "0",
         "E_CHECKBOX_Circles_Plasma": "0",
         "E_CHECKBOX_Circles_Radial": "0",
         "E_CHECKBOX_Circles_Radial_3D": "0",
-        "E_CHECKBOX_Circles_Random_m": "0",
         "E_SLIDER_Circles_Count": "3",
         "E_SLIDER_Circles_Size": "5",
         "E_SLIDER_Circles_Speed": "1",
@@ -201,7 +198,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_SLIDER_Number_Waves": "180",
         "E_SLIDER_Thickness_Percentage": "25",
         "E_SLIDER_Wave_Height": "50",
-        "E_TEXTCTRL_Wave_Speed": "10",
+        "E_SLIDER_Wave_Speed": "10",
         "T_CHECKBOX_Canvas": "1",
     },
 }

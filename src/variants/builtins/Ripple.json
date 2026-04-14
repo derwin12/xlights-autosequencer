@@ -158,8 +158,8 @@
       "base_effect": "Ripple",
       "description": "Fast ripple with medium thickness. Dynamic ripple expansion for energetic sections.",
       "parameter_overrides": {
-        "E_SLIDER_Ripple_Movement": 20,
-        "E_SLIDER_Ripple_Thickness": 4
+        "E_SLIDER_Ripple_Thickness": 4,
+        "E_SLIDER_Ripple_Cycles": 3
       },
       "tags": {
         "tier_affinity": "mid",
@@ -180,8 +180,8 @@
       "base_effect": "Ripple",
       "description": "Medium-speed ripple with thick rings. Bold visible ripple for mid-energy sections.",
       "parameter_overrides": {
-        "E_SLIDER_Ripple_Movement": 15,
-        "E_SLIDER_Ripple_Thickness": 5
+        "E_SLIDER_Ripple_Thickness": 5,
+        "E_SLIDER_Ripple_Cycles": 2
       },
       "tags": {
         "tier_affinity": "background",
@@ -202,8 +202,8 @@
       "base_effect": "Ripple",
       "description": "Medium-speed ripple with thin rings. Subtle ripple motion for background fill.",
       "parameter_overrides": {
-        "E_SLIDER_Ripple_Movement": 15,
-        "E_SLIDER_Ripple_Thickness": 3
+        "E_SLIDER_Ripple_Thickness": 3,
+        "E_SLIDER_Ripple_Cycles": 2
       },
       "tags": {
         "tier_affinity": "background",
@@ -224,7 +224,6 @@
       "base_effect": "Ripple",
       "description": "Slow ripple with medium thickness. Calm expanding rings for ambient sections.",
       "parameter_overrides": {
-        "E_SLIDER_Ripple_Movement": 10,
         "E_SLIDER_Ripple_Thickness": 4
       },
       "tags": {
@@ -246,7 +245,6 @@
       "base_effect": "Ripple",
       "description": "Slow ripple with thin rings. Very subtle minimal ripple for quiet passages.",
       "parameter_overrides": {
-        "E_SLIDER_Ripple_Movement": 10,
         "E_SLIDER_Ripple_Thickness": 3
       },
       "tags": {

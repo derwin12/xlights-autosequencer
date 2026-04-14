@@ -35,7 +35,7 @@ class GenerationWizard:
         occasion: Optional[str] = None,
         output_dir: Optional[Path] = None,
         force_reanalyze: bool = False,
-        curves_mode: str = "all",
+        curves_mode: str = "none",
     ) -> GenerationConfig:
         """Build a GenerationConfig from provided or default values."""
         if genre is None:

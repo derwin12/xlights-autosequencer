@@ -15,13 +15,20 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "horizontal",
-        "section_roles": ["verse", "chorus", "bridge"],
+        "section_roles": [
+          "verse",
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Wave_Direction",
-        "values": ["Left to Right", "Right to Left"],
+        "values": [
+          "Left to Right",
+          "Right to Left"
+        ],
         "mode": "alternate"
       }
     },
@@ -40,13 +47,19 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "horizontal",
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Wave_Direction",
-        "values": ["Left to Right", "Right to Left"],
+        "values": [
+          "Left to Right",
+          "Right to Left"
+        ],
         "mode": "alternate"
       }
     },
@@ -65,13 +78,19 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "horizontal",
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Wave_Direction",
-        "values": ["Left to Right", "Right to Left"],
+        "values": [
+          "Left to Right",
+          "Right to Left"
+        ],
         "mode": "alternate"
       }
     },
@@ -90,13 +109,19 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": "horizontal",
-        "section_roles": ["chorus", "build"],
+        "section_roles": [
+          "chorus",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       },
       "direction_cycle": {
         "param": "E_CHOICE_Wave_Direction",
-        "values": ["Left to Right", "Right to Left"],
+        "values": [
+          "Left to Right",
+          "Right to Left"
+        ],
         "mode": "alternate"
       }
     },
@@ -105,15 +130,19 @@
       "base_effect": "Wave",
       "description": "Two waves at medium speed. Balanced wave motion for mid-energy sections.",
       "parameter_overrides": {
-        "E_TEXTCTRL_Wave_Speed": 8,
-        "E_SLIDER_Number_Waves": 2
+        "E_SLIDER_Number_Waves": 2,
+        "E_SLIDER_Wave_Speed": 8
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["verse", "chorus", "build"],
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -123,15 +152,20 @@
       "base_effect": "Wave",
       "description": "Two slow gentle waves. Calm undulating motion for quiet sections.",
       "parameter_overrides": {
-        "E_TEXTCTRL_Wave_Speed": 6,
-        "E_SLIDER_Number_Waves": 2
+        "E_SLIDER_Number_Waves": 2,
+        "E_SLIDER_Wave_Speed": 6
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "outro", "bridge"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -141,15 +175,19 @@
       "base_effect": "Wave",
       "description": "Three slow waves creating rich layered motion. Dense wave texture for ambient sections.",
       "parameter_overrides": {
-        "E_TEXTCTRL_Wave_Speed": 6,
-        "E_SLIDER_Number_Waves": 3
+        "E_SLIDER_Number_Waves": 3,
+        "E_SLIDER_Wave_Speed": 6
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "bridge", "intro"],
+        "section_roles": [
+          "verse",
+          "bridge",
+          "intro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -159,15 +197,19 @@
       "base_effect": "Wave",
       "description": "Single fast wave sweep. Clean rapid wave for scanning beam and linear prop effects.",
       "parameter_overrides": {
-        "E_TEXTCTRL_Wave_Speed": 15,
-        "E_SLIDER_Number_Waves": 1
+        "E_SLIDER_Number_Waves": 1,
+        "E_SLIDER_Wave_Speed": 15
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "medium",
         "speed_feel": "fast",
         "direction": null,
-        "section_roles": ["chorus", "build", "verse"],
+        "section_roles": [
+          "chorus",
+          "build",
+          "verse"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

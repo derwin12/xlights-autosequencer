@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<xsequence BaseChannel="0" ChanCtrlBasic="0" ChanCtrlColor="0" FixedPointTiming="25" ModelBlending="true">
+  <head>
+    <version>2024.01</version>
+    <author>xlight-test</author>
+    <song>Test Song</song>
+    <artist>Test Artist</artist>
+    <mediaFile>test_song.mp3</mediaFile>
+    <sequenceType>Media</sequenceType>
+    <sequenceTiming>25 ms</sequenceTiming>
+    <sequenceDuration>30.000</sequenceDuration>
+  </head>
+  <ColorPalettes>
+    <ColorPalette>C_BUTTON_Palette1=#FF0000,C_BUTTON_Palette2=#00FF00,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=1,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+  </ColorPalettes>
+  <EffectDB>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHOICE_Bars_Direction=Left,E_SLIDER_Bars_BarCount=4,E_SLIDER_Bars_Cycles=2.0</Effect>
+    <Effect>E_CHECKBOX_Fire_GrowWithMusic=1,E_SLIDER_Fire_Height=80,E_SLIDER_Fire_HueShift=10</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Down,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=5,E_SLIDER_Meteors_Length=40,E_SLIDER_Meteors_Speed=8</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHOICE_Bars_Direction=Right,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1.0</Effect>
+  </EffectDB>
+  <DisplayElements>
+    <Element type="model" name="House Front" visible="1" collapsed="0" active="1" />
+    <Element type="model" name="Mega Tree" visible="1" collapsed="0" active="1" />
+  </DisplayElements>
+  <ElementEffects>
+    <Element type="model" name="House Front">
+      <EffectLayer>
+        <Effect ref="0" name="Bars" startTime="0" endTime="8000" palette="0" selected="0" />
+        <Effect ref="1" name="Fire" startTime="8000" endTime="16000" palette="0" selected="0" />
+        <Effect ref="0" name="Bars" startTime="16000" endTime="24000" palette="0" selected="0" />
+      </EffectLayer>
+    </Element>
+    <Element type="model" name="Mega Tree">
+      <EffectLayer>
+        <Effect ref="2" name="Meteors" startTime="0" endTime="12000" palette="0" selected="0" />
+        <Effect ref="3" name="Bars" startTime="12000" endTime="24000" palette="0" selected="0" />
+      </EffectLayer>
+    </Element>
+  </ElementEffects>
+</xsequence>

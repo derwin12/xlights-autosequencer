@@ -8,14 +8,19 @@
       "parameter_overrides": {
         "E_CHECKBOX_Shimmer_Use_All_Colors": 1,
         "E_SLIDER_Shimmer_Duty_Factor": 21,
-        "E_TEXTCTRL_Shimmer_Cycles": 100.0
+        "E_SLIDER_Shimmer_Cycles": 100.0
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "high",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["chorus", "drop", "hook", "climax"],
+        "section_roles": [
+          "chorus",
+          "drop",
+          "hook",
+          "climax"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -27,14 +32,19 @@
       "parameter_overrides": {
         "E_CHECKBOX_Shimmer_Use_All_Colors": 1,
         "E_SLIDER_Shimmer_Duty_Factor": 50,
-        "E_TEXTCTRL_Shimmer_Cycles": 4
+        "E_SLIDER_Shimmer_Cycles": 4
       },
       "tags": {
         "tier_affinity": "foreground",
         "energy_level": "high",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "drop", "hook", "climax"],
+        "section_roles": [
+          "chorus",
+          "drop",
+          "hook",
+          "climax"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

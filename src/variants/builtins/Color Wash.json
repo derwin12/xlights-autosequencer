@@ -13,7 +13,11 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -31,7 +35,11 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -49,7 +57,12 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "outro", "bridge"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -66,7 +79,11 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": "horizontal",
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -83,7 +100,11 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": "vertical",
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -93,15 +114,19 @@
       "base_effect": "Color Wash",
       "description": "Two-cycle color wash with shimmer sparkle. Active ambient glow for prominent sections.",
       "parameter_overrides": {
-        "E_TEXTCTRL_ColorWash_Cycles": 2,
-        "E_CHECKBOX_ColorWash_Shimmer": 1
+        "E_CHECKBOX_ColorWash_Shimmer": 1,
+        "E_SLIDER_ColorWash_Cycles": 2
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["verse", "chorus", "build"],
+        "section_roles": [
+          "verse",
+          "chorus",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -111,15 +136,20 @@
       "base_effect": "Color Wash",
       "description": "Single-cycle smooth color wash with no shimmer. Clean even wash for quiet backgrounds.",
       "parameter_overrides": {
-        "E_TEXTCTRL_ColorWash_Cycles": 1,
-        "E_CHECKBOX_ColorWash_Shimmer": 0
+        "E_CHECKBOX_ColorWash_Shimmer": 0,
+        "E_SLIDER_ColorWash_Cycles": 1
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "outro", "bridge"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -129,15 +159,19 @@
       "base_effect": "Color Wash",
       "description": "Single-cycle color wash with shimmer. Gentle sparkle for warm background moments.",
       "parameter_overrides": {
-        "E_TEXTCTRL_ColorWash_Cycles": 1,
-        "E_CHECKBOX_ColorWash_Shimmer": 1
+        "E_CHECKBOX_ColorWash_Shimmer": 1,
+        "E_SLIDER_ColorWash_Cycles": 1
       },
       "tags": {
         "tier_affinity": "background",
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "bridge"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

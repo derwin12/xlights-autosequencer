@@ -1814,16 +1814,16 @@ _VALID_CURVES_MODES = frozenset({"all", "brightness", "speed", "color", "none"})
 def _load_curves_mode_from_config() -> str:
     """Read curves_mode from ~/.xlight/generation.toml if present.
 
-    Returns "all" if the file does not exist or has no [generation].curves_mode.
+    Returns "none" if the file does not exist or has no [generation].curves_mode.
     """
     import tomllib
 
     config_path = Path.home() / ".xlight" / "generation.toml"
     if not config_path.exists():
-        return "all"
+        return "none"
     try:
         data = tomllib.loads(config_path.read_text(encoding="utf-8"))
-        mode = data.get("generation", {}).get("curves_mode", "all")
+        mode = data.get("generation", {}).get("curves_mode", "none")
         return str(mode)
     except Exception:
         return "all"

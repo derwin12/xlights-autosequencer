@@ -10,14 +10,17 @@
         "E_SLIDER_Warp_Frequency": 20,
         "E_SLIDER_Warp_X": 50,
         "E_SLIDER_Warp_Y": 50,
-        "E_TEXTCTRL_Warp_Cycle_Count": 1
+        "E_SLIDER_Warp_Cycle_Count": 1
       },
       "tags": {
         "tier_affinity": "foreground",
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -30,14 +33,17 @@
         "E_CHOICE_Warp_Type": "circle reveal",
         "E_SLIDER_Warp_X": 50,
         "E_SLIDER_Warp_Y": 50,
-        "E_TEXTCTRL_Warp_Cycle_Count": 1
+        "E_SLIDER_Warp_Cycle_Count": 1
       },
       "tags": {
         "tier_affinity": "foreground",
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["intro", "build"],
+        "section_roles": [
+          "intro",
+          "build"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -51,14 +57,17 @@
         "E_SLIDER_Warp_Speed": 20,
         "E_SLIDER_Warp_X": 50,
         "E_SLIDER_Warp_Y": 50,
-        "E_TEXTCTRL_Warp_Cycle_Count": 1
+        "E_SLIDER_Warp_Cycle_Count": 1
       },
       "tags": {
         "tier_affinity": "foreground",
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -71,14 +80,17 @@
         "E_CHOICE_Warp_Type": "copy",
         "E_SLIDER_Warp_X": 50,
         "E_SLIDER_Warp_Y": 50,
-        "E_TEXTCTRL_Warp_Cycle_Count": 1
+        "E_SLIDER_Warp_Cycle_Count": 1
       },
       "tags": {
         "tier_affinity": "foreground",
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -97,7 +109,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["chorus", "bridge"],
+        "section_roles": [
+          "chorus",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -114,7 +129,10 @@
         "energy_level": "medium",
         "speed_feel": "moderate",
         "direction": null,
-        "section_roles": ["verse", "chorus"],
+        "section_roles": [
+          "verse",
+          "chorus"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

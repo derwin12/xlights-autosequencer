@@ -162,8 +162,8 @@
       "base_effect": "Shockwave",
       "description": "Full-radius fast shockwave with thick ring. Maximum impact shockwave for peak drop moments.",
       "parameter_overrides": {
+        "E_SLIDER_Shockwave_Accel": 5,
         "E_SLIDER_Shockwave_End_Radius": 100,
-        "E_SLIDER_Shockwave_Speed": 70,
         "E_SLIDER_Shockwave_Start_Width": 8
       },
       "tags": {
@@ -207,8 +207,8 @@
       "base_effect": "Shockwave",
       "description": "Medium-radius fast shockwave with thick ring. Bold rapid pulse for festive high-energy moments.",
       "parameter_overrides": {
+        "E_SLIDER_Shockwave_Accel": 3,
         "E_SLIDER_Shockwave_End_Radius": 80,
-        "E_SLIDER_Shockwave_Speed": 60,
         "E_SLIDER_Shockwave_Start_Width": 8
       },
       "tags": {
@@ -231,7 +231,6 @@
       "description": "Large-radius medium-speed shockwave with medium thickness. Wide sweep for dramatic chorus impacts.",
       "parameter_overrides": {
         "E_SLIDER_Shockwave_End_Radius": 90,
-        "E_SLIDER_Shockwave_Speed": 50,
         "E_SLIDER_Shockwave_Start_Width": 6
       },
       "tags": {

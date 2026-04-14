@@ -159,7 +159,7 @@ class GenerationConfig:
     tiers: Optional[set[int]] = None
     story_path: Optional[Path] = None   # Optional path to song story JSON
     transition_mode: str = "subtle"     # "none", "subtle", or "dramatic"
-    curves_mode: str = "all"            # Value curve generation: all, brightness, speed, color, none
+    curves_mode: str = "none"           # Value curve generation: all, brightness, speed, color, none
     focused_vocabulary: bool = True     # Derive weighted working set per theme (Phase 1)
     embrace_repetition: bool = True     # Remove intra-section dedup, relax cross-section penalty (Phase 1)
     palette_restraint: bool = True      # Trim active palette colors to 2-4 based on energy/tier

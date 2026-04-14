@@ -45,6 +45,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-13
 - JSON files (theme definitions, variant library), XML files (.xsq output) (038-palette-restraint)
 - Python 3.11+ + click 8+, Flask 3+, existing generator pipeline (037-duration-scaling)
 - JSON files (effect definitions, analysis output), XML files (.xsq output) (037-duration-scaling)
+- Python 3.11+ + No new dependencies — all existing generator pipeline (041-prop-type-affinity)
+- N/A — no new data stored; changes are in-memory generation logic (041-prop-type-affinity)
 
 - **Language**: Python 3.11+
 - **Audio analysis**: vamp (Python host), librosa 0.10+, madmom 0.16+
@@ -134,9 +136,9 @@ already been tried and why.
 - Timestamps are always stored as integers (milliseconds) — never floats
 
 ## Recent Changes
+- 041-prop-type-affinity: Added Python 3.11+ + No new dependencies — all existing generator pipeline
 - 037-duration-scaling: Added Python 3.11+ + click 8+, Flask 3+, existing generator pipeline
 - 038-palette-restraint: Added Python 3.11+ + Flask 3+ (web server), click 8+ (CLI), existing generator pipeline
-- 036-focused-effects-repetition: Added Python 3.11+ + click 8+ (CLI), Flask 3+ (web server), existing generator pipeline
   `htdemucs_6s` separates audio into 6 stems (drums, bass, vocals, guitar, piano, other).
   Algorithms route to their preferred stem via `Algorithm.preferred_stem` class attribute.
   Stems are MD5-cached in `.stems/<hash>/` adjacent to the source file. Each `TimingTrack`

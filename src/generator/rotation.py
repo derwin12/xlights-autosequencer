@@ -1,6 +1,7 @@
 """Intelligent effect rotation engine — pre-computes variant assignments for tier 5-8 groups."""
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -227,6 +228,8 @@ class RotationEngine:
 
             # T025: track variants used within this section for deduplication
             used_in_section: set[str] = set()
+            # T007 (FR-001): track base effects used per tier within this section
+            used_effects_per_tier: dict[int, set[str]] = defaultdict(set)
 
             section_entries: list[RotationEntry] = []
             section_entry_map: dict[str, RotationEntry] = {}
@@ -303,7 +306,24 @@ class RotationEngine:
                         # All variants exhausted — fall back to highest-scoring one
                         variant, score, breakdown = results[0]
 
+                # T008/T010 (FR-001, FR-006): within-tier base-effect dedup for tiers 5-8.
+                # Independent of embrace_repetition — applies in both modes.
+                # If the selected variant's base effect is already used in this tier,
+                # find the highest-scoring alternative with an unclaimed base effect and
+                # score >= 0.3. Fall back to the current selection if none qualifies.
+                if group.tier >= 5 and variant.base_effect in used_effects_per_tier[group.tier]:
+                    unclaimed = [
+                        (v, s, b) for v, s, b in results
+                        if v.base_effect not in used_effects_per_tier[group.tier] and s >= 0.3
+                    ]
+                    if unclaimed:
+                        variant, score, breakdown = unclaimed[0]
+                    # else: no suitable alternative — keep current selection (allow duplication)
+
                 used_in_section.add(variant.name)
+                # T009: record base effect as used for this tier
+                if group.tier >= 5:
+                    used_effects_per_tier[group.tier].add(variant.base_effect)
 
                 entry = RotationEntry(
                     section_index=section_index,

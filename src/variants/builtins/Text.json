@@ -7,7 +7,6 @@
       "description": "Text scrolling upward using vector movement. Credits-style scrolling on horizontal matrices.",
       "parameter_overrides": {
         "E_CHOICE_Text_Dir": "vector",
-        "E_CHOICE_Text_Font": "Use OS Fonts",
         "E_SLIDER_Text_YStart": -25
       },
       "tags": {
@@ -15,7 +14,10 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": "vertical",
-        "section_roles": ["intro", "outro"],
+        "section_roles": [
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -26,7 +28,6 @@
       "description": "Text scrolling downward using vector movement. Falling text display on horizontal matrices.",
       "parameter_overrides": {
         "E_CHOICE_Text_Dir": "vector",
-        "E_CHOICE_Text_Font": "Use OS Fonts",
         "E_SLIDER_Text_YStart": 25
       },
       "tags": {
@@ -34,7 +35,10 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": "vertical",
-        "section_roles": ["intro", "outro"],
+        "section_roles": [
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

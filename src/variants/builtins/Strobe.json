@@ -29,8 +29,8 @@
       "base_effect": "Strobe",
       "description": "Three strobes at fast flash rate. High-energy triple strobe for intense sections.",
       "parameter_overrides": {
-        "E_SLIDER_Strobe_Number": 3,
-        "E_SLIDER_Strobe_Speed": 60
+        "E_SLIDER_Number_Strobes": 3,
+        "E_SLIDER_Strobe_Duration": 7
       },
       "tags": {
         "tier_affinity": "hero",
@@ -51,8 +51,8 @@
       "base_effect": "Strobe",
       "description": "Three strobes at maximum intensity. Extreme strobe burst for peak impact moments.",
       "parameter_overrides": {
-        "E_SLIDER_Strobe_Number": 3,
-        "E_SLIDER_Strobe_Speed": 80
+        "E_SLIDER_Number_Strobes": 3,
+        "E_SLIDER_Strobe_Duration": 5
       },
       "tags": {
         "tier_affinity": "hero",
@@ -73,8 +73,8 @@
       "base_effect": "Strobe",
       "description": "Two strobes at medium flash rate. Balanced dual strobe for active sections.",
       "parameter_overrides": {
-        "E_SLIDER_Strobe_Number": 2,
-        "E_SLIDER_Strobe_Speed": 40
+        "E_SLIDER_Number_Strobes": 2,
+        "E_SLIDER_Strobe_Duration": 10
       },
       "tags": {
         "tier_affinity": "mid",
@@ -95,8 +95,8 @@
       "base_effect": "Strobe",
       "description": "Two strobes at fast flash rate. Quick dual strobe for high-energy emphasis.",
       "parameter_overrides": {
-        "E_SLIDER_Strobe_Number": 2,
-        "E_SLIDER_Strobe_Speed": 50
+        "E_SLIDER_Number_Strobes": 2,
+        "E_SLIDER_Strobe_Duration": 8
       },
       "tags": {
         "tier_affinity": "mid",
@@ -117,8 +117,8 @@
       "base_effect": "Strobe",
       "description": "Single strobe at slow flash rate. Subtle single flash for atmospheric accent.",
       "parameter_overrides": {
-        "E_SLIDER_Strobe_Number": 1,
-        "E_SLIDER_Strobe_Speed": 15
+        "E_SLIDER_Number_Strobes": 1,
+        "E_SLIDER_Strobe_Duration": 25
       },
       "tags": {
         "tier_affinity": "background",

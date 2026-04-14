@@ -17,7 +17,7 @@
         "E_CHECKBOX_RightBarrier": 0,
         "E_CHECKBOX_TopBarrier": 0,
         "E_CHOICE_ParticleType": "Elastic",
-        "E_TEXTCTRL_Size": 415
+        "E_SLIDER_Size": 415
       },
       "tags": {
         "tier_affinity": "mid",
@@ -48,7 +48,7 @@
         "E_CHECKBOX_RightBarrier": 0,
         "E_CHECKBOX_TopBarrier": 0,
         "E_CHOICE_ParticleType": "Water",
-        "E_TEXTCTRL_Size": 699
+        "E_SLIDER_Size": 699
       },
       "tags": {
         "tier_affinity": "mid",
@@ -67,9 +67,7 @@
       "name": "Liquid Flow",
       "base_effect": "Liquid",
       "description": "Moderate liquid flow. Balanced fluid motion for general use.",
-      "parameter_overrides": {
-        "E_SLIDER_Liquid_Speed": 10
-      },
+      "parameter_overrides": {},
       "tags": {
         "tier_affinity": "background",
         "energy_level": "medium",
@@ -89,7 +87,7 @@
       "base_effect": "Liquid",
       "description": "Fast surging liquid. High-energy fluid rush for intense sections.",
       "parameter_overrides": {
-        "E_SLIDER_Liquid_Speed": 25
+        "E_SLIDER_Velocity1": 200
       },
       "tags": {
         "tier_affinity": "mid",
@@ -110,7 +108,7 @@
       "base_effect": "Liquid",
       "description": "Medium-fast liquid current. Active flowing energy for mid-high sections.",
       "parameter_overrides": {
-        "E_SLIDER_Liquid_Speed": 12
+        "E_SLIDER_Velocity1": 120
       },
       "tags": {
         "tier_affinity": "background",
@@ -131,7 +129,7 @@
       "base_effect": "Liquid",
       "description": "Slow drifting liquid. Gentle motion for calm ambient sections.",
       "parameter_overrides": {
-        "E_SLIDER_Liquid_Speed": 8
+        "E_SLIDER_Velocity1": 70
       },
       "tags": {
         "tier_affinity": "background",
@@ -152,7 +150,7 @@
       "base_effect": "Liquid",
       "description": "Very slow creeping liquid. Minimal motion for the quietest passages.",
       "parameter_overrides": {
-        "E_SLIDER_Liquid_Speed": 6
+        "E_SLIDER_Velocity1": 50
       },
       "tags": {
         "tier_affinity": "background",

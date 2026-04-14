@@ -7,7 +7,6 @@
       "description": "One slow radial circle expanding outward. Gentle pulsing effect ideal for star props.",
       "parameter_overrides": {
         "E_CHECKBOX_Circles_Bounce": 0,
-        "E_CHECKBOX_Circles_Collide": 0,
         "E_CHECKBOX_Circles_Plasma": 0,
         "E_CHECKBOX_Circles_Radial": 1,
         "E_SLIDER_Circles_Count": 1,
@@ -19,7 +18,11 @@
         "energy_level": "low",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "intro", "outro"],
+        "section_roles": [
+          "verse",
+          "intro",
+          "outro"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }
@@ -30,7 +33,6 @@
       "description": "Five circles drifting across the display. Ambient floating motion for single-line props.",
       "parameter_overrides": {
         "E_CHECKBOX_Circles_Bounce": 0,
-        "E_CHECKBOX_Circles_Collide": 0,
         "E_CHECKBOX_Circles_Plasma": 0,
         "E_CHECKBOX_Circles_Radial": 0,
         "E_SLIDER_Circles_Count": 5,
@@ -42,7 +44,10 @@
         "energy_level": "medium",
         "speed_feel": "slow",
         "direction": null,
-        "section_roles": ["verse", "bridge"],
+        "section_roles": [
+          "verse",
+          "bridge"
+        ],
         "scope": "single-prop",
         "genre_affinity": "any"
       }

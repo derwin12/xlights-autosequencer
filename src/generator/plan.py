@@ -413,7 +413,7 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
         )
         assignment.group_effects = group_effects
 
-        curves_mode = getattr(config, "curves_mode", "all")
+        curves_mode = getattr(config, "curves_mode", "none")
         for placements in group_effects.values():
             for placement in placements:
                 effect_def = effect_library.effects.get(placement.effect_name)
