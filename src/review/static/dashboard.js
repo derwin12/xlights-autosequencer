@@ -54,12 +54,160 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         _entries = data.entries || [];
+        renderZoneABanner(_entries);
         renderTable();
       })
       .catch(function () {
         _entries = [];
+        renderZoneABanner(_entries);
         renderTable();
       });
+  }
+
+  // ── Workflow strip state (spec 045 US1) ──────────────────────────────────
+  // Step rules:
+  //   1 upload   — complete iff source_file_exists && analysis_exists
+  //   2 review   — complete iff step 1 complete
+  //   3 story    — complete iff has_story; active when 1–2 complete && !has_story
+  //   4 generate — blocked when layout_configured=false; complete when
+  //                last_generated_at != null; active when 1–3 complete &&
+  //                layout_configured && no generation yet
+  function computeStripStates(entry) {
+    var step1Complete = !!(entry.source_file_exists && entry.analysis_exists);
+    var step2Complete = step1Complete;
+    var step3Complete = !!entry.has_story;
+    var step4Complete = !!entry.last_generated_at;
+    var layoutOk = !!entry.layout_configured;
+
+    var s1 = step1Complete ? 'complete' : 'incomplete';
+    var s2 = step2Complete ? 'complete' : 'incomplete';
+    var s3;
+    if (step3Complete) s3 = 'complete';
+    else if (step1Complete && step2Complete) s3 = 'active';
+    else s3 = 'incomplete';
+    var s4;
+    if (!layoutOk) s4 = 'blocked';
+    else if (step4Complete) s4 = 'complete';
+    else if (step1Complete && step2Complete && step3Complete) s4 = 'active';
+    else s4 = 'incomplete';
+
+    return { upload: s1, review: s2, story: s3, generate: s4 };
+  }
+
+  var _STRIP_TOOLTIPS = {
+    upload: {
+      incomplete: 'Upload and analyze this song to continue.',
+      complete: 'Upload complete.',
+      active: 'Upload is in progress.',
+      blocked: ''
+    },
+    review: {
+      incomplete: 'Analysis must finish before you can review the timeline.',
+      complete: 'Open the timeline for this song.',
+      active: 'Open the timeline for this song.',
+      blocked: ''
+    },
+    story: {
+      incomplete: 'Finish analysis before brief & story.',
+      active: 'Create the story and brief for this song.',
+      complete: 'Open the story review for this song.',
+      blocked: ''
+    },
+    generate: {
+      incomplete: 'Complete earlier steps before generating.',
+      active: 'Generate a sequence for this song.',
+      complete: 'Sequence generated — open the overflow menu to regenerate.',
+      blocked: 'Set up your layout before generating sequences.'
+    }
+  };
+
+  function applyStripState(entry) {
+    var states = computeStripStates(entry);
+    var steps = document.querySelectorAll('.workflow-step');
+    var connectors = document.querySelectorAll('.workflow-connector');
+    steps.forEach(function (el) {
+      var key = el.dataset.step;
+      var state = states[key] || 'incomplete';
+      el.dataset.state = state;
+      var tip = (_STRIP_TOOLTIPS[key] || {})[state] || '';
+      if (tip) el.setAttribute('title', tip);
+      else el.removeAttribute('title');
+    });
+    connectors.forEach(function (c) {
+      c.dataset.state = 'neutral';
+    });
+    // Mark connectors leading into each complete step as complete
+    var order = ['upload', 'review', 'story', 'generate'];
+    for (var i = 1; i < order.length; i++) {
+      var prev = states[order[i - 1]];
+      if (prev === 'complete' && connectors[i - 1]) {
+        connectors[i - 1].dataset.state = 'complete';
+      }
+    }
+  }
+
+  function resetStripState() {
+    document.querySelectorAll('.workflow-step').forEach(function (el) {
+      el.dataset.state = 'neutral';
+      el.removeAttribute('title');
+    });
+    document.querySelectorAll('.workflow-connector').forEach(function (c) {
+      c.dataset.state = 'neutral';
+    });
+  }
+
+  function wireStripClicks() {
+    document.querySelectorAll('.workflow-step').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var state = el.dataset.state;
+        if (state !== 'complete' && state !== 'active') return; // blocked/incomplete/neutral
+        if (!_expandedHash) return;
+        var entry = _entries.find(function (e) { return e.source_hash === _expandedHash; });
+        if (!entry) return;
+        var step = el.dataset.step;
+        if (step === 'upload') return; // no destination for step 1
+        if (step === 'review') { openSong(entry.source_hash); return; }
+        if (step === 'story') {
+          if (entry.story_path) {
+            window.location.href = '/story-review?path=' + encodeURIComponent(entry.story_path);
+          } else {
+            window.location.href = '/story-review?hash=' + encodeURIComponent(entry.source_hash);
+          }
+          return;
+        }
+        if (step === 'generate') {
+          if (document.body.dataset.layoutConfigured !== 'true') return;
+          // Open the row detail panel and trigger the inline generate action.
+          if (_expandedHash !== entry.source_hash) {
+            _expandedHash = entry.source_hash;
+            renderTable();
+          }
+          var detailRow = document.querySelector('tr.detail-row');
+          if (detailRow) {
+            var genPanel = detailRow.querySelector('.detail-generate');
+            if (genPanel) {
+              genPanel.style.display = '';
+              renderGeneratePanel(entry, genPanel);
+            }
+          }
+        }
+      });
+    });
+  }
+
+  // ── Zone A setup banner (spec 045 US2) ────────────────────────────────────
+  function renderZoneABanner(entries) {
+    var banner = document.getElementById('zone-a-banner');
+    // layout_configured is a global field, the same value on every entry.
+    // When the library is empty we still want the banner to appear if layout
+    // is missing — but we cannot read layout_configured without an entry.
+    // The banner stays hidden in that case (only relevant when at least one
+    // song exists because only then is "generate" meaningful).
+    var configured = entries.length > 0 ? !!entries[0].layout_configured : true;
+    if (banner) {
+      banner.hidden = configured;
+    }
+    document.body.dataset.layoutConfigured = configured ? 'true' : 'false';
   }
 
   // ── Sort & filter ──────────────────────────────────────────────────────────
@@ -162,7 +310,7 @@
       // Click row to go to story view (but not on buttons)
       tr.addEventListener('click', function (ev) {
         if (ev.target.tagName === 'BUTTON') return;
-        openSong(e.source_hash, e.has_story ? 'story' : 'timeline', e.story_path);
+        openSongTool(e.source_hash, e.has_story ? 'story' : 'timeline', e.story_path);
       });
 
       tb.appendChild(tr);
@@ -173,32 +321,13 @@
       }
     });
 
-    // Update workflow guide based on library state
-    var steps = document.querySelectorAll('.workflow-step');
-    var connectors = document.querySelectorAll('.workflow-connector');
-    if (steps.length > 0) {
-      // Reset all
-      steps.forEach(function(s) { s.classList.remove('active', 'completed'); });
-      connectors.forEach(function(c) { c.classList.remove('completed'); });
-
-      if (total === 0) {
-        // No songs: step 1 is active
-        steps[0].classList.add('active');
-      } else {
-        // Songs exist: step 1 complete, step 2 active
-        steps[0].classList.add('completed');
-        if (connectors[0]) connectors[0].classList.add('completed');
-        steps[1].classList.add('active');
-
-        // Check if any songs have story data
-        var hasStory = _entries.some(function(e) { return e.has_story; });
-        if (hasStory) {
-          steps[1].classList.remove('active');
-          steps[1].classList.add('completed');
-          if (connectors[1]) connectors[1].classList.add('completed');
-          steps[2].classList.add('active');
-        }
-      }
+    // Update workflow strip based on expanded song (spec 045 US1)
+    if (_expandedHash) {
+      var expanded = _entries.find(function (e) { return e.source_hash === _expandedHash; });
+      if (expanded) applyStripState(expanded);
+      else resetStripState();
+    } else {
+      resetStripState();
     }
 
     // Attach expand button handlers
@@ -228,6 +357,17 @@
 
   function renderBadges(e) {
     var html = '';
+    // Spec 045 US4 lifecycle badge: one of Analyzed / Generated / Stale.
+    // Only one lifecycle badge is shown per row; Stale replaces Generated
+    // replaces Analyzed. The Phase-3 reserved-label slot is deliberately
+    // NOT emitted here (FR-011).
+    if (e.is_stale) {
+      html += '<span class="badge badge-stale">Stale</span>';
+    } else if (e.last_generated_at) {
+      html += '<span class="badge badge-generated">Generated</span>';
+    } else if (e.analysis_exists) {
+      html += '<span class="badge badge-analyzed">Analyzed</span>';
+    }
     if (e.stem_separation) html += '<span class="badge badge-stems">Stems</span>';
     if (e.has_phonemes) html += '<span class="badge badge-phonemes">Phonemes</span>';
     if (e.has_story) html += '<span class="badge badge-story">Story</span>';
@@ -266,22 +406,79 @@
     if (entry.analysis_exists === false) lines.push('<span style="color:#c44">Analysis file missing</span>');
     info.innerHTML = lines.join('<br>');
 
-    // Action buttons
-    tr.querySelectorAll('.btn-action').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var action = btn.dataset.action;
-        if (action === 'timeline') openSong(entry.source_hash, 'timeline');
-        else if (action === 'preview') window.location.href = '/generation-preview?hash=' + entry.source_hash;
-        else if (action === 'story') openSong(entry.source_hash, 'story', entry.story_path);
-        else if (action === 'phonemes') openSong(entry.source_hash, 'phonemes');
-        else if (action === 'generate') toggleGeneratePanel(entry, tr);
-        else if (action === 'reanalyze') reanalyzeSong(entry);
-        else if (action === 'delete') showDeleteDialog(entry);
+    // Spec 045 US3: single primary Open + overflow-menu actions.
+    function handleDetailAction(action) {
+      if (action === 'open') openSong(entry.source_hash);
+      else if (action === 'preview') window.location.href = '/generation-preview?hash=' + entry.source_hash;
+      else if (action === 'story') openSongTool(entry.source_hash, 'story', entry.story_path);
+      else if (action === 'phonemes') openSongTool(entry.source_hash, 'phonemes');
+      else if (action === 'generate') {
+        if (document.body.dataset.layoutConfigured !== 'true') return;
+        toggleGeneratePanel(entry, tr);
+      }
+      else if (action === 'reanalyze') reanalyzeSong(entry);
+      else if (action === 'delete') showDeleteDialog(entry);
+    }
+
+    var openBtn = tr.querySelector('[data-action="open"]');
+    if (openBtn) {
+      openBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        handleDetailAction('open');
       });
-    });
+    }
+
+    var kebab = tr.querySelector('.btn-kebab');
+    var menu = tr.querySelector('.overflow-menu');
+    if (kebab && menu) {
+      kebab.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        closeAllOverflowMenus(menu);
+        var open = !menu.hidden;
+        if (open) {
+          menu.hidden = true;
+          kebab.setAttribute('aria-expanded', 'false');
+        } else {
+          menu.hidden = false;
+          kebab.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      menu.querySelectorAll('.overflow-menu-item').forEach(function (item) {
+        item.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          var action = item.dataset.action;
+          menu.hidden = true;
+          kebab.setAttribute('aria-expanded', 'false');
+          handleDetailAction(action);
+        });
+      });
+    }
 
     tb.appendChild(tr);
   }
+
+  // ── Overflow menu dismiss helpers (spec 045 US3, FR-010) ──────────────────
+  function closeAllOverflowMenus(keepOpen) {
+    document.querySelectorAll('.overflow-menu').forEach(function (m) {
+      if (m === keepOpen) return;
+      m.hidden = true;
+      var owner = m.closest('.overflow-wrap');
+      if (owner) {
+        var kebab = owner.querySelector('.btn-kebab');
+        if (kebab) kebab.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  document.addEventListener('click', function (ev) {
+    if (ev.target.closest('.overflow-wrap')) return;
+    closeAllOverflowMenus();
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') closeAllOverflowMenus();
+  });
 
   // ── Generate Sequence inline panel ────────────────────────────────────────
   var _genPollInterval = null;
@@ -448,12 +645,24 @@
   }
 
   // ── Navigation helpers ─────────────────────────────────────────────────────
-  function openSong(hash, tool, storyPath) {
-    // Set current job to this library entry, then navigate
+  // Spec 045 centralized the "Open" action; spec 046 retargets it to
+  // /song/<hash> — the single per-song workspace — without touching callers.
+  function openSong(hash) {
+    fetch('/open-from-library?hash=' + hash, { method: 'POST' })
+      .then(function () {
+        window.location.href = '/song/' + encodeURIComponent(hash);
+      });
+  }
+
+  // Legacy tool-routing helper retained for the overflow-menu entries that
+  // still target specific tools (story, phonemes) and for fallback callers.
+  function openSongTool(hash, tool, storyPath) {
     fetch('/open-from-library?hash=' + hash, { method: 'POST' })
       .then(function () {
         if (tool === 'story' && storyPath) {
           window.location.href = '/story-review?path=' + encodeURIComponent(storyPath);
+        } else if (tool === 'story') {
+          window.location.href = '/story-review?hash=' + hash;
         } else if (tool === 'phonemes') {
           window.location.href = '/phonemes-view?hash=' + hash;
         } else {
@@ -563,7 +772,7 @@
       if (existing && dup) {
         dup.style.display = '';
         document.getElementById('btn-go-existing').onclick = function () {
-          openSong(existing.source_hash, existing.has_story ? 'story' : 'timeline', existing.story_path);
+          openSongTool(existing.source_hash, existing.has_story ? 'story' : 'timeline', existing.story_path);
         };
         document.getElementById('btn-reanalyze').onclick = startAnalysis;
       } else if (dup) {
@@ -795,6 +1004,7 @@
 
     initUpload();
     initGenius();
+    wireStripClicks();
     fetchLibrary();
   }
 

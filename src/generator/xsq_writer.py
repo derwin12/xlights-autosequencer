@@ -204,7 +204,14 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
 }
 
 
-def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult | None = None, audio_path: Path | None = None) -> None:
+def write_xsq(
+    plan: SequencePlan,
+    output_path: Path,
+    hierarchy: HierarchyResult | None = None,
+    audio_path: Path | None = None,
+    scoped_duration_ms: int | None = None,
+    audio_offset_ms: int | None = None,
+) -> None:
     """Write a SequencePlan as a valid xLights .xsq XML file.
 
     Follows the xLights 2024+ schema:
@@ -212,6 +219,16 @@ def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult 
     - Deduplicates EffectDB entries and ColorPalettes
     - Frame-aligns all times to 25ms multiples
     - Model names from DisplayElements match layout
+
+    Optional kwargs for section preview (spec 049):
+    - scoped_duration_ms: when set, overrides sequenceDuration in <head>.
+      Use for a short-section preview so the xLights timeline covers only
+      the previewed window.
+    - audio_offset_ms: when set, (a) emits a <mediaOffset> element in <head>
+      with this value (milliseconds), and (b) subtracts this from every
+      placement's startTime/endTime so the output timeline starts at 0.
+      EffectPlacement objects are NOT mutated — the shift is applied only
+      during serialization.
     """
     # Warn if audio is outside the mounted show directory (devcontainer-specific).
     # The XSQ will still be written, but xLights on the host won't find the audio.
@@ -291,8 +308,15 @@ def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult 
         ET.SubElement(head, "mediaFile").text = plan.song_profile.title + ".mp3"
     ET.SubElement(head, "sequenceType").text = "Media"
     ET.SubElement(head, "sequenceTiming").text = f"{FRAME_INTERVAL_MS} ms"
-    duration_sec = plan.song_profile.duration_ms / 1000.0
+    # Use scoped_duration_ms when provided (spec 049: section preview window).
+    # Fall back to the full song duration for normal renders.
+    effective_duration_ms = scoped_duration_ms if scoped_duration_ms is not None else plan.song_profile.duration_ms
+    duration_sec = effective_duration_ms / 1000.0
     ET.SubElement(head, "sequenceDuration").text = f"{duration_sec:.3f}"
+    # Emit <mediaOffset> for section preview so xLights starts audio playback
+    # at the correct offset into the original MP3 (xLights 2024+ feature).
+    if audio_offset_ms is not None:
+        ET.SubElement(head, "mediaOffset").text = str(audio_offset_ms)
 
     # <ColorPalettes>
     palettes_el = ET.SubElement(root, "ColorPalettes")
@@ -355,8 +379,11 @@ def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult 
 
                 effect_el.set("ref", str(ref_idx))
                 effect_el.set("name", p.effect_name)
-                effect_el.set("startTime", str(p.start_ms))
-                effect_el.set("endTime", str(p.end_ms))
+                # Apply audio offset shift for section preview (spec 049).
+                # We do NOT mutate the EffectPlacement — shift is serialization-only.
+                offset = audio_offset_ms if audio_offset_ms is not None else 0
+                effect_el.set("startTime", str(p.start_ms - offset))
+                effect_el.set("endTime", str(p.end_ms - offset))
                 effect_el.set("palette", str(palette_idx))
                 effect_el.set("selected", "0")
 
@@ -367,9 +394,13 @@ def write_xsq(plan: SequencePlan, output_path: Path, hierarchy: HierarchyResult 
         timing_el.set("name", track_name)
 
         layer_el = ET.SubElement(timing_el, "EffectLayer")
+        offset = audio_offset_ms if audio_offset_ms is not None else 0
         for i, mark in enumerate(marks):
-            start = mark.time_ms
-            end = marks[i + 1].time_ms if i + 1 < len(marks) else int(plan.song_profile.duration_ms)
+            raw_start = mark.time_ms
+            raw_end = marks[i + 1].time_ms if i + 1 < len(marks) else int(plan.song_profile.duration_ms)
+            # Apply audio offset shift for section preview (serialization-only)
+            start = raw_start - offset
+            end = raw_end - offset
             if end <= start:
                 continue
             effect_el = ET.SubElement(layer_el, "Effect")

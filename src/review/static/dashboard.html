@@ -63,32 +63,38 @@
     </div>
   </div>
 
-  <!-- Workflow guide -->
+  <!-- Zone A setup banner (spec 045) — visible only when layout is unconfigured -->
+  <div id="zone-a-banner" class="zone-a-banner" hidden>
+    <div class="zone-a-banner-body">
+      <div class="zone-a-banner-text">
+        <strong>Set up your layout before generating sequences.</strong>
+        <p>Layout Groups is a one-time installation-wide step. It must be configured once before any song can be generated.</p>
+      </div>
+      <a href="/grouper" class="btn btn-primary" id="zone-a-setup-btn">Set Up Layout</a>
+    </div>
+  </div>
+
+  <!-- Per-song workflow strip (spec 045) — 4 steps, stateful per expanded row -->
   <div id="workflow-guide" class="workflow-guide">
     <div class="workflow-steps">
       <div class="workflow-step" data-step="upload">
         <div class="step-number">1</div>
-        <div class="step-label">Upload &amp; Analyze</div>
+        <div class="step-label">Upload</div>
       </div>
       <div class="workflow-connector"></div>
       <div class="workflow-step" data-step="review">
         <div class="step-number">2</div>
-        <div class="step-label">Review Timeline</div>
+        <div class="step-label">Review</div>
       </div>
       <div class="workflow-connector"></div>
       <div class="workflow-step" data-step="story">
         <div class="step-number">3</div>
-        <div class="step-label">Story &amp; Themes</div>
-      </div>
-      <div class="workflow-connector"></div>
-      <div class="workflow-step" data-step="layout">
-        <div class="step-number">4</div>
-        <div class="step-label">Layout Groups</div>
+        <div class="step-label">Story</div>
       </div>
       <div class="workflow-connector"></div>
       <div class="workflow-step" data-step="generate">
-        <div class="step-number">5</div>
-        <div class="step-label">Generate Sequence</div>
+        <div class="step-number">4</div>
+        <div class="step-label">Generate</div>
       </div>
     </div>
   </div>
@@ -148,14 +154,20 @@
               <div class="detail-info"></div>
             </div>
           </div>
+          <!-- Spec 045 US3: one primary Open action + overflow menu for the rest -->
           <div class="detail-actions">
-            <button class="btn btn-small btn-action" data-action="timeline">Review Timeline</button>
-            <button class="btn btn-small btn-action" data-action="preview">Preview Generation</button>
-            <button class="btn btn-small btn-action" data-action="story">Story Review</button>
-            <button class="btn btn-small btn-action" data-action="phonemes">Phonemes</button>
-            <button class="btn btn-small btn-action" data-action="generate">Generate Sequence</button>
-            <button class="btn btn-small btn-action btn-secondary" data-action="reanalyze">Re-analyze</button>
-            <button class="btn btn-small btn-action btn-danger" data-action="delete">Delete</button>
+            <button class="btn btn-open" data-action="open">Open</button>
+            <div class="overflow-wrap">
+              <button class="btn-kebab" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">&#8942;</button>
+              <div class="overflow-menu" role="menu" hidden>
+                <button role="menuitem" class="overflow-menu-item" data-action="preview">Preview Generation</button>
+                <button role="menuitem" class="overflow-menu-item" data-action="story">Story Review</button>
+                <button role="menuitem" class="overflow-menu-item" data-action="phonemes">Phonemes</button>
+                <button role="menuitem" class="overflow-menu-item" data-action="generate">Generate Sequence</button>
+                <button role="menuitem" class="overflow-menu-item" data-action="reanalyze">Re-analyze</button>
+                <button role="menuitem" class="overflow-menu-item overflow-menu-item--danger" data-action="delete">Delete</button>
+              </div>
+            </div>
           </div>
           <div class="detail-generate" style="display:none;"></div>
         </div>

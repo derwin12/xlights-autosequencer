@@ -84,6 +84,7 @@ def _make_assignment(theme: Theme, section: SectionEnergy) -> SectionAssignment:
         theme=theme,
         variation_seed=0,
         group_effects={},
+        active_tiers=frozenset(range(1, 9)),
     )
 
 
@@ -342,6 +343,7 @@ class TestVariantOnlyThemeIntegration:
             theme=theme,
             variation_seed=0,
             group_effects={},
+            active_tiers=frozenset(range(1, 9)),
         )
         groups = _make_groups()
         hierarchy = _make_hierarchy(duration_ms=10000)

@@ -46,6 +46,8 @@ generated_sequences/
 *.xsq
 *.fseq
 *.xbkp
+# …but do commit test fixture .xsq files (goldens for regression gates).
+!tests/fixtures/**/*.xsq
 
 # Local working/scratch/song directories (user song analysis output)
 analysis/

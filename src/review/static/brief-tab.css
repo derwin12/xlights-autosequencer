@@ -1,0 +1,225 @@
+/* brief-tab.css — Creative Brief form styling (spec 047). */
+
+#brief-tab {
+  padding: 1.25rem 1.5rem 2rem;
+  max-width: 900px;
+}
+
+.brief-updated-at {
+  margin: 0 0 1rem;
+  color: var(--text-muted, #888);
+  font-size: 0.85rem;
+}
+
+#brief-form fieldset.axis {
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  padding: 0.75rem 1rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+fieldset.axis legend {
+  font-weight: 600;
+  padding: 0 0.35rem;
+}
+
+fieldset.axis .preset-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.25rem 0 0.4rem;
+}
+
+fieldset.axis .preset-group label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background: var(--panel-bg, #fff);
+}
+
+fieldset.axis .preset-group label.active {
+  background: var(--accent, #2b6cb0);
+  color: #fff;
+  border-color: var(--accent, #2b6cb0);
+}
+
+fieldset.axis .preset-group input[type="radio"] {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+}
+
+fieldset.axis .preset-group input[type="radio"]:focus-visible + span {
+  outline: 2px solid var(--focus-ring, #4a90e2);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+fieldset.axis p.hint {
+  margin: 0.35rem 0;
+  color: var(--text-muted, #666);
+  font-size: 0.85rem;
+}
+
+fieldset.axis .via-mood-chip {
+  display: inline-block;
+  padding: 0 0.45rem;
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  background: var(--chip-bg, #eef);
+  color: var(--chip-fg, #335);
+  border-radius: 999px;
+}
+
+fieldset.axis .custom-chip {
+  display: inline-block;
+  padding: 0 0.45rem;
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  background: var(--warn-bg, #fee);
+  color: var(--warn-fg, #a33);
+  border-radius: 999px;
+}
+
+fieldset.axis details.advanced {
+  margin-top: 0.4rem;
+  border-top: 1px dashed var(--border-subtle, #ddd);
+  padding-top: 0.45rem;
+}
+
+fieldset.axis details.advanced summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-muted, #666);
+}
+
+fieldset.axis details.advanced .advanced-control {
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+fieldset.axis details.advanced .advanced-control label {
+  font-weight: 500;
+}
+
+fieldset.axis details.advanced .advanced-control .hint {
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+fieldset.axis .inline-error {
+  margin: 0.3rem 0 0;
+  padding: 0.25rem 0.5rem;
+  background: var(--error-bg, #fee);
+  color: var(--error-fg, #a33);
+  border-radius: 3px;
+  font-size: 0.82rem;
+}
+
+.per-section-overrides {
+  margin: 1.25rem 0 1rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+}
+
+.per-section-overrides .per-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.per-section-overrides .per-section-header h3 {
+  margin: 0;
+}
+
+.per-section-overrides .link-button {
+  background: none;
+  border: none;
+  color: var(--accent, #2b6cb0);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.per-section-overrides .hint {
+  margin: 0.3rem 0 0.6rem;
+  color: var(--text-muted, #666);
+  font-size: 0.85rem;
+}
+
+.per-section-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.per-section-table th,
+.per-section-table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border-subtle, #eee);
+  text-align: left;
+}
+
+.per-section-table .stale-chip {
+  display: inline-block;
+  padding: 0 0.45rem;
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  background: var(--warn-bg, #fee);
+  color: var(--warn-fg, #a33);
+  border-radius: 999px;
+}
+
+.brief-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.brief-actions .primary-action {
+  padding: 0.5rem 1.25rem;
+  background: var(--accent, #2b6cb0);
+  color: #fff;
+  border: 1px solid var(--accent, #2b6cb0);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.brief-actions .primary-action[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.brief-actions .secondary-action {
+  padding: 0.5rem 1.25rem;
+  background: var(--panel-bg, #fff);
+  color: var(--text, #222);
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.brief-concurrent-message {
+  margin-top: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--warn-bg, #fee);
+  color: var(--warn-fg, #a33);
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.brief-disabled-banner {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: var(--warn-bg, #fef6e4);
+  color: var(--warn-fg, #8a5a00);
+  border-radius: 4px;
+}

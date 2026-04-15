@@ -26,7 +26,7 @@ from src.generator.effect_placer import (
     _place_drum_accents,
     _place_impact_accent,
 )
-from src.generator.models import GenerationConfig, SectionAssignment, SectionEnergy
+from src.generator.models import AccentPolicy, GenerationConfig, SectionAssignment, SectionEnergy
 from src.grouper.grouper import PowerGroup
 from src.themes.models import Theme
 
@@ -69,11 +69,22 @@ def _make_assignment(
     energy_score: int = 75,
     start_ms: int = 0,
     end_ms: int = 10_000,
+    drum_hits: bool = True,
+    impact: bool = True,
 ) -> SectionAssignment:
+    """Build an assignment for accent-helper tests.
+
+    Per spec 048, the accent helpers read ``assignment.accent_policy`` and skip
+    when the corresponding flag is ``False``.  These tests exercise the helpers
+    directly, so we default ``drum_hits`` and ``impact`` to ``True`` — the
+    helper's per-hit / per-section gates that these tests probe are now
+    upstream of the helpers in ``build_plan`` and carried by the policy field.
+    """
     return SectionAssignment(
         section=_make_section(label=label, energy_score=energy_score,
                                start_ms=start_ms, end_ms=end_ms),
         theme=_make_theme(),
+        accent_policy=AccentPolicy(drum_hits=drum_hits, impact=impact),
     )
 
 
@@ -665,9 +676,18 @@ class TestDrumAccentPalette:
 # ---------------------------------------------------------------------------
 
 class TestImpactAccentGates:
+    """Spec 048: section-level gates (energy, duration, role) now live in
+    ``build_plan``'s decision-precompute pass and their outcome is stored on
+    ``assignment.accent_policy.impact``.  These tests assert that the helper
+    skips when the policy flag is ``False`` — the individual gate rules are
+    covered elsewhere via ``_populate_assignment_decisions`` in plan.py.
+    """
+
     def test_no_accent_below_energy_gate(self):
-        """No accent when energy_score <= 80."""
-        assignment = _make_assignment(label="chorus", energy_score=_IMPACT_ENERGY_GATE)
+        """Policy computed for below-threshold energy sets impact=False → no accent."""
+        assignment = _make_assignment(
+            label="chorus", energy_score=_IMPACT_ENERGY_GATE, impact=False,
+        )
         groups = [_make_arch_group()]
 
         result = _place_impact_accent(
@@ -676,9 +696,9 @@ class TestImpactAccentGates:
         assert result == {}
 
     def test_no_accent_section_too_short(self):
-        """No accent when section is shorter than 4s."""
+        """Policy computed for too-short section sets impact=False → no accent."""
         assignment = _make_assignment(
-            label="chorus", energy_score=85, start_ms=0, end_ms=3999
+            label="chorus", energy_score=85, start_ms=0, end_ms=3999, impact=False,
         )
         groups = [_make_arch_group()]
 
@@ -688,9 +708,9 @@ class TestImpactAccentGates:
         assert result == {}
 
     def test_no_accent_wrong_role(self):
-        """No accent for verse/bridge roles even with high energy."""
+        """Policy computed for non-qualifying role sets impact=False → no accent."""
         for role in ("verse", "bridge", "intro", "outro"):
-            assignment = _make_assignment(label=role, energy_score=90)
+            assignment = _make_assignment(label=role, energy_score=90, impact=False)
             groups = [_make_arch_group()]
 
             result = _place_impact_accent(

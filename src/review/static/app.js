@@ -1,57 +1,65 @@
 'use strict';
 
-// ── State ────────────────────────────────────────────────────────────────────
+// Spec 046 refactor: the entire timeline UI is wrapped in createTimeline({
+// rootEl, hashParam }) so /timeline (full-page) and /song/<hash> (Analysis
+// tab) can mount the same component. All DOM lookups are scoped to rootEl;
+// module-level state lives in the factory closure.
+function createTimeline(options) {
+  const rootEl = options.rootEl;
+  const hashParam = options.hashParam || null;
 
-let tracks = [];          // all tracks, in user-defined order within each group
-let dragSrcIndex = null;
-let phonemeLayers = [];   // [{name, type, marks}]
-let songSegments = [];    // [{label, start_ms, end_ms}]
-let durationMs = 0;
-let focusIndex = null;    // index into displayTracks() | null
-let activeStemFilter = null; // stem name string | null
+  // ── State ──────────────────────────────────────────────────────────────
 
-const SEGMENT_FILL = {
-  'intro':        'rgba(60,  180,  80, 0.10)',
-  'verse':        'rgba(80,  140, 220, 0.10)',
-  'pre-chorus':   'rgba(160,  80, 220, 0.10)',
-  'chorus':       'rgba(220,  70,  70, 0.14)',
-  'bridge':       'rgba(220, 160,  40, 0.12)',
-  'outro':        'rgba(120, 120, 120, 0.10)',
-  'instrumental': 'rgba( 40, 200, 200, 0.10)',
-  'break':        'rgba(200, 200,  40, 0.10)',
-  'silence':      'rgba( 40,  40,  40, 0.08)',
-};
-const SEGMENT_LABEL_COLOR = {
-  'intro':        '#3b6',
-  'verse':        '#58d',
-  'pre-chorus':   '#a5d',
-  'chorus':       '#d55',
-  'bridge':       '#da4',
-  'outro':        '#888',
-  'instrumental': '#4cc',
-  'break':        '#cc4',
-  'silence':      '#555',
-};
+  let tracks = [];          // all tracks, in user-defined order within each group
+  let dragSrcIndex = null;
+  let phonemeLayers = [];   // [{name, type, marks}]
+  let songSegments = [];    // [{label, start_ms, end_ms}]
+  let durationMs = 0;
+  let focusIndex = null;    // index into displayTracks() | null
+  let activeStemFilter = null; // stem name string | null
 
-const player = document.getElementById('player');
-const bgCanvas = document.getElementById('bg-canvas');
-const fgCanvas = document.getElementById('fg-canvas');
-const bgCtx = bgCanvas.getContext('2d');
-const fgCtx = fgCanvas.getContext('2d');
-const panel = document.getElementById('panel');
-const stemFilterBar = document.getElementById('stem-filter-bar');
-const trackList = document.getElementById('track-list');
-const canvasWrap = document.getElementById('canvas-wrap');
-const beatFlash = document.getElementById('beat-flash');
-const btnPlay = document.getElementById('btn-play');
-const btnPrev = document.getElementById('btn-prev');
-const btnNext = document.getElementById('btn-next');
-const btnClear = document.getElementById('btn-clear');
-const btnExport = document.getElementById('btn-export');
-const timeDisplay = document.getElementById('time-display');
-const focusLabel = document.getElementById('focus-label');
-const selectedCount = document.getElementById('selected-count');
-const status = document.getElementById('status');
+  const SEGMENT_FILL = {
+    'intro':        'rgba(60,  180,  80, 0.10)',
+    'verse':        'rgba(80,  140, 220, 0.10)',
+    'pre-chorus':   'rgba(160,  80, 220, 0.10)',
+    'chorus':       'rgba(220,  70,  70, 0.14)',
+    'bridge':       'rgba(220, 160,  40, 0.12)',
+    'outro':        'rgba(120, 120, 120, 0.10)',
+    'instrumental': 'rgba( 40, 200, 200, 0.10)',
+    'break':        'rgba(200, 200,  40, 0.10)',
+    'silence':      'rgba( 40,  40,  40, 0.08)',
+  };
+  const SEGMENT_LABEL_COLOR = {
+    'intro':        '#3b6',
+    'verse':        '#58d',
+    'pre-chorus':   '#a5d',
+    'chorus':       '#d55',
+    'bridge':       '#da4',
+    'outro':        '#888',
+    'instrumental': '#4cc',
+    'break':        '#cc4',
+    'silence':      '#555',
+  };
+
+  const player = rootEl.querySelector('#player');
+  const bgCanvas = rootEl.querySelector('#bg-canvas');
+  const fgCanvas = rootEl.querySelector('#fg-canvas');
+  const bgCtx = bgCanvas.getContext('2d');
+  const fgCtx = fgCanvas.getContext('2d');
+  const panel = rootEl.querySelector('#panel');
+  const stemFilterBar = rootEl.querySelector('#stem-filter-bar');
+  const trackList = rootEl.querySelector('#track-list');
+  const canvasWrap = rootEl.querySelector('#canvas-wrap');
+  const beatFlash = rootEl.querySelector('#beat-flash');
+  const btnPlay = rootEl.querySelector('#btn-play');
+  const btnPrev = rootEl.querySelector('#btn-prev');
+  const btnNext = rootEl.querySelector('#btn-next');
+  const btnClear = rootEl.querySelector('#btn-clear');
+  const btnExport = rootEl.querySelector('#btn-export');
+  const timeDisplay = rootEl.querySelector('#time-display');
+  const focusLabel = rootEl.querySelector('#focus-label');
+  const selectedCount = rootEl.querySelector('#selected-count');
+  const status = rootEl.querySelector('#status');
 
 const LANE_H = 60;
 const PHONEME_LANE_H = 40;
@@ -76,9 +84,9 @@ function canvasWidth() {
 
 // ── Zoom ──────────────────────────────────────────────────────────────────
 
-const zoomLabel = document.getElementById('zoom-level');
-const btnZoomIn = document.getElementById('btn-zoom-in');
-const btnZoomOut = document.getElementById('btn-zoom-out');
+const zoomLabel = rootEl.querySelector('#zoom-level');
+const btnZoomIn = rootEl.querySelector('#btn-zoom-in');
+const btnZoomOut = rootEl.querySelector('#btn-zoom-out');
 
 function setZoom(newPxPerSec, anchorFraction) {
   // anchorFraction: the fraction of the visible viewport to keep stable
@@ -696,8 +704,8 @@ btnPrev.addEventListener('click', focusPrev);
 btnClear.addEventListener('click', clearFocus);
 
 // ── Legend toggle ───────────────────────────────────────────────────────
-const btnLegend = document.getElementById('btn-legend');
-const legendPanel = document.getElementById('legend-panel');
+const btnLegend = rootEl.querySelector('#btn-legend');
+const legendPanel = rootEl.querySelector('#legend-panel');
 if (btnLegend && legendPanel) {
   btnLegend.addEventListener('click', () => {
     legendPanel.classList.toggle('visible');
@@ -845,7 +853,10 @@ function buildStemFilter() {
 
 async function init() {
   try {
-    const resp = await fetch('/analysis');
+    const analysisUrl = hashParam
+      ? '/analysis?hash=' + encodeURIComponent(hashParam)
+      : '/analysis';
+    const resp = await fetch(analysisUrl);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
@@ -888,7 +899,7 @@ async function init() {
     tracks = [...regularTracks, ...sweepTracks];
 
     // Enable Phonemes button when phoneme data is present
-    const btnPhonemes = document.getElementById('btn-phonemes');
+    const btnPhonemes = rootEl.querySelector('#btn-phonemes');
     if (btnPhonemes && data.phoneme_result) {
       btnPhonemes.disabled = false;
       btnPhonemes.title = '';
@@ -942,4 +953,29 @@ async function init() {
   }
 }
 
-init();
+  init();
+}  // end createTimeline
+
+// Expose factory for workspace mount (spec 046).
+if (typeof window !== 'undefined') {
+  window.createTimeline = createTimeline;
+}
+
+// Auto-mount on the standalone /timeline page when #timeline-root exists.
+// The Analysis tab in the workspace calls createTimeline() directly and
+// there is no #timeline-root in that DOM until song-workspace.js inserts it,
+// so this guard prevents accidental double-mount on workspace pages.
+(function autoMount() {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('timeline-root');
+  if (!existing) return;
+  // If the root already has children rendered by a prior createTimeline call
+  // (e.g., the workspace mounted first), skip to avoid duplicate bindings.
+  if (existing.dataset.xoMounted === 'true') return;
+  existing.dataset.xoMounted = 'true';
+  const params = new URLSearchParams(location.search);
+  createTimeline({
+    rootEl: existing,
+    hashParam: params.get('hash'),
+  });
+})();

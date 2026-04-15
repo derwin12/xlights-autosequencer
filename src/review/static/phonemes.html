@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/navbar.css">
+  <link rel="stylesheet" href="/song-workspace.css">
   <style>
     #song-name {
       flex: 1;
@@ -72,6 +73,7 @@
   <div id="toolbar">
     <button onclick="window.location.href='/'">&#8592; Library</button>
     <button onclick="window.location.href='/timeline'">Timeline</button>
+    <a id="open-in-workspace" class="open-in-workspace" href="#" hidden>Open in workspace</a>
     <span id="song-name"></span>
     <div class="audio-toggle">
       <button id="btn-full-mix" class="active">Full Song</button>
@@ -134,5 +136,22 @@
 
   <script src="/navbar.js"></script>
   <script src="/phonemes.js"></script>
+  <script>
+    // Spec 046 FR-012: show "Open in workspace" link when ?hash resolves via /library.
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var hash = params.get('hash');
+      if (!hash) return;
+      fetch('/library').then(function (r) { return r.json(); }).then(function (data) {
+        if ((data.entries || []).some(function (e) { return e.source_hash === hash; })) {
+          var link = document.getElementById('open-in-workspace');
+          if (link) {
+            link.href = '/song/' + encodeURIComponent(hash) + '#analysis';
+            link.hidden = false;
+          }
+        }
+      }).catch(function () { /* non-fatal */ });
+    })();
+  </script>
 </body>
 </html>

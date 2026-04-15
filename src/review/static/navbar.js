@@ -12,12 +12,22 @@
     { label: 'Layout Grouping', href: '/grouper', icon: '&#9638;' },
   ];
 
-  // Song-specific tool pages that should show a breadcrumb
+  // Song-specific tool pages that render a breadcrumb with a per-song segment
+  // (Song Library › <Song> › <Tool>).
   const SONG_TOOL_PAGES = {
     '/timeline': 'Timeline',
     '/story-review': 'Story Review',
     '/phonemes-view': 'Phonemes',
     '/sweep-view': 'Sweep Results',
+  };
+
+  // Spec 045 US5: Zone D / layout-admin pages have no song context. They
+  // render a collapsed breadcrumb (Song Library › <Tool>) so the user always
+  // has a one-click route back to the library (FR-012).
+  const ADMIN_TOOL_PAGES = {
+    '/grouper': 'Layout Grouping',
+    '/themes/': 'Theme Editor',
+    '/variants/': 'Variant Library',
   };
 
   function getActivePath() {
@@ -26,6 +36,20 @@
 
   function isSongToolPage(path) {
     return SONG_TOOL_PAGES.hasOwnProperty(path);
+  }
+
+  function isAdminToolPage(path) {
+    if (ADMIN_TOOL_PAGES.hasOwnProperty(path)) return true;
+    // Tolerate missing/extra trailing slashes (/themes, /themes/)
+    if (path !== '/' && path.endsWith('/') && ADMIN_TOOL_PAGES.hasOwnProperty(path)) return true;
+    if (!path.endsWith('/') && ADMIN_TOOL_PAGES.hasOwnProperty(path + '/')) return true;
+    return false;
+  }
+
+  function adminToolLabel(path) {
+    if (ADMIN_TOOL_PAGES[path]) return ADMIN_TOOL_PAGES[path];
+    if (ADMIN_TOOL_PAGES[path + '/']) return ADMIN_TOOL_PAGES[path + '/'];
+    return '';
   }
 
   function buildNav() {
@@ -52,7 +76,7 @@
       a.className = 'navbar-link';
       a.innerHTML = '<span class="navbar-icon">' + item.icon + '</span> ' + item.label;
 
-      // Active state: exact match or song tool pages highlight Song Library
+      // Active state: exact match or song/admin tool pages highlight Song Library
       if (item.href === currentPath) {
         a.classList.add('active');
       } else if (item.href === '/' && isSongToolPage(currentPath)) {
@@ -64,7 +88,7 @@
 
     nav.appendChild(linksWrap);
 
-    // Breadcrumb for song tool pages
+    // Breadcrumb for song tool pages (Song Library › Song › Tool)
     if (isSongToolPage(currentPath)) {
       const breadcrumb = document.createElement('div');
       breadcrumb.className = 'navbar-breadcrumb';
@@ -94,6 +118,29 @@
       const toolName = document.createElement('span');
       toolName.className = 'breadcrumb-tool';
       toolName.textContent = SONG_TOOL_PAGES[currentPath];
+      breadcrumb.appendChild(toolName);
+
+      nav.appendChild(breadcrumb);
+    } else if (isAdminToolPage(currentPath)) {
+      // Spec 045 US5: admin/Zone D pages render a collapsed breadcrumb
+      // (Song Library › <Tool>) so the user can always return to /.
+      const breadcrumb = document.createElement('div');
+      breadcrumb.className = 'navbar-breadcrumb';
+      breadcrumb.id = 'navbar-breadcrumb';
+
+      const homeLink = document.createElement('a');
+      homeLink.href = '/';
+      homeLink.textContent = 'Song Library';
+      breadcrumb.appendChild(homeLink);
+
+      const sep = document.createElement('span');
+      sep.className = 'breadcrumb-sep';
+      sep.textContent = ' \u203A ';
+      breadcrumb.appendChild(sep);
+
+      const toolName = document.createElement('span');
+      toolName.className = 'breadcrumb-tool';
+      toolName.textContent = adminToolLabel(currentPath);
       breadcrumb.appendChild(toolName);
 
       nav.appendChild(breadcrumb);

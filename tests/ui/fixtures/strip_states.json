@@ -1,0 +1,70 @@
+{
+  "_comment": "Synthetic /library entries used as the acceptance oracle for spec 045 US1 (stateful workflow strip). Each fixture describes the four booleans that drive applyStripState(entry) and the expected data-state per step. See tests/ui/strip_states_README.md for the expected outputs.",
+  "fixtures": [
+    {
+      "name": "fresh_upload_no_analysis",
+      "description": "MP3 uploaded but analysis has not run yet.",
+      "entry": {
+        "source_hash": "aaa1",
+        "source_file_exists": true,
+        "analysis_exists": false,
+        "has_story": false,
+        "is_stale": false,
+        "last_generated_at": null,
+        "layout_configured": true
+      }
+    },
+    {
+      "name": "analyzed_no_story_layout_ok",
+      "description": "Song analyzed, no story yet, layout configured.",
+      "entry": {
+        "source_hash": "bbb2",
+        "source_file_exists": true,
+        "analysis_exists": true,
+        "has_story": false,
+        "is_stale": false,
+        "last_generated_at": null,
+        "layout_configured": true
+      }
+    },
+    {
+      "name": "analyzed_with_story_never_generated",
+      "description": "Analyzed and story present; never generated yet; layout configured — step 4 (Generate) is active.",
+      "entry": {
+        "source_hash": "ccc3",
+        "source_file_exists": true,
+        "analysis_exists": true,
+        "has_story": true,
+        "is_stale": false,
+        "last_generated_at": null,
+        "layout_configured": true
+      }
+    },
+    {
+      "name": "fully_generated",
+      "description": "Analyzed, story present, generation recorded, layout configured — every step complete.",
+      "entry": {
+        "source_hash": "ddd4",
+        "source_file_exists": true,
+        "analysis_exists": true,
+        "has_story": true,
+        "is_stale": false,
+        "last_generated_at": "2026-04-14T15:20:00Z",
+        "layout_configured": true
+      }
+    },
+    {
+      "name": "layout_missing_blocks_generate",
+      "description": "Song fully briefed but no layout configured — step 4 (Generate) is blocked.",
+      "entry": {
+        "source_hash": "eee5",
+        "source_file_exists": true,
+        "analysis_exists": true,
+        "has_story": true,
+        "is_stale": false,
+        "last_generated_at": null,
+        "layout_configured": false
+      }
+    }
+  ]
+}

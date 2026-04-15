@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Song Workspace — x-onset</title>
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/navbar.css">
+  <link rel="stylesheet" href="/song-workspace.css">
+</head>
+<body>
+
+  <!-- Song header populated by song-workspace.js from /library -->
+  <header id="song-header" class="song-header">
+    <h1 id="song-title" class="song-title">Loading…</h1>
+    <div class="song-meta">
+      <span id="song-duration" class="song-duration"></span>
+      <span id="song-analysis-status" class="song-analysis-status"></span>
+    </div>
+    <div id="song-layout-banner" class="song-layout-banner" hidden></div>
+  </header>
+
+  <nav class="workspace-tabs" role="tablist" aria-label="Song workspace tabs">
+    <button type="button"
+            class="workspace-tab active"
+            role="tab"
+            id="tab-analysis"
+            aria-controls="panel-analysis"
+            aria-selected="true"
+            data-tab="analysis">Analysis</button>
+    <button type="button"
+            class="workspace-tab"
+            role="tab"
+            id="tab-brief"
+            aria-controls="panel-brief"
+            aria-selected="false"
+            data-tab="brief">Brief</button>
+    <button type="button"
+            class="workspace-tab"
+            role="tab"
+            id="tab-preview"
+            aria-controls="panel-preview"
+            aria-selected="false"
+            data-tab="preview">Preview</button>
+    <button type="button"
+            class="workspace-tab"
+            role="tab"
+            id="tab-generate"
+            aria-controls="panel-generate"
+            aria-selected="false"
+            data-tab="generate">Generate &amp; Download</button>
+  </nav>
+
+  <section class="workspace-panel"
+           id="panel-analysis"
+           role="tabpanel"
+           aria-labelledby="tab-analysis">
+    <!-- createTimeline() mounts the timeline component here on first activation. -->
+  </section>
+
+  <section class="workspace-panel"
+           id="panel-brief"
+           role="tabpanel"
+           aria-labelledby="tab-brief"
+           hidden>
+    <div class="workspace-placeholder">
+      <h2>Brief — coming soon</h2>
+      <p>
+        The Brief tab will be filled in by feature 047 (creative brief form).
+        For now, generation defaults are used.
+      </p>
+    </div>
+  </section>
+
+  <section class="workspace-panel"
+           id="panel-preview"
+           role="tabpanel"
+           aria-labelledby="tab-preview"
+           hidden>
+
+    <div class="preview-controls">
+      <label for="preview-section-select" class="preview-section-label">Section:</label>
+      <select id="preview-section-select" class="preview-section-select">
+        <option value="">Loading sections…</option>
+      </select>
+      <button type="button" id="btn-preview" class="primary-action">Preview</button>
+    </div>
+
+    <!-- In-progress indicator -->
+    <div id="preview-progress" class="preview-progress" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <span class="preview-progress-label">Previewing…</span>
+    </div>
+
+    <!-- Result pane -->
+    <div id="preview-result" class="preview-result" hidden>
+      <div id="preview-stale-banner" class="preview-stale-banner" hidden>
+        Brief has changed — <button type="button" id="btn-repreview" class="link-button">Re-preview</button>
+      </div>
+      <dl class="preview-metadata">
+        <dt>Section</dt><dd id="preview-meta-section">—</dd>
+        <dt>Window</dt><dd id="preview-meta-window">—</dd>
+        <dt>Theme</dt><dd id="preview-meta-theme">—</dd>
+        <dt>Placements</dt><dd id="preview-meta-placements">—</dd>
+      </dl>
+      <div id="preview-warnings" class="preview-warnings" hidden></div>
+      <a id="preview-download-link" href="#" class="preview-download-link" hidden
+         download>Download preview .xsq</a>
+    </div>
+
+    <!-- Error pane -->
+    <div id="preview-error" class="preview-error" hidden>
+      <strong>Preview failed:</strong>
+      <span id="preview-error-message"></span>
+    </div>
+
+  </section>
+
+  <section class="workspace-panel"
+           id="panel-generate"
+           role="tabpanel"
+           aria-labelledby="tab-generate"
+           hidden>
+    <div id="generate-layout-banner" class="generate-layout-banner" hidden></div>
+    <div class="generate-controls">
+      <button type="button" id="btn-generate" class="primary-action">Generate</button>
+    </div>
+    <div id="generate-progress" class="generate-progress" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <span id="generate-stage" class="generate-stage">Starting…</span>
+    </div>
+    <div id="generate-download" class="generate-download" hidden></div>
+    <div id="generate-error" class="generate-error" hidden></div>
+    <h3 class="generate-history-title">Previous renders</h3>
+    <ul id="generate-history" class="generate-history"></ul>
+  </section>
+
+  <script src="/navbar.js"></script>
+  <script src="/song-workspace.js"></script>
+</body>
+</html>

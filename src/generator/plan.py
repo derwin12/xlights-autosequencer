@@ -9,12 +9,23 @@ logger = logging.getLogger(__name__)
 
 from src.analyzer.result import HierarchyResult
 from src.effects.library import EffectLibrary, load_effect_library
-from src.generator.effect_placer import place_effects, _place_drum_accents, _place_impact_accent
+from src.generator.effect_placer import (
+    _IMPACT_ENERGY_GATE,
+    _IMPACT_MIN_DURATION_MS,
+    _IMPACT_QUALIFYING_ROLES,
+    _compute_active_tiers,
+    _place_drum_accents,
+    _place_impact_accent,
+    compute_duration_target,
+    place_effects,
+    restrain_palette,
+)
 from src.generator.energy import derive_section_energies
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
 from src.story.builder import load_song_story
 from src.generator.models import (
+    AccentPolicy,
     GenerationConfig,
     SectionAssignment,
     SectionEnergy,
@@ -184,50 +195,45 @@ def build_plan(
         working_sets=working_sets if config.focused_vocabulary else None,
     )
 
-    # 4. Place effects for each section
+    # 4. Precompute per-section decisions onto each SectionAssignment (spec 048).
+    # Every creative knob that shapes a section — active tiers, palette cap per tier,
+    # duration band, accent policy, working set, section index — is decided here and
+    # stored on the assignment.  `place_effects` below consumes the assignment as a
+    # read-only recipe.
+    _populate_assignment_decisions(assignments, config, hierarchy, working_sets)
+
+    # 5. Place effects for each section.  `place_effects` reads every per-section
+    # decision off the assignment fields populated above.
     model_names = [p.name for p in props]
     props_by_name = {p.name: p for p in props}
-    # When tier_selection is disabled, pass all tiers explicitly so place_effects
-    # treats it as a user override and bypasses the energy/mood-driven selection.
-    tiers_arg = config.tiers if config.tier_selection else frozenset(range(1, 9))
-    for idx, assignment in enumerate(assignments):
-        theme_name = assignment.theme.name
-        section_working_set = working_sets.get(theme_name) if config.focused_vocabulary else None
+    for assignment in assignments:
         group_effects = place_effects(
             assignment, groups, effect_library, hierarchy,
-            tiers=tiers_arg,
             variant_library=variant_library,
             rotation_plan=rotation_plan,
-            section_index=idx,
-            working_set=section_working_set,
-            focused_vocabulary=config.focused_vocabulary,
-            palette_restraint=config.palette_restraint,
-            duration_scaling=config.duration_scaling,
-            bpm=hierarchy.estimated_bpm,
         )
         assignment.group_effects = group_effects
 
-        # Beat accent effects (spec 042)
-        if config.beat_accent_effects:
-            # 042A: Drum-hit Shockwave on small radial props
-            drum_accents = _place_drum_accents(
-                groups=groups,
-                hierarchy=hierarchy,
-                assignment=assignment,
-                variant_library=variant_library,
-                props_by_name=props_by_name,
-            )
-            for gname, placements in drum_accents.items():
-                assignment.group_effects.setdefault(gname, []).extend(placements)
+        # Beat accent effects (spec 042).  The helpers early-return when
+        # `assignment.accent_policy` has the corresponding flag unset, so we
+        # call unconditionally — policy is the single source of truth.
+        drum_accents = _place_drum_accents(
+            groups=groups,
+            hierarchy=hierarchy,
+            assignment=assignment,
+            variant_library=variant_library,
+            props_by_name=props_by_name,
+        )
+        for gname, placements in drum_accents.items():
+            assignment.group_effects.setdefault(gname, []).extend(placements)
 
-            # 042B: Whole-house white Shockwave at high-energy section peaks
-            impact_accents = _place_impact_accent(
-                groups=groups,
-                assignment=assignment,
-                variant_library=variant_library,
-            )
-            for gname, placements in impact_accents.items():
-                assignment.group_effects.setdefault(gname, []).extend(placements)
+        impact_accents = _place_impact_accent(
+            groups=groups,
+            assignment=assignment,
+            variant_library=variant_library,
+        )
+        for gname, placements in impact_accents.items():
+            assignment.group_effects.setdefault(gname, []).extend(placements)
 
     # 5. Value curves — generate for each placement when curves are enabled
     if config.curves_mode != "none":
@@ -266,6 +272,77 @@ def build_plan(
         models=model_names,
         rotation_plan=rotation_plan,
     )
+
+
+def _populate_assignment_decisions(
+    assignments: list[SectionAssignment],
+    config: GenerationConfig,
+    hierarchy: HierarchyResult,
+    working_sets: dict,
+) -> None:
+    """Precompute per-section creative decisions and store them on each assignment.
+
+    Runs after theme selection and before placement.  Every field written here is
+    consumed by `place_effects()` (and the accent helpers) as a read-only recipe.
+    See spec 048 plan.md Phase B and data-model.md for the field contracts.
+    """
+    dummy_palette = ["#000000"] * 6
+    drum_track_present = hierarchy.events.get("drums") is not None
+    for idx, assignment in enumerate(assignments):
+        section = assignment.section
+        assignment.section_index = idx
+
+        # Active tiers — user override (`config.tiers`) wins; else energy/mood-driven
+        # selection when enabled; else all tiers.
+        if config.tier_selection:
+            if config.tiers is not None:
+                assignment.active_tiers = frozenset(config.tiers)
+            else:
+                assignment.active_tiers = _compute_active_tiers(section, idx, hierarchy)
+        else:
+            assignment.active_tiers = frozenset(range(1, 9))
+
+        # Palette target — per-tier cap mapping. Populated from restrain_palette's
+        # length at (energy, tier) with a dummy 6-colour palette; the actual colour
+        # selection still happens inside place_effects against the real per-tier
+        # palette using the stored count.
+        if config.palette_restraint:
+            assignment.palette_target = {
+                tier: len(restrain_palette(dummy_palette, section.energy_score, tier))
+                for tier in assignment.active_tiers
+            }
+        else:
+            assignment.palette_target = None
+
+        # Duration target
+        if config.duration_scaling:
+            assignment.duration_target = compute_duration_target(
+                hierarchy.estimated_bpm, section.energy_score,
+            )
+        else:
+            assignment.duration_target = None
+
+        # Accent policy — apply all section-level gates here, once, so accent
+        # helpers become mechanical.  Per-hit drum energy sampling stays inside
+        # `_place_drum_accents` (per-hit, not per-section).
+        drum_ok = bool(
+            config.beat_accent_effects
+            and section.energy_score >= 60
+            and drum_track_present
+        )
+        role = (section.label or "").lower()
+        impact_ok = bool(
+            config.beat_accent_effects
+            and section.energy_score > _IMPACT_ENERGY_GATE
+            and (section.end_ms - section.start_ms) >= _IMPACT_MIN_DURATION_MS
+            and (not role or role in _IMPACT_QUALIFYING_ROLES)
+        )
+        assignment.accent_policy = AccentPolicy(drum_hits=drum_ok, impact=impact_ok)
+
+        # Working set — per-theme reference, shared across sections using the same theme.
+        assignment.working_set = (
+            working_sets.get(assignment.theme.name) if config.focused_vocabulary else None
+        )
 
 
 def _section_energies_from_story(story: dict) -> list[SectionEnergy]:
@@ -444,23 +521,24 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
     except Exception:
         logger.debug("Variant library unavailable — falling back to pool rotation")
 
-    # When tier_selection is disabled, pass all tiers explicitly so place_effects
-    # treats it as a user override and bypasses the energy/mood-driven selection.
-    tiers_arg = (
-        getattr(config, "tiers", None)
-        if getattr(config, "tier_selection", True)
-        else frozenset(range(1, 9))
-    )
-    for idx, assignment in enumerate(assignments):
+    # Derive per-theme working sets when focused_vocabulary is enabled, same as
+    # `build_plan` step 3c.
+    from src.generator.effect_placer import derive_working_set
+    working_sets: dict = {}
+    if config.focused_vocabulary and variant_library is not None:
+        for assignment in assignments:
+            theme_name = assignment.theme.name
+            if theme_name not in working_sets:
+                working_sets[theme_name] = derive_working_set(assignment.theme, variant_library)
+
+    # Precompute per-section decisions on each assignment, then place using the
+    # same assignment-driven path as `build_plan` (spec 048, FR-023).
+    _populate_assignment_decisions(assignments, config, hierarchy, working_sets)
+    for assignment in assignments:
         group_effects = place_effects(
             assignment, groups, effect_library, hierarchy,
-            tiers=tiers_arg,
             variant_library=variant_library,
             rotation_plan=rotation_plan,
-            section_index=idx,
-            palette_restraint=getattr(config, "palette_restraint", True),
-            duration_scaling=getattr(config, "duration_scaling", True),
-            bpm=hierarchy.estimated_bpm,
         )
         assignment.group_effects = group_effects
 

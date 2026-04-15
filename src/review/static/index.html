@@ -7,74 +7,96 @@
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/navbar.css">
+  <link rel="stylesheet" href="/song-workspace.css">
 </head>
 <body>
 
-  <div id="toolbar">
-    <button id="btn-library" onclick="window.location.href='/'" aria-label="Back to library">&#8592; Library</button>
-    <button id="btn-play" aria-label="Play or pause audio">Play</button>
-    <span id="time-display" aria-live="polite">0:00 / 0:00</span>
-    <div id="beat-flash" title="Beat indicator" role="presentation"></div>
-    <button id="btn-prev" aria-label="Focus previous track">&#9664; Prev</button>
-    <button id="btn-next" aria-label="Focus next track">Next &#9654;</button>
-    <button id="btn-clear" aria-label="Clear track focus">Clear Focus</button>
-    <span id="focus-label" aria-live="polite"></span>
-    <span id="selected-count" aria-live="polite"></span>
-    <span class="toolbar-sep" role="separator"></span>
-    <button id="btn-zoom-out" title="Zoom out (Ctrl+-)" aria-label="Zoom out">&#8722;</button>
-    <span id="zoom-level" aria-live="polite">100%</span>
-    <button id="btn-zoom-in" title="Zoom in (Ctrl++)" aria-label="Zoom in">+</button>
-    <button id="btn-phonemes" onclick="window.location.href='/phonemes-view'" disabled title="No phoneme data — re-analyze with Phonemes enabled" aria-label="View phoneme tracks">Phonemes</button>
-    <button id="btn-sweep" onclick="window.location.href='/sweep-view'" title="Browse and compare sweep results" aria-label="View sweep results">Sweep Results</button>
-    <button id="btn-legend" title="Show/hide section color legend">Legend</button>
-    <button id="btn-export" disabled>Export Selection</button>
+  <div id="timeline-root">
+    <div id="toolbar">
+      <button id="btn-library" onclick="window.location.href='/'" aria-label="Back to library">&#8592; Library</button>
+      <a id="open-in-workspace" class="open-in-workspace" href="#" hidden>Open in workspace</a>
+      <button id="btn-play" aria-label="Play or pause audio">Play</button>
+      <span id="time-display" aria-live="polite">0:00 / 0:00</span>
+      <div id="beat-flash" title="Beat indicator" role="presentation"></div>
+      <button id="btn-prev" aria-label="Focus previous track">&#9664; Prev</button>
+      <button id="btn-next" aria-label="Focus next track">Next &#9654;</button>
+      <button id="btn-clear" aria-label="Clear track focus">Clear Focus</button>
+      <span id="focus-label" aria-live="polite"></span>
+      <span id="selected-count" aria-live="polite"></span>
+      <span class="toolbar-sep" role="separator"></span>
+      <button id="btn-zoom-out" title="Zoom out (Ctrl+-)" aria-label="Zoom out">&#8722;</button>
+      <span id="zoom-level" aria-live="polite">100%</span>
+      <button id="btn-zoom-in" title="Zoom in (Ctrl++)" aria-label="Zoom in">+</button>
+      <button id="btn-phonemes" onclick="window.location.href='/phonemes-view'" disabled title="No phoneme data — re-analyze with Phonemes enabled" aria-label="View phoneme tracks">Phonemes</button>
+      <button id="btn-sweep" onclick="window.location.href='/sweep-view'" title="Browse and compare sweep results" aria-label="View sweep results">Sweep Results</button>
+      <button id="btn-legend" title="Show/hide section color legend">Legend</button>
+      <button id="btn-export" disabled>Export Selection</button>
+    </div>
+
+    <div id="main">
+      <div id="panel">
+        <div id="stem-filter-bar"></div>
+        <div id="track-list"></div>
+      </div>
+      <div id="canvas-wrap">
+        <canvas id="bg-canvas"></canvas>
+        <canvas id="fg-canvas"></canvas>
+      </div>
+    </div>
+
+    <audio id="player" src="/audio" preload="auto"></audio>
+
+    <div id="legend-panel">
+      <h4>Section Types</h4>
+      <div class="legend-section">
+        <div class="legend-item"><span class="legend-swatch" style="background:rgba(60,180,80,0.5)"></span> Intro</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:rgba(80,140,220,0.5)"></span> Verse</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:rgba(160,80,220,0.5)"></span> Pre-chorus</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:rgba(220,70,70,0.6)"></span> Chorus</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:rgba(220,160,40,0.5)"></span> Bridge</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:rgba(120,120,120,0.5)"></span> Outro</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:rgba(40,200,200,0.5)"></span> Instrumental</div>
+      </div>
+      <div class="legend-divider"></div>
+      <h4>Track Marks</h4>
+      <div class="legend-section">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--xo-accent)"></span> Timing mark</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#2a5;border-radius:50%"></span> High quality (&ge;0.7)</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#853;border-radius:50%"></span> Medium quality</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#833;border-radius:50%"></span> Low quality (&lt;0.4)</div>
+      </div>
+      <div class="legend-divider"></div>
+      <h4>Keyboard Shortcuts</h4>
+      <div class="legend-section" style="color:#888;font-size:11px">
+        <div class="legend-item">Space &mdash; Play / Pause</div>
+        <div class="legend-item">Ctrl+/- &mdash; Zoom in / out</div>
+        <div class="legend-item">Ctrl+0 &mdash; Reset zoom</div>
+        <div class="legend-item">&uarr;/&darr; &mdash; Prev / Next track</div>
+      </div>
+    </div>
+
+    <div id="status">Loading analysis...</div>
   </div>
-
-  <div id="main">
-    <div id="panel">
-      <div id="stem-filter-bar"></div>
-      <div id="track-list"></div>
-    </div>
-    <div id="canvas-wrap">
-      <canvas id="bg-canvas"></canvas>
-      <canvas id="fg-canvas"></canvas>
-    </div>
-  </div>
-
-  <audio id="player" src="/audio" preload="auto"></audio>
-
-  <div id="legend-panel">
-    <h4>Section Types</h4>
-    <div class="legend-section">
-      <div class="legend-item"><span class="legend-swatch" style="background:rgba(60,180,80,0.5)"></span> Intro</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:rgba(80,140,220,0.5)"></span> Verse</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:rgba(160,80,220,0.5)"></span> Pre-chorus</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:rgba(220,70,70,0.6)"></span> Chorus</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:rgba(220,160,40,0.5)"></span> Bridge</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:rgba(120,120,120,0.5)"></span> Outro</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:rgba(40,200,200,0.5)"></span> Instrumental</div>
-    </div>
-    <div class="legend-divider"></div>
-    <h4>Track Marks</h4>
-    <div class="legend-section">
-      <div class="legend-item"><span class="legend-swatch" style="background:var(--xo-accent)"></span> Timing mark</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:#2a5;border-radius:50%"></span> High quality (&ge;0.7)</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:#853;border-radius:50%"></span> Medium quality</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:#833;border-radius:50%"></span> Low quality (&lt;0.4)</div>
-    </div>
-    <div class="legend-divider"></div>
-    <h4>Keyboard Shortcuts</h4>
-    <div class="legend-section" style="color:#888;font-size:11px">
-      <div class="legend-item">Space &mdash; Play / Pause</div>
-      <div class="legend-item">Ctrl+/- &mdash; Zoom in / out</div>
-      <div class="legend-item">Ctrl+0 &mdash; Reset zoom</div>
-      <div class="legend-item">&uarr;/&darr; &mdash; Prev / Next track</div>
-    </div>
-  </div>
-
-  <div id="status">Loading analysis...</div>
 
   <script src="/navbar.js"></script>
   <script src="/app.js"></script>
+  <script>
+    // Spec 046 FR-012 affordance: small "Open in workspace" link when hash
+    // is resolvable via the /library payload.
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var hash = params.get('hash');
+      if (!hash) return;
+      fetch('/library').then(function (r) { return r.json(); }).then(function (data) {
+        if ((data.entries || []).some(function (e) { return e.source_hash === hash; })) {
+          var link = document.getElementById('open-in-workspace');
+          if (link) {
+            link.href = '/song/' + encodeURIComponent(hash) + '#analysis';
+            link.hidden = false;
+          }
+        }
+      }).catch(function () { /* non-fatal */ });
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,52 @@
+<!-- brief-tab.html — Creative Brief form fragment (spec 047). -->
+<!-- Loaded by song-workspace.js and mounted into #panel-brief. -->
+<section id="brief-tab">
+  <p id="brief-updated-at" class="brief-updated-at" hidden></p>
+
+  <form id="brief-form" novalidate>
+    <fieldset class="axis" id="axis-genre" data-axis="genre"></fieldset>
+    <fieldset class="axis" id="axis-occasion" data-axis="occasion"></fieldset>
+    <fieldset class="axis" id="axis-mood_intent" data-axis="mood_intent"></fieldset>
+    <fieldset class="axis" id="axis-variation" data-axis="variation"></fieldset>
+    <fieldset class="axis" id="axis-palette" data-axis="palette"></fieldset>
+    <fieldset class="axis" id="axis-duration" data-axis="duration"></fieldset>
+    <fieldset class="axis" id="axis-accents" data-axis="accents"></fieldset>
+    <fieldset class="axis" id="axis-transitions" data-axis="transitions"></fieldset>
+    <fieldset class="axis" id="axis-curves" data-axis="curves"></fieldset>
+
+    <section id="per-section-overrides" class="per-section-overrides">
+      <header class="per-section-header">
+        <h3>Per-Section Theme Overrides</h3>
+        <button type="button" id="btn-clear-overrides" class="link-button">
+          Clear all overrides
+        </button>
+      </header>
+      <p class="hint">
+        Each row corresponds to a detected section.  Leaving a row on Auto
+        lets the generator pick the theme.
+      </p>
+      <table class="per-section-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Section</th>
+            <th>Time</th>
+            <th>Energy</th>
+            <th>Theme</th>
+          </tr>
+        </thead>
+        <tbody id="per-section-tbody"></tbody>
+      </table>
+    </section>
+
+    <div class="brief-actions">
+      <button type="button" id="btn-brief-reset" class="secondary-action">
+        Reset to Auto
+      </button>
+      <button type="button" id="btn-brief-generate" class="primary-action">
+        Generate
+      </button>
+    </div>
+    <div id="brief-concurrent-message" class="brief-concurrent-message" hidden></div>
+  </form>
+</section>

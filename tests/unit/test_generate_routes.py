@@ -354,16 +354,41 @@ class TestGenerationHistory:
         assert resp.status_code == 200
         assert resp.get_json()["jobs"] == []
 
-    def test_only_complete_jobs_returned(self):
+    # Spec 046 T036: history now returns ALL jobs (including in-flight).
+    def test_all_jobs_returned_sorted_newest_first(self):
         app = _make_app()
-        self._add_job("hash1", status="complete")
-        self._add_job("hash1", status="failed")
-        self._add_job("hash1", status="running")
+        now = time.time()
+        self._add_job("hash1", status="complete", created_at=now - 30)
+        self._add_job("hash1", status="failed", created_at=now - 20)
+        self._add_job("hash1", status="running", created_at=now - 10)
         with app.test_client() as client:
             resp = client.get("/generate/hash1/history")
         data = resp.get_json()
-        assert len(data["jobs"]) == 1
-        assert data["jobs"][0]["status"] == "complete"
+        assert len(data["jobs"]) == 3
+        # Running is newest, then failed, then complete.
+        statuses = [j["status"] for j in data["jobs"]]
+        assert statuses == ["running", "failed", "complete"]
+
+    # Spec 046 T037: conditional fields by status.
+    def test_download_url_only_on_complete_error_only_on_failed(self):
+        app = _make_app()
+        self._add_job("hash9", status="complete")
+        self._add_job("hash9", status="running")
+        self._add_job("hash9", status="failed")
+        with app.test_client() as client:
+            resp = client.get("/generate/hash9/history")
+        by_status = {j["status"]: j for j in resp.get_json()["jobs"]}
+
+        assert "download_url" in by_status["complete"]
+        assert by_status["complete"]["download_url"].startswith(
+            "/generate/hash9/download/"
+        )
+        assert "download_url" not in by_status["running"]
+        assert "download_url" not in by_status["failed"]
+
+        assert "error" in by_status["failed"]
+        assert "error" not in by_status["complete"]
+        assert "error" not in by_status["running"]
 
     def test_sorted_newest_first(self):
         app = _make_app()

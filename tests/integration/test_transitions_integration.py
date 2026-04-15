@@ -90,7 +90,10 @@ def _build_section_assignment(
 ) -> SectionAssignment:
     theme = _make_theme(variant_name)
     section = _make_section(label, start_ms, end_ms)
-    assignment = SectionAssignment(section=section, theme=theme)
+    assignment = SectionAssignment(
+        section=section, theme=theme,
+        active_tiers=frozenset({g.tier for g in groups}),
+    )
     assignment.group_effects = place_effects(
         assignment, groups, effect_library, hierarchy, variant_library=variant_library,
     )

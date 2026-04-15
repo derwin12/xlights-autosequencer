@@ -263,6 +263,151 @@ class TestXsqWriter:
             )
 
 
+class TestScopedPreviewParams:
+    """Tests for spec 049 — scoped_duration_ms and audio_offset_ms kwargs."""
+
+    def _make_preview_plan(self) -> SequencePlan:
+        """Return a plan with placements starting at 45000ms (for offset tests)."""
+        profile = SongProfile(
+            title="PreviewTest",
+            artist="Artist",
+            genre="pop",
+            occasion="general",
+            duration_ms=180000,
+            estimated_bpm=120.0,
+        )
+        theme = _make_theme()
+        placement = EffectPlacement(
+            effect_name="Fire",
+            xlights_id="Fire",
+            model_or_group="Model1",
+            start_ms=45000,
+            end_ms=60000,
+            parameters={"E_SLIDER_Fire_Height": 50},
+            color_palette=["#FF0000"],
+        )
+        section = SectionAssignment(
+            section=SectionEnergy(
+                label="chorus",
+                start_ms=45000,
+                end_ms=60000,
+                energy_score=80,
+                mood_tier="aggressive",
+                impact_count=2,
+            ),
+            theme=theme,
+            group_effects={"Model1": [placement]},
+        )
+        return SequencePlan(
+            song_profile=profile,
+            sections=[section],
+            models=["Model1"],
+        )
+
+    def test_scoped_duration_overrides_song_duration(self, tmp_path: Path) -> None:
+        """scoped_duration_ms replaces sequenceDuration in the output."""
+        plan = self._make_preview_plan()
+        out = tmp_path / "preview.xsq"
+        write_xsq(plan, out, scoped_duration_ms=15000)
+
+        tree = ET.parse(out)
+        root = tree.getroot()
+        head = root.find("head")
+        assert head is not None
+        dur_el = head.find("sequenceDuration")
+        assert dur_el is not None
+        assert abs(float(dur_el.text) - 15.0) < 0.01
+
+    def test_audio_offset_emits_media_offset_element(self, tmp_path: Path) -> None:
+        """audio_offset_ms emits <mediaOffset> element in <head>."""
+        plan = self._make_preview_plan()
+        out = tmp_path / "preview.xsq"
+        write_xsq(plan, out, audio_offset_ms=45000)
+
+        tree = ET.parse(out)
+        root = tree.getroot()
+        head = root.find("head")
+        assert head is not None
+        media_offset_el = head.find("mediaOffset")
+        assert media_offset_el is not None
+        assert media_offset_el.text == "45000"
+
+    def test_audio_offset_shifts_placement_times(self, tmp_path: Path) -> None:
+        """audio_offset_ms subtracts from startTime/endTime in output."""
+        plan = self._make_preview_plan()  # placement at 45000-60000ms
+        out = tmp_path / "preview.xsq"
+        write_xsq(plan, out, scoped_duration_ms=15000, audio_offset_ms=45000)
+
+        tree = ET.parse(out)
+        root = tree.getroot()
+        effects_el = root.find("ElementEffects")
+        assert effects_el is not None
+
+        found = False
+        for elem in effects_el.iter("Effect"):
+            start = elem.get("startTime")
+            end = elem.get("endTime")
+            if start is not None and end is not None:
+                assert int(start) == 0, f"Expected startTime=0 (45000-45000), got {start}"
+                assert int(end) == 15000, f"Expected endTime=15000 (60000-45000), got {end}"
+                found = True
+                break
+        assert found, "No Effect elements found in ElementEffects"
+
+    def test_audio_offset_does_not_mutate_placements(self, tmp_path: Path) -> None:
+        """EffectPlacement objects are not mutated by audio_offset_ms serialization."""
+        plan = self._make_preview_plan()  # placement at 45000-60000ms
+        original_start = plan.sections[0].group_effects["Model1"][0].start_ms
+        original_end = plan.sections[0].group_effects["Model1"][0].end_ms
+
+        out = tmp_path / "preview.xsq"
+        write_xsq(plan, out, scoped_duration_ms=15000, audio_offset_ms=45000)
+
+        # Verify in-memory placement is unchanged
+        placement = plan.sections[0].group_effects["Model1"][0]
+        assert placement.start_ms == original_start
+        assert placement.end_ms == original_end
+
+    def test_no_media_offset_when_none(self, tmp_path: Path) -> None:
+        """When audio_offset_ms is None, no <mediaOffset> element is emitted."""
+        plan = self._make_preview_plan()
+        out = tmp_path / "preview.xsq"
+        write_xsq(plan, out)
+
+        tree = ET.parse(out)
+        root = tree.getroot()
+        head = root.find("head")
+        assert head is not None
+        media_offset_el = head.find("mediaOffset")
+        assert media_offset_el is None
+
+    def test_scoped_and_offset_together(self, tmp_path: Path) -> None:
+        """scoped_duration_ms=15000 + audio_offset_ms=45000 produces correct output."""
+        plan = self._make_preview_plan()
+        out = tmp_path / "preview.xsq"
+        write_xsq(plan, out, scoped_duration_ms=15000, audio_offset_ms=45000)
+
+        tree = ET.parse(out)
+        root = tree.getroot()
+        head = root.find("head")
+
+        # Verify sequenceDuration is the scoped value
+        dur_el = head.find("sequenceDuration")
+        assert abs(float(dur_el.text) - 15.0) < 0.01
+
+        # Verify mediaOffset is present
+        media_offset_el = head.find("mediaOffset")
+        assert media_offset_el is not None
+        assert media_offset_el.text == "45000"
+
+        # Verify placement times are shifted
+        effects_el = root.find("ElementEffects")
+        for elem in effects_el.iter("Effect"):
+            start = elem.get("startTime")
+            if start is not None:
+                assert int(start) == 0
+
+
 class TestXsqParser:
     """Tests for parsing existing .xsq files and section regeneration."""
 

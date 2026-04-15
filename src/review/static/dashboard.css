@@ -583,3 +583,187 @@ body {
 .gen-hist-opts { color: #aaa; flex: 1; }
 .gen-hist-dl   { color: #6699cc; text-decoration: none; }
 .gen-hist-dl:hover { text-decoration: underline; }
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Spec 045: Web UX Phase 1 Wayfinding                                       */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Workflow strip: stateful per-song states (US1) ───────────────────────── */
+
+.workflow-step[data-state="complete"] .step-number {
+  background: #2a5;
+  color: #fff;
+  border-color: #2a5;
+}
+.workflow-step[data-state="complete"] .step-label { color: #4a4; }
+
+.workflow-step[data-state="active"] .step-number {
+  background: var(--xo-accent);
+  color: var(--xo-bg);
+  border-color: var(--xo-accent);
+  box-shadow: 0 0 0 3px rgba(100, 230, 255, 0.18);
+}
+.workflow-step[data-state="active"] .step-label {
+  color: var(--xo-accent);
+  font-weight: 600;
+}
+
+.workflow-step[data-state="incomplete"] .step-number {
+  background: #333;
+  color: #888;
+  border-color: #444;
+}
+.workflow-step[data-state="incomplete"] .step-label { color: #888; }
+
+.workflow-step[data-state="blocked"] .step-number {
+  background: #3a2a1a;
+  color: #c90;
+  border-color: #c90;
+}
+.workflow-step[data-state="blocked"] .step-label { color: #c90; }
+
+.workflow-step[data-state="neutral"] .step-number {
+  background: #333;
+  color: #666;
+  border-color: #444;
+}
+.workflow-step[data-state="neutral"] .step-label { color: #666; }
+
+.workflow-step[data-state="complete"],
+.workflow-step[data-state="active"] {
+  cursor: pointer;
+}
+.workflow-step[data-state="incomplete"],
+.workflow-step[data-state="blocked"],
+.workflow-step[data-state="neutral"] {
+  cursor: default;
+}
+
+.workflow-step[data-state="blocked"]:hover { background: #2a2218; }
+
+.workflow-connector[data-state="complete"] { background: #2a5; }
+
+/* ── Zone A setup banner (US2) ────────────────────────────────────────────── */
+
+.zone-a-banner {
+  margin: 16px 20px 0;
+  padding: 16px 20px;
+  background: #3a2a1a;
+  border: 1px solid #c90;
+  border-left: 4px solid #c90;
+  border-radius: 6px;
+}
+.zone-a-banner[hidden] { display: none; }
+.zone-a-banner-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.zone-a-banner-text strong {
+  display: block;
+  color: #ffc857;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.zone-a-banner-text p {
+  color: #c9a766;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.zone-a-banner .btn-primary {
+  text-decoration: none;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* ── Generate-control disabled state when layout is unconfigured (US2) ───── */
+
+body[data-layout-configured="false"] .workflow-step[data-step="generate"] {
+  opacity: 0.55;
+}
+body[data-layout-configured="false"] .overflow-menu-item[data-action="generate"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+body[data-layout-configured="false"] .overflow-menu-item[data-action="generate"]::after {
+  content: " — set up layout first";
+  color: #c90;
+  font-size: 10px;
+}
+
+/* ── Detail panel Open + overflow menu (US3) ──────────────────────────────── */
+
+.btn-open {
+  background: var(--xo-accent);
+  color: var(--xo-bg);
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.btn-open:hover { background: #81EBFF; }
+.btn-open:focus-visible {
+  outline: 2px solid var(--xo-accent);
+  outline-offset: 2px;
+}
+
+.overflow-wrap {
+  position: relative;
+  display: inline-block;
+}
+.btn-kebab {
+  background: #2a2a3a;
+  color: #aaa;
+  border: none;
+  border-radius: 4px;
+  width: 36px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  font-family: inherit;
+}
+.btn-kebab:hover { background: #3a3a4a; color: #ddd; }
+.btn-kebab[aria-expanded="true"] { background: #3a3a4a; color: var(--xo-accent); }
+
+.overflow-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 4px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+.overflow-menu[hidden] { display: none; }
+.overflow-menu-item {
+  background: none;
+  border: none;
+  color: #ccc;
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.overflow-menu-item:hover { background: #2a2a3a; color: var(--xo-accent); }
+.overflow-menu-item--danger { color: #d97070; }
+.overflow-menu-item--danger:hover { background: #3a1a1a; color: #f88; }
+
+/* ── Lifecycle badges (US4) ────────────────────────────────────────────── */
+
+.badge-analyzed { background: #1a2a3a; color: #7cb; }
+.badge-generated { background: #1a3a2a; color: #5c8; }
+.badge-stale { background: #3a2a1a; color: #d95; }
+

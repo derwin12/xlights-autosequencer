@@ -1,0 +1,247 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<xsequence BaseChannel="0" ChanCtrlBasic="0" ChanCtrlColor="0" FixedPointTiming="25" ModelBlending="true">
+  <head>
+    <version>2026.03</version>
+    <author>xlight-autosequencer</author>
+    <song>10s_vocals</song>
+    <artist />
+    <mediaFile>10s_vocals.mp3</mediaFile>
+    <sequenceType>Media</sequenceType>
+    <sequenceTiming>25 ms</sequenceTiming>
+    <sequenceDuration>20.000</sequenceDuration>
+  </head>
+  <ColorPalettes>
+    <ColorPalette>C_BUTTON_Palette1=#160843,C_BUTTON_Palette2=#1B123A,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#004C4C,C_BUTTON_Palette2=#00264C,C_BUTTON_Palette3=#00404C,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#4C0000,C_BUTTON_Palette2=#4C3D00,C_BUTTON_Palette3=#4C2800,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#4C0000,C_BUTTON_Palette2=#4C3D00,C_BUTTON_Palette3=#4C2800,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=77</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#FFD700,C_BUTTON_Palette2=#E8A317,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#FF4400,C_BUTTON_Palette2=#CC3300,C_BUTTON_Palette3=#FF8855,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=47</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#FF4400,C_BUTTON_Palette2=#CC3300,C_BUTTON_Palette3=#FF8855,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=77</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#FFFFFF,C_BUTTON_Palette2=#00FF00,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=0,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#FFD700,C_BUTTON_Palette2=#E8A317,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=35</ColorPalette>
+  </ColorPalettes>
+  <EffectDB>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=0.16</Effect>
+    <Effect>E_CHOICE_Plasma_Color=Normal,E_SLIDER_Plasma_Line_Density=4,E_SLIDER_Plasma_Speed=12,E_SLIDER_Plasma_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=0.16</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Down,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Up,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Left,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Right,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=4</Effect>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1</Effect>
+    <Effect>E_CHOICE_Plasma_Color=Normal,E_SLIDER_Plasma_Line_Density=4,E_SLIDER_Plasma_Speed=12,E_SLIDER_Plasma_Style=1</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Down,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadeout=4</Effect>
+    <Effect>E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=10,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Left,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
+    <Effect>E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=10,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5,T_TEXTCTRL_Fadeout=4</Effect>
+    <Effect>E_SLIDER_Shockwave_Accel=5,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=100,E_SLIDER_Shockwave_End_Width=10,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=8</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Up,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
+    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Right,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
+  </EffectDB>
+  <DisplayElements>
+    <Element type="model" name="01_BASE_All" visible="1" collapsed="0" active="1" />
+    <Element type="model" name="02_GEO_Left" visible="1" collapsed="0" active="1" />
+    <Element type="model" name="02_GEO_Right" visible="1" collapsed="0" active="1" />
+    <Element type="model" name="04_BEAT_1" visible="1" collapsed="0" active="1" />
+    <Element type="model" name="04_BEAT_2" visible="1" collapsed="0" active="1" />
+    <Element type="model" name="05_TEX_LoDens" visible="1" collapsed="0" active="1" />
+    <Element type="timing" name="Beats" visible="1" collapsed="0" active="1" />
+    <Element type="timing" name="Bars" visible="1" collapsed="0" active="0" />
+    <Element type="timing" name="Sections" visible="1" collapsed="0" active="0" />
+    <Element type="timing" name="Onsets (drums)" visible="1" collapsed="0" active="0" />
+  </DisplayElements>
+  <ElementEffects>
+    <Element type="model" name="01_BASE_All">
+      <EffectLayer settings="B_CHOICE_BufferStyle=Default">
+        <Effect ref="0" name="Butterfly" startTime="0" endTime="2000" palette="0" selected="0" />
+        <Effect ref="0" name="Butterfly" startTime="2000" endTime="4000" palette="0" selected="0" />
+        <Effect ref="1" name="Plasma" startTime="4000" endTime="6000" palette="1" selected="0" />
+        <Effect ref="1" name="Plasma" startTime="6000" endTime="8000" palette="1" selected="0" />
+        <Effect ref="1" name="Plasma" startTime="8000" endTime="10000" palette="1" selected="0" />
+        <Effect ref="2" name="Meteors" startTime="10000" endTime="11000" palette="2" selected="0" />
+        <Effect ref="3" name="Meteors" startTime="11000" endTime="12000" palette="2" selected="0" />
+        <Effect ref="4" name="Meteors" startTime="12000" endTime="13000" palette="3" selected="0" />
+        <Effect ref="5" name="Meteors" startTime="13000" endTime="14000" palette="2" selected="0" />
+        <Effect ref="2" name="Meteors" startTime="14000" endTime="15000" palette="2" selected="0" />
+        <Effect ref="3" name="Meteors" startTime="15000" endTime="16000" palette="2" selected="0" />
+        <Effect ref="0" name="Butterfly" startTime="16000" endTime="18000" palette="0" selected="0" />
+        <Effect ref="6" name="Butterfly" startTime="18000" endTime="20000" palette="0" selected="0" />
+      </EffectLayer>
+    </Element>
+    <Element type="model" name="02_GEO_Left">
+      <EffectLayer>
+        <Effect ref="7" name="Butterfly" startTime="0" endTime="4000" palette="0" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="4000" endTime="10000" palette="1" selected="0" />
+        <Effect ref="9" name="Meteors" startTime="10000" endTime="16000" palette="2" selected="0" />
+        <Effect ref="10" name="Butterfly" startTime="16000" endTime="20000" palette="0" selected="0" />
+      </EffectLayer>
+    </Element>
+    <Element type="model" name="02_GEO_Right">
+      <EffectLayer>
+        <Effect ref="7" name="Butterfly" startTime="0" endTime="4000" palette="0" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="4000" endTime="10000" palette="1" selected="0" />
+        <Effect ref="9" name="Meteors" startTime="10000" endTime="16000" palette="2" selected="0" />
+        <Effect ref="10" name="Butterfly" startTime="16000" endTime="20000" palette="0" selected="0" />
+      </EffectLayer>
+    </Element>
+    <Element type="model" name="04_BEAT_1">
+      <EffectLayer>
+        <Effect ref="11" name="Shockwave" startTime="0" endTime="1000" palette="4" selected="0" />
+        <Effect ref="11" name="Shockwave" startTime="2000" endTime="3000" palette="4" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="4000" endTime="4500" palette="5" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="5500" endTime="6000" palette="6" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="7000" endTime="7500" palette="6" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="8500" endTime="9000" palette="6" selected="0" />
+        <Effect ref="9" name="Meteors" startTime="10000" endTime="10500" palette="7" selected="0" />
+        <Effect ref="12" name="Meteors" startTime="11000" endTime="11500" palette="8" selected="0" />
+        <Effect ref="9" name="Meteors" startTime="12000" endTime="13000" palette="7" selected="0" />
+        <Effect ref="12" name="Meteors" startTime="13500" endTime="14000" palette="8" selected="0" />
+        <Effect ref="9" name="Meteors" startTime="14500" endTime="15000" palette="7" selected="0" />
+        <Effect ref="11" name="Shockwave" startTime="16000" endTime="17000" palette="4" selected="0" />
+        <Effect ref="13" name="Shockwave" startTime="18000" endTime="19000" palette="4" selected="0" />
+      </EffectLayer>
+      <EffectLayer>
+        <Effect ref="14" name="Shockwave" startTime="10000" endTime="10800" palette="9" selected="0" />
+      </EffectLayer>
+    </Element>
+    <Element type="model" name="04_BEAT_2">
+      <EffectLayer>
+        <Effect ref="11" name="Shockwave" startTime="1000" endTime="2000" palette="4" selected="0" />
+        <Effect ref="11" name="Shockwave" startTime="3000" endTime="3500" palette="4" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="4500" endTime="5500" palette="6" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="6000" endTime="7000" palette="6" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="7500" endTime="8500" palette="6" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="9000" endTime="9500" palette="5" selected="0" />
+        <Effect ref="15" name="Meteors" startTime="10500" endTime="11000" palette="7" selected="0" />
+        <Effect ref="16" name="Meteors" startTime="11500" endTime="12000" palette="8" selected="0" />
+        <Effect ref="15" name="Meteors" startTime="13000" endTime="13500" palette="7" selected="0" />
+        <Effect ref="16" name="Meteors" startTime="14000" endTime="14500" palette="8" selected="0" />
+        <Effect ref="15" name="Meteors" startTime="15000" endTime="15500" palette="7" selected="0" />
+        <Effect ref="11" name="Shockwave" startTime="17000" endTime="18000" palette="10" selected="0" />
+        <Effect ref="13" name="Shockwave" startTime="19000" endTime="19500" palette="4" selected="0" />
+      </EffectLayer>
+      <EffectLayer>
+        <Effect ref="14" name="Shockwave" startTime="10000" endTime="10800" palette="9" selected="0" />
+      </EffectLayer>
+    </Element>
+    <Element type="model" name="05_TEX_LoDens">
+      <EffectLayer>
+        <Effect ref="14" name="Shockwave" startTime="10000" endTime="10800" palette="9" selected="0" />
+      </EffectLayer>
+    </Element>
+    <Element type="timing" name="Beats">
+      <EffectLayer>
+        <Effect label="1" startTime="0" endTime="500" />
+        <Effect label="2" startTime="500" endTime="1000" />
+        <Effect label="3" startTime="1000" endTime="1500" />
+        <Effect label="4" startTime="1500" endTime="2000" />
+        <Effect label="1" startTime="2000" endTime="2500" />
+        <Effect label="2" startTime="2500" endTime="3000" />
+        <Effect label="3" startTime="3000" endTime="3500" />
+        <Effect label="4" startTime="3500" endTime="4000" />
+        <Effect label="1" startTime="4000" endTime="4500" />
+        <Effect label="2" startTime="4500" endTime="5000" />
+        <Effect label="3" startTime="5000" endTime="5500" />
+        <Effect label="4" startTime="5500" endTime="6000" />
+        <Effect label="1" startTime="6000" endTime="6500" />
+        <Effect label="2" startTime="6500" endTime="7000" />
+        <Effect label="3" startTime="7000" endTime="7500" />
+        <Effect label="4" startTime="7500" endTime="8000" />
+        <Effect label="1" startTime="8000" endTime="8500" />
+        <Effect label="2" startTime="8500" endTime="9000" />
+        <Effect label="3" startTime="9000" endTime="9500" />
+        <Effect label="4" startTime="9500" endTime="10000" />
+        <Effect label="1" startTime="10000" endTime="10500" />
+        <Effect label="2" startTime="10500" endTime="11000" />
+        <Effect label="3" startTime="11000" endTime="11500" />
+        <Effect label="4" startTime="11500" endTime="12000" />
+        <Effect label="1" startTime="12000" endTime="12500" />
+        <Effect label="2" startTime="12500" endTime="13000" />
+        <Effect label="3" startTime="13000" endTime="13500" />
+        <Effect label="4" startTime="13500" endTime="14000" />
+        <Effect label="1" startTime="14000" endTime="14500" />
+        <Effect label="2" startTime="14500" endTime="15000" />
+        <Effect label="3" startTime="15000" endTime="15500" />
+        <Effect label="4" startTime="15500" endTime="16000" />
+        <Effect label="1" startTime="16000" endTime="16500" />
+        <Effect label="2" startTime="16500" endTime="17000" />
+        <Effect label="3" startTime="17000" endTime="17500" />
+        <Effect label="4" startTime="17500" endTime="18000" />
+        <Effect label="1" startTime="18000" endTime="18500" />
+        <Effect label="2" startTime="18500" endTime="19000" />
+        <Effect label="3" startTime="19000" endTime="19500" />
+        <Effect label="4" startTime="19500" endTime="20000" />
+      </EffectLayer>
+    </Element>
+    <Element type="timing" name="Bars">
+      <EffectLayer>
+        <Effect label="" startTime="0" endTime="2000" />
+        <Effect label="" startTime="2000" endTime="4000" />
+        <Effect label="" startTime="4000" endTime="6000" />
+        <Effect label="" startTime="6000" endTime="8000" />
+        <Effect label="" startTime="8000" endTime="10000" />
+        <Effect label="" startTime="10000" endTime="12000" />
+        <Effect label="" startTime="12000" endTime="14000" />
+        <Effect label="" startTime="14000" endTime="16000" />
+        <Effect label="" startTime="16000" endTime="18000" />
+        <Effect label="" startTime="18000" endTime="20000" />
+      </EffectLayer>
+    </Element>
+    <Element type="timing" name="Sections">
+      <EffectLayer>
+        <Effect label="intro" startTime="0" endTime="4000" />
+        <Effect label="verse" startTime="4000" endTime="10000" />
+        <Effect label="chorus" startTime="10000" endTime="16000" />
+        <Effect label="outro" startTime="16000" endTime="20000" />
+      </EffectLayer>
+    </Element>
+    <Element type="timing" name="Onsets (drums)">
+      <EffectLayer>
+        <Effect label="kick" startTime="0" endTime="500" />
+        <Effect label="snare" startTime="500" endTime="1000" />
+        <Effect label="snare" startTime="1000" endTime="1500" />
+        <Effect label="snare" startTime="1500" endTime="2000" />
+        <Effect label="kick" startTime="2000" endTime="2500" />
+        <Effect label="snare" startTime="2500" endTime="3000" />
+        <Effect label="snare" startTime="3000" endTime="3500" />
+        <Effect label="snare" startTime="3500" endTime="4000" />
+        <Effect label="kick" startTime="4000" endTime="4500" />
+        <Effect label="snare" startTime="4500" endTime="5000" />
+        <Effect label="snare" startTime="5000" endTime="5500" />
+        <Effect label="snare" startTime="5500" endTime="6000" />
+        <Effect label="kick" startTime="6000" endTime="6500" />
+        <Effect label="snare" startTime="6500" endTime="7000" />
+        <Effect label="snare" startTime="7000" endTime="7500" />
+        <Effect label="snare" startTime="7500" endTime="8000" />
+        <Effect label="kick" startTime="8000" endTime="8500" />
+        <Effect label="snare" startTime="8500" endTime="9000" />
+        <Effect label="snare" startTime="9000" endTime="9500" />
+        <Effect label="snare" startTime="9500" endTime="10000" />
+        <Effect label="kick" startTime="10000" endTime="10500" />
+        <Effect label="snare" startTime="10500" endTime="11000" />
+        <Effect label="snare" startTime="11000" endTime="11500" />
+        <Effect label="snare" startTime="11500" endTime="12000" />
+        <Effect label="kick" startTime="12000" endTime="12500" />
+        <Effect label="snare" startTime="12500" endTime="13000" />
+        <Effect label="snare" startTime="13000" endTime="13500" />
+        <Effect label="snare" startTime="13500" endTime="14000" />
+        <Effect label="kick" startTime="14000" endTime="14500" />
+        <Effect label="snare" startTime="14500" endTime="15000" />
+        <Effect label="snare" startTime="15000" endTime="15500" />
+        <Effect label="snare" startTime="15500" endTime="16000" />
+        <Effect label="kick" startTime="16000" endTime="16500" />
+        <Effect label="snare" startTime="16500" endTime="17000" />
+        <Effect label="snare" startTime="17000" endTime="17500" />
+        <Effect label="snare" startTime="17500" endTime="18000" />
+        <Effect label="kick" startTime="18000" endTime="18500" />
+        <Effect label="snare" startTime="18500" endTime="19000" />
+        <Effect label="snare" startTime="19000" endTime="19500" />
+        <Effect label="snare" startTime="19500" endTime="20000" />
+      </EffectLayer>
+    </Element>
+  </ElementEffects>
+</xsequence>

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="story-review.css">
   <link rel="stylesheet" href="navbar.css">
+  <link rel="stylesheet" href="song-workspace.css">
 </head>
 <body>
 
@@ -15,6 +16,7 @@
   <div id="app" style="display:none;">
     <div id="toolbar">
       <button id="back-btn" onclick="window.location.href='/'">&#8592; Library</button>
+      <a id="open-in-workspace" class="open-in-workspace" href="#" hidden>Open in workspace</a>
       <span id="song-title">Song Story Review</span>
       <span class="toolbar-sep"></span>
       <button id="play-btn">&#9654; Play</button>
@@ -81,5 +83,22 @@
 
   <script src="navbar.js"></script>
   <script src="story-review.js?v=8"></script>
+  <script>
+    // Spec 046 FR-012: show "Open in workspace" link when ?hash resolves via /library.
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var hash = params.get('hash');
+      if (!hash) return;
+      fetch('/library').then(function (r) { return r.json(); }).then(function (data) {
+        if ((data.entries || []).some(function (e) { return e.source_hash === hash; })) {
+          var link = document.getElementById('open-in-workspace');
+          if (link) {
+            link.href = '/song/' + encodeURIComponent(hash) + '#analysis';
+            link.hidden = false;
+          }
+        }
+      }).catch(function () { /* non-fatal */ });
+    })();
+  </script>
 </body>
 </html>

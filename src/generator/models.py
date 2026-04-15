@@ -84,13 +84,40 @@ class EffectPlacement:
 
 
 @dataclass
+class AccentPolicy:
+    """Per-section gate outcomes for accent placement (spec 048, FR-001).
+
+    Populated in `build_plan()` from `config.beat_accent_effects` combined with
+    section-level gates (energy, role, duration, drum-event presence).  Accent
+    placement helpers MUST trust these flags and not re-evaluate the underlying
+    gates (FR-022).
+    """
+
+    drum_hits: bool = False  # spec 042A — per-hit Shockwave on small radial props
+    impact: bool = False     # spec 042B — whole-house white Shockwave at section start
+
+
+@dataclass
 class SectionAssignment:
-    """One section's theme and effect mapping."""
+    """One section's theme and effect mapping.
+
+    As of spec 048 (pipeline decision-ordering refactor), every per-section
+    creative decision is stored here as a populated field.  `build_plan()`
+    writes these fields before calling `place_effects()`; the placer reads
+    them as a read-only recipe.
+    """
 
     section: SectionEnergy
     theme: Theme
     group_effects: dict[str, list[EffectPlacement]] = field(default_factory=dict)
     variation_seed: int = 0
+    # Per-section decisions precomputed by build_plan() (spec 048).
+    active_tiers: frozenset[int] = field(default_factory=frozenset)
+    palette_target: Optional[dict[int, int]] = None
+    duration_target: Optional["DurationTarget"] = None
+    accent_policy: AccentPolicy = field(default_factory=AccentPolicy)
+    working_set: Optional["WorkingSet"] = None
+    section_index: int = 0
 
 
 @dataclass
@@ -167,8 +194,17 @@ class GenerationConfig:
     duration_scaling: bool = True       # Scale effect durations by BPM and section energy
     beat_accent_effects: bool = True    # Drum-hit Shockwave on small radials + whole-house impact accents
     tier_selection: bool = True         # Energy/mood-driven single partition tier per section
+    # Nominal fields (spec 047) — stored but not read in Phase 3. Phase 4
+    # (spec 048 follow-up) will wire them into build_plan/theme_selector so
+    # the Brief tab can drop its client-side MOOD_DEFAULTS ruleset.
+    mood_intent: str = "auto"           # Brief mood axis: auto/party/emotional/dramatic/playful
+    duration_feel: str = "auto"         # Brief duration axis: auto/snappy/balanced/flowing
+    accent_strength: str = "auto"       # Brief accent axis: auto/subtle/strong
 
     _VALID_CURVES_MODES = frozenset({"all", "brightness", "speed", "color", "none"})
+    _VALID_MOOD_INTENTS = frozenset({"auto", "party", "emotional", "dramatic", "playful"})
+    _VALID_DURATION_FEELS = frozenset({"auto", "snappy", "balanced", "flowing"})
+    _VALID_ACCENT_STRENGTHS = frozenset({"auto", "subtle", "strong"})
 
     def __post_init__(self) -> None:
         self.audio_path = Path(self.audio_path)
@@ -183,4 +219,19 @@ class GenerationConfig:
             raise ValueError(
                 f"Invalid curves_mode {self.curves_mode!r}. "
                 f"Must be one of: {sorted(self._VALID_CURVES_MODES)}"
+            )
+        if self.mood_intent not in self._VALID_MOOD_INTENTS:
+            raise ValueError(
+                f"Invalid mood_intent {self.mood_intent!r}. "
+                f"Must be one of: {sorted(self._VALID_MOOD_INTENTS)}"
+            )
+        if self.duration_feel not in self._VALID_DURATION_FEELS:
+            raise ValueError(
+                f"Invalid duration_feel {self.duration_feel!r}. "
+                f"Must be one of: {sorted(self._VALID_DURATION_FEELS)}"
+            )
+        if self.accent_strength not in self._VALID_ACCENT_STRENGTHS:
+            raise ValueError(
+                f"Invalid accent_strength {self.accent_strength!r}. "
+                f"Must be one of: {sorted(self._VALID_ACCENT_STRENGTHS)}"
             )

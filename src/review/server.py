@@ -10,6 +10,16 @@ from pathlib import Path
 from flask import Flask, Response, abort, jsonify, request, send_file, send_from_directory, stream_with_context
 from werkzeug.utils import secure_filename
 
+# Spec 045: imported at module scope so tests can patch
+# `src.review.server.get_layout_path` via unittest.mock.patch.
+from src.settings import get_layout_path  # noqa: E402
+
+
+# Spec 045: module-level MD5 cache for /library staleness check.
+# Keyed by (source_path, mtime_ns, size) so a touched-but-unchanged file
+# reuses the cached hash and a modified file recomputes automatically.
+_library_md5_cache: dict[tuple[str, int, int], str] = {}
+
 
 # ── UI adaptation ─────────────────────────────────────────────────────────────
 
@@ -418,6 +428,14 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
     from src.review.generate_routes import generate_bp  # noqa: PLC0415
     app.register_blueprint(generate_bp, url_prefix="/generate")
 
+    # ── Register the creative brief blueprint (spec 047) ─────────────────────
+    from src.review.brief_routes import brief_bp  # noqa: PLC0415
+    app.register_blueprint(brief_bp)
+
+    # ── Register the section preview blueprint (spec 049) ─────────────────────
+    from src.review.preview_routes import preview_bp  # noqa: PLC0415
+    app.register_blueprint(preview_bp, url_prefix="/api/song")
+
     # ── Story review SPA route (always available) ─────────────────────────────
     @app.route("/story-review")
     def story_review_spa():
@@ -444,11 +462,106 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
     def phonemes_view():
         return send_from_directory(app.static_folder, "phonemes.html")
 
+    # Spec 046: per-song workspace shell served at /song/<source_hash>.
+    # Resolves via Library().find_by_hash and gates 404 before serving the
+    # static HTML; client-side JS re-reads the hash from location.pathname.
+    @app.route("/song/<source_hash>")
+    def song_workspace(source_hash):
+        from src.library import Library
+        if Library().find_by_hash(source_hash) is None:
+            return (
+                "Song not found in library. "
+                "<a href=\"/\">Return to the library view.</a>",
+                404,
+            )
+        return send_from_directory(app.static_folder, "song-workspace.html")
+
+    @app.route("/song/<source_hash>/sections")
+    def song_sections(source_hash):
+        """Return the detected section list for a song (for the Brief per-section table).
+
+        Reads sections from ``_story.json`` or ``_analysis.json`` (whichever
+        contains a ``sections`` list).  Returns an empty list when neither
+        exists rather than a 404, so the Brief tab degrades gracefully.
+        """
+        import json as _json
+        entry = Library().find_by_hash(source_hash)
+        if entry is None:
+            return jsonify({"error": "Song not found"}), 404
+
+        audio_path = Path(entry.source_file)
+        sections = []
+
+        # Try story JSON first — it carries richer section metadata
+        for stem in ("_story.json", "_hierarchy.json", "_analysis.json"):
+            candidate = audio_path.parent / (audio_path.stem + stem)
+            if not candidate.exists():
+                continue
+            try:
+                with open(candidate, "r", encoding="utf-8") as f:
+                    data = _json.load(f)
+                raw_sections = data.get("sections") or []
+                if raw_sections:
+                    for i, sec in enumerate(raw_sections):
+                        sections.append({
+                            "section_index": sec.get("section_index", i),
+                            "label": sec.get("label", sec.get("role", f"Section {i}")),
+                            "start_ms": sec.get("start_ms", 0),
+                            "end_ms": sec.get("end_ms", 0),
+                            "energy_score": sec.get("energy_score", sec.get("energy", 0)),
+                        })
+                    break
+            except (OSError, _json.JSONDecodeError, KeyError):
+                continue
+
+        return jsonify({"sections": sections})
+
     @app.route("/library")
     def library_index():
+        from datetime import datetime, timezone
         from src.library import Library
+        from src.review.generate_routes import _jobs
         lib = Library()
         entries = lib.all_entries()
+
+        # Spec 045: compute Zone A layout status once per request (same value
+        # for every entry — the dashboard reads entries[0].layout_configured).
+        _layout_path = get_layout_path()
+        layout_configured = _layout_path is not None and _layout_path.exists()
+
+        # Spec 045: map source_hash → newest completed job timestamp (ISO-8601).
+        _last_gen_by_hash: dict[str, str] = {}
+        for _job in _jobs.values():
+            if _job.status != "complete":
+                continue
+            _iso = datetime.fromtimestamp(_job.created_at, tz=timezone.utc).isoformat()
+            _prev = _last_gen_by_hash.get(_job.source_hash)
+            if _prev is None or _iso > _prev:
+                _last_gen_by_hash[_job.source_hash] = _iso
+
+        # Spec 045: MD5 stale-check cache, keyed by (path, mtime_ns, size).
+        # Keeps /library <100ms for repeated polls on large libraries.
+        _md5_cache: dict[tuple[str, int, int], str] = _library_md5_cache
+
+        def _is_stale_for(e) -> bool:
+            import hashlib
+            src = Path(e.source_file)
+            if not src.exists():
+                return False
+            try:
+                stat = src.stat()
+                key = (str(src), stat.st_mtime_ns, stat.st_size)
+                cached = _md5_cache.get(key)
+                if cached is None:
+                    h = hashlib.md5()
+                    with open(src, "rb") as fh:
+                        for chunk in iter(lambda: fh.read(1 << 20), b""):
+                            h.update(chunk)
+                    cached = h.hexdigest()
+                    _md5_cache[key] = cached
+                return cached != e.source_hash
+            except OSError:
+                return False
 
         def _clean_filename_title(filename: str) -> str:
             """Turn '12_-_Carmina_Burana.mp3' into 'Carmina Burana'."""
@@ -566,7 +679,13 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
             entry_dict["has_cover"] = has_cover
             entry_dict["quality_score"] = quality_score
             entry_dict["has_phonemes"] = has_phonemes
+            # Spec 045 consumes has_story (already populated above) along with
+            # three new fields below for the stateful workflow strip and
+            # Zone A setup banner.
             entry_dict["has_story"] = has_story
+            entry_dict["layout_configured"] = layout_configured
+            entry_dict["last_generated_at"] = _last_gen_by_hash.get(e.source_hash)
+            entry_dict["is_stale"] = _is_stale_for(e)
             return entry_dict
 
         result = {

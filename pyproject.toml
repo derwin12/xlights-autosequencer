@@ -60,4 +60,7 @@ filterwarnings = [
 markers = [
     "vamp: marks tests requiring Vamp plugins (skipped if plugins not installed)",
     "slow: marks tests that take more than 10 seconds",
+    "capture_only: one-shot golden capture helpers; skipped by default",
 ]
+# Skip capture_only tests unless explicitly selected with `-m capture_only`.
+addopts = "-m 'not capture_only'"

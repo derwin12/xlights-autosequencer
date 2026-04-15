@@ -111,10 +111,15 @@ def _make_assignment(
     start_ms: int = 0,
     end_ms: int = 10000,
     layers: list[EffectLayer] | None = None,
+    active_tiers: frozenset[int] | set[int] | None = None,
 ) -> SectionAssignment:
+    """Build a SectionAssignment.  Defaults to ``active_tiers=frozenset({1})`` —
+    matches the pre-048 test behaviour of passing ``tiers={1}`` to place_effects.
+    """
     return SectionAssignment(
         section=_make_section(energy_score=energy_score, start_ms=start_ms, end_ms=end_ms),
         theme=_make_theme(layers=layers),
+        active_tiers=frozenset(active_tiers) if active_tiers is not None else frozenset({1}),
     )
 
 
@@ -198,8 +203,13 @@ class TestTierSelectionByMood:
     """
 
     def _place(self, section: SectionEnergy, hierarchy: HierarchyResult) -> set[int]:
+        from src.generator.effect_placer import _compute_active_tiers
         layers = [EffectLayer(variant="Color Wash")]
-        assignment = SectionAssignment(section=section, theme=_make_theme(layers=layers))
+        assignment = SectionAssignment(
+            section=section,
+            theme=_make_theme(layers=layers),
+            active_tiers=_compute_active_tiers(section, 0, hierarchy),
+        )
         groups = _make_groups()
         # Library needs an effect from _PROP_EFFECT_POOL so the tier-6 rotation
         # (which picks from that pool, excluding the layer's own variant) has
@@ -245,7 +255,7 @@ class TestTierSelectionByMood:
 
         # Force tier 1 active even though structural mood would normally pick 6
         result = place_effects(assignment, groups, library, hierarchy,
-                               variant_library=variant_library, tiers={1})
+                               variant_library=variant_library)
         used = _used_tiers(result, groups)
         assert used == {1}
 
@@ -260,7 +270,7 @@ class TestDurationTypeSection:
         variant_library = _make_variant_library("Color Wash")
         hierarchy = _make_hierarchy(beat_times=[1000, 1500, 2000, 2500, 3000])
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         # Should have exactly one placement for the group
         all_placements = [p for ps in result.values() for p in ps]
@@ -285,7 +295,7 @@ class TestDurationTypeBeat:
         variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=5000)
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         beat_placements = [p for p in all_placements if p.effect_name == "Strobe"]
@@ -309,7 +319,7 @@ class TestEnergyDrivenDensity:
         variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=10000)
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         beat_placements = [p for p in all_placements if p.effect_name == "Strobe"]
@@ -326,7 +336,7 @@ class TestEnergyDrivenDensity:
         variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=10000)
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         beat_placements = [p for p in all_placements if p.effect_name == "Strobe"]
@@ -344,7 +354,7 @@ class TestFadeCalculation:
         variant_library = _make_variant_library("Color Wash")
         hierarchy = _make_hierarchy()
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0, "Should produce at least one placement"
@@ -365,7 +375,7 @@ class TestFadeCalculation:
         variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=2000)
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0, "Should produce at least one placement"
@@ -387,7 +397,7 @@ class TestFrameAlignment:
         variant_library = _make_variant_library("Strobe")
         hierarchy = _make_hierarchy(beat_times=beat_times, duration_ms=2500)
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0, "Should produce at least one placement"
@@ -410,7 +420,7 @@ class TestFlatModelFallback:
         variant_library = _make_variant_library("Color Wash")
         hierarchy = _make_hierarchy()
 
-        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library, tiers={1})
+        result = place_effects(assignment, groups, library, hierarchy, variant_library=variant_library)
 
         # With no groups, the result should still contain placements
         # keyed by individual model names rather than group names
@@ -456,7 +466,7 @@ class TestVariantLibraryResolution:
         hierarchy = _make_hierarchy()
 
         result = place_effects(assignment, groups, library, hierarchy,
-                               variant_library=variant_lib, tiers={1})
+                               variant_library=variant_lib)
         all_placements = [p for ps in result.values() for p in ps]
         assert len(all_placements) > 0
 
