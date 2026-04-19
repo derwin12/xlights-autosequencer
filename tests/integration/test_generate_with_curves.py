@@ -88,6 +88,7 @@ def _make_groups() -> list[PowerGroup]:
     return [
         PowerGroup(name="01_BASE_All", tier=1, members=["ArchLeft", "MatrixCenter"]),
         PowerGroup(name="02_GEO_Left", tier=2, members=["ArchLeft"]),
+        PowerGroup(name="08_HERO_Matrix", tier=8, members=["MatrixCenter"]),
     ]
 
 
@@ -139,7 +140,9 @@ class TestValueCurvesActivation:
         plan = _build(tmp_path, curves_mode="all")
 
         for placement in _all_placements(plan):
-            for param_name, points in placement.value_curves.items():
+            for param_name, curve_data in placement.value_curves.items():
+                # value_curves stores either (points, min, max) 3-tuple or bare list
+                points = curve_data[0] if isinstance(curve_data, tuple) else curve_data
                 for x, y in points:
                     assert 0.0 <= x <= 1.0, (
                         f"{placement.effect_name}.{param_name}: x={x} out of [0.0, 1.0]"
@@ -153,7 +156,8 @@ class TestValueCurvesActivation:
         plan = _build(tmp_path, curves_mode="all")
 
         for placement in _all_placements(plan):
-            for param_name, points in placement.value_curves.items():
+            for param_name, curve_data in placement.value_curves.items():
+                points = curve_data[0] if isinstance(curve_data, tuple) else curve_data
                 x_vals = [x for x, _y in points]
                 for i in range(1, len(x_vals)):
                     assert x_vals[i] >= x_vals[i - 1], (

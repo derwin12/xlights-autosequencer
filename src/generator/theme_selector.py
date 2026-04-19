@@ -35,9 +35,8 @@ def select_themes(
     assignments: list[SectionAssignment] = []
     prev_theme_name: str | None = None
     label_theme_map: dict[str, Theme] = {}
-    label_seed_counter: dict[str, int] = {}
 
-    for section in sections:
+    for i, section in enumerate(sections):
         # Adjust mood based on key/scale when available
         effective_mood = section.mood_tier
         if scale in _SCALE_MOOD_PREFERENCE:
@@ -49,14 +48,12 @@ def select_themes(
             mood_override=effective_mood,
         )
 
-        # Track variation seed for repeated section types
-        seed = label_seed_counter.get(section.label, 0)
-        label_seed_counter[section.label] = seed + 1
-
+        # Use global section index as variation seed so every section cycles
+        # through theme alternates independently of repeated-label counting.
         assignments.append(SectionAssignment(
             section=section,
             theme=theme,
-            variation_seed=seed,
+            variation_seed=i,
         ))
         prev_theme_name = theme.name
 

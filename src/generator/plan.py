@@ -149,6 +149,7 @@ def build_plan(
             hierarchy.energy_impacts,
             dynamic_complexity=ef.get("dynamic_complexity"),
             loudness_lufs=ef.get("loudness_lufs"),
+            song_duration_ms=hierarchy.duration_ms,
         )
         inferred_genre = config.genre
         inferred_occasion = config.occasion
@@ -164,13 +165,23 @@ def build_plan(
         scale=scale,
     )
 
-    # Apply theme overrides if specified
+    # Apply theme overrides before deriving the anchor palette so the anchor
+    # reflects the themes that will actually be used (not the auto-selected ones).
     if config.theme_overrides:
         for idx, theme_name in config.theme_overrides.items():
             if 0 <= idx < len(assignments):
                 theme = theme_library.themes.get(theme_name)
                 if theme is not None:
                     assignments[idx].theme = theme
+
+    # 3a. Derive song-level anchor palette and stamp it onto every assignment.
+    # This ensures the background wash tiers (1-2) use a consistent set of 4
+    # dominant colors across all sections instead of each section pulling its own
+    # independent palette.  Per-section accent tiers (3+) still use each theme's
+    # own colors for variety.
+    _anchor = _derive_anchor_palette(assignments)
+    for _a in assignments:
+        _a.anchor_palette = _anchor
 
     # 3b. Load variant library and build rotation plan
     from src.variants.library import load_variant_library
@@ -339,10 +350,42 @@ def _populate_assignment_decisions(
         )
         assignment.accent_policy = AccentPolicy(drum_hits=drum_ok, impact=impact_ok)
 
+        # Group density — fraction of groups per tier to activate.
+        # Low-energy sections leave most props dark; only the prominent hero/focal
+        # props are lit, matching pro sequences where quiet passages use ≤30% of models.
+        energy = section.energy_score
+        if energy <= 50:
+            assignment.group_density = 0.40
+        elif energy <= 75:
+            assignment.group_density = 0.70
+        else:
+            assignment.group_density = 1.0
+
         # Working set — per-theme reference, shared across sections using the same theme.
         assignment.working_set = (
             working_sets.get(assignment.theme.name) if config.focused_vocabulary else None
         )
+
+
+def _derive_anchor_palette(assignments: list[SectionAssignment]) -> list[str]:
+    """Derive a 4-color song-level anchor palette from the dominant section themes.
+
+    Colors are weighted by the total duration of sections that use them.  The
+    top 4 by weighted time become the anchor so that the most-used section
+    (typically chorus) defines the song's color identity.
+    """
+    weighted: dict[str, float] = {}
+    for a in assignments:
+        duration = a.section.end_ms - a.section.start_ms
+        for color in a.theme.palette:
+            weighted[color] = weighted.get(color, 0.0) + duration
+
+    sorted_colors = sorted(weighted, key=lambda c: weighted[c], reverse=True)
+    anchor = sorted_colors[:4]
+    # Always return something — fall back to first assignment's palette if empty
+    if not anchor and assignments:
+        anchor = list(assignments[0].theme.palette[:4])
+    return anchor
 
 
 def _section_energies_from_story(story: dict) -> list[SectionEnergy]:
@@ -485,6 +528,7 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
     # Derive section energies
     section_energies = derive_section_energies(
         hierarchy.sections, hierarchy.energy_curves, hierarchy.energy_impacts,
+        song_duration_ms=hierarchy.duration_ms,
     )
 
     # Find target sections and remove their effects

@@ -137,3 +137,42 @@ class TestEnergyDerivation:
         assert result[1].label == "chorus"
         assert result[0].mood_tier == "ethereal"
         assert result[1].mood_tier == "aggressive"
+
+    def test_last_section_extended_to_song_duration(self):
+        """Last section's end_ms is extended to song_duration_ms when section
+        detection stops short of the actual song end."""
+        # Section detector found sections up to 500ms, but song is 1000ms.
+        curve = _make_curve([50] * 20, fps=20)  # 20 frames at 20fps = 1000ms
+        sections = _make_sections([("verse", 0, 500)])
+        energy_curves = {"full_mix": curve}
+
+        result = derive_section_energies(
+            sections, energy_curves, [], song_duration_ms=1000
+        )
+
+        assert len(result) == 1
+        assert result[0].end_ms == 1000, (
+            f"Last section should extend to song_duration_ms=1000, got {result[0].end_ms}"
+        )
+
+    def test_last_section_not_extended_when_already_covers_song(self):
+        """No change when last section already ends at or past song_duration_ms."""
+        curve = _make_curve([50] * 10, fps=20)
+        sections = _make_sections([("verse", 0, 500)])
+        energy_curves = {"full_mix": curve}
+
+        result = derive_section_energies(
+            sections, energy_curves, [], song_duration_ms=500
+        )
+
+        assert result[0].end_ms == 500
+
+    def test_song_duration_ms_none_preserves_existing_behavior(self):
+        """Without song_duration_ms, last section end is unchanged (backward compat)."""
+        curve = _make_curve([50] * 10, fps=20)
+        sections = _make_sections([("verse", 0, 500)])
+        energy_curves = {"full_mix": curve}
+
+        result = derive_section_energies(sections, energy_curves, [])
+
+        assert result[0].end_ms == 500

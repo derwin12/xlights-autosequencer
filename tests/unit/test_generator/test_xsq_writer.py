@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from src.analyzer.result import TimingMark, TimingTrack
 from src.generator.models import (
     EffectPlacement,
     SectionAssignment,
@@ -13,7 +14,7 @@ from src.generator.models import (
     SequencePlan,
     SongProfile,
 )
-from src.generator.xsq_writer import write_xsq
+from src.generator.xsq_writer import _collect_timing_tracks, write_xsq
 from src.themes.models import EffectLayer, Theme
 
 
@@ -475,3 +476,71 @@ class TestXsqParser:
             for p in doc.element_effects.get("Model2", [])
         ]
         assert original_model2 == after_model2
+
+
+def _make_hierarchy_with_stems(stem_names: list[str]):
+    """Build a bare HierarchyResult whose only content is onset tracks per stem."""
+    from src.analyzer.result import HierarchyResult
+
+    events = {
+        name: TimingTrack(
+            name=f"onsets_{name}",
+            algorithm_name="test",
+            element_type="onset",
+            marks=[TimingMark(time_ms=100 * (i + 1), confidence=0.9) for i in range(3)],
+            quality_score=0.8,
+            stem_source=name,
+        )
+        for name in stem_names
+    }
+    return HierarchyResult(
+        schema_version="2.0.0",
+        source_file="test.mp3",
+        source_hash="deadbeef",
+        duration_ms=1000,
+        estimated_bpm=120.0,
+        events=events,
+    )
+
+
+class TestStemOnsetTimingTracks:
+    """Regression tests for FR-044 multi-stem onset timing tracks.
+
+    Stem-aware trigger placement relies on one `Onsets (<stem>)` timing track
+    per stem being embedded in the XSQ.  A previous implementation stopped
+    after the first stem via `break`, leaving vocal/bass/guitar triggers with
+    nothing to bind to in xLights.
+    """
+
+    def test_all_stems_with_marks_get_timing_tracks(self):
+        hierarchy = _make_hierarchy_with_stems(["drums", "vocals", "bass", "guitar"])
+        tracks = _collect_timing_tracks(hierarchy)
+        assert "Onsets (drums)" in tracks
+        assert "Onsets (vocals)" in tracks
+        assert "Onsets (bass)" in tracks
+        assert "Onsets (guitar)" in tracks
+
+    def test_empty_stem_track_is_skipped(self):
+        from src.analyzer.result import HierarchyResult
+
+        hierarchy = HierarchyResult(
+            schema_version="2.0.0",
+            source_file="test.mp3",
+            source_hash="deadbeef",
+            duration_ms=1000,
+            estimated_bpm=120.0,
+            events={
+                "drums": TimingTrack(
+                    name="onsets_drums", algorithm_name="test", element_type="onset",
+                    marks=[TimingMark(time_ms=100, confidence=0.9)],
+                    quality_score=0.8, stem_source="drums",
+                ),
+                "vocals": TimingTrack(
+                    name="onsets_vocals", algorithm_name="test", element_type="onset",
+                    marks=[], quality_score=0.0, stem_source="vocals",
+                ),
+            },
+        )
+        tracks = _collect_timing_tracks(hierarchy)
+        assert "Onsets (drums)" in tracks
+        assert "Onsets (vocals)" not in tracks

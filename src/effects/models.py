@@ -111,6 +111,7 @@ class EffectDefinition:
     layer_role: str = "standalone"      # standalone, modifier, or either
     duration_type: str = "section"      # section, bar, beat, or trigger
     duration_behavior: str = "standard" # standard, sustained, or accent
+    min_duration_ms: int = 0            # effect-specific minimum placement duration (0 = no minimum)
 
     @classmethod
     def from_dict(cls, data: dict) -> EffectDefinition:
@@ -129,6 +130,7 @@ class EffectDefinition:
             layer_role=data.get("layer_role", "standalone"),
             duration_type=data.get("duration_type", "section"),
             duration_behavior=data.get("duration_behavior", "standard"),
+            min_duration_ms=data.get("min_duration_ms", 0),
         )
 
 

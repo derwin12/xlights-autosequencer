@@ -118,6 +118,15 @@ class SectionAssignment:
     accent_policy: AccentPolicy = field(default_factory=AccentPolicy)
     working_set: Optional["WorkingSet"] = None
     section_index: int = 0
+    # Song-level anchor palette: 4 dominant colors shared across all sections so the
+    # background wash tiers (1-2) feel like a consistent song identity rather than
+    # resetting at every section boundary.  Empty list → fall back to theme.palette.
+    anchor_palette: list[str] = field(default_factory=list)
+    # Fraction of groups within each active tier to populate (0.0-1.0).
+    # Low-energy sections use fewer groups so most props stay dark, matching pro
+    # sequences where only key focal elements are lit in quiet passages.
+    # Tier 8 (HERO) is always fully active regardless of this value.
+    group_density: float = 1.0
 
 
 @dataclass

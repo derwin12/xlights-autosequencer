@@ -139,11 +139,15 @@ def _resolve_bool_field(body: dict, on_disk_brief: dict, field_name: str, defaul
     return default
 
 
-def _resolve_theme_overrides(body: dict, on_disk_brief: dict) -> Optional[dict[int, str]]:
-    """Resolve theme_overrides from body or on-disk brief.
+def _resolve_theme_overrides(
+    body: dict, on_disk_brief: dict, story_path: "Path | None" = None
+) -> Optional[dict[int, str]]:
+    """Resolve theme_overrides from body, on-disk brief, or story section overrides.
 
-    theme_overrides in the POST body is already {int: str} (from resolveBriefToPost).
-    In the on-disk brief it is stored as per_section_overrides list.
+    Priority:
+    1. POST body theme_overrides dict (from resolveBriefToPost in the Brief tab)
+    2. On-disk brief per_section_overrides list (saved by PUT /brief/<hash>)
+    3. Story JSON section[i].overrides.theme (set via story-review page)
     """
     if "theme_overrides" in body and body["theme_overrides"]:
         raw = body["theme_overrides"]
@@ -151,18 +155,45 @@ def _resolve_theme_overrides(body: dict, on_disk_brief: dict) -> Optional[dict[i
             return {int(k): v for k, v in raw.items() if v and v != "auto"}
         return None
 
-    overrides_list = on_disk_brief.get("per_section_overrides") or []
-    if overrides_list:
-        result = {}
-        for row in overrides_list:
-            if isinstance(row, dict):
-                idx = row.get("section_index")
-                slug = row.get("theme_slug")
-                if idx is not None and slug and slug != "auto":
-                    result[int(idx)] = slug
-        return result if result else None
+    # Merge brief overrides and story-edit overrides.  The story-review page
+    # writes per-section theme choices to <base>_story_edits.json without
+    # updating the brief, so both sources must be consulted.  Brief wins on
+    # conflict because it is the newer, explicit per-Brief-tab choice.
+    merged: dict[int, str] = {}
 
-    return None
+    if story_path is not None and story_path.exists():
+        try:
+            with open(story_path, "r", encoding="utf-8") as f:
+                story = json.load(f)
+
+            stem = story_path.stem
+            if stem.endswith("_story_reviewed"):
+                base = stem[: -len("_story_reviewed")]
+            elif stem.endswith("_story"):
+                base = stem[: -len("_story")]
+            else:
+                base = stem
+            edits_path = story_path.parent / f"{base}_story_edits.json"
+            if edits_path.exists():
+                from src.story.builder import merge_story_with_edits
+                edits = json.loads(edits_path.read_text(encoding="utf-8"))
+                story = merge_story_with_edits(story, edits)
+
+            for idx, section in enumerate(story.get("sections", [])):
+                theme = (section.get("overrides") or {}).get("theme")
+                if theme:
+                    merged[idx] = theme
+        except (OSError, json.JSONDecodeError, KeyError):
+            pass
+
+    for row in on_disk_brief.get("per_section_overrides") or []:
+        if isinstance(row, dict):
+            idx = row.get("section_index")
+            slug = row.get("theme_slug")
+            if idx is not None and slug and slug != "auto":
+                merged[int(idx)] = slug
+
+    return merged or None
 
 
 # ---------------------------------------------------------------------------
@@ -238,7 +269,7 @@ def start_generation(source_hash: str):
     beat_accent_effects = _resolve_bool_field(body, on_disk_brief, "beat_accent_effects", True)
     tier_selection = _resolve_bool_field(body, on_disk_brief, "tier_selection", True)
 
-    theme_overrides = _resolve_theme_overrides(body, on_disk_brief)
+    theme_overrides = _resolve_theme_overrides(body, on_disk_brief, story_path if story_path.exists() else None)
 
     # Validate resolved values — return 400 with field-level error on failure
     if genre not in _VALID_GENRES:

@@ -216,6 +216,7 @@ def start_preview(source_hash: str):
                     hierarchy.sections,
                     hierarchy.energy_curves,
                     hierarchy.energy_impacts,
+                    song_duration_ms=hierarchy.duration_ms,
                 )
             section_index = pick_representative_section(section_energies)
         except Exception:

@@ -547,13 +547,26 @@ def place_effects(
         unique_chords = len({m.label for m in chord_marks if m.label and m.label != "N"})
         chord_weight = min(0.50, unique_chords / 80.0)
 
-    # Accent palette: explicit or auto-lightened from main palette
-    accent = theme.accent_palette if theme.accent_palette else _lighten_palette(theme.palette, 0.5)
+    # Song-level anchor palette: when available, derive BOTH the background wash
+    # (tiers 1-2) AND the accent tier (3+) from the same song-level colors.
+    # This ensures the dominant colors repeat across all sections so the song
+    # has a consistent color identity rather than swapping palettes at each
+    # section boundary.  Visual variety between sections comes from effect TYPE,
+    # not color changes — matching how pro sequences work.
+    if assignment.anchor_palette:
+        effective_base = assignment.anchor_palette
+    else:
+        effective_base = theme.palette
+    # Always prefer the theme's explicit accent_palette when defined — it
+    # encodes the theme designer's deliberate accent-color intent (e.g. Candy
+    # Cane's green/pink drum shockwaves).  Fall back to a lightened base only
+    # when the theme has no accent_palette configured.
+    if theme.accent_palette:
+        accent = theme.accent_palette
+    else:
+        accent = _lighten_palette(effective_base, 0.5)
 
-    # Background palette: darkened via HSL lightness reduction for tiers 1-2.
-    # HSL-dim preserves color identity (a vivid red stays red, just darker)
-    # rather than desaturating it into a muddy brown as linear RGB dimming does.
-    bg_palette = _darken_palette_hsl(theme.palette, target_lightness=0.15)
+    bg_palette = _darken_palette_hsl(effective_base, target_lightness=0.15)
 
     # Detect drop/impact phase from section label (chorus, drop, bridge, etc.)
     section_label = (section.label or "").lower()
@@ -572,6 +585,19 @@ def place_effects(
         if g.tier not in effective_tiers:
             continue
         tier_groups.setdefault(g.tier, []).append(g)
+
+    # Group density: limit the number of active groups per tier for lower-energy
+    # sections so most props stay dark, matching the pro pattern where quiet
+    # passages only light the key focal elements.  Tier 8 (HERO) is always kept
+    # in full — heroes are already a small subset of the display.
+    group_density = assignment.group_density
+    if group_density < 1.0:
+        for tier in list(tier_groups.keys()):
+            if tier == 8:
+                continue
+            grps = tier_groups[tier]
+            keep = max(1, round(len(grps) * group_density))
+            tier_groups[tier] = grps[:keep]
 
     # If no groups provided, create a pseudo-group for each model
     if not groups:
@@ -893,7 +919,10 @@ def _assign_layers_to_tiers(layers: list[EffectLayer]) -> dict[int, set[int]]:
     mapping: dict[int, set[int]] = {}
 
     if n == 1:
-        mapping[0] = _LOW_TIERS | {4, 6}
+        # Single-layer: cover all tier families including HERO (8).  For ethereal
+        # sections where only Tier 8 is active, this guarantees the hero group
+        # still receives the layer's effect even without a dedicated hero layer.
+        mapping[0] = _LOW_TIERS | {4, 6, 8}
     elif n == 2:
         mapping[0] = _LOW_TIERS | {4, 6}
         mapping[1] = _HIGH_TIERS
@@ -980,6 +1009,16 @@ def _place_effect_on_group(
                 chord_marks=chord_marks, tension_curve=tension_curve,
                 chord_weight=chord_weight, direction_cycle=direction_cycle,
             )
+            # Drop segments shorter than the effect's minimum duration.
+            # Fall back to a single section-span placement when all are filtered.
+            if effect_def.min_duration_ms > 0:
+                placements = [p for p in placements if p.end_ms - p.start_ms >= effect_def.min_duration_ms]
+                if not placements:
+                    placements = [_make_placement(
+                        effect_def, group.name, start_ms, end_ms,
+                        params, resolved_palette, layer.blend_mode, "section",
+                        direction_cycle=direction_cycle,
+                    )]
             for p in placements:
                 fade_in, fade_out = compute_scaled_fades(p.end_ms - p.start_ms)
                 p.fade_in_ms = fade_in
@@ -1664,7 +1703,11 @@ def _compute_active_tiers(
     and BASE would be immediately overridden.
     """
     if section.mood_tier == "ethereal":
-        return frozenset({1, 8})
+        # HERO-only for quiet sections: leave most of the display dark so only
+        # the focal props (matrices, mega trees) are lit during low-energy passages.
+        # Previously included Tier 1 (BASE_All) which covered every model and
+        # drove tier_utilization to ~100% even in silent moments.
+        return frozenset({8})
     if section.mood_tier == "structural":
         if _has_strong_phrase_structure(section, hierarchy):
             return frozenset({2, 8})                # GEO call-response

@@ -190,14 +190,19 @@ class TestUS3MidTempoInterpolation:
     """Songs with BPM 80-120 should produce median duration between extremes."""
 
     def test_pop_anthem_median_in_mid_range(self, tmp_path: Path):
-        """Pop anthem at 128 BPM → median duration 500-2500ms."""
+        """Pop anthem at 128 BPM → median duration 400-2500ms.
+
+        Floor is 400ms (≈ one beat at 128 BPM) to allow theme alternates that
+        use beat-duration effects; bar/section effects still keep the median well
+        above this minimum.
+        """
         scenario = build_pop_anthem()
         durations = _collect_durations(scenario, tmp_path, duration_scaling=True)
 
         assert durations, "No placements generated"
         median = statistics.median(durations)
-        assert 500 <= median <= 2500, (
-            f"Pop anthem (128 BPM) median is {median}ms, expected 500-2500ms. "
+        assert 400 <= median <= 2500, (
+            f"Pop anthem (128 BPM) median is {median}ms, expected 400-2500ms. "
             f"n={len(durations)}"
         )
 

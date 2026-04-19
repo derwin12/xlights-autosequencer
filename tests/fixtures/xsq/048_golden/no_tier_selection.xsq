@@ -12,35 +12,34 @@
   </head>
   <ColorPalettes>
     <ColorPalette>C_BUTTON_Palette1=#160843,C_BUTTON_Palette2=#1B123A,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#004C4C,C_BUTTON_Palette2=#00264C,C_BUTTON_Palette3=#00404C,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#4C0000,C_BUTTON_Palette2=#4C3D00,C_BUTTON_Palette3=#4C2800,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#4C0000,C_BUTTON_Palette2=#4C3D00,C_BUTTON_Palette3=#4C2800,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=77</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#160843,C_BUTTON_Palette2=#1A113A,C_BUTTON_Palette3=#1B123A,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#160843,C_BUTTON_Palette2=#1A113A,C_BUTTON_Palette3=#1B123A,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=77</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#FFD700,C_BUTTON_Palette2=#E8A317,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#FF4400,C_BUTTON_Palette2=#CC3300,C_BUTTON_Palette3=#FF8855,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=47</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#FF4400,C_BUTTON_Palette2=#CC3300,C_BUTTON_Palette3=#FF8855,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#FF4400,C_BUTTON_Palette2=#CC3300,C_BUTTON_Palette3=#FF8855,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=47</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=77</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#FFFFFF,C_BUTTON_Palette2=#00FF00,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=0,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#FFD700,C_BUTTON_Palette2=#E8A317,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_SLIDER_SparkleFrequency=35</ColorPalette>
   </ColorPalettes>
   <EffectDB>
     <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=0.16</Effect>
-    <Effect>E_CHOICE_Plasma_Color=Normal,E_SLIDER_Plasma_Line_Density=4,E_SLIDER_Plasma_Speed=12,E_SLIDER_Plasma_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=0.16</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Down,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Up,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Left,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Right,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
-    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=4</Effect>
-    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1</Effect>
-    <Effect>E_CHOICE_Plasma_Color=Normal,E_SLIDER_Plasma_Line_Density=4,E_SLIDER_Plasma_Speed=12,E_SLIDER_Plasma_Style=1</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Down,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
-    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadeout=4</Effect>
+    <Effect>E_CHOICE_Pinwheel_Style=New Render Method,E_SLIDER_Pinwheel_ArmSize=100,E_SLIDER_Pinwheel_Arms=6,E_SLIDER_Pinwheel_Speed=15,E_SLIDER_Pinwheel_Thickness=0,E_SLIDER_Pinwheel_Twist=30,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=0.16</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=Left,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=Right,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=expand,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=compress,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1,T_TEXTCTRL_Fadein=0.08,T_TEXTCTRL_Fadeout=0.08</Effect>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Reverse,E_SLIDER_Butterfly_Chunks=1,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=10,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=0.16</Effect>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Reverse,E_SLIDER_Butterfly_Chunks=1,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=10,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.16,T_TEXTCTRL_Fadeout=4</Effect>
+    <Effect>E_CHOICE_Bars_Direction=Left,E_CHOICE_Plasma_Color=Normal,E_SLIDER_Bars_BarCount=2,E_SLIDER_Plasma_Line_Density=1,E_SLIDER_Plasma_Speed=10,E_SLIDER_Plasma_Style=1</Effect>
     <Effect>E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Left,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
-    <Effect>E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5,T_TEXTCTRL_Fadeout=4</Effect>
+    <Effect>E_CHOICE_Pinwheel_Style=New Render Method,E_SLIDER_Pinwheel_ArmSize=100,E_SLIDER_Pinwheel_Arms=6,E_SLIDER_Pinwheel_Speed=15,E_SLIDER_Pinwheel_Thickness=0,E_SLIDER_Pinwheel_Twist=30</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=Left,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=expand,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1</Effect>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Reverse,E_SLIDER_Butterfly_Chunks=1,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=10,E_SLIDER_Butterfly_Style=1</Effect>
+    <Effect>E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Reverse,E_SLIDER_Butterfly_Chunks=1,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=10,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadeout=4</Effect>
     <Effect>E_SLIDER_Shockwave_Accel=5,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=100,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=8</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Up,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
-    <Effect>E_CHECKBOX_Meteors_UseMusic=0,E_CHOICE_Meteors_Effect=Right,E_CHOICE_Meteors_Type=Palette,E_SLIDER_Meteors_Count=8,E_SLIDER_Meteors_Length=15,E_SLIDER_Meteors_Speed=40,E_SLIDER_Meteors_Swirl_Intensity=0,E_SLIDER_Meteors_WamupFrames=0</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=Right,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1</Effect>
+    <Effect>E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=compress,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1</Effect>
   </EffectDB>
   <DisplayElements>
     <Element type="model" name="01_BASE_All" visible="1" collapsed="0" active="1" />
@@ -59,78 +58,72 @@
       <EffectLayer settings="B_CHOICE_BufferStyle=Default">
         <Effect ref="0" name="Butterfly" startTime="0" endTime="2000" palette="0" selected="0" />
         <Effect ref="0" name="Butterfly" startTime="2000" endTime="4000" palette="0" selected="0" />
-        <Effect ref="1" name="Plasma" startTime="4000" endTime="6000" palette="1" selected="0" />
-        <Effect ref="1" name="Plasma" startTime="6000" endTime="8000" palette="1" selected="0" />
-        <Effect ref="1" name="Plasma" startTime="8000" endTime="10000" palette="1" selected="0" />
-        <Effect ref="2" name="Meteors" startTime="10000" endTime="11000" palette="2" selected="0" />
-        <Effect ref="3" name="Meteors" startTime="11000" endTime="12000" palette="2" selected="0" />
-        <Effect ref="4" name="Meteors" startTime="12000" endTime="13000" palette="3" selected="0" />
-        <Effect ref="5" name="Meteors" startTime="13000" endTime="14000" palette="2" selected="0" />
-        <Effect ref="2" name="Meteors" startTime="14000" endTime="15000" palette="2" selected="0" />
-        <Effect ref="3" name="Meteors" startTime="15000" endTime="16000" palette="2" selected="0" />
-        <Effect ref="0" name="Butterfly" startTime="16000" endTime="18000" palette="0" selected="0" />
-        <Effect ref="6" name="Butterfly" startTime="18000" endTime="20000" palette="0" selected="0" />
+        <Effect ref="1" name="Pinwheel" startTime="4000" endTime="6000" palette="1" selected="0" />
+        <Effect ref="1" name="Pinwheel" startTime="6000" endTime="8000" palette="1" selected="0" />
+        <Effect ref="1" name="Pinwheel" startTime="8000" endTime="10000" palette="1" selected="0" />
+        <Effect ref="2" name="Bars" startTime="10000" endTime="11000" palette="1" selected="0" />
+        <Effect ref="3" name="Bars" startTime="11000" endTime="12000" palette="1" selected="0" />
+        <Effect ref="4" name="Bars" startTime="12000" endTime="13000" palette="2" selected="0" />
+        <Effect ref="5" name="Bars" startTime="13000" endTime="14000" palette="1" selected="0" />
+        <Effect ref="2" name="Bars" startTime="14000" endTime="15000" palette="1" selected="0" />
+        <Effect ref="3" name="Bars" startTime="15000" endTime="16000" palette="1" selected="0" />
+        <Effect ref="6" name="Butterfly" startTime="16000" endTime="18000" palette="0" selected="0" />
+        <Effect ref="7" name="Butterfly" startTime="18000" endTime="20000" palette="0" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="model" name="02_GEO_Left">
       <EffectLayer>
-        <Effect ref="7" name="Butterfly" startTime="0" endTime="4000" palette="0" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="4000" endTime="10000" palette="1" selected="0" />
-        <Effect ref="9" name="Meteors" startTime="10000" endTime="16000" palette="2" selected="0" />
-        <Effect ref="10" name="Butterfly" startTime="16000" endTime="20000" palette="0" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="10000" endTime="16000" palette="1" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="model" name="02_GEO_Right">
       <EffectLayer>
-        <Effect ref="7" name="Butterfly" startTime="0" endTime="4000" palette="0" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="4000" endTime="10000" palette="1" selected="0" />
-        <Effect ref="9" name="Meteors" startTime="10000" endTime="16000" palette="2" selected="0" />
-        <Effect ref="10" name="Butterfly" startTime="16000" endTime="20000" palette="0" selected="0" />
+        <Effect ref="8" name="Plasma" startTime="10000" endTime="16000" palette="1" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="model" name="04_BEAT_1">
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="11" name="Shockwave" startTime="0" endTime="1000" palette="4" selected="0" />
-        <Effect ref="11" name="Shockwave" startTime="2000" endTime="3000" palette="4" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="4000" endTime="4500" palette="5" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="5500" endTime="6000" palette="6" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="7000" endTime="7500" palette="6" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="8500" endTime="9000" palette="6" selected="0" />
-        <Effect ref="9" name="Meteors" startTime="10000" endTime="10500" palette="7" selected="0" />
-        <Effect ref="12" name="Meteors" startTime="11000" endTime="11500" palette="8" selected="0" />
-        <Effect ref="9" name="Meteors" startTime="12000" endTime="13000" palette="7" selected="0" />
-        <Effect ref="12" name="Meteors" startTime="13500" endTime="14000" palette="8" selected="0" />
-        <Effect ref="9" name="Meteors" startTime="14500" endTime="15000" palette="7" selected="0" />
-        <Effect ref="11" name="Shockwave" startTime="16000" endTime="17000" palette="4" selected="0" />
-        <Effect ref="13" name="Shockwave" startTime="18000" endTime="19000" palette="4" selected="0" />
+        <Effect ref="9" name="Shockwave" startTime="0" endTime="1000" palette="3" selected="0" />
+        <Effect ref="9" name="Shockwave" startTime="1000" endTime="2000" palette="3" selected="0" />
+        <Effect ref="9" name="Shockwave" startTime="2000" endTime="3000" palette="3" selected="0" />
+        <Effect ref="9" name="Shockwave" startTime="3000" endTime="3500" palette="3" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="4000" endTime="4500" palette="4" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="4500" endTime="5500" palette="4" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="5500" endTime="6000" palette="5" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="6000" endTime="7000" palette="4" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="7000" endTime="7500" palette="4" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="7500" endTime="8500" palette="4" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="8500" endTime="9000" palette="4" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="9000" endTime="9500" palette="4" selected="0" />
+        <Effect ref="11" name="Bars" startTime="10000" endTime="10500" palette="6" selected="0" />
+        <Effect ref="12" name="Bars" startTime="11000" endTime="11500" palette="7" selected="0" />
+        <Effect ref="11" name="Bars" startTime="12000" endTime="13000" palette="6" selected="0" />
+        <Effect ref="12" name="Bars" startTime="13500" endTime="14000" palette="7" selected="0" />
+        <Effect ref="11" name="Bars" startTime="14500" endTime="15000" palette="6" selected="0" />
+        <Effect ref="13" name="Butterfly" startTime="16000" endTime="17000" palette="3" selected="0" />
+        <Effect ref="13" name="Butterfly" startTime="17000" endTime="18000" palette="3" selected="0" />
+        <Effect ref="13" name="Butterfly" startTime="18000" endTime="19000" palette="3" selected="0" />
+        <Effect ref="14" name="Butterfly" startTime="19000" endTime="19500" palette="3" selected="0" />
       </EffectLayer>
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="14" name="Shockwave" startTime="10000" endTime="10800" palette="9" selected="0" />
+        <Effect ref="15" name="Shockwave" startTime="10000" endTime="10800" palette="8" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="model" name="04_BEAT_2">
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="11" name="Shockwave" startTime="1000" endTime="2000" palette="4" selected="0" />
-        <Effect ref="11" name="Shockwave" startTime="3000" endTime="3500" palette="4" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="4500" endTime="5500" palette="6" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="6000" endTime="7000" palette="6" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="7500" endTime="8500" palette="6" selected="0" />
-        <Effect ref="8" name="Plasma" startTime="9000" endTime="9500" palette="5" selected="0" />
-        <Effect ref="15" name="Meteors" startTime="10500" endTime="11000" palette="7" selected="0" />
-        <Effect ref="16" name="Meteors" startTime="11500" endTime="12000" palette="8" selected="0" />
-        <Effect ref="15" name="Meteors" startTime="13000" endTime="13500" palette="7" selected="0" />
-        <Effect ref="16" name="Meteors" startTime="14000" endTime="14500" palette="8" selected="0" />
-        <Effect ref="15" name="Meteors" startTime="15000" endTime="15500" palette="7" selected="0" />
-        <Effect ref="11" name="Shockwave" startTime="17000" endTime="18000" palette="10" selected="0" />
-        <Effect ref="13" name="Shockwave" startTime="19000" endTime="19500" palette="4" selected="0" />
+        <Effect ref="16" name="Bars" startTime="10500" endTime="11000" palette="6" selected="0" />
+        <Effect ref="17" name="Bars" startTime="11500" endTime="12000" palette="7" selected="0" />
+        <Effect ref="16" name="Bars" startTime="13000" endTime="13500" palette="6" selected="0" />
+        <Effect ref="17" name="Bars" startTime="14000" endTime="14500" palette="7" selected="0" />
+        <Effect ref="16" name="Bars" startTime="15000" endTime="15500" palette="6" selected="0" />
       </EffectLayer>
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="14" name="Shockwave" startTime="10000" endTime="10800" palette="9" selected="0" />
+        <Effect ref="15" name="Shockwave" startTime="10000" endTime="10800" palette="8" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="model" name="05_TEX_LoDens">
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="14" name="Shockwave" startTime="10000" endTime="10800" palette="9" selected="0" />
+        <Effect ref="15" name="Shockwave" startTime="10000" endTime="10800" palette="8" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="timing" name="Beats">

@@ -14,6 +14,7 @@ def derive_section_energies(
     energy_impacts: list[TimingMark],
     dynamic_complexity: float | None = None,
     loudness_lufs: float | None = None,
+    song_duration_ms: int | None = None,
 ) -> list[SectionEnergy]:
     """Derive energy scores for each section from L5 curves and L0 impacts.
 
@@ -44,6 +45,12 @@ def derive_section_energies(
             # Fill gap: if there's a gap, extend this section to cover it
             end_ms = next_start
         clamped.append((start_ms, end_ms, section.label or "unknown"))
+
+    # Extend the last section to cover the full song so the tail is never
+    # unsequenced when the section detector stops short of song_duration_ms.
+    if clamped and song_duration_ms is not None and clamped[-1][1] < song_duration_ms:
+        last_start, _, last_label = clamped[-1]
+        clamped[-1] = (last_start, song_duration_ms, last_label)
 
     raw_energies: list[tuple[int, int, str, int, int]] = []
     for start_ms, end_ms, label in clamped:

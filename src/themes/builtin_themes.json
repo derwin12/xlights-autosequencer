@@ -1083,6 +1083,93 @@
         "#66AADD",
         "#CCDDFF"
       ]
+    },
+    "Candy Cane": {
+      "name": "Candy Cane",
+      "mood": "structural",
+      "occasion": "christmas",
+      "genre": "any",
+      "intent": "Classic candy cane red-and-white stripes in motion — spinning spirals, sweeping bars, and pinwheels with green shockwave accents on drum hits",
+      "layers": [
+        {
+          "variant": "Spirals 3D Sharp",
+          "blend_mode": "Normal"
+        },
+        {
+          "variant": "Shockwave Full Fast",
+          "blend_mode": "Additive",
+          "stem": "drums"
+        }
+      ],
+      "alternates": [
+        {
+          "layers": [
+            {
+              "variant": "Bars Right Dual",
+              "blend_mode": "Normal"
+            },
+            {
+              "variant": "Shockwave Full Fast",
+              "blend_mode": "Additive",
+              "stem": "drums"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Pinwheel 4-Arm Twist",
+              "blend_mode": "Normal"
+            },
+            {
+              "variant": "Shockwave Medium Fast",
+              "blend_mode": "Additive",
+              "stem": "drums"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Fan 3-Blade",
+              "blend_mode": "Normal"
+            },
+            {
+              "variant": "Shockwave Medium Fast",
+              "blend_mode": "Additive",
+              "stem": "drums"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Chase Right-Left Subtle",
+              "blend_mode": "Normal"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Spirals 3D Blend Fast Spin",
+              "blend_mode": "Normal"
+            }
+          ]
+        }
+      ],
+      "palette": [
+        "#FF0000",
+        "#FFFFFF",
+        "#CC0000",
+        "#F0F0F0"
+      ],
+      "accent_palette": [
+        "#00CC44",
+        "#FF69B4",
+        "#009933",
+        "#FF99CC"
+      ]
     }
   }
 }

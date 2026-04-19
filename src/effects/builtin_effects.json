@@ -3525,7 +3525,8 @@
         }
       ],
       "layer_role": "standalone",
-      "duration_type": "section"
+      "duration_type": "section",
+      "min_duration_ms": 2000
     },
     "Snowflakes": {
       "name": "Snowflakes",

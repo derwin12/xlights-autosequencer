@@ -18,8 +18,7 @@
         "section_roles": [
           "chorus",
           "drop",
-          "hook",
-          "climax"
+          "build"
         ],
         "scope": "single-prop",
         "genre_affinity": "any"
@@ -42,8 +41,7 @@
         "section_roles": [
           "chorus",
           "drop",
-          "hook",
-          "climax"
+          "build"
         ],
         "scope": "single-prop",
         "genre_affinity": "any"

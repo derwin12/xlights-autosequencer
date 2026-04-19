@@ -699,11 +699,13 @@ def _collect_timing_tracks(hierarchy: HierarchyResult | None) -> dict[str, list[
     if hierarchy.chords and hierarchy.chords.marks:
         tracks["Chords"] = hierarchy.chords.marks
 
-    # Add onset events for the best stem
+    # Emit one timing track per stem with onsets.  Stem-aware trigger placement
+    # (drum Shockwaves, vocal accents, bass pulses) routes to its matching
+    # Onsets (<stem>) track, so every stem with marks must be emitted — not
+    # only the first one.
     for stem_name, track in hierarchy.events.items():
         if track.marks:
             tracks[f"Onsets ({stem_name})"] = track.marks
-            break  # just the first/best one
 
     return tracks
 
