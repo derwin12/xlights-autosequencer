@@ -22,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 xlight-analyze = "src.cli:cli"
+xlight-evaluate = "src.cli.evaluate:main"
 
 [project.optional-dependencies]
 # madmom requires Python <=3.9 and numpy<2; install separately if compatible

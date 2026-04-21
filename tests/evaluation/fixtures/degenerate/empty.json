@@ -1,0 +1,12 @@
+{
+  "song_id": "degenerate-empty",
+  "source_label": "degenerate",
+  "duration_ms": 180000,
+  "placements": [],
+  "model_names": [
+    "Arch01"
+  ],
+  "inferred_prop_types": {
+    "Arch01": "arch"
+  }
+}

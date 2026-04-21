@@ -1,0 +1,3084 @@
+{
+  "schema_version": 1,
+  "generator_commit": "73a50c723e3d1bc4cb7553d6a32673450560011a",
+  "generated_at": "2026-04-15T21:22:45Z",
+  "entries": {
+    "baby-shark": {
+      "metrics": [
+        {
+          "name": "placements_per_minute",
+          "kind": "scalar",
+          "value": 179.98754411459416,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "density_energy_correlation",
+          "kind": "scalar",
+          "value": -0.10976610339270111,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "palette_top5_colors",
+          "kind": "structured",
+          "value": 0.026623632451434977,
+          "payload": [
+            [
+              "#B7FF7F",
+              0.026623632451434977
+            ],
+            [
+              "#93FF7F",
+              0.026517562202624474
+            ],
+            [
+              "#AFFF7F",
+              0.01983513652756311
+            ],
+            [
+              "#7EEBD1",
+              0.01983513652756311
+            ],
+            [
+              "#7FFFEB",
+              0.01983513652756311
+            ]
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "per_section_palette_diversity",
+          "kind": "per_section",
+          "value": 13.11111111111111,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 10400,
+              "unique_colors": 18
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 10400,
+              "end_ms": 17752,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 17752,
+              "end_ms": 26099,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 26099,
+              "end_ms": 34458,
+              "unique_colors": 17
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 34458,
+              "end_ms": 42806,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "A",
+              "start_ms": 42806,
+              "end_ms": 53243,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 53243,
+              "end_ms": 59501,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 59501,
+              "end_ms": 67849,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 67849,
+              "end_ms": 96340,
+              "unique_colors": 3
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "effect_type_histogram",
+          "kind": "distribution",
+          "value": 0.0,
+          "payload": {
+            "histogram": {
+              "Single Strand": 0.4532871972318339,
+              "Spirals": 0.10034602076124567,
+              "Bars": 0.18685121107266436,
+              "Fan": 0.06920415224913495,
+              "Wave": 0.05190311418685121,
+              "Pinwheel": 0.06920415224913495,
+              "Plasma": 0.06920415224913495
+            },
+            "unknown_fraction": 0.0
+          },
+          "reliability": "ok"
+        },
+        {
+          "name": "beat_alignment_pct",
+          "kind": "scalar",
+          "value": 0.7093425605536332,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "section_transition_delta",
+          "kind": "per_section",
+          "value": 0.4557930602172279,
+          "payload": [
+            {
+              "boundary_label": "N1 \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 0.29268896347564655,
+              "transition_score": 0.6463444817378232
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.5,
+              "effect_delta": 0.49999999999999994,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 1.0,
+              "effect_delta": 0.0,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N2",
+              "palette_delta": 0.5,
+              "effect_delta": 0.49999999999999994,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "N2 \u2192 qm_boundary",
+              "palette_delta": 0.0,
+              "effect_delta": 0.0,
+              "transition_score": 0.0
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "tier_utilization",
+          "kind": "per_section",
+          "value": 0.7222222222222221,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 10400,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 10400,
+              "end_ms": 17752,
+              "utilization": 0.6666666666666666,
+              "active_models": 8,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 17752,
+              "end_ms": 26099,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 26099,
+              "end_ms": 34458,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 34458,
+              "end_ms": 42806,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 42806,
+              "end_ms": 53243,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 53243,
+              "end_ms": 59501,
+              "utilization": 0.6666666666666666,
+              "active_models": 8,
+              "total_models": 12
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 59501,
+              "end_ms": 67849,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 67849,
+              "end_ms": 96340,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "theme_assignment_consistency",
+          "kind": "scalar",
+          "value": 0.8,
+          "payload": {
+            "A": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Single Strand"
+              ],
+              "consistent": true
+            },
+            "qm_boundary": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand"
+              ],
+              "consistent": false
+            }
+          },
+          "reliability": "ok"
+        }
+      ]
+    },
+    "candy-cane-lane": {
+      "metrics": [
+        {
+          "name": "placements_per_minute",
+          "kind": "scalar",
+          "value": 202.55572401194053,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "density_energy_correlation",
+          "kind": "scalar",
+          "value": 0.15425402736920374,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "palette_top5_colors",
+          "kind": "structured",
+          "value": 0.23310700654046063,
+          "payload": [
+            [
+              "#FFFFFF",
+              0.23310700654046063
+            ],
+            [
+              "#A8A8A8",
+              0.04698518646386761
+            ],
+            [
+              "#C3FFFE",
+              0.026539054158595008
+            ],
+            [
+              "#C3E4FF",
+              0.023137758853277603
+            ],
+            [
+              "#A6A6A6",
+              0.02273497388291106
+            ]
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "per_section_palette_diversity",
+          "kind": "per_section",
+          "value": 10.272727272727273,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 697,
+              "end_ms": 7175,
+              "unique_colors": 6
+            },
+            {
+              "section_label": "A",
+              "start_ms": 7175,
+              "end_ms": 13630,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 13630,
+              "end_ms": 22872,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 22872,
+              "end_ms": 28398,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 28398,
+              "end_ms": 37628,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 37628,
+              "end_ms": 43166,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 43166,
+              "end_ms": 50561,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 50561,
+              "end_ms": 59780,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 59780,
+              "end_ms": 67164,
+              "unique_colors": 6
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 67164,
+              "end_ms": 94865,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "A",
+              "start_ms": 94865,
+              "end_ms": 102249,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 102249,
+              "end_ms": 111491,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 111491,
+              "end_ms": 117017,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 117017,
+              "end_ms": 126247,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 126247,
+              "end_ms": 131785,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 131785,
+              "end_ms": 139169,
+              "unique_colors": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 139169,
+              "end_ms": 148399,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 148399,
+              "end_ms": 155783,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 155783,
+              "end_ms": 184401,
+              "unique_colors": 20
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 184401,
+              "end_ms": 190868,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 190868,
+              "end_ms": 201932,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 201932,
+              "end_ms": 212386,
+              "unique_colors": 0
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "effect_type_histogram",
+          "kind": "distribution",
+          "value": 0.0,
+          "payload": {
+            "histogram": {
+              "Single Strand": 0.3891213389121339,
+              "Spirals": 0.2719665271966527,
+              "Bars": 0.1589958158995816,
+              "Fan": 0.016736401673640166,
+              "Wave": 0.12412831241283125,
+              "Pinwheel": 0.016736401673640166,
+              "Plasma": 0.016736401673640166,
+              "Ripple": 0.005578800557880056
+            },
+            "unknown_fraction": 0.0
+          },
+          "reliability": "ok"
+        },
+        {
+          "name": "beat_alignment_pct",
+          "kind": "scalar",
+          "value": 0.8828451882845189,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "section_transition_delta",
+          "kind": "per_section",
+          "value": 0.49726164505254244,
+          "payload": [
+            {
+              "boundary_label": "N1 \u2192 A",
+              "palette_delta": 0.5954372523105549,
+              "effect_delta": 1.0,
+              "transition_score": 0.7977186261552774
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 0.0,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.3333333333333333,
+              "effect_delta": 0.08180335912333267,
+              "transition_score": 0.20756834622833298
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.0,
+              "transition_score": 0.3333333333333333
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.7302915015403697,
+              "effect_delta": 0.5103747876947613,
+              "transition_score": 0.6203331446175655
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.819715972342415,
+              "effect_delta": 0.0,
+              "transition_score": 0.4098579861712075
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N2",
+              "palette_delta": 0.8495983135651328,
+              "effect_delta": 0.2977679056302175,
+              "transition_score": 0.5736831095976751
+            },
+            {
+              "boundary_label": "N2 \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "tier_utilization",
+          "kind": "per_section",
+          "value": 0.8181818181818182,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 697,
+              "end_ms": 7175,
+              "utilization": 0.125,
+              "active_models": 1,
+              "total_models": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 7175,
+              "end_ms": 13630,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 13630,
+              "end_ms": 22872,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 22872,
+              "end_ms": 28398,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 28398,
+              "end_ms": 37628,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 37628,
+              "end_ms": 43166,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 43166,
+              "end_ms": 50561,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 50561,
+              "end_ms": 59780,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 59780,
+              "end_ms": 67164,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 67164,
+              "end_ms": 94865,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 94865,
+              "end_ms": 102249,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 102249,
+              "end_ms": 111491,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 111491,
+              "end_ms": 117017,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 117017,
+              "end_ms": 126247,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 126247,
+              "end_ms": 131785,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 131785,
+              "end_ms": 139169,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 139169,
+              "end_ms": 148399,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 148399,
+              "end_ms": 155783,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 155783,
+              "end_ms": 184401,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 184401,
+              "end_ms": 190868,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 190868,
+              "end_ms": 201932,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 201932,
+              "end_ms": 212386,
+              "utilization": 0.0,
+              "active_models": 0,
+              "total_models": 8
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "theme_assignment_consistency",
+          "kind": "scalar",
+          "value": 0.6470588235294118,
+          "payload": {
+            "A": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Single Strand"
+              ],
+              "consistent": true
+            },
+            "qm_boundary": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand"
+              ],
+              "consistent": false
+            }
+          },
+          "reliability": "ok"
+        }
+      ]
+    },
+    "danger-zone": {
+      "metrics": [
+        {
+          "name": "placements_per_minute",
+          "kind": "scalar",
+          "value": 437.5083860400772,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "density_energy_correlation",
+          "kind": "scalar",
+          "value": 0.4235913293556641,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "palette_top5_colors",
+          "kind": "structured",
+          "value": 0.072479042851148,
+          "payload": [
+            [
+              "#7FDDFF",
+              0.072479042851148
+            ],
+            [
+              "#7FF1FF",
+              0.06134418518410082
+            ],
+            [
+              "#7FCFFF",
+              0.05513267168272007
+            ],
+            [
+              "#82A5C8",
+              0.05150725571137202
+            ],
+            [
+              "#7FA1C3",
+              0.04884308731250797
+            ]
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "per_section_palette_diversity",
+          "kind": "per_section",
+          "value": 11.846153846153847,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 16730,
+              "unique_colors": 19
+            },
+            {
+              "section_label": "A",
+              "start_ms": 16730,
+              "end_ms": 28979,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 28979,
+              "end_ms": 38162,
+              "unique_colors": 16
+            },
+            {
+              "section_label": "N3",
+              "start_ms": 38162,
+              "end_ms": 44292,
+              "unique_colors": 3
+            },
+            {
+              "section_label": "A",
+              "start_ms": 44292,
+              "end_ms": 56541,
+              "unique_colors": 5
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 56541,
+              "end_ms": 62659,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 62659,
+              "end_ms": 65724,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "N4",
+              "start_ms": 65724,
+              "end_ms": 79494,
+              "unique_colors": 16
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 79494,
+              "end_ms": 84091,
+              "unique_colors": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 84091,
+              "end_ms": 96340,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "C",
+              "start_ms": 96340,
+              "end_ms": 103991,
+              "unique_colors": 16
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 103991,
+              "end_ms": 111642,
+              "unique_colors": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 111642,
+              "end_ms": 123890,
+              "unique_colors": 5
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 123890,
+              "end_ms": 133085,
+              "unique_colors": 18
+            },
+            {
+              "section_label": "B",
+              "start_ms": 133085,
+              "end_ms": 136139,
+              "unique_colors": 6
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 136139,
+              "end_ms": 145322,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "A",
+              "start_ms": 145322,
+              "end_ms": 157571,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 157571,
+              "end_ms": 166766,
+              "unique_colors": 18
+            },
+            {
+              "section_label": "B",
+              "start_ms": 166766,
+              "end_ms": 169819,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 169819,
+              "end_ms": 179014,
+              "unique_colors": 19
+            },
+            {
+              "section_label": "N6",
+              "start_ms": 179014,
+              "end_ms": 186665,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 186665,
+              "end_ms": 191251,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "B",
+              "start_ms": 191251,
+              "end_ms": 194316,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 194316,
+              "end_ms": 203500,
+              "unique_colors": 23
+            },
+            {
+              "section_label": "N7",
+              "start_ms": 203500,
+              "end_ms": 211162,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 211162,
+              "end_ms": 216133,
+              "unique_colors": 0
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "effect_type_histogram",
+          "kind": "distribution",
+          "value": 0.0,
+          "payload": {
+            "histogram": {
+              "Single Strand": 0.36738578680203043,
+              "Wave": 0.09898477157360407,
+              "Ripple": 0.05203045685279188,
+              "Bars": 0.1598984771573604,
+              "Spirals": 0.04187817258883249,
+              "Color Wash": 0.0025380710659898475,
+              "Shockwave": 0.0031725888324873096,
+              "Fan": 0.0799492385786802,
+              "Pinwheel": 0.09517766497461928,
+              "Plasma": 0.09517766497461928,
+              "Butterfly": 0.0038071065989847717
+            },
+            "unknown_fraction": 0.0
+          },
+          "reliability": "ok"
+        },
+        {
+          "name": "beat_alignment_pct",
+          "kind": "scalar",
+          "value": 0.33946700507614214,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "section_transition_delta",
+          "kind": "per_section",
+          "value": 0.7271604654356365,
+          "payload": [
+            {
+              "boundary_label": "N1 \u2192 A",
+              "palette_delta": 1.0,
+              "effect_delta": 0.6893917467430877,
+              "transition_score": 0.8446958733715438
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.09693584661632856,
+              "effect_delta": 0.21120828333872152,
+              "transition_score": 0.15407206497752504
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N3",
+              "palette_delta": 0.5487949406953985,
+              "effect_delta": 0.21590943204298385,
+              "transition_score": 0.38235218636919116
+            },
+            {
+              "boundary_label": "N3 \u2192 A",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.4591479170272448,
+              "effect_delta": 0.0,
+              "transition_score": 0.2295739585136224
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N4",
+              "palette_delta": 1.0,
+              "effect_delta": 0.3746508927026094,
+              "transition_score": 0.6873254463513047
+            },
+            {
+              "boundary_label": "N4 \u2192 qm_boundary",
+              "palette_delta": 0.8699955156703292,
+              "effect_delta": 0.3746508927026094,
+              "transition_score": 0.6223232041864692
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 0.3705065005495052,
+              "transition_score": 0.6852532502747526
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 C",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "C \u2192 qm_boundary",
+              "palette_delta": 0.5954372523105549,
+              "effect_delta": 1.0,
+              "transition_score": 0.7977186261552774
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 B",
+              "palette_delta": 1.0,
+              "effect_delta": 0.8651266050161193,
+              "transition_score": 0.9325633025080596
+            },
+            {
+              "boundary_label": "B \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 1.0,
+              "effect_delta": 0.6759084492460381,
+              "transition_score": 0.837954224623019
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 0.6640449977196048,
+              "transition_score": 0.8320224988598024
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 B",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "B \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N6",
+              "palette_delta": 0.7302915015403698,
+              "effect_delta": 0.3746508927026094,
+              "transition_score": 0.5524711971214896
+            },
+            {
+              "boundary_label": "N6 \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.3746508927026094,
+              "transition_score": 0.520658779684638
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 B",
+              "palette_delta": 0.7808122056688156,
+              "effect_delta": 0.41924184011962207,
+              "transition_score": 0.6000270228942188
+            },
+            {
+              "boundary_label": "B \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N7",
+              "palette_delta": 1.0,
+              "effect_delta": 1.0,
+              "transition_score": 1.0
+            },
+            {
+              "boundary_label": "N7 \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "tier_utilization",
+          "kind": "per_section",
+          "value": 0.6923076923076923,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 16730,
+              "utilization": 0.25,
+              "active_models": 2,
+              "total_models": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 16730,
+              "end_ms": 28979,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 28979,
+              "end_ms": 38162,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "N3",
+              "start_ms": 38162,
+              "end_ms": 44292,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 44292,
+              "end_ms": 56541,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 56541,
+              "end_ms": 62659,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 62659,
+              "end_ms": 65724,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "N4",
+              "start_ms": 65724,
+              "end_ms": 79494,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 79494,
+              "end_ms": 84091,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 84091,
+              "end_ms": 96340,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "C",
+              "start_ms": 96340,
+              "end_ms": 103991,
+              "utilization": 0.125,
+              "active_models": 1,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 103991,
+              "end_ms": 111642,
+              "utilization": 0.125,
+              "active_models": 1,
+              "total_models": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 111642,
+              "end_ms": 123890,
+              "utilization": 0.125,
+              "active_models": 1,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 123890,
+              "end_ms": 133085,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "B",
+              "start_ms": 133085,
+              "end_ms": 136139,
+              "utilization": 0.125,
+              "active_models": 1,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 136139,
+              "end_ms": 145322,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 145322,
+              "end_ms": 157571,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 157571,
+              "end_ms": 166766,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "B",
+              "start_ms": 166766,
+              "end_ms": 169819,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 169819,
+              "end_ms": 179014,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "N6",
+              "start_ms": 179014,
+              "end_ms": 186665,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 186665,
+              "end_ms": 191251,
+              "utilization": 1.0,
+              "active_models": 8,
+              "total_models": 8
+            },
+            {
+              "section_label": "B",
+              "start_ms": 191251,
+              "end_ms": 194316,
+              "utilization": 0.875,
+              "active_models": 7,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 194316,
+              "end_ms": 203500,
+              "utilization": 0.75,
+              "active_models": 6,
+              "total_models": 8
+            },
+            {
+              "section_label": "N7",
+              "start_ms": 203500,
+              "end_ms": 211162,
+              "utilization": 0.125,
+              "active_models": 1,
+              "total_models": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 211162,
+              "end_ms": 216133,
+              "utilization": 0.0,
+              "active_models": 0,
+              "total_models": 8
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "theme_assignment_consistency",
+          "kind": "scalar",
+          "value": 0.8125,
+          "payload": {
+            "A": {
+              "reference_effect": "Wave",
+              "occurrences": [
+                "Wave",
+                "Single Strand",
+                "Single Strand",
+                "Wave"
+              ],
+              "consistent": false
+            },
+            "B": {
+              "reference_effect": "Ripple",
+              "occurrences": [
+                "Ripple",
+                "Spirals",
+                "Ripple"
+              ],
+              "consistent": false
+            },
+            "qm_boundary": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand"
+              ],
+              "consistent": true
+            }
+          },
+          "reliability": "ok"
+        }
+      ]
+    },
+    "light-of-christmas": {
+      "metrics": [
+        {
+          "name": "placements_per_minute",
+          "kind": "scalar",
+          "value": 243.80322299456876,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "density_energy_correlation",
+          "kind": "scalar",
+          "value": 0.07256453626907593,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "palette_top5_colors",
+          "kind": "structured",
+          "value": 0.3239738007517405,
+          "payload": [
+            [
+              "#FFFFFF",
+              0.3239738007517405
+            ],
+            [
+              "#C3C3FF",
+              0.08915280413829026
+            ],
+            [
+              "#D7C3FF",
+              0.08687339510996976
+            ],
+            [
+              "#E5E9FF",
+              0.07899315246920469
+            ],
+            [
+              "#E5EEFF",
+              0.07379703025566602
+            ]
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "per_section_palette_diversity",
+          "kind": "per_section",
+          "value": 7.833333333333333,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 25228,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 25228,
+              "end_ms": 40739,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 40739,
+              "end_ms": 56204,
+              "unique_colors": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 56204,
+              "end_ms": 71680,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 71680,
+              "end_ms": 85229,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 85229,
+              "end_ms": 89107,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 89107,
+              "end_ms": 92961,
+              "unique_colors": 5
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 92961,
+              "end_ms": 96839,
+              "unique_colors": 5
+            },
+            {
+              "section_label": "A",
+              "start_ms": 96839,
+              "end_ms": 110388,
+              "unique_colors": 6
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 110388,
+              "end_ms": 125875,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 125875,
+              "end_ms": 141340,
+              "unique_colors": 6
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 141340,
+              "end_ms": 158557,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "A",
+              "start_ms": 158557,
+              "end_ms": 171851,
+              "unique_colors": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 171851,
+              "end_ms": 185388,
+              "unique_colors": 5
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 185388,
+              "end_ms": 202815,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 202815,
+              "end_ms": 208620,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 208620,
+              "end_ms": 218302,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 218302,
+              "end_ms": 223705,
+              "unique_colors": 0
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "effect_type_histogram",
+          "kind": "distribution",
+          "value": 0.0,
+          "payload": {
+            "histogram": {
+              "Spirals": 0.26952695269526955,
+              "Single Strand": 0.42244224422442245,
+              "Bars": 0.13861386138613863,
+              "Fan": 0.0319031903190319,
+              "Wave": 0.0737073707370737,
+              "Pinwheel": 0.0319031903190319,
+              "Plasma": 0.0319031903190319
+            },
+            "unknown_fraction": 0.0
+          },
+          "reliability": "ok"
+        },
+        {
+          "name": "beat_alignment_pct",
+          "kind": "scalar",
+          "value": 0.845984598459846,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "section_transition_delta",
+          "kind": "per_section",
+          "value": 0.4360401275763307,
+          "payload": [
+            {
+              "boundary_label": "N1 \u2192 qm_boundary",
+              "palette_delta": 0.4535523499830343,
+              "effect_delta": 0.15056169269312805,
+              "transition_score": 0.30205702133808116
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.1411850213472175,
+              "transition_score": 0.4039258440069421
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.7026771820485334,
+              "effect_delta": 0.49342260576014463,
+              "transition_score": 0.598049893904339
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5253842686894354,
+              "effect_delta": 0.004968676393644192,
+              "transition_score": 0.2651764725415398
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N2",
+              "palette_delta": 0.5,
+              "effect_delta": 0.49999999999999994,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "N2 \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.24781448151622784,
+              "transition_score": 0.45724057409144725
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.43709270815304424,
+              "effect_delta": 0.29237288661498195,
+              "transition_score": 0.3647327973840131
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.43709270815304424,
+              "effect_delta": 0.2065540344707562,
+              "transition_score": 0.3218233713119002
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.09967430772877,
+              "transition_score": 0.3831704871977183
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.1162105698393035,
+              "transition_score": 0.3914386182529851
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.7704260414863775,
+              "effect_delta": 0.15251592818934329,
+              "transition_score": 0.4614709848378604
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.819715972342415,
+              "effect_delta": 0.10747623551917782,
+              "transition_score": 0.4635961039307964
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "tier_utilization",
+          "kind": "per_section",
+          "value": 0.7037037037037036,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 25228,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 25228,
+              "end_ms": 40739,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 40739,
+              "end_ms": 56204,
+              "utilization": 0.9333333333333333,
+              "active_models": 14,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 56204,
+              "end_ms": 71680,
+              "utilization": 0.9333333333333333,
+              "active_models": 14,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 71680,
+              "end_ms": 85229,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 85229,
+              "end_ms": 89107,
+              "utilization": 0.5333333333333333,
+              "active_models": 8,
+              "total_models": 15
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 89107,
+              "end_ms": 92961,
+              "utilization": 0.5333333333333333,
+              "active_models": 8,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 92961,
+              "end_ms": 96839,
+              "utilization": 0.4666666666666667,
+              "active_models": 7,
+              "total_models": 15
+            },
+            {
+              "section_label": "A",
+              "start_ms": 96839,
+              "end_ms": 110388,
+              "utilization": 0.8,
+              "active_models": 12,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 110388,
+              "end_ms": 125875,
+              "utilization": 0.8,
+              "active_models": 12,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 125875,
+              "end_ms": 141340,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 141340,
+              "end_ms": 158557,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "A",
+              "start_ms": 158557,
+              "end_ms": 171851,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 171851,
+              "end_ms": 185388,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 185388,
+              "end_ms": 202815,
+              "utilization": 0.9333333333333333,
+              "active_models": 14,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 202815,
+              "end_ms": 208620,
+              "utilization": 0.8666666666666667,
+              "active_models": 13,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 208620,
+              "end_ms": 218302,
+              "utilization": 0.7333333333333333,
+              "active_models": 11,
+              "total_models": 15
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 218302,
+              "end_ms": 223705,
+              "utilization": 0.0,
+              "active_models": 0,
+              "total_models": 15
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "theme_assignment_consistency",
+          "kind": "scalar",
+          "value": 0.38461538461538464,
+          "payload": {
+            "A": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Single Strand"
+              ],
+              "consistent": true
+            },
+            "qm_boundary": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Spirals",
+                "Spirals",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Spirals",
+                "Spirals",
+                "Single Strand"
+              ],
+              "consistent": false
+            }
+          },
+          "reliability": "ok"
+        }
+      ]
+    },
+    "kid-on-christmas": {
+      "metrics": [
+        {
+          "name": "placements_per_minute",
+          "kind": "scalar",
+          "value": 337.90387064293543,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "density_energy_correlation",
+          "kind": "scalar",
+          "value": 0.22310269952589115,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "palette_top5_colors",
+          "kind": "structured",
+          "value": 0.3160490892342436,
+          "payload": [
+            [
+              "#FFFFFF",
+              0.3160490892342436
+            ],
+            [
+              "#A8A8A8",
+              0.022241702077080785
+            ],
+            [
+              "#4488FF",
+              0.014872373933973193
+            ],
+            [
+              "#C3FFC7",
+              0.014713893758852596
+            ],
+            [
+              "#FFE5EA",
+              0.014644558682237336
+            ]
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "per_section_palette_diversity",
+          "kind": "per_section",
+          "value": 12.294117647058824,
+          "payload": [
+            {
+              "section_label": "A",
+              "start_ms": 0,
+              "end_ms": 28735,
+              "unique_colors": 22
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 28735,
+              "end_ms": 44141,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 44141,
+              "end_ms": 50294,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 50294,
+              "end_ms": 56436,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 56436,
+              "end_ms": 71703,
+              "unique_colors": 19
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 71703,
+              "end_ms": 77973,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 77973,
+              "end_ms": 82582,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 82582,
+              "end_ms": 104130,
+              "unique_colors": 20
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 104130,
+              "end_ms": 110295,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 110295,
+              "end_ms": 121057,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 121057,
+              "end_ms": 131831,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 131831,
+              "end_ms": 137973,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 137973,
+              "end_ms": 150291,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 150291,
+              "end_ms": 156444,
+              "unique_colors": 13
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 156444,
+              "end_ms": 167207,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 167207,
+              "end_ms": 194800,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 194800,
+              "end_ms": 202602,
+              "unique_colors": 0
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "effect_type_histogram",
+          "kind": "distribution",
+          "value": 0.0,
+          "payload": {
+            "histogram": {
+              "Single Strand": 0.37861524978089395,
+              "Spirals": 0.22173531989482909,
+              "Bars": 0.1200701139351446,
+              "Fan": 0.008764241893076249,
+              "Wave": 0.09377738825591586,
+              "Pinwheel": 0.008764241893076249,
+              "Plasma": 0.008764241893076249,
+              "Shockwave": 0.15950920245398773
+            },
+            "unknown_fraction": 0.0
+          },
+          "reliability": "ok"
+        },
+        {
+          "name": "beat_alignment_pct",
+          "kind": "scalar",
+          "value": 0.7563540753724802,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "section_transition_delta",
+          "kind": "per_section",
+          "value": 0.4782614417485243,
+          "payload": [
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.07993062913409248,
+              "transition_score": 0.37329864790037953
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 0.1411850213472175,
+              "transition_score": 0.5705925106736087
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.0,
+              "transition_score": 0.3333333333333333
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5000000000000001,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.0,
+              "transition_score": 0.3333333333333333
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5000000000000001,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.4999999999999999
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.030129516264368966,
+              "transition_score": 0.3483980914655178
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.6074539489505432,
+              "effect_delta": 0.754106386047265,
+              "transition_score": 0.680780167498904
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 0.02489396754262646,
+              "transition_score": 0.5124469837713133
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.4999999999999999
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "tier_utilization",
+          "kind": "per_section",
+          "value": 0.38235294117647056,
+          "payload": [
+            {
+              "section_label": "A",
+              "start_ms": 0,
+              "end_ms": 28735,
+              "utilization": 0.4230769230769231,
+              "active_models": 11,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 28735,
+              "end_ms": 44141,
+              "utilization": 0.4230769230769231,
+              "active_models": 11,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 44141,
+              "end_ms": 50294,
+              "utilization": 0.46153846153846156,
+              "active_models": 12,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 50294,
+              "end_ms": 56436,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 56436,
+              "end_ms": 71703,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 71703,
+              "end_ms": 77973,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 77973,
+              "end_ms": 82582,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 82582,
+              "end_ms": 104130,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 104130,
+              "end_ms": 110295,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 110295,
+              "end_ms": 121057,
+              "utilization": 0.4230769230769231,
+              "active_models": 11,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 121057,
+              "end_ms": 131831,
+              "utilization": 0.4230769230769231,
+              "active_models": 11,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 131831,
+              "end_ms": 137973,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 137973,
+              "end_ms": 150291,
+              "utilization": 0.9615384615384616,
+              "active_models": 25,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 150291,
+              "end_ms": 156444,
+              "utilization": 0.9615384615384616,
+              "active_models": 25,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 156444,
+              "end_ms": 167207,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 167207,
+              "end_ms": 194800,
+              "utilization": 0.2692307692307692,
+              "active_models": 7,
+              "total_models": 26
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 194800,
+              "end_ms": 202602,
+              "utilization": 0.0,
+              "active_models": 0,
+              "total_models": 26
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "theme_assignment_consistency",
+          "kind": "scalar",
+          "value": 0.6428571428571429,
+          "payload": {
+            "qm_boundary": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Shockwave",
+                "Single Strand",
+                "Spirals",
+                "Single Strand"
+              ],
+              "consistent": false
+            }
+          },
+          "reliability": "ok"
+        }
+      ]
+    },
+    "shut-up-and-dance": {
+      "metrics": [
+        {
+          "name": "placements_per_minute",
+          "kind": "scalar",
+          "value": 482.82097649186255,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "density_energy_correlation",
+          "kind": "scalar",
+          "value": 0.08612761754378885,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "palette_top5_colors",
+          "kind": "structured",
+          "value": 0.3269607021074401,
+          "payload": [
+            [
+              "#FFFFFF",
+              0.3269607021074401
+            ],
+            [
+              "#C3DDFF",
+              0.11971509493729844
+            ],
+            [
+              "#E5F2FF",
+              0.07342966813870719
+            ],
+            [
+              "#C3E4FF",
+              0.047128589263420693
+            ],
+            [
+              "#E5EBFF",
+              0.041068067900199415
+            ]
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "per_section_palette_diversity",
+          "kind": "per_section",
+          "value": 8.541666666666666,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 5793,
+              "unique_colors": 4
+            },
+            {
+              "section_label": "C",
+              "start_ms": 5793,
+              "end_ms": 20782,
+              "unique_colors": 8
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 20782,
+              "end_ms": 24532,
+              "unique_colors": 8
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 24532,
+              "end_ms": 39532,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 39532,
+              "end_ms": 47032,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "A",
+              "start_ms": 47032,
+              "end_ms": 60175,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "N4",
+              "start_ms": 60175,
+              "end_ms": 63913,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 63913,
+              "end_ms": 67663,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "B",
+              "start_ms": 67663,
+              "end_ms": 80794,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 80794,
+              "end_ms": 88282,
+              "unique_colors": 8
+            },
+            {
+              "section_label": "A",
+              "start_ms": 88282,
+              "end_ms": 101425,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "N6",
+              "start_ms": 101425,
+              "end_ms": 105163,
+              "unique_colors": 7
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 105163,
+              "end_ms": 112663,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "A",
+              "start_ms": 112663,
+              "end_ms": 122044,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 122044,
+              "end_ms": 125806,
+              "unique_colors": 10
+            },
+            {
+              "section_label": "C",
+              "start_ms": 125806,
+              "end_ms": 137044,
+              "unique_colors": 9
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 137044,
+              "end_ms": 144533,
+              "unique_colors": 6
+            },
+            {
+              "section_label": "A",
+              "start_ms": 144533,
+              "end_ms": 157652,
+              "unique_colors": 5
+            },
+            {
+              "section_label": "N9",
+              "start_ms": 157652,
+              "end_ms": 161414,
+              "unique_colors": 3
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 161414,
+              "end_ms": 167938,
+              "unique_colors": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 167938,
+              "end_ms": 176200,
+              "unique_colors": 11
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 176200,
+              "end_ms": 181058,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "N10",
+              "start_ms": 181058,
+              "end_ms": 192000,
+              "unique_colors": 14
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 192000,
+              "end_ms": 199080,
+              "unique_colors": 0
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "effect_type_histogram",
+          "kind": "distribution",
+          "value": 0.0,
+          "payload": {
+            "histogram": {
+              "Single Strand": 0.46691635455680397,
+              "Spirals": 0.18976279650436953,
+              "Bars": 0.14232209737827714,
+              "Fan": 0.049937578027465665,
+              "Wave": 0.05118601747815231,
+              "Pinwheel": 0.049937578027465665,
+              "Plasma": 0.049937578027465665
+            },
+            "unknown_fraction": 0.0
+          },
+          "reliability": "ok"
+        },
+        {
+          "name": "beat_alignment_pct",
+          "kind": "scalar",
+          "value": 0.7833957553058677,
+          "payload": null,
+          "reliability": "ok"
+        },
+        {
+          "name": "section_transition_delta",
+          "kind": "per_section",
+          "value": 0.4388507922706607,
+          "payload": [
+            {
+              "boundary_label": "N1 \u2192 C",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "C \u2192 N2",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.49999999999999994,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "N2 \u2192 qm_boundary",
+              "palette_delta": 1.0,
+              "effect_delta": 0.0,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.028522916953677497,
+              "transition_score": 0.34759479181017205
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.0,
+              "transition_score": 0.3333333333333333
+            },
+            {
+              "boundary_label": "A \u2192 N4",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.22979741467708956,
+              "transition_score": 0.4482320406718781
+            },
+            {
+              "boundary_label": "N4 \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.4999999999999999,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 B",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.49999999999999994,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "B \u2192 qm_boundary",
+              "palette_delta": 0.20751874963942185,
+              "effect_delta": 0.6244850368352463,
+              "transition_score": 0.41600189323733405
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.0,
+              "transition_score": 0.3333333333333333
+            },
+            {
+              "boundary_label": "A \u2192 N6",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.23841420444711509,
+              "transition_score": 0.45254043555689083
+            },
+            {
+              "boundary_label": "N6 \u2192 qm_boundary",
+              "palette_delta": 0.5,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.22946025092161135,
+              "transition_score": 0.448063458794139
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.596461792791928,
+              "transition_score": 0.6315642297292974
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 C",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.0,
+              "transition_score": 0.3333333333333333
+            },
+            {
+              "boundary_label": "C \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.2065540344707562,
+              "transition_score": 0.43661035056871145
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.0,
+              "effect_delta": 0.0,
+              "transition_score": 0.0
+            },
+            {
+              "boundary_label": "A \u2192 N9",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.49999999999999994,
+              "transition_score": 0.49999999999999994
+            },
+            {
+              "boundary_label": "N9 \u2192 qm_boundary",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 A",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.596461792791928,
+              "transition_score": 0.6315642297292974
+            },
+            {
+              "boundary_label": "A \u2192 qm_boundary",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.22946025092161135,
+              "transition_score": 0.448063458794139
+            },
+            {
+              "boundary_label": "qm_boundary \u2192 N10",
+              "palette_delta": 0.6666666666666666,
+              "effect_delta": 0.0,
+              "transition_score": 0.3333333333333333
+            },
+            {
+              "boundary_label": "N10 \u2192 qm_boundary",
+              "palette_delta": 0.49999999999999994,
+              "effect_delta": 0.5,
+              "transition_score": 0.5
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "tier_utilization",
+          "kind": "per_section",
+          "value": 0.8263888888888888,
+          "payload": [
+            {
+              "section_label": "N1",
+              "start_ms": 0,
+              "end_ms": 5793,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            },
+            {
+              "section_label": "C",
+              "start_ms": 5793,
+              "end_ms": 20782,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            },
+            {
+              "section_label": "N2",
+              "start_ms": 20782,
+              "end_ms": 24532,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 24532,
+              "end_ms": 39532,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 39532,
+              "end_ms": 47032,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 47032,
+              "end_ms": 60175,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "N4",
+              "start_ms": 60175,
+              "end_ms": 63913,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 63913,
+              "end_ms": 67663,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "B",
+              "start_ms": 67663,
+              "end_ms": 80794,
+              "utilization": 0.6666666666666666,
+              "active_models": 8,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 80794,
+              "end_ms": 88282,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 88282,
+              "end_ms": 101425,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "N6",
+              "start_ms": 101425,
+              "end_ms": 105163,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 105163,
+              "end_ms": 112663,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 112663,
+              "end_ms": 122044,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 122044,
+              "end_ms": 125806,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "C",
+              "start_ms": 125806,
+              "end_ms": 137044,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 137044,
+              "end_ms": 144533,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 144533,
+              "end_ms": 157652,
+              "utilization": 0.6666666666666666,
+              "active_models": 8,
+              "total_models": 12
+            },
+            {
+              "section_label": "N9",
+              "start_ms": 157652,
+              "end_ms": 161414,
+              "utilization": 0.5833333333333334,
+              "active_models": 7,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 161414,
+              "end_ms": 167938,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "A",
+              "start_ms": 167938,
+              "end_ms": 176200,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 176200,
+              "end_ms": 181058,
+              "utilization": 1.0,
+              "active_models": 12,
+              "total_models": 12
+            },
+            {
+              "section_label": "N10",
+              "start_ms": 181058,
+              "end_ms": 192000,
+              "utilization": 0.9166666666666666,
+              "active_models": 11,
+              "total_models": 12
+            },
+            {
+              "section_label": "qm_boundary",
+              "start_ms": 192000,
+              "end_ms": 199080,
+              "utilization": 0.0,
+              "active_models": 0,
+              "total_models": 12
+            }
+          ],
+          "reliability": "ok"
+        },
+        {
+          "name": "theme_assignment_consistency",
+          "kind": "scalar",
+          "value": 0.6153846153846154,
+          "payload": {
+            "A": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand",
+                "Single Strand"
+              ],
+              "consistent": true
+            },
+            "qm_boundary": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand",
+                "Spirals",
+                "Single Strand"
+              ],
+              "consistent": false
+            },
+            "C": {
+              "reference_effect": "Single Strand",
+              "occurrences": [
+                "Single Strand",
+                "Spirals"
+              ],
+              "consistent": false
+            }
+          },
+          "reliability": "ok"
+        }
+      ]
+    }
+  }
+}

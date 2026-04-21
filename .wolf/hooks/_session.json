@@ -1,0 +1,72 @@
+{
+  "session_id": "session-2026-04-21-1202",
+  "started": "2026-04-21T19:02:40.439Z",
+  "files_read": {
+    "/workspace/.gitignore": {
+      "count": 1,
+      "tokens": 294,
+      "first_read": "2026-04-21T19:10:08.175Z"
+    },
+    "/workspace/specs/050-quality-calibration/spec.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-21T19:12:51.377Z"
+    },
+    "/workspace/specs/050-quality-calibration/plan.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-04-21T19:12:54.357Z"
+    },
+    "/workspace/specs/050-quality-calibration/tasks.md": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-04-21T19:13:03.165Z"
+    },
+    "/workspace/pyproject.toml": {
+      "count": 1,
+      "tokens": 502,
+      "first_read": "2026-04-21T19:23:33.795Z"
+    }
+  },
+  "files_written": [
+    {
+      "file": "/workspace/.gitignore",
+      "action": "edit",
+      "tokens": 30,
+      "at": "2026-04-21T19:10:23.101Z"
+    },
+    {
+      "file": "/workspace/.gitignore",
+      "action": "edit",
+      "tokens": 43,
+      "at": "2026-04-21T19:11:34.135Z"
+    },
+    {
+      "file": "/workspace/pyproject.toml",
+      "action": "edit",
+      "tokens": 26,
+      "at": "2026-04-21T19:23:37.553Z"
+    },
+    {
+      "file": "/workspace/.gitignore",
+      "action": "edit",
+      "tokens": 56,
+      "at": "2026-04-21T19:28:23.820Z"
+    },
+    {
+      "file": "/workspace/.gitignore",
+      "action": "edit",
+      "tokens": 85,
+      "at": "2026-04-21T19:28:48.979Z"
+    }
+  ],
+  "edit_counts": {
+    ".gitignore": 4,
+    "pyproject.toml": 1
+  },
+  "anatomy_hits": 2,
+  "anatomy_misses": 3,
+  "repeated_reads_warned": 1,
+  "cerebrum_warnings": 0,
+  "stop_count": 11
+}

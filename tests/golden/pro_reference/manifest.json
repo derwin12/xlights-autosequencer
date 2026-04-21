@@ -1,0 +1,94 @@
+{
+  "entries": [
+    {
+      "song_id": "baby-shark",
+      "pro_id": "default",
+      "xsq_path": "/home/node/xlights/baseline-sequences/Baby Shark with Jaws Intro - Pinkfong.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/01 - Baby Shark with Jaws Intro.mp3",
+      "audio_hash": "md5:e644f27c8ebca7b46e9ee6e8afd952f5",
+      "tags": ["children", "pop", "novelty"],
+      "notes_ref": "notes/baby-shark.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "candy-cane-lane",
+      "pro_id": "default",
+      "xsq_path": "/home/node/xlights/baseline-sequences/Candy Cane Lane - Sia.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/02 - Candy Cane Lane.mp3",
+      "audio_hash": "md5:4ee7e717191de6745e344033110619e3",
+      "tags": ["christmas", "pop"],
+      "notes_ref": "notes/candy-cane-lane.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "danger-zone",
+      "pro_id": "xatw",
+      "xsq_path": "/home/node/xlights/baseline-sequences/Danger Zone XATW.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/01 - Danger Zone (From _Top Gun_ Original Soundtrack).mp3",
+      "audio_hash": "md5:d31f957c255826487e468e449a659866",
+      "tags": ["rock", "80s", "film"],
+      "notes_ref": "notes/danger-zone.md",
+      "master_may_differ": true
+    },
+    {
+      "song_id": "danger-zone",
+      "pro_id": "xatw-2",
+      "xsq_path": "/home/node/xlights/baseline-sequences/XATW Danger Zone 2.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/01 - Danger Zone (From _Top Gun_ Original Soundtrack).mp3",
+      "audio_hash": "md5:d31f957c255826487e468e449a659866",
+      "tags": ["rock", "80s", "film"],
+      "notes_ref": "notes/danger-zone.md",
+      "master_may_differ": true
+    },
+    {
+      "song_id": "light-of-christmas",
+      "pro_id": "default",
+      "xsq_path": "/home/node/xlights/baseline-sequences/Light of Christmas.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/02 - Light Of Christmas [feat. Owl City].mp3",
+      "audio_hash": "md5:700030dcb7be2be3df3fbc4ddb06bd97",
+      "tags": ["christmas", "pop", "soft-rock"],
+      "notes_ref": "notes/light-of-christmas.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "light-of-christmas",
+      "pro_id": "xatw",
+      "xsq_path": "/home/node/xlights/baseline-sequences/Light Of Christmas XATW.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/02 - Light Of Christmas [feat. Owl City].mp3",
+      "audio_hash": "md5:700030dcb7be2be3df3fbc4ddb06bd97",
+      "tags": ["christmas", "pop", "soft-rock"],
+      "notes_ref": "notes/light-of-christmas.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "light-of-christmas",
+      "pro_id": "xatw-alt",
+      "xsq_path": "/home/node/xlights/baseline-sequences/XATW Light Of Christmas.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/02 - Light Of Christmas [feat. Owl City].mp3",
+      "audio_hash": "md5:700030dcb7be2be3df3fbc4ddb06bd97",
+      "tags": ["christmas", "pop", "soft-rock"],
+      "notes_ref": "notes/light-of-christmas.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "kid-on-christmas",
+      "pro_id": "xatw",
+      "xsq_path": "/home/node/xlights/baseline-sequences/XATW Kid On Christmas Eliot Wisser.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/01 - Kid On Christmas.mp3",
+      "audio_hash": "md5:066fcf07fc10b9b9b33cdf28aec9c0a3",
+      "tags": ["christmas", "pop", "upbeat"],
+      "notes_ref": "notes/kid-on-christmas.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "shut-up-and-dance",
+      "pro_id": "jeremy-poling",
+      "xsq_path": "/home/node/xlights/baseline-sequences/XATW Shut Up and Dance Jeremy Poling.xsq",
+      "mp3_path": "/home/node/xlights/baseline-sequences/03 - Shut Up and Dance.mp3",
+      "audio_hash": "md5:3c05919244a06c693c741f3a12b1a022",
+      "tags": ["indie-pop", "dance", "upbeat"],
+      "notes_ref": "notes/shut-up-and-dance.md",
+      "master_may_differ": false
+    }
+  ]
+}

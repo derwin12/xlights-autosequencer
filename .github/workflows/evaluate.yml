@@ -1,0 +1,22 @@
+name: Quality Calibration Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  evaluate-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e .
+      - name: Run quality calibration gate
+        run: xlight-evaluate check
+        # Exits 0 if all metrics within baseline tolerance.
+        # Exits 6 on regression — update baseline.json and commit to fix.
+        # Exits 4 if no baseline exists yet — run `xlight-evaluate snapshot` first.

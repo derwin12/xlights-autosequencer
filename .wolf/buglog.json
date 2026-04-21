@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-04-21T19:28:48.981Z",
+      "error_message": "Significant refactor of ",
+      "file": ".gitignore",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 7→11 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "unknown"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-21T19:28:48.981Z"
+    }
+  ]
+}

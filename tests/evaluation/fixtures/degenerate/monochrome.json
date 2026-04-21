@@ -1,0 +1,3017 @@
+{
+  "song_id": "degenerate-monochrome",
+  "source_label": "degenerate",
+  "duration_ms": 180000,
+  "placements": [
+    {
+      "start_ms": 0,
+      "end_ms": 500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 600,
+      "end_ms": 1100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 1200,
+      "end_ms": 1700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 1800,
+      "end_ms": 2300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 2400,
+      "end_ms": 2900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 3000,
+      "end_ms": 3500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 3600,
+      "end_ms": 4100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 4200,
+      "end_ms": 4700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 4800,
+      "end_ms": 5300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 5400,
+      "end_ms": 5900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 6000,
+      "end_ms": 6500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 6600,
+      "end_ms": 7100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 7200,
+      "end_ms": 7700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 7800,
+      "end_ms": 8300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 8400,
+      "end_ms": 8900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 9000,
+      "end_ms": 9500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 9600,
+      "end_ms": 10100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 10200,
+      "end_ms": 10700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 10800,
+      "end_ms": 11300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 11400,
+      "end_ms": 11900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 12000,
+      "end_ms": 12500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 12600,
+      "end_ms": 13100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 13200,
+      "end_ms": 13700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 13800,
+      "end_ms": 14300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 14400,
+      "end_ms": 14900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 15000,
+      "end_ms": 15500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 15600,
+      "end_ms": 16100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 16200,
+      "end_ms": 16700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 16800,
+      "end_ms": 17300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 17400,
+      "end_ms": 17900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 18000,
+      "end_ms": 18500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 18600,
+      "end_ms": 19100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 19200,
+      "end_ms": 19700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 19800,
+      "end_ms": 20300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 20400,
+      "end_ms": 20900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 21000,
+      "end_ms": 21500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 21600,
+      "end_ms": 22100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 22200,
+      "end_ms": 22700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 22800,
+      "end_ms": 23300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 23400,
+      "end_ms": 23900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 24000,
+      "end_ms": 24500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 24600,
+      "end_ms": 25100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 25200,
+      "end_ms": 25700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 25800,
+      "end_ms": 26300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 26400,
+      "end_ms": 26900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 27000,
+      "end_ms": 27500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 27600,
+      "end_ms": 28100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 28200,
+      "end_ms": 28700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 28800,
+      "end_ms": 29300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 29400,
+      "end_ms": 29900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 30000,
+      "end_ms": 30500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 30600,
+      "end_ms": 31100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 31200,
+      "end_ms": 31700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 31800,
+      "end_ms": 32300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 32400,
+      "end_ms": 32900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 33000,
+      "end_ms": 33500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 33600,
+      "end_ms": 34100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 34200,
+      "end_ms": 34700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 34800,
+      "end_ms": 35300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 35400,
+      "end_ms": 35900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 36000,
+      "end_ms": 36500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 36600,
+      "end_ms": 37100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 37200,
+      "end_ms": 37700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 37800,
+      "end_ms": 38300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 38400,
+      "end_ms": 38900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 39000,
+      "end_ms": 39500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 39600,
+      "end_ms": 40100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 40200,
+      "end_ms": 40700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 40800,
+      "end_ms": 41300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 41400,
+      "end_ms": 41900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 42000,
+      "end_ms": 42500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 42600,
+      "end_ms": 43100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 43200,
+      "end_ms": 43700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 43800,
+      "end_ms": 44300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 44400,
+      "end_ms": 44900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 45000,
+      "end_ms": 45500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 45600,
+      "end_ms": 46100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 46200,
+      "end_ms": 46700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 46800,
+      "end_ms": 47300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 47400,
+      "end_ms": 47900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 48000,
+      "end_ms": 48500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 48600,
+      "end_ms": 49100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 49200,
+      "end_ms": 49700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 49800,
+      "end_ms": 50300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 50400,
+      "end_ms": 50900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 51000,
+      "end_ms": 51500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 51600,
+      "end_ms": 52100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 52200,
+      "end_ms": 52700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 52800,
+      "end_ms": 53300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 53400,
+      "end_ms": 53900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 54000,
+      "end_ms": 54500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 54600,
+      "end_ms": 55100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 55200,
+      "end_ms": 55700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 55800,
+      "end_ms": 56300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 56400,
+      "end_ms": 56900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 57000,
+      "end_ms": 57500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 57600,
+      "end_ms": 58100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 58200,
+      "end_ms": 58700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 58800,
+      "end_ms": 59300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 59400,
+      "end_ms": 59900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 60000,
+      "end_ms": 60500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 60600,
+      "end_ms": 61100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 61200,
+      "end_ms": 61700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 61800,
+      "end_ms": 62300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 62400,
+      "end_ms": 62900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 63000,
+      "end_ms": 63500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 63600,
+      "end_ms": 64100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 64200,
+      "end_ms": 64700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 64800,
+      "end_ms": 65300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 65400,
+      "end_ms": 65900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 66000,
+      "end_ms": 66500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 66600,
+      "end_ms": 67100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 67200,
+      "end_ms": 67700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 67800,
+      "end_ms": 68300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 68400,
+      "end_ms": 68900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 69000,
+      "end_ms": 69500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 69600,
+      "end_ms": 70100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 70200,
+      "end_ms": 70700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 70800,
+      "end_ms": 71300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 71400,
+      "end_ms": 71900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 72000,
+      "end_ms": 72500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 72600,
+      "end_ms": 73100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 73200,
+      "end_ms": 73700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 73800,
+      "end_ms": 74300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 74400,
+      "end_ms": 74900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 75000,
+      "end_ms": 75500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 75600,
+      "end_ms": 76100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 76200,
+      "end_ms": 76700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 76800,
+      "end_ms": 77300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 77400,
+      "end_ms": 77900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 78000,
+      "end_ms": 78500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 78600,
+      "end_ms": 79100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 79200,
+      "end_ms": 79700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 79800,
+      "end_ms": 80300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 80400,
+      "end_ms": 80900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 81000,
+      "end_ms": 81500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 81600,
+      "end_ms": 82100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 82200,
+      "end_ms": 82700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 82800,
+      "end_ms": 83300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 83400,
+      "end_ms": 83900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 84000,
+      "end_ms": 84500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 84600,
+      "end_ms": 85100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 85200,
+      "end_ms": 85700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 85800,
+      "end_ms": 86300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 86400,
+      "end_ms": 86900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 87000,
+      "end_ms": 87500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 87600,
+      "end_ms": 88100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 88200,
+      "end_ms": 88700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 88800,
+      "end_ms": 89300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 89400,
+      "end_ms": 89900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 90000,
+      "end_ms": 90500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 90600,
+      "end_ms": 91100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 91200,
+      "end_ms": 91700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 91800,
+      "end_ms": 92300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 92400,
+      "end_ms": 92900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 93000,
+      "end_ms": 93500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 93600,
+      "end_ms": 94100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 94200,
+      "end_ms": 94700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 94800,
+      "end_ms": 95300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 95400,
+      "end_ms": 95900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 96000,
+      "end_ms": 96500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 96600,
+      "end_ms": 97100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 97200,
+      "end_ms": 97700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 97800,
+      "end_ms": 98300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 98400,
+      "end_ms": 98900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 99000,
+      "end_ms": 99500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 99600,
+      "end_ms": 100100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 100200,
+      "end_ms": 100700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 100800,
+      "end_ms": 101300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 101400,
+      "end_ms": 101900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 102000,
+      "end_ms": 102500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 102600,
+      "end_ms": 103100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 103200,
+      "end_ms": 103700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 103800,
+      "end_ms": 104300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 104400,
+      "end_ms": 104900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 105000,
+      "end_ms": 105500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 105600,
+      "end_ms": 106100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 106200,
+      "end_ms": 106700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 106800,
+      "end_ms": 107300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 107400,
+      "end_ms": 107900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 108000,
+      "end_ms": 108500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 108600,
+      "end_ms": 109100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 109200,
+      "end_ms": 109700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 109800,
+      "end_ms": 110300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 110400,
+      "end_ms": 110900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 111000,
+      "end_ms": 111500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 111600,
+      "end_ms": 112100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 112200,
+      "end_ms": 112700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 112800,
+      "end_ms": 113300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 113400,
+      "end_ms": 113900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 114000,
+      "end_ms": 114500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 114600,
+      "end_ms": 115100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 115200,
+      "end_ms": 115700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 115800,
+      "end_ms": 116300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 116400,
+      "end_ms": 116900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 117000,
+      "end_ms": 117500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 117600,
+      "end_ms": 118100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 118200,
+      "end_ms": 118700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 118800,
+      "end_ms": 119300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 119400,
+      "end_ms": 119900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 120000,
+      "end_ms": 120500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 120600,
+      "end_ms": 121100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 121200,
+      "end_ms": 121700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 121800,
+      "end_ms": 122300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 122400,
+      "end_ms": 122900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 123000,
+      "end_ms": 123500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 123600,
+      "end_ms": 124100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 124200,
+      "end_ms": 124700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 124800,
+      "end_ms": 125300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 125400,
+      "end_ms": 125900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 126000,
+      "end_ms": 126500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 126600,
+      "end_ms": 127100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 127200,
+      "end_ms": 127700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 127800,
+      "end_ms": 128300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 128400,
+      "end_ms": 128900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 129000,
+      "end_ms": 129500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 129600,
+      "end_ms": 130100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 130200,
+      "end_ms": 130700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 130800,
+      "end_ms": 131300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 131400,
+      "end_ms": 131900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 132000,
+      "end_ms": 132500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 132600,
+      "end_ms": 133100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 133200,
+      "end_ms": 133700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 133800,
+      "end_ms": 134300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 134400,
+      "end_ms": 134900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 135000,
+      "end_ms": 135500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 135600,
+      "end_ms": 136100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 136200,
+      "end_ms": 136700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 136800,
+      "end_ms": 137300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 137400,
+      "end_ms": 137900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 138000,
+      "end_ms": 138500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 138600,
+      "end_ms": 139100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 139200,
+      "end_ms": 139700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 139800,
+      "end_ms": 140300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 140400,
+      "end_ms": 140900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 141000,
+      "end_ms": 141500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 141600,
+      "end_ms": 142100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 142200,
+      "end_ms": 142700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 142800,
+      "end_ms": 143300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 143400,
+      "end_ms": 143900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 144000,
+      "end_ms": 144500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 144600,
+      "end_ms": 145100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 145200,
+      "end_ms": 145700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 145800,
+      "end_ms": 146300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 146400,
+      "end_ms": 146900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 147000,
+      "end_ms": 147500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 147600,
+      "end_ms": 148100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 148200,
+      "end_ms": 148700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 148800,
+      "end_ms": 149300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 149400,
+      "end_ms": 149900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 150000,
+      "end_ms": 150500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 150600,
+      "end_ms": 151100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 151200,
+      "end_ms": 151700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 151800,
+      "end_ms": 152300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 152400,
+      "end_ms": 152900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 153000,
+      "end_ms": 153500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 153600,
+      "end_ms": 154100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 154200,
+      "end_ms": 154700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 154800,
+      "end_ms": 155300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 155400,
+      "end_ms": 155900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 156000,
+      "end_ms": 156500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 156600,
+      "end_ms": 157100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 157200,
+      "end_ms": 157700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 157800,
+      "end_ms": 158300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 158400,
+      "end_ms": 158900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 159000,
+      "end_ms": 159500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 159600,
+      "end_ms": 160100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 160200,
+      "end_ms": 160700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 160800,
+      "end_ms": 161300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 161400,
+      "end_ms": 161900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 162000,
+      "end_ms": 162500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 162600,
+      "end_ms": 163100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 163200,
+      "end_ms": 163700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 163800,
+      "end_ms": 164300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 164400,
+      "end_ms": 164900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 165000,
+      "end_ms": 165500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 165600,
+      "end_ms": 166100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 166200,
+      "end_ms": 166700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 166800,
+      "end_ms": 167300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 167400,
+      "end_ms": 167900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 168000,
+      "end_ms": 168500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 168600,
+      "end_ms": 169100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 169200,
+      "end_ms": 169700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 169800,
+      "end_ms": 170300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 170400,
+      "end_ms": 170900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 171000,
+      "end_ms": 171500,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 171600,
+      "end_ms": 172100,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 172200,
+      "end_ms": 172700,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 172800,
+      "end_ms": 173300,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 173400,
+      "end_ms": 173900,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 174000,
+      "end_ms": 174500,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 174600,
+      "end_ms": 175100,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 175200,
+      "end_ms": 175700,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 175800,
+      "end_ms": 176300,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 176400,
+      "end_ms": 176900,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 177000,
+      "end_ms": 177500,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 177600,
+      "end_ms": 178100,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 178200,
+      "end_ms": 178700,
+      "effect_type": "ColorWash",
+      "model_name": "Arch01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 178800,
+      "end_ms": 179300,
+      "effect_type": "ColorWash",
+      "model_name": "MiniTree01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    },
+    {
+      "start_ms": 179400,
+      "end_ms": 179900,
+      "effect_type": "ColorWash",
+      "model_name": "StarBurst01",
+      "palette_colors": [
+        "#FFFFFF"
+      ],
+      "layer_index": 0
+    }
+  ],
+  "model_names": [
+    "Arch01",
+    "MiniTree01",
+    "StarBurst01"
+  ],
+  "inferred_prop_types": {
+    "Arch01": "arch",
+    "MiniTree01": "minitree",
+    "StarBurst01": "star"
+  }
+}
