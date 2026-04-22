@@ -138,6 +138,15 @@ RUN pip3 install --break-system-packages --no-cache-dir madmom && \
     -e 's/np\.object\b/object/g' \
     {} +
 
+# whisperx (lyric alignment) + nltk (cmudict). Pin whisperx<3.4 so we avoid
+# torchcodec, which requires CUDA runtime libs (libnvrtc.so) not present in
+# CPU-only containers. whisperx transitively pulls numpy>=2, which breaks
+# madmom's compiled extensions, so re-pin numpy<2 afterwards.
+# Pre-download cmudict so the first runtime Genius alignment doesn't need network.
+RUN pip3 install --break-system-packages --no-cache-dir "whisperx==3.3.0" "nltk>=3.8" && \
+  pip3 install --break-system-packages --no-cache-dir --force-reinstall "numpy>=1.24,<2" && \
+  python3 -c "import nltk; nltk.download('cmudict', quiet=True)"
+
 # ── Vamp Plugins ─────────────────────────────────────────────────────────────
 # On x86_64: download pre-built binaries
 # On arm64: build from source (no pre-built binaries available)

@@ -79,8 +79,12 @@ for domain in \
     "files.pythonhosted.org" \
     "code.soundsoftware.ac.uk" \
     "dl.fbaipublicfiles.com" \
+    "download.pytorch.org" \
     "huggingface.co" \
     "cdn-lfs.huggingface.co" \
+    "cdn-lfs-us-1.huggingface.co" \
+    "cas-bridge.xethub.hf.co" \
+    "hf.co" \
     "api.genius.com"; do
     echo "Resolving $domain..."
     ips=$(dig +short A "$domain" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)

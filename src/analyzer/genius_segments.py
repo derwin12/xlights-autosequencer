@@ -16,6 +16,23 @@ from src.log import get_logger
 
 log = get_logger("xlight.genius")
 
+# HuggingFace fallback model when torchaudio's WAV2VEC2_ASR_BASE_960H can't be
+# downloaded (e.g. download.pytorch.org is blocked in a restricted network).
+_HF_ALIGN_FALLBACK = "jonatasgrosman/wav2vec2-large-xlsr-53-english"
+
+
+def _load_align_model(language: str, device: str) -> tuple:
+    """Load whisperx alignment model, falling back to HF if torchaudio download fails."""
+    import whisperx as _wx
+    try:
+        return _wx.load_align_model(language_code=language, device=device)
+    except Exception as _e:
+        log.warning("torchaudio align model failed (%s), trying HF fallback", _e)
+        return _wx.load_align_model(
+            language_code=language, device=device,
+            model_name=_HF_ALIGN_FALLBACK,
+        )
+
 
 # ── Data classes ───────────────────────────────────────────────────────────────
 
@@ -56,14 +73,20 @@ def sanitize_title(raw_title: str) -> str:
     title = re.sub(r"\s*[\(\[].*?[\)\]]\s*$", "", title)
 
     # Remove common descriptor suffixes (case-insensitive).
-    # Use (?=\s|$) instead of \b so terms ending in '.' (feat., ft.) match correctly.
+    # "with" was previously stripped as a feature-credit marker, but "with"
+    # is too common a word in real titles (e.g. "Down with the Sickness") —
+    # so we only strip it when followed by something that looks like a
+    # credit clause ("with artist-name"), i.e. at least one capitalized
+    # token right after. Other descriptors are safe as whole-word strippers.
     title = re.sub(
-        r"\s*(feat\.|ft\.|featuring|with|live|acoustic|radio edit|"
+        r"\s*(feat\.|ft\.|featuring|live|acoustic|radio edit|"
         r"explicit|demo|single|remastered|version|mix)(?=\s|$).*$",
         "",
         title,
         flags=re.IGNORECASE,
     )
+    # Separate, narrower strip for " with <CapitalizedName>..." at end
+    title = re.sub(r"\s+with\s+[A-Z][^)]*$", "", title)
 
     # Remove trailing " - anything" if result would still be non-empty
     candidate = re.sub(r"\s+-\s+.+$", "", title).strip()
@@ -177,11 +200,10 @@ def fetch_genius_lyrics(title: str, artist: str, token: str) -> Optional[GeniusM
         Exception: on network/API errors (propagated so callers can log details).
     """
     import lyricsgenius  # let ImportError propagate with a clear message
-    genius = lyricsgenius.Genius(
-        token,
-        verbose=False,
-        remove_section_headers=False,
-    )
+    # lyricsgenius 3.12+ removed the `verbose` init kwarg — set it on the
+    # instance afterwards for compatibility across versions.
+    genius = lyricsgenius.Genius(token, remove_section_headers=False)
+    genius.verbose = False
     song = genius.search_song(title, artist)
     if song is None:
         return None
@@ -230,9 +252,7 @@ def align_sections(
         except Exception:
             language = "en"
 
-        align_model, metadata = whisperx.load_align_model(
-            language_code=language, device=device
-        )
+        align_model, metadata = _load_align_model(language, device)
 
         for section in sections:
             if is_instrumental_section(section.label):
@@ -525,9 +545,7 @@ class GeniusSegmentAnalyzer:
                 log.info("Step 2: aligning %d words as single block (%.1fs duration)",
                          len(full_lyrics.split()), duration_s)
 
-                align_model, metadata = whisperx.load_align_model(
-                    language_code="en", device=device
-                )
+                align_model, metadata = _load_align_model("en", device)
                 aligned = whisperx.align(
                     [{"text": full_lyrics, "start": 0.0, "end": duration_s}],
                     align_model, metadata, audio, device,

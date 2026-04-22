@@ -108,6 +108,27 @@ def _try_genius_sections(
 import json, os, sys
 sys.path.insert(0, {str(repo_root)!r})
 os.environ["GENIUS_API_TOKEN"] = {token!r}
+# Disable HuggingFace's Xet download client — hangs in some restricted
+# network environments. Stock HTTPS download is fine for our use.
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+# torch 2.6 flipped torch.load default to weights_only=True, which rejects
+# pyannote/whisperx alignment checkpoints that pickle a long list of
+# classes (ListConfig, DictConfig, typing.Any, etc). Rather than chase
+# every rejected class with add_safe_globals, restore the pre-2.6 default
+# by monkey-patching torch.load. Safe here because the models come from
+# pinned HuggingFace sources we trust.
+try:
+    import torch
+    _orig_torch_load = torch.load
+    def _torch_load_compat(*args, **kwargs):
+        # Force weights_only=False regardless of caller (pytorch_lightning
+        # sometimes passes weights_only=None explicitly, which turns into
+        # True downstream on torch 2.6+).
+        kwargs["weights_only"] = False
+        return _orig_torch_load(*args, **kwargs)
+    torch.load = _torch_load_compat
+except Exception:
+    pass  # best-effort; if torch isn't importable the load will fail with a clearer error
 from pathlib import Path
 from src.analyzer.genius_segments import GeniusSegmentAnalyzer
 audio_path = {str(audio_path)!r}
@@ -135,26 +156,49 @@ else:
         if key in os.environ:
             env[key] = os.environ[key]
 
+    import sys
     try:
         proc = _sp.run(
             [str(vamp_python), "-c", script],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=600,
             env=env,
         )
-        if proc.returncode != 0:
-            import sys
-            print(f"[genius subprocess stderr]\n{proc.stderr[:500]}", file=sys.stderr)
-            return None
-        data = json.loads(proc.stdout.strip().split("\n")[-1])
-        if not data.get("ok"):
-            return None
-        result: list[tuple[int, int, str]] = []
-        for seg in data["segments"]:
-            role = _normalize_genius_label(seg["label"])
-            result.append((seg["start_ms"], seg["end_ms"], role))
-        return result
-    except Exception:
+    except _sp.TimeoutExpired as exc:
+        print(
+            f"[genius subprocess timed out after {exc.timeout}s — "
+            "first whisperx run can take several minutes for model download]",
+            file=sys.stderr,
+        )
         return None
+    except Exception as exc:
+        print(f"[genius subprocess exception: {exc}]", file=sys.stderr)
+        return None
+
+    if proc.returncode != 0:
+        print(f"[genius subprocess stderr]\n{proc.stderr[:800]}", file=sys.stderr)
+        return None
+    try:
+        data = json.loads(proc.stdout.strip().split("\n")[-1])
+    except (json.JSONDecodeError, IndexError) as exc:
+        print(
+            f"[genius subprocess: could not parse stdout: {exc}]\n"
+            f"stdout tail: {proc.stdout[-400:]}\n"
+            f"stderr tail: {proc.stderr[-400:]}",
+            file=sys.stderr,
+        )
+        return None
+    if not data.get("ok"):
+        warnings = data.get("warnings") or []
+        if warnings:
+            print("[genius subprocess returned no sections]", file=sys.stderr)
+            for w in warnings[:5]:
+                print(f"  warning: {w}", file=sys.stderr)
+        return None
+    result: list[tuple[int, int, str]] = []
+    for seg in data["segments"]:
+        role = _normalize_genius_label(seg["label"])
+        result.append((seg["start_ms"], seg["end_ms"], role))
+    return result
 
 
 def _genius_quality_ok(

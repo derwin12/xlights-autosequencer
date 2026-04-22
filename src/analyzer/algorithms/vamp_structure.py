@@ -15,7 +15,11 @@ class QMSegmenterAlgorithm(Algorithm):
     element_type = "structure"
     library = "vamp"
     plugin_key = "qm-vamp-plugins:qm-segmenter"
-    parameters = {}
+    parameters = {
+        "nSegmentTypes": 5.0,
+        "featureType": 1.0,  # Hybrid (Constant-Q)
+        "neighbourhoodLimit": 6.0,
+    }
     vamp_output = "segmentation"
     depends_on = ["audio_load"]
 
