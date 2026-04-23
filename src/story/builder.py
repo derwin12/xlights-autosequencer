@@ -12,6 +12,12 @@ import re
 from pathlib import Path
 from typing import Any
 
+from src.analyzer.boundary_cluster import (
+    AgreementCluster,
+    agreement_score_at,
+    build_clusters_for_hierarchy,
+    snap_to_cluster,
+)
 from src.story.section_merger import merge_sections
 from src.story.section_classifier import classify_section_roles
 from src.story.section_profiler import profile_section
@@ -288,6 +294,16 @@ def build_song_story(hierarchy: dict, audio_path: str) -> dict:
     source_file: str = hierarchy.get("source_file", audio_path)
     stems_available: list[str] = list(hierarchy.get("stems_available") or [])
 
+    # ── Step 2a: Build multi-source agreement clusters ──────────────────────
+    # These are used to (a) snap Genius boundaries to nearby high-agreement
+    # clusters (corrects small WhisperX word-alignment drift), and (b) score
+    # each final section by how many independent sources corroborate its
+    # start boundary. See src.analyzer.boundary_cluster for details.
+    bar_ms = int(round(60_000.0 / max(estimated_bpm, 1.0) * 4))
+    clusters: list[AgreementCluster] = build_clusters_for_hierarchy(
+        hierarchy, bar_ms,
+    )
+
     # ── Step 2: Try Genius lyrics as primary section source ─────────────────
     # When Genius API is available, it provides ground-truth section labels
     # (chorus, verse, bridge, etc.) with WhisperX-aligned timestamps.
@@ -297,6 +313,30 @@ def build_song_story(hierarchy: dict, audio_path: str) -> dict:
     section_source = "genius" if genius_ok else "heuristic"
 
     if genius_ok:
+        # Snap each internal Genius boundary to the nearest ≥3-source cluster
+        # within ±1 bar. WhisperX word alignment can drift 1-3s on sustained
+        # vocals; snapping lands sections on the real instrumental transition
+        # (stem entries, energy impacts, QM boundaries, etc).
+        #
+        # Snap every Genius section's start (including the first — which is
+        # *not* t=0; t=0 is auto-prepended as an intro later). When a start
+        # is snapped, the previous section's end moves with it so sections
+        # stay contiguous.
+        snapped: list[tuple[int, int, str]] = list(genius_sections)
+        for i in range(len(snapped)):
+            orig_start = snapped[i][0]
+            if orig_start == 0:
+                continue  # never snap a boundary that starts at the song origin
+            new_start, _score = snap_to_cluster(
+                orig_start, clusters, tolerance_ms=bar_ms, min_score=3,
+            )
+            if new_start != orig_start:
+                snapped[i] = (new_start, snapped[i][1], snapped[i][2])
+                if i > 0:
+                    prev = snapped[i - 1]
+                    snapped[i - 1] = (prev[0], new_start, prev[2])
+        genius_sections = snapped
+
         # Use Genius sections directly as our section boundaries + roles
         sections_ms = [(s, e) for s, e, _r in genius_sections]
         roles = [{"role": r, "confidence": 0.95} for _s, _e, r in genius_sections]
@@ -568,10 +608,18 @@ def build_song_story(hierarchy: dict, audio_path: str) -> dict:
         end_sec = end_ms / 1000.0
         duration_sec = end_sec - start_sec
 
+        # Agreement score: how many independent sources corroborate this
+        # section's start boundary (QM, segmentino, stem_entry:*, energy
+        # impact/drop, key_change, chord_density). 0 = only this section
+        # source agrees; 3+ = strong multi-source consensus. Used by the
+        # review UI to surface low-confidence sections.
+        agreement_score = agreement_score_at(start_ms, clusters, tolerance_ms=bar_ms)
+
         section_dict: dict[str, Any] = {
             "id": f"s{i:02d}",
             "role": role_info["role"],
             "role_confidence": round(float(role_info["confidence"]), 4),
+            "agreement_score": int(agreement_score),
             "start": round(start_sec, 3),
             "end": round(end_sec, 3),
             "start_fmt": _fmt_time(start_sec),
