@@ -117,6 +117,11 @@ xlight-analyze summary song_analysis.json
 # Export selected tracks
 xlight-analyze export song_analysis.json --select beats,drums,bass
 
+# Build the React review UI (required once before using `xlight-analyze review`;
+# re-run after frontend changes). The built bundle under
+# src/review/frontend/dist/ is git-ignored — rebuild locally, don't commit it.
+cd src/review/frontend && npm install && npm run build && cd -
+
 # Launch review UI (opens browser at localhost:5173)
 xlight-analyze review song_analysis.json
 

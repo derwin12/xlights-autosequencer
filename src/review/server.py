@@ -504,6 +504,14 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
 
     @app.route("/")
     def spa_index():
+        index_path = Path(_dist_dir) / "index.html"
+        if not index_path.exists():
+            return (
+                "Review UI is not built. Run "
+                "<code>cd src/review/frontend && npm install && npm run build</code> "
+                "and reload.",
+                503,
+            )
         return send_from_directory(_dist_dir, "index.html")
 
     @app.route("/song/<source_hash>/sections")
