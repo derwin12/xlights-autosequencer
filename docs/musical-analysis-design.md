@@ -78,15 +78,23 @@ The fundamental insight: not all analysis serves the same purpose. Beats, struct
 - When beat trackers disagree, we currently export all tracks and let the user pick. Could auto-select by confidence score in the future.
 - Live recordings with tempo drift will have some beat misalignment — acceptable for a starting point.
 
-> **Partially resolved 2026-04-25.** `src/analyzer/selector.py` now exists and
-> exposes `select_best_beat_track` / `select_best_bar_track` / `rank_tracks`,
-> which combine inter-onset coefficient-of-variation with onset correlation to
-> auto-pick the best beat track per song. The further idea of using
-> *agreement-as-confidence* (multiple trackers landing within ±1 bar) has been
-> started — see PR #81's `scripts/boundary_confidence_map.py` for the
-> single-linkage clustering used on section boundaries — but the equivalent
-> beat-level confidence channel is not yet wired into the selector. So
-> auto-selection is in place; agreement-weighted confidence is a follow-up.
+> **Resolved 2026-04-25.** `src/analyzer/selector.py` exposes
+> `select_best_beat_track` / `select_best_bar_track` / `rank_tracks`, which
+> combine inter-onset coefficient-of-variation with onset correlation to
+> auto-pick the best beat track per song.
+>
+> Cross-tracker agreement-as-confidence is now also wired in — see
+> `annotate_agreement_confidence` (selector) and the
+> `select_best_{bar,beat}_track_with_candidates` variants used by the
+> orchestrator. For each L2 / L3 mark in the winning track, confidence is
+> the fraction of *non-winning* trackers with at least one mark within
+> ±35 ms; the value lands on `TimingMark.confidence` in the closed interval
+> `[0.0, 1.0]`. The validator preserves these per-mark values and only
+> falls back to the track-level scalar when confidence is `None`
+> (single-tracker profiles). One downstream consumer is wired:
+> `_place_per_beat` in the generator branches on
+> `confidence >= 0.7` to route a punch (Strobe / Shockwave) versus the
+> default wash placement.
 
 ### Level 4: Instrument Events (per-stem accents)
 

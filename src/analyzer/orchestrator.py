@@ -237,7 +237,12 @@ def run_orchestrator(
     from src.analyzer.derived import derive_energy_drops, derive_energy_impacts, derive_gaps
     from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack, ValueCurve
     from src.analyzer.runner import AnalysisRunner
-    from src.analyzer.selector import select_best_bar_track, select_best_beat_track, rank_tracks
+    from src.analyzer.selector import (
+        annotate_agreement_confidence,
+        rank_tracks,
+        select_best_bar_track_with_candidates,
+        select_best_beat_track_with_candidates,
+    )
 
     _t0 = _time.monotonic()
     src_path = Path(audio_path).resolve()
@@ -409,23 +414,35 @@ def run_orchestrator(
     bar_algo_names = {"qm_bars", "librosa_bars", "madmom_downbeats"}
     bar_candidates = [t for t in analysis.timing_tracks if t.algorithm_name in bar_algo_names]
     onset_times = _collect_onset_times(tracks_by_name)
-    bars = select_best_bar_track(bar_candidates, onset_times)
+    bars, bar_losers = select_best_bar_track_with_candidates(bar_candidates, onset_times)
     if bars:
         print(f"L2 Bars: {bars.mark_count} marks ({bars.algorithm_name}, "
               f"{bars.mark_count / (meta.duration_ms / 1000):.2f} Hz)")
         # Snap L1 section boundaries to nearest bar now that we have the bar track
         if sections:
             sections = _snap_sections_to_bars(sections, bars)
+        # Annotate per-mark cross-tracker agreement (L2). When no losers are
+        # available (single-tracker fallback) this is a no-op and the
+        # validator's track-level scalar takes over downstream.
+        if bar_losers:
+            annotate_agreement_confidence(bars, bar_losers, window_ms=35)
     else:
         warnings.append("L2 Bars: no bar track produced")
 
     # L3: select best beat track with BPM-range validation
     beat_algo_names = {"qm_beats", "librosa_beats", "madmom_beats", "beatroot_beats"}
     beat_candidates = [t for t in analysis.timing_tracks if t.algorithm_name in beat_algo_names]
-    beats = _select_beat_with_bpm_check(beat_candidates, onset_times, estimated_bpm, meta.duration_ms)
+    beats, beat_losers = _select_beat_with_bpm_check(
+        beat_candidates, onset_times, estimated_bpm, meta.duration_ms,
+    )
     if beats:
         print(f"L3 Beats: {beats.mark_count} marks ({beats.algorithm_name}, "
               f"{beats.mark_count / (meta.duration_ms / 1000):.2f} Hz)")
+        # Annotate per-mark cross-tracker agreement (L3). The losers are the
+        # non-winning candidates from `_select_beat_with_bpm_check`, which may
+        # differ from the rank-1 candidate when the BPM-range fallback fires.
+        if beat_losers:
+            annotate_agreement_confidence(beats, beat_losers, window_ms=35)
     else:
         warnings.append("L3 Beats: no beat track produced")
 
@@ -1232,23 +1249,33 @@ def _select_beat_with_bpm_check(
     estimated_bpm: float,
     duration_ms: int,
     tolerance: float = 0.20,
-) -> "TimingTrack | None":
-    """Select best beat track, falling back through candidates if BPM range check fails.
+) -> "tuple[TimingTrack | None, list[TimingTrack]]":
+    """Select best beat track plus the remaining (loser) candidates.
 
     After scoring all candidates by regularity + onset correlation, pick the
     highest-scoring one whose Hz is within *tolerance* (±20%) of estimated_bpm/60.
     If no candidate passes the check, return the highest-scoring one anyway so we
     always produce a beat track.
+
+    Returns ``(winner, losers)`` where ``losers`` are the input candidates with
+    the chosen winner removed (preserving input order). When the BPM-range
+    fallback selects a non-rank-1 candidate, the loser list still excludes that
+    chosen winner — so the agreement annotation downstream measures convergence
+    relative to whatever we actually picked.
     """
     from src.analyzer.selector import rank_tracks
 
     ranked = rank_tracks(candidates, onset_times)
     if not ranked:
-        return None
+        return None, []
+
+    def _losers(winner) -> list:
+        return [c for c in candidates if c is not winner]
 
     if estimated_bpm < 20:
         # No reliable BPM estimate — just use best combined score
-        return ranked[0]
+        winner = ranked[0]
+        return winner, _losers(winner)
 
     expected_hz = estimated_bpm / 60.0
     duration_s = duration_ms / 1000.0
@@ -1262,12 +1289,13 @@ def _select_beat_with_bpm_check(
                 if multiplier != 1.0:
                     print(f"  L3 BPM check: {track.algorithm_name} accepted at "
                           f"{actual_hz:.2f} Hz ({multiplier:.0f}× of {expected_hz:.2f} Hz expected)")
-                return track
+                return track, _losers(track)
 
     # No track passed — fall back to best combined score
     print(f"  L3 BPM check: no candidate within ±{tolerance:.0%} of {expected_hz:.2f} Hz — "
           f"using best-score fallback ({ranked[0].algorithm_name})")
-    return ranked[0]
+    winner = ranked[0]
+    return winner, _losers(winner)
 
 
 def _print_dry_run(algos) -> None:

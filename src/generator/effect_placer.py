@@ -1322,6 +1322,16 @@ def _place_per_bar(
     return placements
 
 
+# Per-beat punch duration (ms). When a beat mark carries cross-tracker
+# agreement confidence ≥ _BEAT_PUNCH_CONFIDENCE_THRESHOLD, the placement is
+# shortened to this duration so the effect reads as a brief accent (Strobe /
+# Shockwave-style punch) rather than spanning the full beat as a wash. The
+# threshold corresponds to "≥2-of-3 losers agree" with 4 trackers — see
+# design.md for the rationale.
+_BEAT_PUNCH_CONFIDENCE_THRESHOLD = 0.7
+_BEAT_PUNCH_DURATION_MS = 250
+
+
 def _place_per_beat(
     effect_def: EffectDefinition, group_name: str, section: SectionEnergy,
     hierarchy: HierarchyResult, params: dict[str, Any],
@@ -1332,7 +1342,16 @@ def _place_per_beat(
     chord_weight: float = 0.4,
     direction_cycle: dict | None = None,
 ) -> list[EffectPlacement]:
-    """Place effect instances per beat, subject to energy-driven density."""
+    """Place effect instances per beat, subject to energy-driven density.
+
+    When a beat mark's ``confidence`` (cross-tracker agreement, written by
+    ``selector.annotate_agreement_confidence``) is at least
+    ``_BEAT_PUNCH_CONFIDENCE_THRESHOLD``, the placement is shortened to
+    ``_BEAT_PUNCH_DURATION_MS`` so the effect reads as a brief accent. When
+    confidence is ``None`` or below the threshold, the placement spans the
+    full beat (pre-change wash behavior) — preserved bit-for-bit when no
+    confidence values are written (single-tracker fallback / older fixtures).
+    """
     beats_track = hierarchy.beats
     if beats_track is None:
         return [_make_placement(
@@ -1346,9 +1365,19 @@ def _place_per_beat(
     placements = []
     for i, mark in enumerate(marks):
         beat_start = mark.time_ms
-        beat_end = marks[i + 1].time_ms if i + 1 < len(marks) else min(
+        wash_end = marks[i + 1].time_ms if i + 1 < len(marks) else min(
             beat_start + 500, section.end_ms
         )
+        is_high_confidence = (
+            mark.confidence is not None
+            and mark.confidence >= _BEAT_PUNCH_CONFIDENCE_THRESHOLD
+        )
+        if is_high_confidence:
+            # Punch path: brief accent flash at the beat onset.
+            beat_end = min(beat_start + _BEAT_PUNCH_DURATION_MS, wash_end)
+        else:
+            # Default wash path — unchanged from pre-confidence behavior.
+            beat_end = wash_end
         if beat_end <= beat_start:
             continue
         beat_palette = _resolve_palette(

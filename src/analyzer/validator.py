@@ -4,6 +4,15 @@ Evaluates whether timing marks are placed at musically meaningful positions
 by correlating marks against audio features (energy curves, onset density).
 
 Produces a per-level quality report and populates TimingMark.confidence.
+
+L2 (bars) and L3 (beats) confidence writes are conditional: the validator
+only fills ``mark.confidence`` with the track-level score when the existing
+value is ``None``. This preserves any per-mark cross-tracker agreement value
+already written by ``selector.annotate_agreement_confidence`` (called from
+the orchestrator before validation). The ``report['bars']['score']`` and
+``report['beats']['score']`` track-level scalars are still produced and
+surfaced unchanged. L1 sections, L4 events, and L0 impact / drop marks are
+unaffected — those continue to receive their track-level scores.
 """
 from __future__ import annotations
 
@@ -227,7 +236,12 @@ def validate_hierarchy(result: "HierarchyResult") -> dict:
             "score": bar_score,
         }
         for mark in result.bars.marks:
-            mark.confidence = bar_score
+            # Preserve per-mark agreement values written by
+            # selector.annotate_agreement_confidence; only fill in the
+            # track-level scalar when no per-mark value exists (single-tracker
+            # fallback or bars produced without a competing candidate set).
+            if mark.confidence is None:
+                mark.confidence = bar_score
 
     # ── L3 Beats ─────────────────────────────────────────────────────────────
     if result.beats and result.beats.marks:
@@ -241,7 +255,12 @@ def validate_hierarchy(result: "HierarchyResult") -> dict:
             "score": beat_score,
         }
         for mark in result.beats.marks:
-            mark.confidence = beat_score
+            # Preserve per-mark agreement values written by
+            # selector.annotate_agreement_confidence; only fill in the
+            # track-level scalar when no per-mark value exists (single-tracker
+            # fallback).
+            if mark.confidence is None:
+                mark.confidence = beat_score
 
     # ── L2↔L3 cross-level consistency ────────────────────────────────────────
     if result.bars and result.beats:

@@ -132,3 +132,90 @@ def select_best_beat_track(
 ) -> "TimingTrack | None":
     """Select best beat-level track (L3)."""
     return select_best_track(candidates, onset_times_ms)
+
+
+def annotate_agreement_confidence(
+    winner: "TimingTrack",
+    losers: list["TimingTrack"],
+    window_ms: int = 35,
+) -> None:
+    """Annotate each winner mark with cross-tracker agreement confidence.
+
+    For each ``winner.marks[i]``, count how many ``losers`` have at least one
+    mark within ``±window_ms`` of the winner mark, then write
+    ``count / len(losers)`` (rounded to 3 decimals) into
+    ``winner.marks[i].confidence``.
+
+    Mutates ``winner.marks`` in place. No-op when ``losers`` is empty (the
+    single-tracker fallback case): ``confidence`` is left untouched (typically
+    ``None``) so the validator's track-level fallback can populate it.
+
+    Multiple loser marks within the window count once per loser (not double
+    counted) — agreement is measured at the per-tracker level. Boundary is
+    inclusive: a loser mark exactly at ``window_ms`` distance counts.
+
+    Implementation: pre-sort each loser's mark times once, then use
+    ``numpy.searchsorted`` to find the nearest mark per winner — O(N log M)
+    per loser instead of O(N · M).
+    """
+    if not winner or not winner.marks or not losers:
+        return
+
+    n_losers = len(losers)
+    # Pre-sort loser mark times as numpy arrays for binary search.
+    loser_times = [
+        np.array(sorted(m.time_ms for m in loser.marks), dtype=np.int64)
+        for loser in losers
+    ]
+
+    for mark in winner.marks:
+        t = mark.time_ms
+        agreeing = 0
+        for times in loser_times:
+            if times.size == 0:
+                continue
+            idx = int(np.searchsorted(times, t))
+            # Closest mark is either at idx or idx-1.
+            best = None
+            if idx < times.size:
+                best = abs(int(times[idx]) - t)
+            if idx > 0:
+                d = abs(int(times[idx - 1]) - t)
+                best = d if best is None else min(best, d)
+            if best is not None and best <= window_ms:
+                agreeing += 1
+        mark.confidence = round(agreeing / n_losers, 3)
+
+
+def select_best_bar_track_with_candidates(
+    candidates: list["TimingTrack"],
+    onset_times_ms: list[int] | None = None,
+) -> "tuple[TimingTrack | None, list[TimingTrack]]":
+    """Select best L2 bar track and return the winner plus the remaining losers.
+
+    Returns ``(winner, losers)`` where ``losers`` preserves input order minus
+    the winner. When ``candidates`` is empty, returns ``(None, [])``. When a
+    single candidate is supplied, returns ``(candidate, [])``.
+    """
+    winner = select_best_track(candidates, onset_times_ms)
+    if winner is None:
+        return None, []
+    losers = [c for c in candidates if c is not winner]
+    return winner, losers
+
+
+def select_best_beat_track_with_candidates(
+    candidates: list["TimingTrack"],
+    onset_times_ms: list[int] | None = None,
+) -> "tuple[TimingTrack | None, list[TimingTrack]]":
+    """Select best L3 beat track and return the winner plus the remaining losers.
+
+    Returns ``(winner, losers)`` where ``losers`` preserves input order minus
+    the winner. When ``candidates`` is empty, returns ``(None, [])``. When a
+    single candidate is supplied, returns ``(candidate, [])``.
+    """
+    winner = select_best_track(candidates, onset_times_ms)
+    if winner is None:
+        return None, []
+    losers = [c for c in candidates if c is not winner]
+    return winner, losers
