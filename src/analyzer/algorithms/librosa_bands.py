@@ -10,16 +10,36 @@ _HOP_LENGTH = 512
 _N_FFT = 2048
 
 # Module-level STFT cache to avoid recomputing the same STFT 3 times
-# (once per band). Keyed by (id(audio), sample_rate) so it auto-invalidates
-# when a different audio array is passed.
-_stft_cache: dict[tuple[int, int], tuple[np.ndarray, np.ndarray]] = {}
+# (once per band). The key MUST be content-based: the previous version keyed
+# by `id(audio)`, which is just the Python object's memory address — and
+# CPython readily reuses freed addresses, so a second fixture analyzed in
+# the same process could collide with a cached entry from the first and
+# read back the wrong STFT. This caused 3-6× event-count drift on
+# bass/mid/treble between baseline regeneration and gate runs (the gate
+# analyzes fixtures in batch in one process; snapshot-analyzer hits the
+# same path). Use a small content fingerprint as the key instead.
+_stft_cache: dict[tuple[int, int, int, float, float, float], tuple[np.ndarray, np.ndarray]] = {}
+
+
+def _audio_fingerprint(audio: np.ndarray, sample_rate: int) -> tuple[int, int, int, float, float, float]:
+    """Cheap content-based key for the STFT cache. Combines length, sample
+    rate, and three sampled values; collision probability is vanishingly
+    small across distinct audio fixtures."""
+    n = audio.shape[0] if audio.ndim else 0
+    if n == 0:
+        return (0, sample_rate, 0, 0.0, 0.0, 0.0)
+    mid = n // 2
+    return (
+        n, sample_rate, audio.ndim,
+        float(audio.flat[0]), float(audio.flat[mid]), float(audio.flat[-1]),
+    )
 
 
 def _get_stft_and_freqs(
     audio: np.ndarray, sample_rate: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return (magnitude_stft, freq_bins), computing once and caching."""
-    key = (id(audio), sample_rate)
+    key = _audio_fingerprint(audio, sample_rate)
     cached = _stft_cache.get(key)
     if cached is not None:
         return cached

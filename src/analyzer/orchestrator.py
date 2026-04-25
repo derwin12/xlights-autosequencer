@@ -154,12 +154,19 @@ def _build_algorithm_list(caps: dict[str, bool], stems_available: list[str]):
         _add("bbc_energy")
         # L5: bbc_spectral_flux on full_mix
         _add("bbc_spectral_flux")
-        # L5: bbc_energy per stem (guitar included for solo detection + L4 filtering)
+        # L5: bbc_rhythm on full_mix — smoothed against bbc_energy in
+        # the L5 assembly (see fix-misclassified-curves change).
+        _add("bbc_rhythm")
+        # L5: bbc_energy + bbc_rhythm per stem (guitar included for solo
+        # detection + L4 filtering). bbc_rhythm runs only when bbc_energy does
+        # so the smoothing pair lines up.
         if "bbc_energy" in algo_map:
             energy_stems = [s for s in stems_available if s not in ("full_mix",)]
             for stem in energy_stems[:5]:
                 if stem in ("drums", "bass", "vocals", "guitar", "other"):
                     _add_stem("bbc_energy", stem)
+                    if "bbc_rhythm" in algo_map:
+                        _add_stem("bbc_rhythm", stem)
 
         _add("segmentino")    # L1 sections
         _add("qm_segments")   # L1 sections
@@ -167,6 +174,10 @@ def _build_algorithm_list(caps: dict[str, bool], stems_available: list[str]):
         # Force full_mix: Chordino's default preferred_stem="piano" is too sparse
         # for most genres. Full mix gives reliable chord detection.
         _add_stem("chordino_chords", "full_mix")  # L6 chords
+
+        # L6: NNLS Chroma per-frame curve on full_mix. Consumed by chord-color
+        # fallback in src/generator/chord_colors.py for inter-chord modulation.
+        _add_stem("nnls_chroma", "full_mix")
 
         _add("qm_key")        # L6 key
 
@@ -483,9 +494,58 @@ def run_orchestrator(
         if vc:
             spectral_flux = vc
 
+    # L5 smoothing: when bbc_rhythm is available for a stem that also has
+    # bbc_energy, replace the energy curve with the per-frame mean. The two
+    # signals cross-confirm rhythm-aligned activity (see design D2 of the
+    # fix-misclassified-curves change). Stems that have only one of the two
+    # signals are left unchanged.
+    rhythm_curves: dict[str, "ValueCurve"] = {}
+    for t in tracks_by_name.get("bbc_rhythm", []):
+        vc = _get_value_curve(t)
+        if vc:
+            rhythm_curves[t.stem_source or "full_mix"] = vc
+
+    for stem, energy_vc in list(energy_curves.items()):
+        rhythm_vc = rhythm_curves.get(stem)
+        if rhythm_vc is None:
+            continue
+        if energy_vc.fps != rhythm_vc.fps:
+            warnings.append(
+                f"L5 Energy: bbc_energy ({energy_vc.fps} fps) and bbc_rhythm "
+                f"({rhythm_vc.fps} fps) disagree on fps for stem '{stem}'; "
+                f"skipping smoothing for that stem"
+            )
+            continue
+        n = min(len(energy_vc.values), len(rhythm_vc.values))
+        if n == 0:
+            continue
+        if len(energy_vc.values) != len(rhythm_vc.values):
+            warnings.append(
+                f"L5 Energy: bbc_energy ({len(energy_vc.values)}) and "
+                f"bbc_rhythm ({len(rhythm_vc.values)}) frame counts differ on "
+                f"stem '{stem}'; truncating to {n}"
+            )
+        smoothed = [
+            int(round((energy_vc.values[i] + rhythm_vc.values[i]) / 2))
+            for i in range(n)
+        ]
+        from src.analyzer.result import ValueCurve as _VC
+        energy_curves[stem] = _VC(
+            name=f"{energy_vc.name}+rhythm",
+            stem_source=stem,
+            fps=energy_vc.fps,
+            values=smoothed,
+        )
+
     curve_summary = ", ".join(list(energy_curves.keys()) +
                                (["spectral_flux"] if spectral_flux else []))
-    print(f"L5 Energy: {len(energy_curves)} curves ({curve_summary or 'none'})")
+    smoothed_count = sum(
+        1 for s in energy_curves if s in rhythm_curves
+    )
+    print(
+        f"L5 Energy: {len(energy_curves)} curves ({curve_summary or 'none'})"
+        + (f" — {smoothed_count} smoothed with bbc_rhythm" if smoothed_count else "")
+    )
 
     # L6: harmony
     chords_tracks = tracks_by_name.get("chordino_chords", [])
@@ -494,10 +554,28 @@ def run_orchestrator(
     key_tracks = tracks_by_name.get("qm_key", [])
     key_changes = key_tracks[0] if key_tracks else None
 
+    # L6 chroma curve: NNLS Chroma per-frame 12-bin pitch-class energy.
+    # Consumed by chord_color_for_time() in src/generator/chord_colors.py
+    # as a fallback when the gap between Chordino chord events is large.
+    from src.analyzer.result import ChromaCurve as _ChromaCurve
+    chroma_curve: "_ChromaCurve | None" = None
+    chroma_tracks = tracks_by_name.get("nnls_chroma", [])
+    for t in chroma_tracks:
+        candidate = getattr(t, "value_curve", None)
+        if isinstance(candidate, _ChromaCurve) and candidate.values:
+            chroma_curve = candidate
+            break
+    if chroma_curve is None and not chroma_tracks:
+        warnings.append("L6 Chroma: skipped — nnls_chroma not available")
+
     if chords or key_changes:
         chord_count = chords.mark_count if chords else 0
         key_count = key_changes.mark_count if key_changes else 0
-        print(f"L6 Harmony: {chord_count} chord changes, {key_count} key(s)")
+        chroma_summary = (
+            f", chroma_curve {len(chroma_curve.values)}f@{chroma_curve.fps}fps"
+            if chroma_curve else ""
+        )
+        print(f"L6 Harmony: {chord_count} chord changes, {key_count} key(s){chroma_summary}")
     else:
         warnings.append("L6 Harmony: skipped — chordino/qm_key not available")
 
@@ -609,6 +687,7 @@ def run_orchestrator(
         spectral_flux=spectral_flux,
         chords=chords,
         key_changes=key_changes,
+        chroma_curve=chroma_curve,
         interactions=interactions,
         solos=solos,
         essentia_features=essentia_features,

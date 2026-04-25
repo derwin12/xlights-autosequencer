@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from src.analyzer.result import (
+    ChromaCurve,
     HierarchyResult,
     InteractionResult,
     LeaderTrack,
@@ -86,7 +87,7 @@ class TestHierarchyResultSchema:
             "energy_impacts", "energy_drops", "gaps", "sections",
             "bars", "beats", "half_bars", "eighth_notes", "events", "solos",
             "energy_curves", "spectral_flux",
-            "chords", "key_changes", "interactions", "essentia_features",
+            "chords", "key_changes", "chroma_curve", "interactions", "essentia_features",
             "stems_available", "capabilities", "algorithms_run", "warnings", "validation",
         }
         assert expected_keys == set(d.keys())
@@ -274,3 +275,85 @@ class TestTimingMarkRoundTrip:
         assert track2.marks[0].label == "A"
         assert track2.marks[0].duration_ms == 5000
         assert track2.marks[1].label == "B"
+
+
+# ── ChromaCurve tests ─────────────────────────────────────────────────────────
+
+
+class TestChromaCurve:
+    def _make_chroma(self, frames: int = 100, fps: int = 20) -> ChromaCurve:
+        # 12 normalized integers per frame, varying by frame index
+        values = [[(i + p) % 100 for p in range(12)] for i in range(frames)]
+        return ChromaCurve(name="nnls_chroma", stem_source="full_mix", fps=fps, values=values)
+
+    def test_round_trip_preserves_values(self):
+        c = self._make_chroma()
+        c2 = ChromaCurve.from_dict(c.to_dict())
+        assert c2.name == c.name
+        assert c2.stem_source == c.stem_source
+        assert c2.fps == c.fps
+        assert c2.values == c.values
+
+    def test_duration_ms_matches_frame_count(self):
+        c = self._make_chroma(frames=240, fps=20)
+        # 240 / 20 = 12 seconds = 12000 ms
+        assert c.duration_ms == 12000
+
+    def test_duration_ms_zero_when_fps_invalid(self):
+        c = ChromaCurve(name="x", stem_source="full_mix", fps=0, values=[[0] * 12])
+        assert c.duration_ms == 0
+
+    def test_to_dict_includes_type_tag(self):
+        c = self._make_chroma()
+        d = c.to_dict()
+        assert d["type"] == "chroma_curve"
+
+    def test_value_curve_to_dict_includes_type_tag(self):
+        # Sanity-check that ValueCurve also tags itself, so TimingTrack.from_dict
+        # can dispatch by type without ambiguity.
+        v = ValueCurve(name="x", stem_source="full_mix", fps=20, values=[1, 2, 3])
+        assert v.to_dict()["type"] == "value_curve"
+
+    def test_hierarchy_result_chroma_curve_round_trip(self):
+        r = _make_minimal_result()
+        r.chroma_curve = self._make_chroma(frames=50, fps=20)
+        d = r.to_dict()
+        assert d["chroma_curve"]["type"] == "chroma_curve"
+        r2 = HierarchyResult.from_dict(d)
+        assert r2.chroma_curve is not None
+        assert r2.chroma_curve.values == r.chroma_curve.values
+
+    def test_hierarchy_result_chroma_curve_none_round_trip(self):
+        r = _make_minimal_result()
+        r.chroma_curve = None
+        d = r.to_dict()
+        assert d["chroma_curve"] is None
+        r2 = HierarchyResult.from_dict(d)
+        assert r2.chroma_curve is None
+
+    def test_timing_track_dispatches_to_chroma_curve_by_type(self):
+        # Ensure TimingTrack.from_dict picks ChromaCurve when type=chroma_curve
+        track = TimingTrack(
+            name="nnls_chroma", algorithm_name="nnls_chroma", element_type="value_curve",
+            marks=[], quality_score=0.0, stem_source="full_mix",
+        )
+        track.value_curve = self._make_chroma(frames=10)
+        d = track.to_dict()
+        track2 = TimingTrack.from_dict(d)
+        assert isinstance(track2.value_curve, ChromaCurve)
+        assert track2.value_curve.values == track.value_curve.values
+
+    def test_timing_track_dispatches_to_value_curve_by_default(self):
+        # Backward-compat: a value_curve dict missing the type tag should still
+        # deserialize as ValueCurve.
+        track = TimingTrack(
+            name="bbc_energy", algorithm_name="bbc_energy", element_type="value_curve",
+            marks=[], quality_score=0.0, stem_source="full_mix",
+        )
+        track.value_curve = ValueCurve(name="x", stem_source="full_mix", fps=20, values=[1, 2, 3])
+        d = track.to_dict()
+        # Strip the type tag to simulate an old baseline
+        del d["value_curve"]["type"]
+        track2 = TimingTrack.from_dict(d)
+        assert isinstance(track2.value_curve, ValueCurve)
+        assert track2.value_curve.values == [1, 2, 3]

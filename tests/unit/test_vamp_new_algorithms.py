@@ -62,9 +62,13 @@ class TestBBCAlgorithms:
         from src.analyzer.algorithms.vamp_bbc import BBCRhythmAlgorithm
         assert BBCRhythmAlgorithm.plugin_key == "bbc-vamp-plugins:bbc-rhythm"
 
-    def test_bbc_rhythm_is_timing(self):
+    def test_bbc_rhythm_is_value_curve(self):
+        # Reclassified by openspec change fix-misclassified-curves: bbc_rhythm
+        # is a continuous rhythm-strength curve (~200 fps), not a discrete
+        # onset list. The original "onset" classification dropped its output
+        # on the floor — see docs/musical-analysis-design.md §2.
         from src.analyzer.algorithms.vamp_bbc import BBCRhythmAlgorithm
-        assert BBCRhythmAlgorithm.element_type == "onset"  # timing marks, not value curve
+        assert BBCRhythmAlgorithm.element_type == "value_curve"
 
 
 class TestSegmentinoAlgorithm:

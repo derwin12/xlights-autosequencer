@@ -1,14 +1,14 @@
 """BBC Vamp plugin wrappers: energy, spectral flux, peaks, rhythm.
 
-Energy, spectral flux, and peaks produce value curves (continuous data).
-Rhythm produces timing marks (discrete events).
+All four produce value curves (continuous frame-level data). Rhythm emits as
+a dense list output at ~200 fps; the list values are extracted into a
+ValueCurve for consistency with the other three.
 """
 from __future__ import annotations
 
 import numpy as np
 
 from src.analyzer.algorithms.base import Algorithm
-from src.analyzer.algorithms.vamp_utils import vamp_list_to_marks
 from src.analyzer.result import TimingTrack, ValueCurve
 
 __all__ = [
@@ -121,10 +121,16 @@ class BBCPeaksAlgorithm(Algorithm):
 
 
 class BBCRhythmAlgorithm(Algorithm):
-    """BBC rhythmic features — timing marks (discrete events)."""
+    """BBC rhythmic features — continuous rhythm-strength curve.
+
+    The plugin emits a dense list output (~200 fps, ~5 ms per frame). Each
+    list item carries a per-frame strength value; we collect them into a
+    ValueCurve so downstream consumers can treat it like the other BBC
+    curves (smoothed against bbc_energy in orchestrator L5 assembly).
+    """
 
     name = "bbc_rhythm"
-    element_type = "onset"
+    element_type = "value_curve"
     library = "vamp"
     plugin_key = "bbc-vamp-plugins:bbc-rhythm"
     parameters = {}
@@ -134,8 +140,47 @@ class BBCRhythmAlgorithm(Algorithm):
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
-        marks = vamp_list_to_marks(outputs.get("list", []))
-        return TimingTrack(
+        duration_ms = int(len(audio) / sample_rate * 1000)
+        values, fps = _bbc_rhythm_list_to_curve(outputs.get("list", []), duration_ms)
+        stem = getattr(self, "_stem_source", self.preferred_stem)
+        track = TimingTrack(
             name=self.name, algorithm_name=self.name,
-            element_type=self.element_type, marks=marks, quality_score=0.0,
+            element_type=self.element_type, marks=[], quality_score=0.0,
+            stem_source=stem,
         )
+        track.value_curve = ValueCurve(name=self.name, stem_source=stem, fps=fps, values=values)
+        return track
+
+
+def _bbc_rhythm_list_to_curve(items: list, duration_ms: int) -> tuple[list[int], int]:
+    """Convert a dense vamp list output (timestamp + per-item value) into a
+    normalized 0-100 ValueCurve. Returns (values, fps). Empty list → (
+    [], 20)."""
+    if not items or duration_ms <= 0:
+        return [], 20
+    raw: list[float] = []
+    for item in items:
+        v = item.get("values") if isinstance(item, dict) else None
+        if v is None:
+            v = item.get("value") if isinstance(item, dict) else None
+        if v is None:
+            continue
+        # `value` / `values` may be a scalar or a 1-element list/array.
+        if hasattr(v, "__iter__") and not isinstance(v, (str, bytes)):
+            seq = list(v)
+            if not seq:
+                continue
+            raw.append(float(seq[0]))
+        else:
+            raw.append(float(v))
+    if not raw:
+        return [], 20
+    arr = np.array(raw, dtype=np.float64)
+    vmin, vmax = float(arr.min()), float(arr.max())
+    if vmax - vmin < 1e-9:
+        normalized = [50] * len(arr)
+    else:
+        normalized = ((arr - vmin) / (vmax - vmin) * 100).astype(int).tolist()
+        normalized = [max(0, min(100, int(v))) for v in normalized]
+    fps = round(len(normalized) * 1000 / duration_ms) if duration_ms > 0 else 20
+    return normalized, max(1, fps)

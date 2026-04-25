@@ -214,10 +214,14 @@ class TimingTrack:
             stem_source=d.get("stem_source", "full_mix"),
             score_breakdown=breakdown,
         )
-        # Restore value_curve if serialized (ValueCurve defined later in this module)
+        # Restore value_curve if serialized. Dispatch by "type" tag added in
+        # to_dict; default to ValueCurve for backward compat with baselines
+        # written before ChromaCurve existed.
         vc_data = d.get("value_curve")
         if vc_data is not None:
-            _vc_cls = globals().get("ValueCurve")
+            curve_type = vc_data.get("type", "value_curve")
+            cls_name = "ChromaCurve" if curve_type == "chroma_curve" else "ValueCurve"
+            _vc_cls = globals().get(cls_name)
             if _vc_cls is not None:
                 track.value_curve = _vc_cls.from_dict(vc_data)
         return track
@@ -430,6 +434,7 @@ class ValueCurve:
 
     def to_dict(self) -> dict:
         return {
+            "type": "value_curve",
             "name": self.name,
             "stem_source": self.stem_source,
             "fps": self.fps,
@@ -438,6 +443,47 @@ class ValueCurve:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ValueCurve":
+        return cls(
+            name=d["name"],
+            stem_source=d["stem_source"],
+            fps=d["fps"],
+            values=d["values"],
+        )
+
+
+@dataclass
+class ChromaCurve:
+    """Continuous time-series of 12-bin chroma vectors (0-100 per pitch class per frame).
+
+    Mirrors ValueCurve but carries multi-dimensional per-frame data: each frame
+    is a list of 12 normalized integers, one per pitch class in canonical order
+    (C, C#, D, D#, E, F, F#, G, G#, A, A#, B). Produced by NNLS Chroma; consumed
+    by the chord-color fallback in src/generator/chord_colors.py for inter-chord
+    color modulation.
+    """
+
+    name: str
+    stem_source: str
+    fps: int
+    values: list[list[int]]
+
+    @property
+    def duration_ms(self) -> int:
+        if self.fps <= 0:
+            return 0
+        return int(len(self.values) * 1000 / self.fps)
+
+    def to_dict(self) -> dict:
+        return {
+            "type": "chroma_curve",
+            "name": self.name,
+            "stem_source": self.stem_source,
+            "fps": self.fps,
+            "values": self.values,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ChromaCurve":
         return cls(
             name=d["name"],
             stem_source=d["stem_source"],
@@ -496,6 +542,7 @@ class HierarchyResult:
     # L6: Harmony
     chords: Optional["TimingTrack"] = None
     key_changes: Optional["TimingTrack"] = None
+    chroma_curve: Optional[ChromaCurve] = None
 
     # Interactions
     interactions: Optional["InteractionResult"] = None
@@ -547,6 +594,7 @@ class HierarchyResult:
             "spectral_flux": self.spectral_flux.to_dict() if self.spectral_flux else None,
             "chords": self.chords.to_dict() if self.chords else None,
             "key_changes": self.key_changes.to_dict() if self.key_changes else None,
+            "chroma_curve": self.chroma_curve.to_dict() if self.chroma_curve else None,
             "interactions": self.interactions.to_dict() if self.interactions else None,
             "essentia_features": self.essentia_features,
             "stems_available": self.stems_available,
@@ -611,6 +659,8 @@ class HierarchyResult:
         obj.chords = TimingTrack.from_dict(chords_data) if chords_data else None
         key_data = d.get("key_changes")
         obj.key_changes = TimingTrack.from_dict(key_data) if key_data else None
+        chroma_data = d.get("chroma_curve")
+        obj.chroma_curve = ChromaCurve.from_dict(chroma_data) if chroma_data else None
         ir_data = d.get("interactions")
         obj.interactions = InteractionResult.from_dict(ir_data) if ir_data else None
         obj.essentia_features = d.get("essentia_features")

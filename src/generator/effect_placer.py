@@ -534,6 +534,10 @@ def place_effects(
     if hierarchy.chords and hierarchy.chords.marks:
         chord_marks = hierarchy.chords.marks
         tension_curve = build_tension_curve(chord_marks, hierarchy.duration_ms)
+    # Per-frame chroma curve for inter-chord color modulation; None when the
+    # NNLS Chroma plugin wasn't available. Consumed by _resolve_palette via
+    # chord_color_for_time when chord_marks gaps exceed CHROMA_FALLBACK_GAP_MS.
+    chroma_curve = getattr(hierarchy, "chroma_curve", None)
 
     # Extract essentia features if available
     ef = hierarchy.essentia_features or {}
@@ -972,7 +976,10 @@ def _place_effect_on_group(
             direction_cycle = variant.direction_cycle
 
     # Resolve palette: blend with chord colors if available
-    resolved_palette = _resolve_palette(palette, chord_marks, tension_curve, start_ms, end_ms, chord_weight)
+    resolved_palette = _resolve_palette(
+        palette, chord_marks, tension_curve, start_ms, end_ms, chord_weight,
+        chroma_curve=getattr(hierarchy, "chroma_curve", None),
+    )
 
     # Duration scaling: for standard effects, subdivide by BPM and energy target.
     # Sustained effects (On, Color Wash, etc.) always span full sections.
@@ -1234,12 +1241,33 @@ def _resolve_palette(
     start_ms: int,
     end_ms: int,
     chord_weight: float = 0.4,
+    chroma_curve: "object | None" = None,
 ) -> list[str]:
-    """Blend theme palette with chord colors and apply tension brightness."""
+    """Blend theme palette with chord colors and apply tension brightness.
+
+    When ``chroma_curve`` is provided and the gap from the most recent
+    Chordino chord at the window midpoint exceeds the chroma-fallback
+    threshold, the dominant pitch class from the chroma curve contributes
+    an additional color to the chord palette before blending. This adds
+    inter-chord modulation when Chordino's coverage is sparse.
+    """
     if not chord_marks or chord_weight <= 0:
         return theme_palette
 
     chord_pal = generate_chord_palette(chord_marks, start_ms, end_ms)
+
+    # Chroma-aware fallback: when chord coverage at the section midpoint is
+    # stale (>CHROMA_FALLBACK_GAP_MS since last chord event) and chroma_curve
+    # is available, pull the chroma-derived color in. Per fix-misclassified-curves
+    # design D3 (chroma is fallback only — never overrides Chordino).
+    if chroma_curve is not None:
+        from src.generator.chord_colors import chord_color_for_time
+        mid_ms = (start_ms + end_ms) // 2
+        chroma_color = chord_color_for_time(mid_ms, chord_marks, chroma_curve)
+        # Only prepend if not already present and not the no-chord neutral.
+        if chroma_color != "#404040" and chroma_color not in chord_pal:
+            chord_pal = [chroma_color] + chord_pal
+
     blended = blend_palettes(theme_palette, chord_pal, chord_weight=chord_weight)
 
     if tension_curve:
@@ -1282,7 +1310,10 @@ def _place_per_bar(
         bar_end = marks[i + 1].time_ms if i + 1 < len(marks) else section.end_ms
         if bar_end <= bar_start:
             continue
-        bar_palette = _resolve_palette(palette, chord_marks, tension_curve, bar_start, bar_end, chord_weight)
+        bar_palette = _resolve_palette(
+            palette, chord_marks, tension_curve, bar_start, bar_end, chord_weight,
+            chroma_curve=getattr(hierarchy, "chroma_curve", None),
+        )
         placements.append(_make_placement(
             effect_def, group_name, bar_start, bar_end,
             params, bar_palette, blend_mode, "bar",
@@ -1320,7 +1351,10 @@ def _place_per_beat(
         )
         if beat_end <= beat_start:
             continue
-        beat_palette = _resolve_palette(palette, chord_marks, tension_curve, beat_start, beat_end, chord_weight)
+        beat_palette = _resolve_palette(
+            palette, chord_marks, tension_curve, beat_start, beat_end, chord_weight,
+            chroma_curve=getattr(hierarchy, "chroma_curve", None),
+        )
         placements.append(_make_placement(
             effect_def, group_name, beat_start, beat_end,
             params, beat_palette, blend_mode, "beat",
@@ -1421,7 +1455,8 @@ def _place_by_duration(
         # If segment is close to target, place as-is
         if target.min_ms <= seg_dur <= target.max_ms:
             seg_palette = _resolve_palette(
-                palette, chord_marks, tension_curve, seg_start, seg_end, chord_weight
+                palette, chord_marks, tension_curve, seg_start, seg_end, chord_weight,
+                chroma_curve=getattr(hierarchy, "chroma_curve", None),
             )
             placements.append(_make_placement(
                 effect_def, group_name, seg_start, seg_end,
@@ -1440,7 +1475,8 @@ def _place_by_duration(
                 if sub_end - sub_start < target.min_ms:
                     continue
                 sub_palette = _resolve_palette(
-                    palette, chord_marks, tension_curve, sub_start, sub_end, chord_weight
+                    palette, chord_marks, tension_curve, sub_start, sub_end, chord_weight,
+                    chroma_curve=getattr(hierarchy, "chroma_curve", None),
                 )
                 placements.append(_make_placement(
                     effect_def, group_name, sub_start, sub_end,
@@ -1452,7 +1488,8 @@ def _place_by_duration(
         # Segment shorter than minimum — still place if it meets the hard floor
         elif seg_dur >= _DURATION_MIN_MS:
             seg_palette = _resolve_palette(
-                palette, chord_marks, tension_curve, seg_start, seg_end, chord_weight
+                palette, chord_marks, tension_curve, seg_start, seg_end, chord_weight,
+                chroma_curve=getattr(hierarchy, "chroma_curve", None),
             )
             placements.append(_make_placement(
                 effect_def, group_name, seg_start, seg_end,
@@ -1465,7 +1502,8 @@ def _place_by_duration(
     # Fallback: if no placements generated, place the whole section
     if not placements:
         seg_palette = _resolve_palette(
-            palette, chord_marks, tension_curve, section_start, section_end, chord_weight
+            palette, chord_marks, tension_curve, section_start, section_end, chord_weight,
+            chroma_curve=getattr(hierarchy, "chroma_curve", None),
         )
         placements.append(_make_placement(
             effect_def, group_name, section_start, section_end,

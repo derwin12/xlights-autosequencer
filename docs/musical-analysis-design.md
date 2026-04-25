@@ -137,11 +137,15 @@ The fundamental insight: not all analysis serves the same purpose. Beats, struct
 **What it actually is**: A continuous rhythm strength curve at 172 values/second (every 5.8ms). Each item has a single float value measuring "how rhythmic is this moment."
 **Fix**: Reclassify as a value curve. It measures rhythm intensity over time — could drive effect speed or pattern complexity.
 
+> **Resolved 2026-04-25 in change `fix-misclassified-curves`.** `BBCRhythmAlgorithm.element_type` is now `"value_curve"` and the wrapper attaches a `ValueCurve` (`src/analyzer/algorithms/vamp_bbc.py`). The orchestrator's L5 energy assembly cross-confirms `bbc_energy` against `bbc_rhythm` per-frame: when both curves are present for a stem at matching fps, `HierarchyResult.energy_curves[stem]` holds their per-frame mean.
+
 ### NNLS Chroma — Misclassified as Timing Marks
 
 **What we did**: Treated 646 items as timing marks.
 **What it actually is**: A 12-bin chroma matrix — 12 values per frame representing energy in each pitch class (C, C#, D, D#... B).
 **Fix**: Either use as 12 value curves (one per pitch class for color mapping) or don't use directly — Chordino already processes it internally for chord detection.
+
+> **Resolved 2026-04-25 in change `fix-misclassified-curves`.** `NNLSChromaAlgorithm.element_type` is now `"value_curve"` and the wrapper attaches a new `ChromaCurve` dataclass holding `list[list[int]]` (12 normalized 0–100 ints per frame). The orchestrator populates `HierarchyResult.chroma_curve`, and the generator's `chord_color_for_time(t_ms, chord_marks, chroma_curve)` helper consults it as a Chordino fallback when the gap from the most recent chord event exceeds 4000 ms — Chordino remains primary for inter-chord behavior, chroma fills coverage gaps with the dominant pitch class.
 
 ### Onset Detectors at Default Sensitivity
 

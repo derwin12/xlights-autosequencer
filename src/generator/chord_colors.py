@@ -196,6 +196,104 @@ def chord_at_time(chord_marks: list[TimingMark], time_ms: int) -> Optional[str]:
     return result
 
 
+# ── Chroma-aware color resolution ────────────────────────────────────────────
+
+# Time gap above which chroma takes over from the held Chordino chord.
+# Per fix-misclassified-curves design D3.
+CHROMA_FALLBACK_GAP_MS = 4000
+
+# NNLS Chroma plugin emits 12-bin vectors in canonical pitch-class order
+# starting at C. Index i corresponds to the pitch class i semitones above C.
+_PITCH_CLASS_NAMES: list[str] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+
+def _chroma_frame_at_time(chroma_curve: "object", time_ms: int) -> Optional[list[int]]:
+    """Return the chroma frame (list of 12 ints) nearest to time_ms, or None
+    if the curve is empty or fps is invalid."""
+    if chroma_curve is None:
+        return None
+    fps = getattr(chroma_curve, "fps", 0)
+    values = getattr(chroma_curve, "values", None)
+    if not fps or not values:
+        return None
+    idx = int(round(time_ms / 1000.0 * fps))
+    if idx < 0:
+        idx = 0
+    if idx >= len(values):
+        idx = len(values) - 1
+    return values[idx]
+
+
+def _color_from_chroma_frame(frame: list[int]) -> str:
+    """Pick the dominant pitch class in *frame* and map its name through
+    chord_to_color (treats it as a major chord on that root)."""
+    if not frame:
+        return "#404040"
+    # argmax — break ties by lowest index for determinism
+    best_i, best_v = 0, frame[0]
+    for i, v in enumerate(frame[1:], start=1):
+        if v > best_v:
+            best_i, best_v = i, v
+    if best_v <= 0:
+        return "#404040"
+    root = _PITCH_CLASS_NAMES[best_i % 12]
+    return chord_to_color(root)
+
+
+def chord_color_for_time(
+    time_ms: int,
+    chord_marks: list[TimingMark],
+    chroma_curve: "object | None" = None,
+) -> str:
+    """Resolve the color at *time_ms* with chroma-aware fallback.
+
+    Behavior (per fix-misclassified-curves spec):
+    - If a Chordino chord event covers *time_ms* (within
+      ``CHROMA_FALLBACK_GAP_MS`` of the most-recent event), return its color.
+    - Else if *chroma_curve* is not None, return a color derived from the
+      dominant pitch class in the nearest chroma frame.
+    - Else return the most recent Chordino chord's color (existing behavior),
+      or the no-chord neutral gray when there is no prior event.
+    """
+    if not chord_marks:
+        if chroma_curve is None:
+            return "#404040"
+        frame = _chroma_frame_at_time(chroma_curve, time_ms)
+        return _color_from_chroma_frame(frame) if frame else "#404040"
+
+    # Find the most recent chord event at or before time_ms.
+    lo, hi = 0, len(chord_marks) - 1
+    last: Optional[TimingMark] = None
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if chord_marks[mid].time_ms <= time_ms:
+            last = chord_marks[mid]
+            lo = mid + 1
+        else:
+            hi = mid - 1
+
+    if last is None:
+        # time_ms is before any chord event — use chroma if available,
+        # else neutral gray.
+        if chroma_curve is not None:
+            frame = _chroma_frame_at_time(chroma_curve, time_ms)
+            if frame:
+                return _color_from_chroma_frame(frame)
+        return "#404040"
+
+    gap_ms = time_ms - last.time_ms
+    if gap_ms <= CHROMA_FALLBACK_GAP_MS or chroma_curve is None:
+        # Within Chordino's coverage, or no chroma to fall back to —
+        # held Chordino color.
+        return chord_to_color(last.label or "N")
+
+    # Chordino coverage gap exceeded; chroma takes over.
+    frame = _chroma_frame_at_time(chroma_curve, time_ms)
+    if not frame:
+        return chord_to_color(last.label or "N")
+    return _color_from_chroma_frame(frame)
+
+
 # ── Harmonic tension ─────────────────────────────────────────────────────────
 
 # Tension values: 0 = complete rest, 100 = maximum dissonance
