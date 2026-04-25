@@ -2,7 +2,7 @@
 
 > OpenWolf's learning memory. Updated automatically as the AI learns from interactions.
 > Do not edit manually unless correcting an error.
-> Last updated: 2026-04-19
+> Last updated: 2026-04-25
 
 ## User Preferences
 
@@ -31,6 +31,9 @@
 - [2026-04-19] Applied symptom fixes instead of root-cause fixes — swallowed exceptions with try/except-pass, added input-specific guard clauses, tuned magic numbers with no explanation, hard-coded special cases, post-processed bad output downstream. Always name the root cause first and fix it where it originates.
 - [2026-04-19] Did more or less than what was asked — scope drift from unrelated refactors, or incomplete work that missed stated sub-requirements. Always restate the goal in one sentence before coding and verify every hunk of the diff advances that sentence.
 - [2026-04-19] Committed work directly to `main` or bundled unrelated changes on an existing feature branch. Every new task starts with `git checkout -b <type>/<slug>` off `main`.
+- [2026-04-25] Marked failing tests `pytest.mark.xfail` / `pytest.mark.skip` / CI `--ignore` instead of fixing them. Quarantine is a band-aid that decays into permanent dead code. When a test fails: fix the test, fix the code, or delete the test with a written rationale. The only acceptable quarantine is one paired with a `docs/known-broken-tests.md` entry stating diagnosis, remediation plan, and why it can't be fixed now.
+- [2026-04-25] Patched `src.cli._variant_library_override` (the re-export) when consumers read `src.cli_old._variant_library_override` (the canonical). Re-exports do not propagate runtime mutations. Always patch the module the consumer imports from — find it by grepping where the symbol is *read*, not where it's *defined*.
+- [2026-04-25] Tests inherited state from prior runs because module-level dicts (`_runs`, `_jobs`, `_library`) accumulate across test invocations. Any fixture that exercises a module holding state at module scope must reset that state explicitly before yielding the app/client.
 
 ## Decision Log
 

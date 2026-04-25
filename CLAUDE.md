@@ -398,6 +398,11 @@ Exit codes from the gate, in priority order:
 - `8` — infrastructure failure (Playwright missing, corpus download
         failed, etc.)
 
+Adding a file to CI's `--ignore` list (in `.github/workflows/evaluate.yml`)
+requires a paired entry in `docs/known-broken-tests.md` with diagnosis and
+remediation plan. **No silent quarantine** — quarantined tests rot, and a
+quarantine ratchet without a paired doc entry erodes the gate over time.
+
 ### Explicit override
 
 If the user explicitly says "just do it," "skip the design," or similar, comply
@@ -425,4 +430,33 @@ is a default, not a wall.
   a comment to explain what a name means, the name is wrong.
 - **No dead code.** Don't comment out code "for reference." Don't leave unused imports,
   variables, or functions. Git history exists for a reason.
+- **Don't quarantine instead of fixing.** `pytest.mark.xfail`, `pytest.mark.skip`,
+  and CI `--ignore` flags are forms of "temporary workaround that becomes permanent."
+  When a test fails, fix the test or fix the code — don't paper over it. The only
+  acceptable quarantine is one accompanied by a `docs/known-broken-tests.md` entry
+  with diagnosis, remediation plan, and an explicit reason it can't be fixed now.
+
+## Test Isolation Conventions
+
+Recurring test-isolation traps in this repo, with the patterns that fix them:
+
+- **Patch the consumer's import path, not the canonical module.** Some symbols
+  are re-exported (`src.cli` re-exports from `src.cli_old`); patching the
+  re-export does NOT affect callers that import the original. Find where the
+  symbol is *read* (`_get_variant_lib()` reads `src.cli_old._variant_library_override`)
+  and patch there. `monkeypatch.setattr(src.cli_old, "_variant_library_override", lib)`,
+  not `src.cli`.
+- **Reset module-level state between tests.** Modules that hold dicts or
+  singletons at module scope (`_runs`, `_jobs`, `_library` in
+  `src/review/api/v1/analysis.py` and `src/review/variant_routes.py`)
+  accumulate across tests. Fixtures must clear them explicitly:
+  `with _analysis_module._runs_lock: _analysis_module._runs.clear()`.
+- **Don't read the developer's filesystem.** Tests that load variants/themes
+  must override `custom_dir` to a `tmp_path` so they don't pick up
+  `~/.xlight/custom_variants/` from the dev host. Tests that resolve show
+  paths must `monkeypatch.setattr("src.paths.get_show_dir", ...)` rather
+  than relying on `~/xLights/` existing.
+- **`XLIGHT_STATE_HOME` for state-dir isolation.** The `app` fixture in
+  `tests/review/conftest.py` sets `XLIGHT_STATE_HOME=tmp_path` so the
+  library, settings, and stems caches are scoped to the test.
 <!-- MANUAL ADDITIONS END -->
