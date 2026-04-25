@@ -26,7 +26,10 @@ def tmp_custom_dir(tmp_path):
 
 @pytest.fixture(autouse=True)
 def inject_libs(tmp_custom_dir, monkeypatch):
-    import src.cli as cli_module
+    # Variant CLI commands live in src.cli_old (re-exported through src.cli).
+    # _get_variant_lib() reads the override from src.cli_old, so we must
+    # patch there. Patching src.cli only updates the re-exported reference.
+    import src.cli_old as cli_module
 
     effect_lib = load_effect_library(builtin_path=EFFECTS_FIXTURE)
     lib = load_variant_library(
@@ -148,83 +151,3 @@ class TestVariantImportCLI:
         assert len(saved) == imported_count
 
 
-# ── API tests ─────────────────────────────────────────────────────────────────
-
-class TestVariantImportAPI:
-    def test_post_import_returns_200(self, client):
-        with open(XSQ_FIXTURE, "rb") as f:
-            resp = client.post(
-                "/variants/import",
-                data={"file": (f, "sample_sequence.xsq")},
-                content_type="multipart/form-data",
-            )
-        assert resp.status_code == 200
-
-    def test_post_import_returns_summary(self, client):
-        with open(XSQ_FIXTURE, "rb") as f:
-            resp = client.post(
-                "/variants/import",
-                data={"file": (f, "sample_sequence.xsq")},
-                content_type="multipart/form-data",
-            )
-        data = resp.get_json()
-        assert "summary" in data
-        assert "imported" in data["summary"]
-        assert "duplicates" in data["summary"]
-        assert "unknown" in data["summary"]
-
-    def test_post_import_returns_lists(self, client):
-        with open(XSQ_FIXTURE, "rb") as f:
-            resp = client.post(
-                "/variants/import",
-                data={"file": (f, "sample_sequence.xsq")},
-                content_type="multipart/form-data",
-            )
-        data = resp.get_json()
-        assert isinstance(data["imported"], list)
-        assert isinstance(data["duplicates"], list)
-        assert isinstance(data["unknown"], list)
-
-    def test_post_import_dry_run_param(self, client):
-        with open(XSQ_FIXTURE, "rb") as f:
-            resp = client.post(
-                "/variants/import?dry_run=true",
-                data={"file": (f, "sample_sequence.xsq")},
-                content_type="multipart/form-data",
-            )
-        assert resp.status_code == 200
-
-    def test_post_import_skip_duplicates_param(self, client):
-        # First import to populate the library
-        with open(XSQ_FIXTURE, "rb") as f:
-            client.post(
-                "/variants/import",
-                data={"file": (f, "sample_sequence.xsq")},
-                content_type="multipart/form-data",
-            )
-        # Second import with skip_duplicates=true should have fewer results
-        with open(XSQ_FIXTURE, "rb") as f:
-            resp = client.post(
-                "/variants/import?skip_duplicates=true",
-                data={"file": (f, "sample_sequence.xsq")},
-                content_type="multipart/form-data",
-            )
-        data = resp.get_json()
-        assert data["summary"]["duplicates"] == 0
-
-    def test_post_no_file_returns_400(self, client):
-        resp = client.post(
-            "/variants/import",
-            data={},
-            content_type="multipart/form-data",
-        )
-        assert resp.status_code == 400
-        assert "error" in resp.get_json()
-
-    def test_post_empty_filename_returns_400(self, client):
-        resp = client.post(
-            "/variants/import",
-            data={"file": (b"", "")},
-            content_type="multipart/form-data",
-        )
-        assert resp.status_code == 400

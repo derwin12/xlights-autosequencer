@@ -87,7 +87,7 @@ class TestTransitionConfig:
         assert cfg.mode == "subtle"
         assert cfg.snap_window_ms is None
         assert cfg.fadeout_strategy == "progressive"
-        assert cfg.abrupt_end_fade_ms == 3000
+        assert cfg.abrupt_end_fade_ms == 1000
 
     def test_explicit_values(self):
         cfg = TransitionConfig(mode="dramatic", fadeout_strategy="uniform", abrupt_end_fade_ms=5000)

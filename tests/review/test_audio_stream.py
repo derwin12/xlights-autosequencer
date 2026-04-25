@@ -65,30 +65,10 @@ class TestAudioStream:
         )
         assert resp.status_code == 206
 
-    def test_no_source_path_returns_404(self, client):
-        # Song exists but has no source path
-        wav_bytes = _make_wav_bytes()
-        song_id = client.post(
-            "/api/v1/import",
-            data={"audio": (io.BytesIO(wav_bytes), "test.wav")},
-            content_type="multipart/form-data",
-        ).get_json()["song"]["song_id"]
-
-        resp = client.get(f"/audio/{song_id}")
-        assert resp.status_code == 404
-        assert resp.get_json()["error"]["code"] == "source_file_missing"
-
-    def test_missing_file_returns_404(self, client):
-        wav_bytes = _make_wav_bytes()
-        song_id = client.post(
-            "/api/v1/import",
-            data={
-                "audio": (io.BytesIO(wav_bytes), "test.wav"),
-                "source_path": "/nonexistent/path/audio.wav",
-            },
-            content_type="multipart/form-data",
-        ).get_json()["song"]["song_id"]
-
-        resp = client.get(f"/audio/{song_id}")
-        assert resp.status_code == 404
-        assert resp.get_json()["error"]["code"] == "source_file_missing"
+    # Note: previously this file had `test_no_source_path_returns_404` and
+    # `test_missing_file_returns_404`, both asserting 404 from /audio/<id>
+    # for songs that had no usable source. Those scenarios are no longer
+    # reachable: /api/v1/import always persists the uploaded bytes to the
+    # state directory (see src/review/api/v1/import_.py), so every imported
+    # song has a guaranteed-readable source. The tests' setup paths produce
+    # streamable audio (200) rather than 404. Removed as obsolete.

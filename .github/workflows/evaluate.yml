@@ -21,6 +21,11 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+      - name: Install ffmpeg
+        # Required by stem cache, audio import, and any test that loads MP3
+        # bytes via librosa/audioread. Tests that fail with
+        # "FileNotFoundError: ffmpeg not found" are the symptom.
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Install package
         run: |
           pip install --upgrade pip
@@ -29,51 +34,20 @@ jobs:
         # Excludes ui/content/slow markers — those need browser + audio fixtures
         # (handled in the ui-smoke job) or full madmom (local-only).
         #
-        # The --ignore flags below quarantine pre-existing test rot — files
-        # that fail on main for environment-specific or stale-assertion reasons
-        # unrelated to any recent change. See docs/known-broken-tests.md for
-        # the breakdown and remediation plan. Fix-and-unquarantine PRs should
-        # update both this list and that doc.
+        # The remaining --ignore flags quarantine 7 files with real algorithm /
+        # snapshot drift that needs domain-knowledge investigation per file.
+        # See docs/known-broken-tests.md for the breakdown and remediation plan.
+        # 17 files have been un-quarantined in this batch — un-quarantining
+        # PRs should update both this list and that doc.
         run: |
           pytest tests/ -m "not ui and not content and not slow and not capture_only" \
             --tb=short -v \
-            --ignore=tests/evaluation/test_cli_check.py \
-            --ignore=tests/evaluation/test_cli_compare.py \
-            --ignore=tests/evaluation/test_cli_snapshot.py \
-            --ignore=tests/evaluation/test_compare.py \
-            --ignore=tests/evaluation/test_integration_smoke.py \
-            --ignore=tests/evaluation/test_xsq_reader.py \
-            --ignore=tests/integration/test_brief_tab_render.py \
-            --ignore=tests/integration/test_path_resolution.py \
-            --ignore=tests/integration/test_song_workspace_flow.py \
-            --ignore=tests/integration/test_theme_variant_picker.py \
             --ignore=tests/integration/test_themes_integration.py \
-            --ignore=tests/integration/test_variant_api_browse.py \
-            --ignore=tests/integration/test_variant_api_crud.py \
-            --ignore=tests/integration/test_variant_import.py \
-            --ignore=tests/integration/test_variant_query.py \
-            --ignore=tests/packaging/test_import_by_path.py \
-            --ignore=tests/packaging/test_manifest_endpoint.py \
-            --ignore=tests/review/test_api_analysis.py \
-            --ignore=tests/review/test_api_library.py \
-            --ignore=tests/review/test_api_themes.py \
-            --ignore=tests/review/test_audio_stream.py \
-            --ignore=tests/unit/test_brief_persistence.py \
-            --ignore=tests/unit/test_brief_routes.py \
-            --ignore=tests/unit/test_dashboard_routes.py \
             --ignore=tests/unit/test_genius_segments.py \
             --ignore=tests/unit/test_librosa_hpss.py \
-            --ignore=tests/unit/test_paths.py \
             --ignore=tests/unit/test_repetition_policy.py \
             --ignore=tests/unit/test_section_profiler.py \
-            --ignore=tests/unit/test_song_workspace_route.py \
             --ignore=tests/unit/test_stem_inspector.py \
-            --ignore=tests/unit/test_stems.py \
-            --ignore=tests/unit/test_theme_routes.py \
-            --ignore=tests/unit/test_transitions.py \
-            --ignore=tests/unit/test_variant_cli.py \
-            --ignore=tests/unit/test_variant_crud_cli.py \
-            --ignore=tests/unit/test_variant_library.py \
             --ignore=tests/validation/test_scenarios.py
 
   generator-quality-check:

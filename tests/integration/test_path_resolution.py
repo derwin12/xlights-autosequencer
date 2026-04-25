@@ -58,7 +58,12 @@ class TestLocalEnvironmentUnaffected:
         from src.paths import PathContext
 
         env = {k: v for k, v in os.environ.items() if k != "XLIGHTS_HOST_SHOW_DIR"}
-        with patch.dict(os.environ, env, clear=True):
+        # Patch get_show_dir to return None so the test reflects "no show dir
+        # discoverable" — without this, dev hosts that happen to have
+        # ~/xLights/ installed would resolve a real show dir and the
+        # passthrough behavior would resolve into an absolute path.
+        with patch.dict(os.environ, env, clear=True), \
+             patch("src.paths.get_show_dir", return_value=None):
             ctx = PathContext()
 
         assert ctx.to_absolute("show/song.mp3") == "show/song.mp3"
@@ -156,8 +161,10 @@ class TestCrossEnvironmentResolution:
 
     def test_container_path_maps_to_relative(self):
         from src.paths import PathContext
+        from pathlib import Path
 
-        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}):
+        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}), \
+             patch("src.paths.get_show_dir", return_value=Path("/home/node/xlights")):
             ctx = PathContext()
             rel = ctx.to_relative("/home/node/xlights/2024/song.mp3")
 
@@ -165,8 +172,10 @@ class TestCrossEnvironmentResolution:
 
     def test_relative_path_resolves_back_to_absolute_in_container(self):
         from src.paths import PathContext
+        from pathlib import Path
 
-        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}):
+        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}), \
+             patch("src.paths.get_show_dir", return_value=Path("/home/node/xlights")):
             ctx = PathContext()
             abs_path = ctx.to_absolute("2024/song.mp3")
 
@@ -199,44 +208,50 @@ class TestCrossEnvironmentResolution:
 
     def test_library_deduplicates_on_environment_switch(self, tmp_path):
         """Same song accessed from host then container must produce one library entry."""
+        from pathlib import Path
         from src.library import Library, LibraryEntry
 
-        lib = Library(tmp_path / "library.json")
-        hash_val = "cafebabe"
+        # The library reads entries back via _entry_from_dict which resolves
+        # relative_source_file against get_show_dir(). Pin the show dir to the
+        # container path so the resolved source_file matches the test's
+        # expectation regardless of what's installed on the dev host.
+        with patch("src.paths.get_show_dir", return_value=Path("/home/node/xlights")):
+            lib = Library(tmp_path / "library.json")
+            hash_val = "cafebabe"
 
-        # First access: from host (absolute path is host path)
-        host_entry = LibraryEntry(
-            source_hash=hash_val,
-            source_file="/Users/bob/xlights/show/song.mp3",
-            filename="song.mp3",
-            analysis_path="/Users/bob/xlights/show/song/song_hierarchy.json",
-            duration_ms=60000,
-            estimated_tempo_bpm=120.0,
-            track_count=5,
-            stem_separation=False,
-            analyzed_at=1000,
-            relative_source_file="show/song.mp3",
-        )
-        lib.upsert(host_entry)
+            # First access: from host (absolute path is host path)
+            host_entry = LibraryEntry(
+                source_hash=hash_val,
+                source_file="/Users/bob/xlights/show/song.mp3",
+                filename="song.mp3",
+                analysis_path="/Users/bob/xlights/show/song/song_hierarchy.json",
+                duration_ms=60000,
+                estimated_tempo_bpm=120.0,
+                track_count=5,
+                stem_separation=False,
+                analyzed_at=1000,
+                relative_source_file="show/song.mp3",
+            )
+            lib.upsert(host_entry)
 
-        # Second access: from container (absolute path is container path, same hash)
-        container_entry = LibraryEntry(
-            source_hash=hash_val,
-            source_file="/home/node/xlights/show/song.mp3",
-            filename="song.mp3",
-            analysis_path="/home/node/xlights/show/song/song_hierarchy.json",
-            duration_ms=60000,
-            estimated_tempo_bpm=120.0,
-            track_count=5,
-            stem_separation=False,
-            analyzed_at=2000,
-            relative_source_file="show/song.mp3",
-        )
-        lib.upsert(container_entry)
+            # Second access: from container (absolute path is container path, same hash)
+            container_entry = LibraryEntry(
+                source_hash=hash_val,
+                source_file="/home/node/xlights/show/song.mp3",
+                filename="song.mp3",
+                analysis_path="/home/node/xlights/show/song/song_hierarchy.json",
+                duration_ms=60000,
+                estimated_tempo_bpm=120.0,
+                track_count=5,
+                stem_separation=False,
+                analyzed_at=2000,
+                relative_source_file="show/song.mp3",
+            )
+            lib.upsert(container_entry)
 
-        all_entries = lib.all_entries()
-        assert len(all_entries) == 1, "Duplicate entries created for same-hash song"
-        assert all_entries[0].source_file == "/home/node/xlights/show/song.mp3"
+            all_entries = lib.all_entries()
+            assert len(all_entries) == 1, "Duplicate entries created for same-hash song"
+            assert all_entries[0].source_file == "/home/node/xlights/show/song.mp3"
 
     def test_host_path_suggestion_in_container(self):
         """User typed a host path inside container → suggest correct container path."""

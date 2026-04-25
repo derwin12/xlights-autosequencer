@@ -61,19 +61,12 @@ class TestLibraryWithSong:
         song = data["songs"][0]
         assert song["source_exists"] is True
 
-    def test_source_exists_false_when_path_missing(self, client):
-        wav = _make_wav_bytes()
-        _import_song(client, wav, source_path="/nonexistent/path.wav")
-        data = client.get("/api/v1/library").get_json()
-        song = data["songs"][0]
-        assert song["source_exists"] is False
-
-    def test_source_exists_false_when_no_paths(self, client):
-        wav = _make_wav_bytes()
-        _import_song(client, wav)  # no source_path
-        data = client.get("/api/v1/library").get_json()
-        song = data["songs"][0]
-        assert song["source_exists"] is False
+    # Note: previously this file had `test_source_exists_false_when_path_missing`
+    # and `test_source_exists_false_when_no_paths`. Both scenarios are
+    # unreachable now — /api/v1/import always persists the uploaded bytes to
+    # the state directory (see src/review/api/v1/import_.py), so every
+    # imported song always has source_exists=True against the persisted copy
+    # regardless of the original source_path argument. Removed as obsolete.
 
     def test_song_fields_present(self, client):
         wav = _make_wav_bytes()

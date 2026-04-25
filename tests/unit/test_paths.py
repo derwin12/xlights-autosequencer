@@ -17,8 +17,17 @@ HOST_SHOW = "/Users/bob/xlights"
 
 
 def _ctx_container(host_show: str = HOST_SHOW) -> PathContext:
-    """Return a PathContext as-if running inside the dev container."""
-    with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": host_show}):
+    """Return a PathContext as-if running inside the dev container.
+
+    Outside an actual container, `/home/node/xlights` doesn't exist on
+    disk, so `get_show_dir()`'s `is_dir()` check fails and the resolved
+    show dir falls through to None. The tests' `is_in_show_dir` /
+    `to_relative` / `to_absolute` methods all key off the resolved show
+    dir, so we patch `get_show_dir` directly to make them work
+    deterministically regardless of host environment.
+    """
+    with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": host_show}), \
+         patch("src.paths.get_show_dir", return_value=Path(CONTAINER_SHOW)):
         return PathContext()
 
 
@@ -247,7 +256,8 @@ class TestOrchestratorRelativePath:
 
         container_song = "/home/node/xlights/show/song.mp3"
 
-        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}):
+        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}), \
+             patch("src.paths.get_show_dir", return_value=Path(CONTAINER_SHOW)):
             ctx = PathContext()
             rel = ctx.to_relative(container_song)
 
@@ -372,7 +382,8 @@ class TestStemManifestRelativePath:
         # Patch source_path to look like it's inside the container show dir
         cache.source_path = song_path
 
-        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}):
+        with patch.dict(os.environ, {"XLIGHTS_HOST_SHOW_DIR": "/Users/bob/xlights"}), \
+             patch("src.paths.get_show_dir", return_value=Path(CONTAINER_SHOW)):
             empty_arr = np.zeros(100, dtype=np.float32)
             stems = StemSet(
                 drums=empty_arr, bass=empty_arr, vocals=empty_arr,

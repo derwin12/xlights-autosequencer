@@ -18,8 +18,15 @@ VARIANTS_FIXTURE = FIXTURES / "variants" / "builtin_variants_minimal.json"
 
 @pytest.fixture(autouse=True)
 def inject_variant_lib(tmp_path, monkeypatch):
-    """Inject fixture-based libraries into the CLI module."""
-    import src.cli as cli_module
+    """Inject fixture-based libraries into the CLI module.
+
+    The variant CLI commands live in src.cli_old (re-exported through
+    src.cli for backward compat). _get_variant_lib() reads the override
+    from src.cli_old, so we must patch there. Patching src.cli only
+    updates the re-exported reference, which the actual command function
+    doesn't see.
+    """
+    import src.cli_old as cli_module
 
     effect_lib = load_effect_library(builtin_path=EFFECTS_FIXTURE)
     lib = load_variant_library(
@@ -29,6 +36,7 @@ def inject_variant_lib(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(cli_module, "_variant_library_override", lib)
     monkeypatch.setattr(cli_module, "_variant_effect_library_override", effect_lib)
+    monkeypatch.setattr(cli_module, "_variant_custom_dir_override", tmp_path)
 
 
 class TestVariantList:

@@ -13,6 +13,17 @@ def app(tmp_path, monkeypatch):
     # Use the fast stub analysis pipeline in tests so they don't time out
     # waiting for the full vamp/demucs/madmom pipeline.
     monkeypatch.setenv("XLIGHT_STUB_ANALYSIS", "1")
+
+    # Clear module-level analysis run state. `_runs` is a dict that
+    # accumulates across test invocations because the analysis module
+    # isn't reloaded between tests. Without this, tests that import the
+    # same WAV bytes (→ same song_id) see stale state from prior runs
+    # and /analyze responses can omit run_id when the prior run is
+    # still cached.
+    from src.review.api.v1 import analysis as _analysis_module
+    with _analysis_module._runs_lock:
+        _analysis_module._runs.clear()
+
     application = create_app(testing=True)
     application.config["TESTING"] = True
     yield application

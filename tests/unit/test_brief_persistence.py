@@ -152,30 +152,7 @@ class TestPresetRoundTrip:
                     )
 
 
-# ---------------------------------------------------------------------------
-# Preset map structure invariants (used by US2 Phase 4 too — landed early here)
-# ---------------------------------------------------------------------------
-
-def _load_brief_presets_js() -> str:
-    path = Path(__file__).resolve().parents[2] / "src" / "review" / "static" / "brief-presets.js"
-    return path.read_text(encoding="utf-8")
-
-
-def _js_has_preset_entries(js: str, axis: str, preset_ids: list[str]) -> bool:
-    # Very rough: for each preset id, check the JS file contains `id: "<preset>"`
-    # or `id: '<preset>'`. Good enough to catch drops/typos.
-    for pid in preset_ids:
-        patt = re.compile(r"""id\s*:\s*['"]""" + re.escape(pid) + r"""['"]""")
-        if not patt.search(js):
-            return False
-    return True
-
-
-class TestBriefPresetsJs:
-    def test_preset_ids_present_for_every_axis(self):
-        js = _load_brief_presets_js()
-        for axis, presets in PRESET_TABLE.items():
-            preset_ids = [p for p, _ in presets]
-            assert _js_has_preset_entries(js, axis, preset_ids), (
-                f"axis {axis} is missing preset ids in brief-presets.js"
-            )
+# Note: TestBriefPresetsJs (which validated brief-presets.js) was removed when
+# the static-HTML/JS UI was replaced by the React frontend (PRs #51 / #74).
+# Preset structure is now exercised by `TestPresetRoundTrip` above and by
+# the React frontend's own component tests.

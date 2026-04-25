@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsequence>
+  <head>
+    <mediaFile>tiny.mp3</mediaFile>
+    <sequenceDuration>10.000</sequenceDuration>
+    <sequenceTiming>50</sequenceTiming>
+  </head>
+  <ColorPalettes>
+    <ColorPalette>C_BUTTON_Palette1=#FF0000,C_BUTTON_Palette2=#0000FF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#00FF00,C_BUTTON_Palette2=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1</ColorPalette>
+  </ColorPalettes>
+  <EffectDB>
+    <Effect settings="E_NOTEBOOK_Marquee=Settings"/>
+    <Effect settings="E_NOTEBOOK_Plasma=Settings"/>
+  </EffectDB>
+  <ElementEffects>
+    <Element type="model" name="Arch01">
+      <EffectLayer>
+        <Effect startTime="0" endTime="1000" name="Marquee" label="" ref="0" palette="0"/>
+      </EffectLayer>
+      <EffectLayer>
+        <Effect startTime="2000" endTime="3000" name="Plasma" label="" ref="1" palette="1"/>
+      </EffectLayer>
+    </Element>
+    <Element type="model" name="MiniTree01">
+      <EffectLayer>
+        <Effect startTime="500" endTime="2500" name="Marquee" label="" ref="0" palette="0"/>
+      </EffectLayer>
+    </Element>
+  </ElementEffects>
+</xsequence>

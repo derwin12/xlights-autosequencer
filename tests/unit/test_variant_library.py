@@ -22,17 +22,30 @@ def effect_lib():
 
 
 @pytest.fixture
-def variant_lib(effect_lib):
+def isolated_custom_dir(tmp_path):
+    """Empty custom-variants dir, so tests don't pick up the user's
+    ~/.xlight/custom_variants/ contents (which would inflate counts and
+    add unexpected variant names)."""
+    d = tmp_path / "no_custom_variants"
+    # Don't create it — load_variant_library treats a missing dir as "no
+    # custom overrides" per its docstring.
+    return d
+
+
+@pytest.fixture
+def variant_lib(effect_lib, isolated_custom_dir):
     return load_variant_library(
         builtin_path=VARIANT_FIXTURES / "builtin_variants_minimal.json",
+        custom_dir=isolated_custom_dir,
         effect_library=effect_lib,
     )
 
 
 class TestLoadVariantLibrary:
-    def test_loads_from_fixture(self, effect_lib):
+    def test_loads_from_fixture(self, effect_lib, isolated_custom_dir):
         lib = load_variant_library(
             builtin_path=VARIANT_FIXTURES / "builtin_variants_minimal.json",
+            custom_dir=isolated_custom_dir,
             effect_library=effect_lib,
         )
         assert isinstance(lib, VariantLibrary)

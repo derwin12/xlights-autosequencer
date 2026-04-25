@@ -32,7 +32,7 @@ def tmp_custom_dir(tmp_path):
 @pytest.fixture(autouse=True)
 def inject_libs(tmp_custom_dir, monkeypatch):
     """Inject fixture-based libraries into the CLI module."""
-    import src.cli as cli_module
+    import src.cli_old as cli_module
 
     effect_lib = load_effect_library(builtin_path=EFFECTS_FIXTURE)
     lib = load_variant_library(
@@ -126,7 +126,7 @@ class TestVariantEdit:
         assert "not found" in result.output.lower() or "error" in result.output.lower()
 
     def test_edit_custom_variant_succeeds(self, tmp_path, tmp_custom_dir):
-        import src.cli as cli_module
+        import src.cli_old as cli_module
         from src.variants.models import EffectVariant, VariantTags
 
         # Add custom variant to the library
@@ -174,7 +174,7 @@ class TestVariantDelete:
         assert "not found" in result.output.lower() or "error" in result.output.lower()
 
     def test_delete_custom_variant_succeeds(self, tmp_custom_dir):
-        import src.cli as cli_module
+        import src.cli_old as cli_module
         from src.variants.models import EffectVariant, VariantTags
 
         custom = EffectVariant(
@@ -194,7 +194,7 @@ class TestVariantDelete:
         assert "Deleted" in result.output or "Deletable Variant" in result.output
 
     def test_delete_without_yes_prompts(self, tmp_custom_dir):
-        import src.cli as cli_module
+        import src.cli_old as cli_module
         from src.variants.models import EffectVariant, VariantTags
 
         custom = EffectVariant(
