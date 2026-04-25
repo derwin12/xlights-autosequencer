@@ -1,6 +1,7 @@
 # Musical Analysis Design Document
 
 **Created**: 2026-03-24
+**Last updated**: 2026-04-25 (resolution markers added; original prose preserved)
 **Status**: Working design — captures research, findings, and decisions from analysis sessions
 **Songs tested**: 22 songs — see [Appendix A](#appendix-a-batch-validation-song-list) for full list
 **Initial analysis** (3 songs): Highway to Hell (AC/DC), Ghostbusters (Ray Parker Jr), You're A Mean One Mr. Grinch (Sabrina Carpenter/Lindsey Stirling)
@@ -76,6 +77,16 @@ The fundamental insight: not all analysis serves the same purpose. Beats, struct
 **Known limitations:**
 - When beat trackers disagree, we currently export all tracks and let the user pick. Could auto-select by confidence score in the future.
 - Live recordings with tempo drift will have some beat misalignment — acceptable for a starting point.
+
+> **Partially resolved 2026-04-25.** `src/analyzer/selector.py` now exists and
+> exposes `select_best_beat_track` / `select_best_bar_track` / `rank_tracks`,
+> which combine inter-onset coefficient-of-variation with onset correlation to
+> auto-pick the best beat track per song. The further idea of using
+> *agreement-as-confidence* (multiple trackers landing within ±1 bar) has been
+> started — see PR #81's `scripts/boundary_confidence_map.py` for the
+> single-linkage clustering used on section boundaries — but the equivalent
+> beat-level confidence channel is not yet wired into the selector. So
+> auto-selection is in place; agreement-weighted confidence is a follow-up.
 
 ### Level 4: Instrument Events (per-stem accents)
 
@@ -182,6 +193,14 @@ The 6-stem second pass was originally added to improve vocal alignment, but **th
 
 **Evaluation needed**: Run the batch validation with and without the 6-stem pass to measure whether guitar/piano stems meaningfully improve analysis quality for our target genres. If the improvement is marginal, dropping to a single 4-stem pass would cut stem separation time in half.
 
+> **Resolved 2026-04-25.** `src/analyzer/stems.py` now runs a **single
+> Demucs pass** with `htdemucs_6s` (drums, bass, vocals, guitar, piano,
+> other). The dual-pass `htdemucs_ft` + `htdemucs_6s` setup described
+> above was dropped — the 6-stem model's vocal stem proved good enough
+> for downstream WhisperX alignment that the extra fine-tuned pass
+> wasn't worth the cost. Stems are MD5-cached in `.stems/<hash>/`
+> adjacent to the source file.
+
 ### Implication for the Sweep:
 The affinity table gives good defaults. The sweep's real value is discovering **exceptions** — when a non-default stem gives better results for this particular song. That's why we sweep all applicable stems, not just the top 1.
 
@@ -212,6 +231,26 @@ Calling it "Chorus" is shorthand for "repeating, vocals active, all stems playin
 ---
 
 ## 5. Structural Segmentation
+
+> **Superseded 2026-04-25 by PR #81 (`docs/analysis-pipeline-improvements-2026-04.md`).**
+> The "Segmentino as sole segmenter" decision below was correct given what was
+> tested at the time — three *spectral* segmenters (Segmentino, QM tuned,
+> QM granular) all consume similar features, so they disagreed on noise rather
+> than reinforcing real boundaries. The current pipeline took a different
+> approach: it combines **orthogonal signal types** rather than parallel
+> spectral segmenters. Genius lyric structure (with WhisperX word alignment)
+> is the primary section source on 11/16 library songs; the remaining 5
+> songs use a Segmentino + tuned-QM heuristic path with stem-entry, energy,
+> chord-density, and key-change boundaries scored against each other in a
+> multi-source agreement map (`scripts/boundary_confidence_map.py`). The
+> retuned QM defaults (`nSegmentTypes=5`, `featureType=Hybrid`,
+> `neighbourhoodLimit=6s`) rank #11/48 vs the old defaults at #37/48 — a
+> ~37% improvement on the cross-source agreement metric, with zero
+> intro/outro regressions on the 5 most-at-risk heuristic songs. The
+> orchestrator still runs both `segmentino` and `qm_segments`
+> (`src/analyzer/orchestrator.py`), with QM boundaries merged into the
+> Segmentino backbone where they don't overlap. The historical analysis
+> below is preserved verbatim for context.
 
 ### Decision: Segmentino as sole segmenter
 
@@ -253,6 +292,21 @@ If better subdivision of long sections is needed, the most promising unexplored 
 
 This would be a future enhancement, not a blocker for the current pipeline.
 
+> **Resolved (in progress) 2026-04-25 by PR #42 + PR #81 + PR #84.** A partial
+> form of vocal-based segmentation now ships in the pipeline: PR #42 wired
+> Genius lyrics + WhisperX word alignment as the primary section source
+> (`src/analyzer/genius_segments.py`), and PR #81 hardened that path —
+> torchaudio→HuggingFace align-model fallback, Genius subprocess timeout
+> raised 120s→600s, `HF_HUB_DISABLE_XET=1`, `torch.load weights_only=False`
+> patch — bringing Genius coverage from 2/16 to **11/16** library songs.
+> Vocal-stem entry events (`stem_entry:vocals`) are also emitted and feed
+> the multi-source boundary confidence map. Section confidence scoring +
+> Genius snap-to-cluster shipped in PR #84. The remaining piece — using
+> *self-similarity of repeated vocal phrases* to subdivide long flat
+> sections in instrumental songs — exists as a prototype only
+> (`scripts/self_similarity_prototype.py`) and is still tracked as a
+> follow-up; see *Follow-ups* in `docs/analysis-pipeline-improvements-2026-04.md`.
+
 ---
 
 ## 6. What Generalizes Across Songs
@@ -290,6 +344,13 @@ Batch validated on 22 songs: rock, pop, holiday (Christmas + Halloween), instrum
 2. **Fix bbc_rhythm and nnls_chroma** — reclassify as value curves, not timing marks
 3. **Add sensitivity sweeping** for onset detectors — sweep at multiple sensitivities per stem, especially for electronic/percussive tracks where default produces >5/s
 4. **Categorize sweep results by purpose** in the UI — not one flat list
+
+> **Resolved 2026-04-25.** Item 2 shipped in PR #102 (change
+> `fix-misclassified-curves`) — see the §2 markers above. Item 1
+> (bbc_energy value_curve serialization) was addressed as part of the
+> same value-curve work; the orchestrator's L5 energy assembly now
+> populates `HierarchyResult.energy_curves[stem]`. Items 3 and 4
+> remain open as written.
 
 ### Medium-term:
 5. **Add phrase detection** — derive from bar marks + energy contour
