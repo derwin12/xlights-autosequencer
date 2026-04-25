@@ -48,6 +48,9 @@ don't hit import errors on unrelated work.
 | `test_view_flow.py` | `ui` | Library ↔ analyze round-trip keeps song rows and state coherent |
 | `test_export_flow.py` | `ui` | Export screen renders one of its known states (form or guard) |
 | `test_content_flow.py` | `ui`, `content` | Uploads → triggers real analyzer → asserts UI-displayed section count / title / duration match `tests/fixtures/cc0_music/manifest.json` values within tolerance |
+| `test_multi_song_flow.py` | `ui` | Seeds two fixtures via API → navigates via Chrome "Library" tab between distinct song-row contexts → verifies library state survives round-trips |
+| `test_metadata_edit_flow.py` | `ui` | Uploads → edits `metadata-artist` on banner → Tab to trigger save → awaits PATCH response → asserts `metadata-saved` indicator + persistence via `/api/v1/library` |
+| `test_folder_filter_flow.py` | `ui` | (a) Folder-toggle-unfiled click hides/reveals song row; (b) filter pills (All/Imported/Analyzed) update `data-active` on click |
 
 All flows are marked `@pytest.mark.slow` and use `@pytest.mark.flaky(reruns=2)`
 for 3-strike flake tolerance per the spec.
