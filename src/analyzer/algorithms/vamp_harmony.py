@@ -5,7 +5,7 @@ import numpy as np
 
 from src.analyzer.algorithms.base import Algorithm
 from src.analyzer.algorithms.vamp_utils import vamp_outputs_to_marks
-from src.analyzer.result import TimingTrack
+from src.analyzer.result import TimingMark, TimingTrack
 
 
 class ChordinoAlgorithm(Algorithm):
