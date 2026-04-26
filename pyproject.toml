@@ -24,8 +24,11 @@ dependencies = [
 xlight-analyze = "src.cli:cli"
 xlight-evaluate = "src.cli.evaluate:main"
 xlight-review = "src.review.cli:main"
+xlight-video = "src.video.cli:main"
 
 [project.optional-dependencies]
+# Video preview renderer (FSEQ → MP4). Requires ffmpeg on PATH.
+video = ["scipy>=1.11", "zstandard>=0.21"]
 # madmom requires Python <=3.9 and numpy<2; install separately if compatible
 madmom = ["madmom>=0.16"]
 # vamp requires the Vamp host SDK C++ headers; install separately after SDK setup
@@ -45,6 +48,8 @@ all = [
     "lyricsgenius>=3.0",
     "mutagen>=1.47",
     "matplotlib>=3.5",
+    "scipy>=1.11",
+    "zstandard>=0.21",
 ]
 dev = [
     "pytest>=7.4",
