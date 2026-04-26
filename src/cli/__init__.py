@@ -25,11 +25,14 @@ def main() -> None:
 # Core modules that have been fully extracted:
 from src.cli import (  # noqa: E402, F401
     analyze,
+    library,
     review,
     scoring,
 )
 
-# Remaining commands imported from the legacy monolith:
+# Remaining commands imported from the legacy monolith.  Imported AFTER
+# ``library`` so that extras' "skip if already registered" rule keeps the
+# legacy top-level ``library`` command from clobbering the new group.
 from src.cli import extras  # noqa: E402, F401
 
 # Re-export variant test-support overrides so that
