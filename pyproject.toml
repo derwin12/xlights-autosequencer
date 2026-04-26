@@ -78,6 +78,7 @@ markers = [
     "ui: marks browser-driven UI flow tests (requires pip install -e '.[ui-tests]' + npm run build). Skipped by default; select with `-m ui` or via `xlight-evaluate gate`.",
     "content: marks UI tests that trigger the real analyzer pipeline and assert the displayed content matches the manifest. Slower but catches backend→UI data-plumbing regressions. Select with `-m content` or `-m 'ui and content'`.",
     "screenshot_all: opt-in mass-screenshot flow that runs analysis on every MP3 (CC0 + ./songs/) and saves one full-page timeline PNG per song. Diagnostic only — gitignored output. Select with `-m screenshot_all`.",
+    "readme_capture: opt-in capture of every main UI screen for the README docs. Writes to assets/screenshots/. Re-run after any meaningful UI change. Select with `-m readme_capture`.",
 ]
 # Skip capture_only and ui tests unless explicitly selected.
 # UI flows require Playwright + a built frontend (npm run build) and are slow;

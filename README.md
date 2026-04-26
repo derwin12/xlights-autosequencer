@@ -67,193 +67,163 @@ When `.venv-vamp/` exists, Vamp and madmom algorithms run through it automatical
 
 ---
 
-## Launch the Web UI
-
-The web UI is the primary way to use xLight AutoSequencer. It provides the full workflow in your browser.
+## Launch the App
 
 ```bash
 source .venv/bin/activate
 xlight-analyze review
 ```
 
-Opens **http://localhost:5173** with the following pages:
+Opens **http://localhost:5173** in your browser. The whole workflow lives in six tabs across the top of every screen:
 
-| Page | URL | What it does |
-|------|-----|--------------|
-| **Song Library** | `/` | Upload MP3s, browse analyzed songs, launch analysis |
-| **Theme Editor** | `/themes/` | Create and edit composite lighting themes with layered effects |
-| **Variant Library** | `/variants/` | Browse 123+ pre-tuned effect variants, filter by energy/tier/section |
-| **Layout Grouping** | `/grouper` | Upload xLights layout XML, preview and edit 8-tier Power Groups |
-| **Timeline** | `/timeline` | Visualize timing tracks with synchronized playback, export |
-| **Story Review** | `/story-review` | Review song sections, assign themes, view energy arcs |
-| **Phonemes** | `/phonemes-view` | View and edit vocal phoneme alignment |
-| **Sweep Results** | `/sweep-view` | Compare algorithm parameter sweep results |
+```
+xOnset  1 Library   2 Drop   3 Analyze   4 Timeline   5 Theme   6 Export
+```
 
-### Typical workflow
-
-1. **Upload** — Drag an MP3 onto the Song Library page. Analysis runs automatically with SSE progress streaming.
-2. **Review** — Open the timeline to visualize detected beats, onsets, and sections. Listen with synchronized playback.
-3. **Group layout** — Upload your `xlights_rgbeffects.xml` to generate Power Groups for your props.
-4. **Pick themes** — Open Story Review to assign themes to song sections, or edit themes in the Theme Editor.
-5. **Browse variants** — Use the Variant Library to find pre-tuned effect presets that match your energy and style.
-6. **Generate** — Run the generator to produce an `.xsq` sequence file ready for xLights.
+The numbers indicate the natural order — drop a song in, walk through the tabs left-to-right, finish with an `.xsq` ready for xLights.
 
 ---
 
-## CLI Reference
+## The screens
 
-The `xlight-analyze` command provides 30+ subcommands for every workflow step.
+### 1. Library — empty state
 
-### Analysis
+![Empty Library](assets/screenshots/01-library-empty.png)
 
-```bash
-# Basic analysis (beats, onsets, chords)
-xlight-analyze analyze song.mp3
+Where you start the very first time.
 
-# Full analysis with stems and phonemes
-xlight-analyze analyze song.mp3 --stems --phonemes
+1. **Tab bar** (top). Numbered steps; the active tab is underlined orange. You can revisit any tab at any time.
+2. **Drop zone** (centered card). Drag an MP3 / WAV file onto it, or click *"or click to browse files"* to open a native file picker. Both mono and stereo audio are accepted; ID3 metadata is read automatically.
 
-# Full analysis with stems, phonemes, and Genius lyrics
-xlight-analyze full song.mp3
+That's the entire screen — the app is deliberately empty here so the call to action is unmissable.
 
-# Batch analysis (all MP3s in a directory)
-xlight-analyze analyze ./songs/
+---
 
-# Interactive wizard
-xlight-analyze wizard
+### 2. Analyze — pipeline running
 
-# View analysis summary
-xlight-analyze summary song_analysis.json
-```
+![Analyze running](assets/screenshots/03-analyze-running.png)
 
-### Sequence Generation
+After you drop a file, the app jumps straight to **Analyze** and starts the pipeline.
 
-```bash
-# End-to-end pipeline: analyze → export .xtiming + .xvc files for xLights
-xlight-analyze pipeline song.mp3 --output-dir ./xlight-export
+1. **Title bar** — *"Analyzing... `<slug>` · `<duration>`"* on the left, *"`<elapsed>` / ~`<eta>`"* and a **skip to timeline →** escape hatch on the right. The skip button shows up once enough has been detected to render *something* in the timeline.
+2. **Artist / Title fields** — read from the MP3's ID3 tags. Edit either to override what's used for the Genius lyrics lookup.
+3. **Phase pills** — seven logical phases (loading audio → separating stems → tracking beats → finding bars → segmenting structure → song story → assigning themes). The active phase is outlined; completed phases get a green checkmark.
+4. **Detectors column** (left) — every algorithm the pipeline will run, in execution order. Each row shows status (queued / running / done), library tag (system, demucs, librosa, vamp, madmom), and progress.
+5. **Stream column** (middle) — live SSE log lines from the pipeline. Mostly the same information as the Detectors column but in narrative form, with elapsed time per detector.
+6. **Findings column** (right) — overall progress %, ETA, list of high-level outputs (waveform, beats, bars, sections, themes), and a live-growing **Sections** list as the structure detector finds boundaries.
+7. **Song rail** (far left, collapsible). Songs you've imported, grouped by folder. Switch between songs by clicking; the right side switches to whichever song you pick.
 
-# Generate .xsq sequence from MP3 + layout
-xlight-analyze generate song.mp3 --layout ~/xLights/xlights_rgbeffects.xml
+---
 
-# Interactive sequence generation
-xlight-analyze generate-wizard
+### 3. Analyze — complete
 
-# Export analysis to xLights timing files
-xlight-analyze export-xlights song_analysis.json --output-dir DIR
-```
+![Analyze complete](assets/screenshots/04-analyze-complete.png)
 
-### Layout Grouping
+Same screen, after the pipeline finishes (~60–90 s on a typical song with cached stems).
 
-```bash
-# Preview Power Groups without modifying files
-xlight-analyze group-layout ~/xLights/xlights_rgbeffects.xml --dry-run
+1. **Title bar** flips to *"Analysis complete"* with a prominent **▶ review timeline →** button on the right.
+2. **All seven phases** show green checkmarks.
+3. **Detectors** — full list (33 / 33 done), each with its detected mark count visible (e.g. `librosa_beats · 288`, `aubio_onset (drums) · 700 marks`).
+4. **Stream** — the full progress log, scrollable.
+5. **Findings** — 100 %, with per-category counts (`waveform ✓`, `beats 459`, `bars 80`, `sections 5`, `themes ✓`) and the actual section list with role + duration (`01 Verse · 20s`, `02 Pre Chorus · 19s`, ...).
+6. **Re-analyze** button (bottom left) — re-runs the pipeline from scratch, ignoring any cache. Useful after a story-builder schema bump, or when you've edited the artist/title fields and want a fresh Genius lookup.
 
-# Generate groups (creates .xml.bak backup first)
-xlight-analyze group-layout ~/xLights/xlights_rgbeffects.xml
+---
 
-# Use a show profile to filter tiers
-xlight-analyze group-layout ~/xLights/xlights_rgbeffects.xml --profile energetic
+### 4. Timeline — review and adjust
 
-# Specify hero props manually
-xlight-analyze group-layout ~/xLights/xlights_rgbeffects.xml --hero "Mega Tree"
-```
+![Timeline](assets/screenshots/05-timeline.png)
 
-### Effect Variants
+The most-used screen. Verifies the analysis matched what you hear.
 
-```bash
-# List all variants
-xlight-analyze variant list
+1. **Transport** (top center) — ⏮ ▶ ⏭ play/scrub controls, current position / total duration.
+2. **Zoom controls** — `−` / `+` buttons; reads as `1×`, `2×`, etc. Higher zoom narrows the visible window so you can scrub onto a single beat.
+3. **Waveform** — full-mix audio rendered as a green stereo waveform, with a 0:00–total-duration time ruler underneath. Click anywhere on it to seek the playhead.
+4. **Sections row** — colored boxes per detected section, labeled by role (Verse, Pre Chorus, Chorus, Bridge, Outro, Interlude, etc.). Click *"Edit sections"* (button on the right) to adjust boundaries by dragging.
+5. **Section beat counter** — small dots showing the bar/beat structure within the currently-visible window.
+6. **Stem waveforms** (collapsible) — drums / bass / vocals / guitar / piano / other waveforms stacked. Click *"click to load"* to render them; useful for verifying the stem separation looks right.
+7. **Raw algorithm tracks** — every individual detector's output as a flash-when-the-event-passes tick row. Each row shows the algorithm name, the event count, and a sparkline. Toggle visibility per-row to declutter; the *"31 / 31 visible"* counter updates.
+8. **AYHEAD inspector** (right column) — current playback position formatted as `bar X · beat Y of Z`.
+9. **Current section** — name and color of whatever section the playhead is in right now. Updates as you scrub.
+10. **Section timing** — start / end / duration of the current section.
+11. **Nudge buttons** — `−10 ms` / `+10 ms` to micro-adjust the active section's start time. Hold-and-drag for repeated nudges.
+12. **Go to Theme →** (bottom) — finishes timeline review and moves to the next step.
 
-# Filter by effect and energy
-xlight-analyze variant list --effect Bars --energy high
+---
 
-# Show variant details
-xlight-analyze variant show "Bars Single 3D Half-Cycle"
+### 5. Theme — assign a look per section
 
-# Coverage report (which effects have variants)
-xlight-analyze variant coverage
+![Theme](assets/screenshots/06-theme.png)
 
-# Create a custom variant
-xlight-analyze variant create --name "My Bars" --base-effect Bars --description "Custom bars"
+Pick a *theme* (composite lighting "look") for each section of the song. Themes encode color palette, effect choice, blend modes, and parameter mappings.
 
-# Import variants from an existing .xsq sequence
-xlight-analyze variant import sequence.xsq
-```
+1. **Section navigator** (top) — every detected section as a clickable pill (Verse / Pre Chorus / Chorus / Verse / Outro). The active pill outlines orange; click to switch which section you're theming.
+2. **Accept All Defaults** (top right) — auto-assigns theme defaults to every section using the song's energy/genre profile. Good starting point if you don't want to pick one-by-one.
+3. **Theme grid** (center) — each card is one theme:
+   - **Palette swatch** strip (5 colors) at the top.
+   - **Theme name** (e.g. *Aurora*, *Inferno*, *Stellar Wind*).
+   - **Mood tags** (e.g. ETHEREAL, AGGRESSIVE, ROCK, DARK) for quick filtering.
+   - **One-line description** — what the theme evokes.
+   Click a card to assign it to the active section.
+4. **Section beat strip** (right of the grid) — visualizes the currently-selected section's beat structure, labeled with the section name.
+5. **Section parameters** (right column) — four sliders that fine-tune *this section's* render of the chosen theme:
+   - **Brightness** — global intensity (0 – 1)
+   - **Hit Strength** — accent emphasis on beats (0 – 1)
+   - **Dwell Time** — how long held effects last (0 – 1)
+   - **Color Shift** — palette rotation (0 – 1)
 
-### Song Story
+Per-section overrides are remembered when you switch sections; the **Accept All Defaults** button resets them.
 
-```bash
-# Build song story from analysis
-xlight-analyze story song.mp3
+---
 
-# Interactive story review
-xlight-analyze story-review song.mp3
-```
+### 6. Export — produce the .xsq
 
-### Stem & Phoneme Tools
+![Export — layout required](assets/screenshots/07-export.png)
 
-```bash
-# Inspect stem separation results
-xlight-analyze stem-inspect song.mp3
+The terminal step. Generates the xLights `.xsq` sequence from the analyzed song + assigned themes + your prop layout.
 
-# Review and approve stems
-xlight-analyze stem-review song.mp3
-```
+1. **Layout-required notice** (shown when no layout has been imported yet) — *"Import your `xlights_rgbeffects.xml` to continue."* Drop your xLights layout file onto the Drop tab; the export tab unblocks.
 
-### Scoring Profiles
+After importing a layout, this screen shows:
 
-```bash
-# List available scoring profiles
-xlight-analyze scoring list
+- **Generate button** — produces the `.xsq` and offers a download link.
+- **Layout summary** — number of models / groups / props detected, and which 8-tier Power Groups were auto-generated (heroes, compounds, props, beats, etc.).
+- **Generation options** — variation seed, repetition policy, palette restraint, duration scaling. Most users leave defaults.
+- **Recent exports** — the last few `.xsq` files generated for this song, ready to re-download.
 
-# Show profile configuration
-xlight-analyze scoring show default
+---
 
-# Save current config as a named profile
-xlight-analyze scoring save my-profile
-```
+### 7. Library — populated state
 
-### Library Management
+![Library populated](assets/screenshots/08-library-populated.png)
 
-```bash
-# Scan directory for analyzed songs
-xlight-analyze library ./songs/
+Where you go to switch between songs once you've imported a few.
 
-# Launch the web UI
-xlight-analyze review
-
-# Launch with a specific analysis file open
-xlight-analyze review song_analysis.json
-```
+1. **Filter pills** (top) — *All / Draft / Analyzed / Themed*. Filters the song list by status. *Draft* = imported but not analyzed; *Analyzed* = pipeline complete; *Themed* = at least one section has a theme assignment.
+2. **Folder groups** — songs are bucketed by `folder_id` (default `unfiled`). The count next to each folder name shows how many songs are in it. Click the chevron to collapse / expand.
+3. **Song row** — each row shows title, artist (from ID3 or override), and a **status badge** (`Analyzed`, `Themed`, `Draft`). Click anywhere on the row to open it in whatever tab you visit next.
+4. **Song rail** (far left) — a permanent compact list across every screen, so you can switch between songs without leaving the current step.
 
 ---
 
 ## Output Files
 
+The UI workflow writes these next to the source MP3:
+
 ```
 song.mp3
 song/
-├── song_analysis.json          # Full analysis (cached by MD5)
-├── song_hierarchy.json         # Hierarchical analysis (L0-L6)
-├── song_story.json             # Song story with sections and moments
-├── song.xtiming                # xLights timing file (phonemes)
-├── song.lyrics.txt             # Auto-transcribed lyrics (edit and rerun)
-├── stems/                      # Separated audio stems
-│   ├── drums.mp3, bass.mp3, vocals.mp3, guitar.mp3, piano.mp3, other.mp3
-│   └── manifest.json
-└── analysis/                   # xLights export files
-    ├── song_timing.xtiming     # All timing tracks
-    ├── drums_beat.xvc          # Value curves (full resolution + macro)
-    └── export_manifest.json
+├── song_hierarchy.json         # Analyzer output (L0–L6 hierarchy)
+├── song_story.json             # Story builder output (sections, roles, moments)
+└── song.xsq                    # Sequence to import into xLights
+.stems/<md5>/                   # Cached Demucs stem separation (drums, bass, vocals, guitar, piano, other)
 ```
+
+`_hierarchy.json` and `_story.json` are caches — re-running the pipeline reads them when nothing relevant has changed. `.xsq` is the deliverable.
 
 ### Importing into xLights
 
-| File | How to import |
-|------|---------------|
-| `*.xtiming` | Sequence editor > right-click > Import Timing Tracks |
-| `*.xvc` | Effect > value curve editor > load from file |
-| `*.xsq` | File > Open Sequence |
+In xLights: **File → Open Sequence**, point at `song.xsq`. The .xsq is self-contained; xLights will resolve effects and timing from the file.
 
 ---
 
