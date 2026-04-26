@@ -17,6 +17,7 @@ Exit codes (highest-priority wins):
 """
 from __future__ import annotations
 
+import concurrent.futures
 import importlib.util
 import json
 import subprocess
@@ -25,7 +26,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from src.evaluation import analyzer_baseline
 from src.evaluation.analyzer_baseline import (
@@ -55,6 +56,13 @@ class GateOptions:
     # section_fidelity (the gate module is imported by tests that don't
     # need the section-fidelity suite). None → use the module's default.
     section_fidelity_baseline_path: Optional[Path] = None
+    # Run the independent suites concurrently via a ThreadPoolExecutor.
+    # Default True — see openspec/changes/gate-parallelism/design.md for
+    # the rationale (analyzer + UI are the long-poles; threads avoid
+    # macOS fork-safety risks while still benefiting from C-extension
+    # GIL release). Set False for debugging or on resource-constrained
+    # boxes where parallel CPU + Playwright would thrash.
+    parallel: bool = True
 
 
 @dataclass
@@ -428,6 +436,83 @@ def _aggregate_exit_code(suites: dict[str, SuiteResult]) -> int:
     return EXIT_PASS
 
 
+def _run_suite_safe(name: str, fn: Callable[[], SuiteResult]) -> SuiteResult:
+    """Run a suite callable; convert any unexpected exception into an
+    `infra-error` SuiteResult.
+
+    The `run_*_suite` functions are designed to handle their own expected
+    failure modes (subprocess errors, missing baselines, etc.) and return
+    a SuiteResult — they should never raise. But the parallel dispatch
+    path must not let an unexpected exception (e.g. an OOM in a C
+    extension surfacing as a Python exception) crash the whole gate and
+    lose the partial results from the other suites. Wrap defensively.
+    """
+    start = time.monotonic()
+    try:
+        return fn()
+    except Exception as exc:  # noqa: BLE001 — intentional broad catch
+        return SuiteResult(
+            name,
+            status="infra-error",
+            message=f"unexpected exception in {name} suite: {exc!r}",
+            duration_seconds=time.monotonic() - start,
+        )
+
+
+# Canonical order for assembling the suites dict in run_gate. Order here
+# determines JSON output field order and the human-readable summary line
+# ordering, which CI logs and humans grep against. Keep in sync with the
+# dispatch list in run_gate.
+_CANONICAL_SUITE_ORDER: tuple[str, ...] = ("analyzer", "generator", "ui")
+
+
+def _dispatch_suites(
+    plan: list[tuple[str, Callable[[], SuiteResult]]],
+    *,
+    parallel: bool,
+) -> dict[str, SuiteResult]:
+    """Run a list of (name, callable) suite tasks; return canonical-ordered results.
+
+    - parallel=True: submit all tasks to a ThreadPoolExecutor sized to the
+      task count, wait for every future, then re-assemble in
+      `_CANONICAL_SUITE_ORDER`. Names not in the canonical list are
+      appended at the end in plan order.
+    - parallel=False: run sequentially in plan order.
+
+    Both paths route every suite through `_run_suite_safe` so an
+    unexpected exception in one suite does not abort the others.
+    """
+    results: dict[str, SuiteResult] = {}
+
+    if parallel and len(plan) > 1:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(plan)) as ex:
+            future_to_name = {
+                ex.submit(_run_suite_safe, name, fn): name for name, fn in plan
+            }
+            for fut in concurrent.futures.as_completed(future_to_name):
+                name = future_to_name[fut]
+                # _run_suite_safe never raises — but defend against future
+                # changes by re-wrapping here too.
+                results[name] = _run_suite_safe(name, fut.result)
+    else:
+        for name, fn in plan:
+            results[name] = _run_suite_safe(name, fn)
+
+    # Reassemble in canonical order so the JSON report and human summary
+    # are byte-identical to the serial ordering regardless of which
+    # future completed first.
+    ordered: dict[str, SuiteResult] = {}
+    for name in _CANONICAL_SUITE_ORDER:
+        if name in results:
+            ordered[name] = results.pop(name)
+    # Anything left over (unrecognized suite name) goes at the end in
+    # plan order.
+    for name, _fn in plan:
+        if name in results:
+            ordered[name] = results.pop(name)
+    return ordered
+
+
 def run_gate(options: GateOptions) -> GateReport:
     start_wall = time.monotonic()
     started_iso = datetime.now(timezone.utc).isoformat()
@@ -453,19 +538,21 @@ def run_gate(options: GateOptions) -> GateReport:
         _write_report(report, options.report_path)
         return report
 
-    suites: dict[str, SuiteResult] = {}
+    # Build the dispatch plan. Each tuple is (suite_name, zero-arg
+    # callable). The callables capture `corpus` and `options` at the same
+    # point the serial implementation did.
+    plan: list[tuple[str, Callable[[], SuiteResult]]] = [
+        # Analyzer suite — quick mode still exercises the analyzer; it
+        # just uses one fixture to save time.
+        ("analyzer", lambda: run_analyzer_suite(corpus, options.analyzer_baseline_path)),
+        # Generator suite.
+        ("generator", lambda: run_generator_suite(corpus)),
+        # UI suite — --quick runs only the content flow (smoke + assertions
+        # on one fixture); full mode runs all flows.
+        ("ui", lambda: run_ui_suite(skip=options.skip_ui, quick=options.quick)),
+    ]
 
-    # Analyzer suite (skipped entirely when quick mode tests only a single
-    # fixture? No — quick mode still exercises the analyzer; it just uses
-    # one fixture to save time.)
-    suites["analyzer"] = run_analyzer_suite(corpus, options.analyzer_baseline_path)
-
-    # Generator suite
-    suites["generator"] = run_generator_suite(corpus)
-
-    # UI suite — --quick runs only the content flow (smoke + assertions on
-    # one fixture); full mode runs all flows.
-    suites["ui"] = run_ui_suite(skip=options.skip_ui, quick=options.quick)
+    suites = _dispatch_suites(plan, parallel=options.parallel)
 
     # Section-fidelity suite — defends the corpus-wide library-mean
     # `agreement_score` against silent regression. Cheap (just JSON

@@ -419,3 +419,234 @@ def test_skip_ui_flag_does_not_invoke_pytest(tmp_path: Path) -> None:
     ]
     assert not pytest_calls
     assert report.suites["ui"].status == "skip"
+
+
+# ---------- parallel dispatch ----------
+
+def _passing_baseline(tmp_path: Path) -> Path:
+    """Persist an empty AnalyzerBaseline so the analyzer suite returns 'pass'
+    immediately (no fixtures to check)."""
+    baseline = tmp_path / "baseline.json"
+    analyzer_baseline.save(AnalyzerBaseline(), baseline)
+    return baseline
+
+
+def test_run_gate_parallel_dispatch_is_faster_than_serial(tmp_path: Path) -> None:
+    """With three suites that each sleep 0.5s, parallel wall time should be
+    well under the 1.5s serial sum.
+
+    Uses a real ThreadPoolExecutor (not mocked) so this exercises the
+    actual dispatch code path. time.sleep() releases the GIL, modeling
+    the analyzer/UI suites' real workload.
+    """
+    import time as _time
+    from src.evaluation.acceptance_gate import SuiteResult as _SR
+
+    SLEEP = 0.5
+
+    def slow_pass(name: str):
+        def _run() -> _SR:
+            _time.sleep(SLEEP)
+            return _SR(name, "pass")
+        return _run
+
+    baseline = _passing_baseline(tmp_path)
+    opts = GateOptions(
+        quick=True, skip_ui=True,
+        report_path=tmp_path / "r.json",
+        analyzer_baseline_path=baseline,
+        parallel=True,
+    )
+
+    with patch(
+        "src.evaluation.acceptance_gate.run_analyzer_suite",
+        side_effect=lambda *a, **kw: slow_pass("analyzer")(),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_generator_suite",
+        side_effect=lambda *a, **kw: slow_pass("generator")(),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_ui_suite",
+        side_effect=lambda *a, **kw: slow_pass("ui")(),
+    ):
+        t0 = _time.monotonic()
+        report = run_gate(opts)
+        wall = _time.monotonic() - t0
+
+    # Parallel should complete in roughly SLEEP + overhead, well under
+    # the 3 * SLEEP serial sum. Allow generous headroom for CI jitter.
+    assert wall < 2 * SLEEP, f"parallel wall time {wall:.3f}s not < {2 * SLEEP:.3f}s"
+    assert report.exit_code == EXIT_PASS
+    # All three parallel-dispatched suites ran. section_fidelity (added
+    # by PR #108) runs sequentially after the parallel dispatch.
+    assert {"analyzer", "generator", "ui"}.issubset(report.suites.keys())
+
+
+def test_run_gate_serial_path_respects_parallel_false(tmp_path: Path) -> None:
+    """parallel=False runs sequentially — wall time ≥ sum of suite durations."""
+    import time as _time
+    from src.evaluation.acceptance_gate import SuiteResult as _SR
+
+    SLEEP = 0.2
+
+    def slow_pass(name: str):
+        def _run() -> _SR:
+            _time.sleep(SLEEP)
+            return _SR(name, "pass")
+        return _run
+
+    baseline = _passing_baseline(tmp_path)
+    opts = GateOptions(
+        quick=True, skip_ui=True,
+        report_path=tmp_path / "r.json",
+        analyzer_baseline_path=baseline,
+        parallel=False,
+    )
+
+    with patch(
+        "src.evaluation.acceptance_gate.run_analyzer_suite",
+        side_effect=lambda *a, **kw: slow_pass("analyzer")(),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_generator_suite",
+        side_effect=lambda *a, **kw: slow_pass("generator")(),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_ui_suite",
+        side_effect=lambda *a, **kw: slow_pass("ui")(),
+    ):
+        t0 = _time.monotonic()
+        report = run_gate(opts)
+        wall = _time.monotonic() - t0
+
+    # Serial: must take at least the full sum of suite sleeps (with a
+    # small fudge for clock granularity).
+    assert wall >= 3 * SLEEP * 0.9, (
+        f"serial wall time {wall:.3f}s should be ≥ {3 * SLEEP:.3f}s"
+    )
+    assert report.exit_code == EXIT_PASS
+
+
+def test_run_gate_canonical_ordering_under_parallel_dispatch(tmp_path: Path) -> None:
+    """Suites must appear in canonical order in `report.suites` regardless
+    of which future completes first. Stagger sleeps so completion order is
+    reversed (ui → generator → analyzer); insertion order must still be
+    (analyzer, generator, ui)."""
+    import time as _time
+    from src.evaluation.acceptance_gate import SuiteResult as _SR
+
+    def make(name: str, sleep_s: float):
+        def _run() -> _SR:
+            _time.sleep(sleep_s)
+            return _SR(name, "pass")
+        return _run
+
+    baseline = _passing_baseline(tmp_path)
+    opts = GateOptions(
+        quick=True, skip_ui=True,
+        report_path=tmp_path / "r.json",
+        analyzer_baseline_path=baseline,
+        parallel=True,
+    )
+
+    with patch(
+        "src.evaluation.acceptance_gate.run_analyzer_suite",
+        side_effect=lambda *a, **kw: make("analyzer", 0.30)(),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_generator_suite",
+        side_effect=lambda *a, **kw: make("generator", 0.20)(),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_ui_suite",
+        side_effect=lambda *a, **kw: make("ui", 0.05)(),
+    ):
+        report = run_gate(opts)
+
+    # ui finishes first, generator second, analyzer last — but
+    # report.suites must still iterate in canonical order. The
+    # section_fidelity suite is appended after the parallel dispatch
+    # (it runs sequentially after) so it shows up at the end.
+    keys = list(report.suites.keys())
+    assert keys[:3] == ["analyzer", "generator", "ui"]
+    # section_fidelity (added by PR #108) lands at the end, after the
+    # canonical 3 finish parallel-dispatching.
+    assert "section_fidelity" in keys
+
+
+def test_run_gate_exception_in_parallel_future_becomes_infra_error(tmp_path: Path) -> None:
+    """An unexpected exception inside a suite future must surface as
+    `infra-error` instead of crashing the whole gate. Other suites still
+    run."""
+    from src.evaluation.acceptance_gate import SuiteResult as _SR
+
+    def boom(*_a, **_kw):
+        raise RuntimeError("synthetic oom")
+
+    baseline = _passing_baseline(tmp_path)
+    opts = GateOptions(
+        quick=True, skip_ui=True,
+        report_path=tmp_path / "r.json",
+        analyzer_baseline_path=baseline,
+        parallel=True,
+    )
+
+    with patch(
+        "src.evaluation.acceptance_gate.run_analyzer_suite",
+        side_effect=boom,
+    ), patch(
+        "src.evaluation.acceptance_gate.run_generator_suite",
+        return_value=_SR("generator", "pass"),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_ui_suite",
+        return_value=_SR("ui", "skip"),
+    ):
+        report = run_gate(opts)
+
+    # infra-error wins the priority ladder.
+    assert report.exit_code == EXIT_INFRA
+    assert report.suites["analyzer"].status == "infra-error"
+    assert "synthetic oom" in (report.suites["analyzer"].message or "")
+    # Other suites are still recorded.
+    assert report.suites["generator"].status == "pass"
+    assert report.suites["ui"].status == "skip"
+
+
+def test_run_gate_default_parallel_is_true() -> None:
+    """`parallel=True` is the default — flipping requires a deliberate decision."""
+    opts = GateOptions()
+    assert opts.parallel is True
+
+
+def test_run_gate_serial_and_parallel_produce_same_report_shape(tmp_path: Path) -> None:
+    """Identical mock suites under parallel=True and parallel=False must
+    produce reports with the same suite ordering, statuses, and exit
+    code (i.e. the report shape is independent of dispatch mode)."""
+    from src.evaluation.acceptance_gate import SuiteResult as _SR
+
+    baseline = _passing_baseline(tmp_path)
+
+    def fixed():
+        return _SR("x", "pass")  # name overwritten by dispatcher
+
+    def make_opts(parallel: bool, report_path: Path) -> GateOptions:
+        return GateOptions(
+            quick=True, skip_ui=True,
+            report_path=report_path,
+            analyzer_baseline_path=baseline,
+            parallel=parallel,
+        )
+
+    with patch(
+        "src.evaluation.acceptance_gate.run_analyzer_suite",
+        side_effect=lambda *a, **kw: _SR("analyzer", "pass"),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_generator_suite",
+        side_effect=lambda *a, **kw: _SR("generator", "pass"),
+    ), patch(
+        "src.evaluation.acceptance_gate.run_ui_suite",
+        side_effect=lambda *a, **kw: _SR("ui", "skip"),
+    ):
+        ser = run_gate(make_opts(False, tmp_path / "ser.json"))
+        par = run_gate(make_opts(True, tmp_path / "par.json"))
+
+    assert list(ser.suites.keys()) == list(par.suites.keys())
+    assert {n: s.status for n, s in ser.suites.items()} == {
+        n: s.status for n, s in par.suites.items()
+    }
+    assert ser.exit_code == par.exit_code
