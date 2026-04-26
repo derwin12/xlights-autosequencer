@@ -92,10 +92,16 @@ def test_load_schema_mismatch_raises(tmp_path: Path) -> None:
 def test_load_v1_baseline_fails_clearly_so_users_re_snapshot(tmp_path: Path) -> None:
     """Schema bump 1 → 2 (2026-04-25) added per-fixture repetition_groups.
 
-    A v1 baseline.json on disk should trigger a clear schema-mismatch
-    error rather than silently loading partial data — users need a
-    visible signal to run `xlight-evaluate snapshot-analyzer` against
-    their refreshed code.
+    A v1 baseline.json on disk should trigger a clear error pointing at
+    the refresh command rather than silently loading partial data —
+    users need a visible signal to run `xlight-evaluate snapshot-analyzer`
+    against their refreshed code.
+
+    The error message format is owned by `src/schema_check.py`'s
+    `check_stale_cache` helper. We assert on the refresh-command hint
+    (the load-bearing part for the user) rather than the exact
+    "WARNING: ..." prefix so future helper-message tweaks don't break
+    this test.
     """
     path = tmp_path / "v1.json"
     # Old baselines were schema_version=1 (no per-fixture repetition_groups field).
@@ -108,7 +114,7 @@ def test_load_v1_baseline_fails_clearly_so_users_re_snapshot(tmp_path: Path) -> 
             },
         },
     }))
-    with pytest.raises(ValueError, match="schema mismatch"):
+    with pytest.raises(ValueError, match="snapshot-analyzer"):
         load(path)
 
 
