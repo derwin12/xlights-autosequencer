@@ -327,6 +327,66 @@ def test_report_path_respected(tmp_path: Path) -> None:
     assert not (tmp_path / "tests" / "golden" / "reports").exists()
 
 
+# ---------- generator-suite subprocess path resolution ----------
+
+def test_run_generator_suite_resolves_xlight_evaluate_via_sys_executable(tmp_path: Path) -> None:
+    """The gate's generator-suite invocation should resolve `xlight-evaluate`
+    via `sys.executable`'s bin directory rather than relying on PATH.
+
+    Without this, callers had to prefix the gate with
+    `PATH=".venv-vamp/bin:$PATH"` before invoking
+    `.venv-vamp/bin/xlight-evaluate gate` — the subprocess would fail
+    with FileNotFoundError because Python's interpreter was invoked by
+    absolute path but the spawned subprocess inherited only the caller's PATH.
+    """
+    import sys
+    from src.evaluation.acceptance_gate import run_generator_suite
+
+    bin_dir = Path(sys.executable).parent
+    fake_xe = bin_dir / "xlight-evaluate"
+    fake_xe_existed = fake_xe.exists()
+    if not fake_xe_existed:
+        fake_xe.write_text("#!/bin/sh\nexit 0\n")
+        fake_xe.chmod(0o755)
+    try:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = type("R", (), {
+                "returncode": 0, "stdout": "", "stderr": "",
+            })()
+            run_generator_suite(corpus=[
+                CorpusEntry(slug="x", path=tmp_path / "x.mp3", genre=None,
+                            tempo_bpm=None, expected_section_count=None, source="cc0"),
+            ])
+        assert mock_run.called
+        cmd = mock_run.call_args.args[0]
+        assert cmd[0] == str(fake_xe), f"expected {fake_xe}, got {cmd[0]!r}"
+        assert cmd[1] == "check"
+    finally:
+        if not fake_xe_existed:
+            fake_xe.unlink()
+
+
+def test_run_generator_suite_falls_back_to_bare_name_when_not_in_bin(tmp_path: Path) -> None:
+    """If sys.executable's bin dir doesn't contain xlight-evaluate, fall
+    back to the bare command and let PATH resolve it (legacy compat for
+    unconventional installs)."""
+    from src.evaluation.acceptance_gate import run_generator_suite
+
+    fake_python = tmp_path / "python"
+    fake_python.write_text("")
+    with patch("sys.executable", str(fake_python)):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = type("R", (), {
+                "returncode": 0, "stdout": "", "stderr": "",
+            })()
+            run_generator_suite(corpus=[
+                CorpusEntry(slug="x", path=tmp_path / "x.mp3", genre=None,
+                            tempo_bpm=None, expected_section_count=None, source="cc0"),
+            ])
+    cmd = mock_run.call_args.args[0]
+    assert cmd[0] == "xlight-evaluate"
+
+
 # ---------- --skip-ui behavior ----------
 
 def test_skip_ui_flag_does_not_invoke_pytest(tmp_path: Path) -> None:

@@ -200,7 +200,16 @@ def run_generator_suite(corpus: list[CorpusEntry]) -> SuiteResult:
     # which requires the generator pipeline. Delegate to `xlight-evaluate check`
     # as a subprocess so the gate preserves the existing exit-code contract
     # rather than re-implementing it.
-    cmd = ["xlight-evaluate", "check"]
+    #
+    # Resolve `xlight-evaluate` against the same Python that's running the gate
+    # — the entry point lives in the same console-script bin directory as
+    # `python` and `xlight-analyze`. Without this, `subprocess.run(["xlight-
+    # evaluate", ...])` resolves against the caller's PATH, which fails with
+    # FileNotFoundError when the gate is invoked via the .venv-vamp/bin/
+    # absolute path (a common pattern: `PATH=".venv-vamp/bin:$PATH"
+    # .venv-vamp/bin/xlight-evaluate gate` would no longer be required).
+    cmd_path = Path(sys.executable).parent / "xlight-evaluate"
+    cmd = [str(cmd_path) if cmd_path.exists() else "xlight-evaluate", "check"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
