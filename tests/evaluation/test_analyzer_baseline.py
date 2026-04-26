@@ -75,9 +75,17 @@ def test_load_missing_raises() -> None:
 
 
 def test_load_schema_mismatch_raises(tmp_path: Path) -> None:
+    """A baseline with an unrecognized schema must raise ValueError.
+
+    Older schemas are gating data — a silent swap would mask regressions —
+    so the helper is configured with on_older="raise". Newer schemas raise
+    SchemaFromFutureError, a ValueError subclass.
+    """
     path = tmp_path / "bad.json"
-    path.write_text(json.dumps({"schema_version": 999, "fixtures": {}}))
-    with pytest.raises(ValueError, match="schema mismatch"):
+    # Use an older version (0) so we exercise the on_older="raise" path
+    # regardless of the current SCHEMA_VERSION value.
+    path.write_text(json.dumps({"schema_version": 0, "fixtures": {}}))
+    with pytest.raises(ValueError, match="snapshot-analyzer"):
         load(path)
 
 

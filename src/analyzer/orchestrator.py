@@ -57,10 +57,31 @@ def _load_cache(audio_path: Path, source_hash: str) -> "HierarchyResult | None":
         return None
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
-        if (data.get("schema_version") == SCHEMA_VERSION
+        cached_schema = data.get("schema_version")
+        if (cached_schema == SCHEMA_VERSION
                 and data.get("source_hash") == source_hash):
             from src.analyzer.result import HierarchyResult as _HR
             return _HR.from_dict(data)
+        # Schema mismatch — emit a refresh-command hint so the user knows
+        # why a re-analysis is happening rather than seeing it silently.
+        # We deliberately don't raise here; a mismatched cache is a normal
+        # outcome (e.g. after a code update) and the orchestrator will
+        # rebuild it on this run. But quietly returning None is the bug
+        # the helper exists to fix.
+        if cached_schema is not None and cached_schema != SCHEMA_VERSION:
+            from src.schema_check import check_stale_cache, SchemaFromFutureError
+            try:
+                check_stale_cache(
+                    cached_schema,
+                    SCHEMA_VERSION,
+                    name=f"_hierarchy.json ({json_path.name})",
+                    refresh_hint=f"re-run analysis on {audio_path.name}",
+                    on_older="warn",
+                )
+            except SchemaFromFutureError as exc:
+                # Future-version data is unsafe to use even as a cache — log
+                # loudly and force re-analysis.
+                _snap_logger.warning("%s", exc)
     except (MemoryError, SystemExit, KeyboardInterrupt):
         raise
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:

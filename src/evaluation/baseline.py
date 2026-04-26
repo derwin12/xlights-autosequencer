@@ -92,11 +92,22 @@ def load_baseline(path: Path) -> dict:
     with open(path, "r", encoding="utf-8") as fh:
         data = json.load(fh)
 
-    if data.get("schema_version") != SCHEMA_VERSION:
-        raise BaselineSchemaError(
-            f"Baseline schema version {data.get('schema_version')!r} "
-            f"does not match expected {SCHEMA_VERSION}"
+    # Route through the shared stale-cache helper so the user sees a
+    # refresh-command hint, not just an inscrutable mismatch error.
+    # The typed exception (BaselineSchemaError) is preserved so existing
+    # callers that catch it continue to work.
+    from src.schema_check import check_stale_cache
+
+    try:
+        check_stale_cache(
+            data.get("schema_version"),
+            SCHEMA_VERSION,
+            name="Generator baseline",
+            refresh_hint="xlight-evaluate snapshot",
+            on_older="raise",
         )
+    except ValueError as exc:
+        raise BaselineSchemaError(str(exc)) from exc
 
     return data
 

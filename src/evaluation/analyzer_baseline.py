@@ -186,10 +186,20 @@ class AnalyzerBaseline:
     @classmethod
     def from_dict(cls, d: dict) -> "AnalyzerBaseline":
         schema = d.get("schema_version", 0)
-        if schema != SCHEMA_VERSION:
-            raise ValueError(
-                f"Analyzer baseline schema mismatch: expected {SCHEMA_VERSION}, got {schema}"
-            )
+        # Use the shared stale-cache helper with on_older="raise" — a stale
+        # baseline is gating data, so silently swapping it would mask
+        # regressions. snapshot_analyzer in src/cli/evaluate.py catches the
+        # resulting ValueError and rebuilds from scratch; the acceptance
+        # gate lets it propagate so the user is told how to refresh.
+        from src.schema_check import check_stale_cache
+
+        check_stale_cache(
+            schema,
+            SCHEMA_VERSION,
+            name="Analyzer baseline",
+            refresh_hint="xlight-evaluate snapshot-analyzer",
+            on_older="raise",
+        )
         return cls(
             fixtures={
                 slug: FixtureSnapshot.from_dict(data)
