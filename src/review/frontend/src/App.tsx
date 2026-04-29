@@ -337,6 +337,25 @@ export default function App() {
             if (lastScr && lastScr !== 'library') {
               setScreen(lastScr);
             }
+            // Restore analysis + assignments so timeline/theme screens
+            // don't sit on "Loading analysis…" after a page reload. Mirrors
+            // the fetch in handleSelectSong but covers the boot path.
+            if (lastScr === 'timeline' || lastScr === 'theme') {
+              Promise.all([
+                fetch(`/api/v1/songs/${song.song_id}/analysis`),
+                fetch(`/api/v1/songs/${song.song_id}/assignments`),
+              ])
+                .then(async ([aRes, asRes]) => {
+                  const analysisBody = aRes.ok ? await aRes.json() : null;
+                  const assignmentsBody = asRes.ok ? await asRes.json() : null;
+                  setData((d) => ({
+                    ...d,
+                    analysis: analysisBody,
+                    assignments: assignmentsBody?.assignments ?? [],
+                  }));
+                })
+                .catch(() => {});
+            }
           }
         }
       })
