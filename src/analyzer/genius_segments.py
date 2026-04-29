@@ -575,29 +575,25 @@ class GeniusSegmentAnalyzer:
 
                 audio = whisperx.load_audio(align_audio)
 
-                # Step 1: Quick transcribe to discover vocal regions
+                # Step 1: Free transcription pass to discover vocal regions.
+                # Delegates to ``src.analyzer.free_transcription`` so the same
+                # word marks are reusable by boundary refinement (OpenSpec
+                # change ``lyric-anchored-boundary-refinement``).
+                from src.analyzer.free_transcription import (
+                    derive_vocal_regions,
+                    transcribe_free,
+                )
+
                 log.info("Step 1: transcribing vocals stem to find vocal regions...")
-                model = whisperx.load_model("base", device, compute_type="float32", language="en")
-                transcribed = model.transcribe(audio, batch_size=8)
-                raw_segments = transcribed.get("segments", [])
-                log.info("Transcription found %d raw segments", len(raw_segments))
-                for seg in raw_segments:
-                    log.debug("  transcribed: %.1fs–%.1fs %r",
-                              seg.get("start", 0), seg.get("end", 0),
-                              seg.get("text", "")[:60])
+                free_words = transcribe_free(
+                    align_audio, language="en", device=device, duration_s=duration_s
+                )
+                log.info("Transcription found %d word marks", len(free_words))
+                for wm in free_words[:50]:
+                    log.debug("  transcribed: %.2fs–%.2fs %r",
+                              wm.start_ms / 1000.0, wm.end_ms / 1000.0, wm.label)
 
-                # Build vocal regions (groups of segments with gaps < 4s)
-                vocal_regions: list[tuple[float, float]] = []
-                if raw_segments:
-                    r_start = raw_segments[0]["start"]
-                    r_end = raw_segments[0]["end"]
-                    for seg in raw_segments[1:]:
-                        if seg["start"] - r_end > 4.0:
-                            vocal_regions.append((r_start, r_end))
-                            r_start = seg["start"]
-                        r_end = seg["end"]
-                    vocal_regions.append((r_start, r_end))
-
+                vocal_regions = derive_vocal_regions(free_words, gap_s=4.0)
                 log.info("Step 1: found %d vocal regions", len(vocal_regions))
                 for i, (rs, re_) in enumerate(vocal_regions):
                     log.info("  vocal region %d: %.1fs–%.1fs (%.1fs)", i, rs, re_, re_ - rs)
