@@ -398,3 +398,123 @@ class TestGracefulFallback:
                     result, _phoneme_result, warnings = analyzer.run("song.mp3", "tok", duration_ms=210_000)
 
         assert result is None
+
+
+# ── §6b: title-only fallback for non-interactive callers ─────────────────────
+
+class TestTitleOnlyFallback:
+    """fetch_genius_lyrics title-only fallback for non-interactive callers.
+
+    Per OpenSpec change `lyric-anchored-boundary-refinement` §6b: when the
+    first ``g.search_song(title, artist)`` call returns None and the caller
+    has opted in via ``allow_title_only_fallback=True``, the function
+    retries with ``g.search_song(title)`` (no artist). The Web flow opts
+    out (False, default) so it never silently matches the wrong cover/remix.
+    """
+
+    def _stub_genius_module(self, side_effect):
+        """Build a fake lyricsgenius module whose Genius() returns a stub
+        whose .search_song side-effect mimics the desired sequence."""
+        import types
+
+        fake_mod = types.ModuleType("lyricsgenius")
+
+        class _StubGenius:
+            def __init__(self, token, **kwargs):
+                self.verbose = False
+
+            def search_song(self, *args, **kwargs):
+                return side_effect.pop(0) if side_effect else None
+
+        fake_mod.Genius = _StubGenius
+        return fake_mod
+
+    def _install_fake(self, monkeypatch, side_effect):
+        import sys
+        fake = self._stub_genius_module(side_effect)
+        monkeypatch.setitem(sys.modules, "lyricsgenius", fake)
+
+    def _make_song(self, title="DJ Play a Christmas Song", artist="Cher"):
+        s = MagicMock()
+        s.title = title
+        s.artist = artist
+        s.lyrics = "[Chorus]\nDJ play a Christmas song"
+        s.url = "https://genius.com/x"
+        s._body = {"id": 999}
+        return s
+
+    def test_title_artist_hits_no_fallback(self, monkeypatch):
+        """Successful (title, artist) lookup → no fallback retry."""
+        song = self._make_song()
+        self._install_fake(monkeypatch, [song])
+        result = fetch_genius_lyrics(
+            "DJ Play a Christmas Song", "Cher", "tok",
+            allow_title_only_fallback=True,
+        )
+        assert result is not None
+        assert result.fallback_used is False
+        assert result.title == "DJ Play a Christmas Song"
+
+    def test_cli_batch_fallback_used(self, monkeypatch, caplog):
+        """CLI caller with fallback enabled: title+artist misses → title-only succeeds."""
+        import logging
+        match_song = self._make_song(title="Holiday Road", artist="Kesha")
+        self._install_fake(monkeypatch, [None, match_song])
+        with caplog.at_level(logging.INFO, logger="xlight.genius"):
+            result = fetch_genius_lyrics(
+                "Holiday Road", "Lindsey Buckingham", "tok",
+                allow_title_only_fallback=True,
+            )
+        assert result is not None
+        assert result.fallback_used is True
+        # INFO log emitted noting fallback was attempted.
+        assert any(
+            "title-only" in record.message.lower()
+            for record in caplog.records
+        ), [r.message for r in caplog.records]
+
+    def test_web_caller_no_fallback(self, monkeypatch):
+        """Web caller (allow_title_only_fallback=False) never retries."""
+        import sys
+        import types
+
+        calls: list[tuple] = []
+
+        class _Stub:
+            def __init__(self, token, **kwargs):
+                self.verbose = False
+
+            def search_song(self, *args, **kwargs):
+                calls.append(args)
+                return None  # nothing matches
+
+        fake = types.ModuleType("lyricsgenius")
+        fake.Genius = _Stub
+        monkeypatch.setitem(sys.modules, "lyricsgenius", fake)
+
+        result = fetch_genius_lyrics(
+            "Holiday Road", "Lindsey Buckingham", "tok",
+            allow_title_only_fallback=False,
+        )
+        assert result is None
+        assert len(calls) == 1, (
+            f"Expected exactly one search_song call (no fallback) but got: {calls}"
+        )
+        # And the single call carried both title+artist, not just title.
+        assert calls[0] == ("Holiday Road", "Lindsey Buckingham")
+
+    def test_both_fail_returns_none_no_exception(self, monkeypatch):
+        """Both title+artist and title-only return None → not-found, no raise."""
+        self._install_fake(monkeypatch, [None, None])
+        result = fetch_genius_lyrics(
+            "Made Up Title", "No Such Artist", "tok",
+            allow_title_only_fallback=True,
+        )
+        assert result is None  # graceful not-found
+
+    def test_geniusmatch_default_fallback_used_false(self):
+        """GeniusMatch dataclass default for fallback_used is False."""
+        m = GeniusMatch(
+            genius_id=1, title="t", artist="a", raw_lyrics="lyr",
+        )
+        assert m.fallback_used is False

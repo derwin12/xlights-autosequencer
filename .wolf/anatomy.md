@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-25T04:09:04.662Z
-> Files: 574 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-28T04:50:42.922Z
+> Files: 583 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -963,6 +963,22 @@
 - `vamp_structure.py` — T034: Vamp structural segmentation and tempo algorithms. (~567 tok)
 - `vamp_utils.py` — Shared helper functions for Vamp plugin algorithm wrappers. (~399 tok)
 
+## .claude/worktrees/agent-a4576356981f76a28/.wolf/
+
+- `anatomy.md` — anatomy.md (~13907 tok)
+
+## .claude/worktrees/refine-warnings-7/src/review/api/v1/
+
+- `analysis.py` — Analysis endpoints — T047. (~15291 tok)
+
+## .claude/worktrees/refine-warnings-7/src/story/
+
+- `builder.py` — Song story builder — top-level orchestration for the song story tool. (~14028 tok)
+
+## .claude/worktrees/refine-warnings-7/tests/unit/
+
+- `test_builder_refinement_warnings.py` — Unit tests for §7 — Step 15c capability-skip warnings. (~2480 tok)
+
 ## .github/workflows/
 
 - `evaluate.yml` — CI: Acceptance Gate (Tier A) (~1647 tok)
@@ -989,6 +1005,10 @@
 
 - `boundary_confidence_map.py` — Boundary confidence map — diagnostic tool for section boundary detection. (~8430 tok)
 
+## src/
+
+- `cli_old.py` — CLI entry point for xlight-analyze. (~34201 tok)
+
 ## src/analyzer/
 
 - `genius_segments.py` — Genius lyric segment timing: fetch, parse, and align section headers to audio. (~8841 tok)
@@ -996,12 +1016,17 @@
 ## src/cli/
 
 - `evaluate.py` — xlight-evaluate CLI — quality calibration subcommands. (~4748 tok)
+- `library.py` — ``library`` command group: list and refresh the user's analyzed song library. (~3148 tok)
 
 ## src/evaluation/
 
 - `acceptance_gate.py` — Acceptance-gate orchestrator. (~3802 tok)
 - `analyzer_baseline.py` — Analyzer-layer regression baseline. (~3292 tok)
 - `corpus_resolver.py` — Corpus resolver for the acceptance gate. (~1310 tok)
+
+## src/review/
+
+- `server.py` — Flask review server for xlight-analyze review UI. (~24403 tok)
 
 ## src/review/api/v1/
 
@@ -1061,6 +1086,11 @@
 - `test_timeline_flow.py` — Timeline screen navigation: tab access + analysis-gated placeholder. (~1108 tok)
 - `test_upload_flow.py` — Upload flow: pick a fixture MP3, POST /api/v1/import, verify analyze screen. (~398 tok)
 - `test_view_flow.py` — View flow: analyzed content renders in the UI coherently. (~602 tok)
+
+## tests/unit/
+
+- `test_genius_segments.py` — Tests for genius_segments: sanitize_title, strip_boilerplate, parse_sections, (~6014 tok)
+- `test_id3_confirm.py` — Unit tests for the ID3 confirmation prompt + atomic write-back (§6a). (~2208 tok)
 
 ## tests/validation/
 

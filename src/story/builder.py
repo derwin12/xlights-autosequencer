@@ -178,6 +178,7 @@ if match is not None:
         "artist": match.artist,
         "title": match.title,
         "genius_id": match.genius_id,
+        "fallback_used": getattr(match, "fallback_used", False),
     }}
 if structure is None or not structure.segments:
     print(json.dumps({{"ok": False, "warnings": warnings, "match": match_info}}))

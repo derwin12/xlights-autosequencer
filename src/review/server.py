@@ -114,6 +114,15 @@ class AnalysisJob:
         self._genius_event = threading.Event()
         self.genius_artist: str | None = None
         self.genius_title: str | None = None
+        # ID3 confirmation (§6a): background thread waits on this event
+        # for the user's pre-Genius confirmation response. Per OpenSpec
+        # change `lyric-anchored-boundary-refinement` D8.
+        self._id3_event = threading.Event()
+        # Response: "confirm" | "correct" | "skip" | None (timeout)
+        self.id3_response: str | None = None
+        self.id3_corrected_title: str | None = None
+        self.id3_corrected_artist: str | None = None
+        self.id3_write_back: bool = False
 
     def record_progress(self, idx: int, total: int, name: str, mark_count: int = 0) -> None:
         with self.lock:
@@ -154,9 +163,151 @@ class AnalysisJob:
         self.genius_title = title
         self._genius_event.set()
 
+    def prompt_id3_confirm(self, id3_title: str, id3_artist: str) -> None:
+        """Emit an id3_confirm_prompt event and clear the wait flag.
+
+        Fires before any Genius lookup. The frontend SHOULD respond via
+        ``/id3-confirm`` with one of {confirm, correct, skip} so the
+        waiting analysis thread can proceed. Per OpenSpec change
+        `lyric-anchored-boundary-refinement` §6a.
+        """
+        with self.lock:
+            self._id3_event.clear()
+            self.id3_response = None
+            self.id3_corrected_title = None
+            self.id3_corrected_artist = None
+            self.id3_write_back = False
+            self.events.append({
+                "id3_confirm_prompt": True,
+                "id3_title": id3_title,
+                "id3_artist": id3_artist,
+            })
+
+    def wait_for_id3_response(self, timeout: float = 120.0) -> str | None:
+        """Block until the user submits an ID3 response or timeout expires.
+
+        Returns one of {"confirm", "correct", "skip"} on response, or
+        None if the wait timed out (caller should treat None as "confirm
+        with prefilled values" — best-effort progress).
+        """
+        self._id3_event.wait(timeout=timeout)
+        return self.id3_response
+
+    def submit_id3_response(
+        self,
+        response: str,
+        title: str | None = None,
+        artist: str | None = None,
+        write_back: bool = False,
+    ) -> None:
+        """Called by the /id3-confirm endpoint to unblock the waiting thread.
+
+        ``response`` is one of {"confirm", "correct", "skip"}. For
+        "correct" the caller SHOULD supply ``title``/``artist``; for
+        "confirm" and "skip" they are ignored.
+        """
+        self.id3_response = response
+        self.id3_corrected_title = title
+        self.id3_corrected_artist = artist
+        self.id3_write_back = bool(write_back)
+        self._id3_event.set()
+
 
 _current_job: AnalysisJob | None = None
 _job_lock = threading.Lock()
+
+
+# ── ID3 read / write helpers (§6a) ────────────────────────────────────────────
+
+def read_id3_metadata(mp3_path: str) -> tuple[str, str]:
+    """Return ``(title, artist)`` from the file's ID3 tags.
+
+    Empty strings are returned for any field that is missing or unreadable;
+    no exception is raised. The reader prefers the EasyID3 view (which
+    handles legacy tag variants) and falls back to the raw ID3 frames
+    ``TIT2`` / ``TPE1``. A file with no tags at all yields ``("", "")``.
+    """
+    title = ""
+    artist = ""
+    try:
+        from mutagen.easyid3 import EasyID3  # type: ignore[import-not-found]
+        from mutagen.id3 import ID3NoHeaderError  # type: ignore[import-not-found]
+        try:
+            tags = EasyID3(mp3_path)
+            title = (tags.get("title") or [""])[0] or ""
+            artist = (tags.get("artist") or [""])[0] or ""
+        except ID3NoHeaderError:
+            return "", ""
+    except Exception:
+        # Fall back to raw frames if EasyID3 view isn't available.
+        try:
+            from mutagen.id3 import ID3  # type: ignore[import-not-found]
+            try:
+                tags = ID3(mp3_path)
+                title = str(tags.get("TIT2", "") or "")
+                artist = str(tags.get("TPE1", "") or "")
+            except Exception:
+                return "", ""
+        except Exception:
+            return "", ""
+    return title, artist
+
+
+def write_id3_metadata_atomic(mp3_path: str, title: str, artist: str) -> None:
+    """Write corrected ``title`` / ``artist`` to the MP3 atomically.
+
+    The original file is first copied to a sibling ``<file>.bak``. The
+    corrected file is written to a temp path in the same directory and
+    then ``os.replace``d into place. On failure between backup and
+    rename, the ``.bak`` is preserved so the user can recover. Per
+    OpenSpec change `lyric-anchored-boundary-refinement` §6a, design
+    discussion of `pattern_atomic_write`.
+    """
+    import os
+    import shutil
+    import tempfile
+
+    src = Path(mp3_path)
+    if not src.exists():
+        raise FileNotFoundError(mp3_path)
+    bak = src.with_name(src.name + ".bak")
+
+    # Step 1: write the .bak first (containing the original bytes).
+    shutil.copy2(src, bak)
+
+    # Step 2: copy the original to a temp file and modify the tags there.
+    tmp_fd, tmp_name = tempfile.mkstemp(
+        prefix=src.name + ".", suffix=".tmp", dir=str(src.parent),
+    )
+    os.close(tmp_fd)
+    tmp = Path(tmp_name)
+    try:
+        shutil.copy2(src, tmp)
+        from mutagen.easyid3 import EasyID3  # type: ignore[import-not-found]
+        from mutagen.id3 import ID3NoHeaderError  # type: ignore[import-not-found]
+        try:
+            tags = EasyID3(str(tmp))
+        except ID3NoHeaderError:
+            # File has no ID3 header — create one.
+            from mutagen.mp3 import MP3  # type: ignore[import-not-found]
+            mp3 = MP3(str(tmp))
+            mp3.add_tags()
+            mp3.save()
+            tags = EasyID3(str(tmp))
+        tags["title"] = [title]
+        tags["artist"] = [artist]
+        tags.save()
+
+        # Step 3: atomic replace. If this raises, the .bak remains for
+        # recovery and we surface the error to the caller.
+        os.replace(str(tmp), str(src))
+    except Exception:
+        # Clean up the temp file but NOT the .bak — preserves recovery.
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def _run_analysis(app: Flask, job: AnalysisJob) -> None:
@@ -218,8 +369,62 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
                     from src.story.builder import build_song_story
                     hierarchy_dict = json.loads(Path(out_path).read_text(encoding="utf-8"))
 
-                    # First attempt: automatic Genius lookup
-                    story_dict = build_song_story(hierarchy_dict, job.mp3_path)
+                    # ── ID3 confirmation gate (§6a) ────────────────────────────
+                    # Surface the file's ID3 tags to the user *before* the
+                    # analyzer kicks off Genius so wrong tags can be fixed
+                    # at the source rather than after a failed lookup. The
+                    # user has three choices: confirm (use as-is), correct
+                    # (replace title/artist, optionally write back to MP3),
+                    # or skip (don't try Genius this run). Per OpenSpec
+                    # change `lyric-anchored-boundary-refinement` D8.
+                    _id3_skip_genius = False
+                    _override_artist: str | None = None
+                    _override_title: str | None = None
+                    try:
+                        _id3_title, _id3_artist = read_id3_metadata(job.mp3_path)
+                    except Exception:
+                        _id3_title, _id3_artist = "", ""
+                    job.prompt_id3_confirm(_id3_title, _id3_artist)
+                    _resp = job.wait_for_id3_response(timeout=120)
+                    if _resp == "skip":
+                        _id3_skip_genius = True
+                    elif _resp == "correct":
+                        _override_title = (job.id3_corrected_title or "").strip() or _id3_title
+                        _override_artist = (job.id3_corrected_artist or "").strip() or _id3_artist
+                        if job.id3_write_back:
+                            try:
+                                write_id3_metadata_atomic(
+                                    job.mp3_path, _override_title, _override_artist,
+                                )
+                            except Exception as exc:
+                                # Surface to UI but proceed with in-memory metadata.
+                                job.record_warning(
+                                    f"ID3 write-back failed: {exc}. "
+                                    "Analyzer will use corrected metadata in memory."
+                                )
+                    # else: "confirm" or timeout → proceed with prefilled values.
+
+                    # First attempt: automatic Genius lookup (or skip).
+                    if _id3_skip_genius:
+                        # Build the story without invoking Genius. We
+                        # signal this by setting a sentinel override that
+                        # forces the Genius subprocess to abort early.
+                        import os as _os
+                        _prev_token = _os.environ.get("GENIUS_API_TOKEN")
+                        _os.environ["GENIUS_API_TOKEN"] = ""
+                        try:
+                            story_dict = build_song_story(hierarchy_dict, job.mp3_path)
+                        finally:
+                            if _prev_token is None:
+                                _os.environ.pop("GENIUS_API_TOKEN", None)
+                            else:
+                                _os.environ["GENIUS_API_TOKEN"] = _prev_token
+                    else:
+                        story_dict = build_song_story(
+                            hierarchy_dict, job.mp3_path,
+                            override_artist=_override_artist,
+                            override_title=_override_title,
+                        )
                     section_source = story_dict.get("global", {}).get("section_source", "")
 
                     # If Genius failed, prompt user for artist/title and retry
@@ -1039,6 +1244,37 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
         if not title_val:
             return jsonify({"error": "Title is required"}), 400
         job.submit_genius_response(artist_val, title_val)
+        return jsonify({"ok": True})
+
+    @app.route("/id3-confirm", methods=["POST"])
+    def id3_confirm():
+        """Receive the user's pre-Genius ID3 confirmation response.
+
+        Expects a JSON body with ``response`` ∈ {"confirm", "correct",
+        "skip"}. For ``correct`` the body MAY include ``title``,
+        ``artist`` (replacement values) and ``write_back`` (bool, opt-in
+        write-back to the MP3). Per OpenSpec change
+        `lyric-anchored-boundary-refinement` §6a.
+        """
+        job = _current_job
+        if job is None or job.status != "running":
+            return jsonify({"error": "No active analysis job"}), 400
+        data = request.get_json(silent=True) or {}
+        response = (data.get("response") or "").strip().lower()
+        if response not in ("confirm", "correct", "skip"):
+            return jsonify({"error": "response must be one of: confirm, correct, skip"}), 400
+        title_val: str | None = None
+        artist_val: str | None = None
+        write_back = False
+        if response == "correct":
+            title_val = (data.get("title") or "").strip() or None
+            artist_val = (data.get("artist") or "").strip() or None
+            if not title_val and not artist_val:
+                return jsonify({"error": "correct requires title and/or artist"}), 400
+            write_back = bool(data.get("write_back", False))
+        job.submit_id3_response(
+            response, title=title_val, artist=artist_val, write_back=write_back,
+        )
         return jsonify({"ok": True})
 
     @app.route("/upload", methods=["POST"])

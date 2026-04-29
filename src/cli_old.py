@@ -2359,11 +2359,24 @@ def story_cmd(
 
     # Build song story
     click.echo("Building song story...")
+    # Non-interactive caller: enable title-only Genius fallback so a
+    # title+artist mismatch (e.g. cover artist) doesn't silently drop the
+    # song's lyric structure when no UI is available to confirm metadata.
+    # See OpenSpec change `lyric-anchored-boundary-refinement` §6b.
+    import os as _os
+    _prev_fallback = _os.environ.get("_GENIUS_ALLOW_TITLE_ONLY_FALLBACK")
+    _os.environ["_GENIUS_ALLOW_TITLE_ONLY_FALLBACK"] = "1"
     try:
-        story = build_song_story(hierarchy_dict, audio_path)
-    except Exception as exc:
-        click.echo(f"ERROR: Story build failed: {exc}", err=True)
-        sys.exit(2)
+        try:
+            story = build_song_story(hierarchy_dict, audio_path)
+        except Exception as exc:
+            click.echo(f"ERROR: Story build failed: {exc}", err=True)
+            sys.exit(2)
+    finally:
+        if _prev_fallback is None:
+            _os.environ.pop("_GENIUS_ALLOW_TITLE_ONLY_FALLBACK", None)
+        else:
+            _os.environ["_GENIUS_ALLOW_TITLE_ONLY_FALLBACK"] = _prev_fallback
 
     # Write to output (skip overwrite protection when --force)
     if force and Path(output_path).exists():

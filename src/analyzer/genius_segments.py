@@ -54,6 +54,11 @@ class GeniusMatch:
     artist: str
     raw_lyrics: str
     url: str = ""
+    # True when the match was found by retrying with title only after a
+    # title+artist search returned None (non-interactive title-only fallback,
+    # per OpenSpec change `lyric-anchored-boundary-refinement` §6b). Web flow
+    # callers pass `allow_title_only_fallback=False` and never set this True.
+    fallback_used: bool = False
 
 
 # ── Title sanitisation ────────────────────────────────────────────────────────
@@ -189,12 +194,27 @@ def read_id3_tags(audio_path: str) -> tuple[str, str]:
 
 # ── Genius API fetch ──────────────────────────────────────────────────────────
 
-def fetch_genius_lyrics(title: str, artist: str, token: str) -> Optional[GeniusMatch]:
+def fetch_genius_lyrics(
+    title: str,
+    artist: str,
+    token: str,
+    *,
+    allow_title_only_fallback: bool = False,
+) -> Optional[GeniusMatch]:
     """
     Search Genius for the song and return a GeniusMatch, or None when no song
     is found.
 
     Uses remove_section_headers=False to preserve [Chorus] / [Verse] markers.
+
+    When ``allow_title_only_fallback=True`` and the initial
+    ``search_song(title, artist)`` returns None, a second attempt is made with
+    ``search_song(title)`` (no artist). The fallback is intended for
+    non-interactive callers (CLI batch, acceptance gate, library refresh)
+    that cannot prompt the user. The Web upload flow passes False here and
+    relies on its preventive ID3-confirmation prompt instead. When the
+    fallback produces a match, the returned ``GeniusMatch.fallback_used``
+    is True and an INFO-level log entry is emitted.
 
     Raises:
         ImportError: if lyricsgenius is not installed.
@@ -206,6 +226,20 @@ def fetch_genius_lyrics(title: str, artist: str, token: str) -> Optional[GeniusM
     genius = lyricsgenius.Genius(token, remove_section_headers=False)
     genius.verbose = False
     song = genius.search_song(title, artist)
+    fallback_used = False
+    if song is None and allow_title_only_fallback and title:
+        log.info(
+            "Genius title+artist lookup returned None for title=%r artist=%r; "
+            "retrying with title-only fallback",
+            title, artist,
+        )
+        song = genius.search_song(title)
+        if song is not None:
+            fallback_used = True
+            log.info(
+                "Genius title-only fallback matched: title=%r → %r by %r",
+                title, getattr(song, "title", ""), getattr(song, "artist", ""),
+            )
     if song is None:
         return None
     return GeniusMatch(
@@ -214,6 +248,7 @@ def fetch_genius_lyrics(title: str, artist: str, token: str) -> Optional[GeniusM
         artist=song.artist,
         raw_lyrics=song.lyrics,
         url=getattr(song, "url", "") or "",
+        fallback_used=fallback_used,
     )
 
 
@@ -363,9 +398,20 @@ class GeniusSegmentAnalyzer:
         stem_dir: Optional[Path] = None,
         duration_ms: int = 0,
         device: str = "cpu",
+        *,
+        allow_title_only_fallback: bool = False,
     ) -> tuple[Optional["SongStructure"], Optional["PhonemeResult"], list[str]]:  # noqa: F821
         """
         Run the full pipeline: ID3 → sanitize → Genius fetch → parse → align → emit.
+
+        ``allow_title_only_fallback`` opts in to retrying the Genius search
+        with the title alone when the ``(title, artist)`` search returns
+        None. Default False so the Web upload flow (preventive ID3
+        confirmation prompt) does not silently match the wrong cover/remix.
+        CLI batch / acceptance gate / library-refresh callers pass True.
+        It can also be set via the ``_GENIUS_ALLOW_TITLE_ONLY_FALLBACK=1``
+        environment variable for the subprocess invocation in the story
+        builder.
 
         Returns (SongStructure, PhonemeResult, warnings).
         - SongStructure holds section-level segment boundaries (chorus/verse/etc.).
@@ -413,8 +459,17 @@ class GeniusSegmentAnalyzer:
 
         # ── Fetch lyrics from Genius ──────────────────────────────────────────
         self.last_match = None
+        # Env-var bridge for the subprocess invocation in src/story/builder.py:
+        # the parent process decides interactivity and forwards the flag.
+        env_allow_fallback = os.environ.get(
+            "_GENIUS_ALLOW_TITLE_ONLY_FALLBACK", ""
+        ) == "1"
+        effective_allow_fallback = allow_title_only_fallback or env_allow_fallback
         try:
-            match = fetch_genius_lyrics(clean_title, artist, token)
+            match = fetch_genius_lyrics(
+                clean_title, artist, token,
+                allow_title_only_fallback=effective_allow_fallback,
+            )
         except ImportError:
             warnings.append(
                 "lyricsgenius is not installed. "
