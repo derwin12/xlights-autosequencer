@@ -1,0 +1,45 @@
+name: PR Screenshots — Rerun trigger
+
+# Re-dispatches the main screenshots workflow when someone comments
+# ``@pr-screenshots rerun`` on a PR. Useful when a fixture / external
+# state changed but the source files didn't, so a no-op commit isn't
+# warranted.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write       # needed to dispatch the main workflow
+  pull-requests: read  # read PR head ref
+
+jobs:
+  rerun:
+    if: |
+      github.event.issue.pull_request != null &&
+      contains(github.event.comment.body, '@pr-screenshots rerun')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Acknowledge with eyes reaction
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          set -e
+          gh api -X POST \
+            "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+            -f content=eyes >/dev/null
+
+      - name: Dispatch main workflow with PR number
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          gh workflow run screenshots-on-pr.yml \
+            --repo "${REPO}" \
+            -f pr_number="${PR_NUMBER}"
+          echo "Dispatched screenshots-on-pr.yml for PR #${PR_NUMBER}"

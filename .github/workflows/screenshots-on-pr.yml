@@ -1,0 +1,390 @@
+name: PR Screenshots
+
+# Captures UI screenshots on PRs that touch the review web UI, pushes
+# them to an orphan branch (``pr-screenshots/<N>``) so they can be linked
+# from raw.githubusercontent.com URLs, and posts a sticky comment with
+# inline images. Visible from the GitHub iOS app and Claude.ai's GitHub
+# integration.
+#
+# Triggers:
+# - ``pull_request`` (path-filtered) — automatic on every relevant push
+# - ``workflow_dispatch`` with ``pr_number`` — manual rerun (used by the
+#   ``@pr-screenshots rerun`` comment trigger workflow)
+#
+# Companion workflows:
+# - ``pr-screenshots-rerun.yml``  — comment-triggered redispatch
+# - ``pr-screenshots-cleanup.yml`` — delete orphan branch on PR close
+
+on:
+  pull_request:
+    paths:
+      - 'src/review/frontend/**'
+      - 'src/review/api/**'
+      - 'src/review/server.py'
+      - 'src/review/templates/**'
+      - 'tests/ui/**'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to capture screenshots for'
+        required: true
+        type: string
+
+permissions:
+  contents: write       # push to pr-screenshots/* orphan branches
+  pull-requests: write  # post / update sticky comment
+
+# One run per PR — cancel any in-flight runs on a new push.
+concurrency:
+  group: pr-screenshots-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Capture UI screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Resolve PR metadata
+        # Both event types need: PR number, head SHA, head ref, and the
+        # list of changed files (for diff-aware capture). For
+        # pull_request events these come from the event payload; for
+        # workflow_dispatch we fetch via gh.
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+            META=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}")
+            HEAD_SHA=$(echo "$META" | jq -r '.head.sha')
+            HEAD_REF=$(echo "$META" | jq -r '.head.ref')
+            BASE_REF=$(echo "$META" | jq -r '.base.ref')
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            HEAD_REF="${{ github.event.pull_request.head.ref }}"
+            BASE_REF="${{ github.event.pull_request.base.ref }}"
+          fi
+          # Changed-file list, used downstream to drive diff-aware capture.
+          CHANGED=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/files" \
+            --paginate --jq '.[].filename' | tr '\n' ' ')
+          {
+            echo "pr_number=${PR_NUMBER}"
+            echo "head_sha=${HEAD_SHA}"
+            echo "head_ref=${HEAD_REF}"
+            echo "base_ref=${BASE_REF}"
+            echo "changed_files<<EOF"
+            echo "${CHANGED}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.head_sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/review/frontend/package-lock.json
+
+      - name: Install Python package + UI test extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,ui-tests]"
+          pip install pillow
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: playwright install chromium --with-deps
+
+      - name: Install Playwright system deps
+        run: playwright install-deps chromium
+
+      - name: Cache CC0 corpus MP3s
+        uses: actions/cache@v4
+        with:
+          path: tests/fixtures/cc0_music/*.mp3
+          key: cc0-corpus-${{ hashFiles('tests/validation/download_fixtures.py', 'tests/fixtures/cc0_music/manifest.json') }}
+
+      - name: Download CC0 corpus
+        run: python -m tests.validation.download_fixtures
+
+      - name: Build frontend bundle
+        working-directory: src/review/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Compute pytest filter (diff-aware)
+        # Pragmatic mapping: if the diff only touches a screen / API
+        # surface that's exercised by a known subset of flows, run only
+        # those. Otherwise run the full UI suite. Mapping is best-effort
+        # — when in doubt we fall back to the full suite (the comment
+        # already says it's an opt-in, ~5 min run, so the cost is bounded).
+        id: filter
+        env:
+          CHANGED: ${{ steps.meta.outputs.changed_files }}
+        run: |
+          set -euo pipefail
+          # Default: run everything UI-marked except `content` (which
+          # needs the .venv-vamp sidecar).
+          FILTER='-m "ui and not content"'
+          # Heuristic mappings: changed-path glob → flow-test substring.
+          declare -A MAP=(
+            ["src/review/frontend/src/screens/Library.tsx"]="upload_flow folder_filter_flow multi_song_flow"
+            ["src/review/frontend/src/screens/Drop.tsx"]="upload_flow"
+            ["src/review/frontend/src/screens/Analyze.tsx"]="analyze_flow upload_flow id3_modal_flow metadata_edit_flow"
+            ["src/review/frontend/src/screens/Timeline.tsx"]="timeline_flow view_flow"
+            ["src/review/frontend/src/screens/Theme.tsx"]="view_flow"
+            ["src/review/frontend/src/screens/Export.tsx"]="export_flow"
+            ["src/review/frontend/src/screens/MetadataBanner.tsx"]="metadata_edit_flow analyze_flow"
+            ["src/review/frontend/src/components/Id3ConfirmModal/"]="id3_modal_flow"
+            ["src/review/api/v1/analysis.py"]="analyze_flow id3_modal_flow"
+          )
+          MATCHED=""
+          for path in "${!MAP[@]}"; do
+            for changed in $CHANGED; do
+              case "$changed" in
+                $path*) MATCHED="${MATCHED} ${MAP[$path]}" ;;
+              esac
+            done
+          done
+          # Dedupe + build a -k expression if we have any matches and the
+          # diff is "small enough" (no broad changes that would imply we
+          # need the full suite).
+          BROAD=false
+          for changed in $CHANGED; do
+            case "$changed" in
+              src/review/frontend/src/App.tsx|\
+              src/review/frontend/src/main.tsx|\
+              src/review/frontend/package.json|\
+              src/review/frontend/vite.config.ts|\
+              src/review/server.py|\
+              tests/ui/conftest.py)
+                BROAD=true ;;
+            esac
+          done
+          if [ -n "${MATCHED}" ] && [ "${BROAD}" = "false" ]; then
+            UNIQUE=$(echo "${MATCHED}" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ')
+            EXPR=$(echo "${UNIQUE}" | sed 's/  */ or /g' | sed 's/ or $//')
+            FILTER="${FILTER} -k \"${EXPR}\""
+            echo "Diff-aware filter — running: ${EXPR}"
+          else
+            echo "Running full UI suite (broad change or no specific match)."
+          fi
+          echo "pytest_filter=${FILTER}" >> "$GITHUB_OUTPUT"
+
+      - name: Run UI flows (capture screenshots)
+        # ``continue-on-error`` so a single flaky flow doesn't block the
+        # screenshot upload — the failed tests still leave their snapshots
+        # up to the failure point.
+        env:
+          PYTEST_FILTER: ${{ steps.filter.outputs.pytest_filter }}
+        run: |
+          set -euo pipefail
+          eval pytest tests/ui/ ${PYTEST_FILTER} \
+            --browser chromium \
+            --tb=short -v \
+            --full-page-screenshot
+        continue-on-error: true
+
+      - name: List captured screenshots
+        run: |
+          if [ -d tests/golden/ui/screenshots ]; then
+            find tests/golden/ui/screenshots -type f | sort
+          else
+            echo "No screenshots produced."
+          fi
+
+      - name: Generate mobile thumbnails
+        # 240px-wide JPEG thumbs at q=72 alongside the originals. Posted
+        # in the comment as a clickable preview that opens the full-res
+        # image — saves cellular data on iOS while keeping the high-res
+        # available for detail review.
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          root = Path("tests/golden/ui/screenshots")
+          if not root.is_dir():
+              raise SystemExit
+          THUMB_W = 240
+          for src in root.rglob("*"):
+              if src.suffix.lower() not in (".jpg", ".jpeg", ".png"):
+                  continue
+              if src.stem.endswith(".thumb"):
+                  continue
+              thumb = src.with_name(f"{src.stem}.thumb.jpg")
+              try:
+                  with Image.open(src) as im:
+                      im = im.convert("RGB")
+                      ratio = THUMB_W / im.width
+                      im = im.resize((THUMB_W, max(1, int(im.height * ratio))))
+                      im.save(thumb, "JPEG", quality=72, optimize=True)
+              except Exception as exc:
+                  print(f"thumb failed for {src}: {exc}")
+          PY
+
+      - name: Upload screenshot artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-screenshots-${{ steps.meta.outputs.pr_number }}
+          path: tests/golden/ui/screenshots/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Build sticky-comment body
+        # Compose BEFORE switching branches — once we check out the
+        # orphan branch the screenshots dir layout changes.
+        id: build_body
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.meta.outputs.head_sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          BRANCH="pr-screenshots/${PR_NUMBER}"
+          BASE_RAW="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
+          BODY=/tmp/pr-screenshots-comment.md
+          if [ ! -d tests/golden/ui/screenshots ] || [ -z "$(ls -A tests/golden/ui/screenshots 2>/dev/null)" ]; then
+            {
+              echo "<!-- pr-screenshots-bot -->"
+              echo "## 🖼️ UI screenshots"
+              echo
+              echo "_No screenshots were captured for commit \`${SHA::8}\`._"
+              echo
+              echo "[Run log](https://github.com/${REPO}/actions/runs/${RUN_ID})"
+            } > "$BODY"
+          else
+            {
+              echo "<!-- pr-screenshots-bot -->"
+              echo "## 🖼️ UI screenshots"
+              echo
+              echo "Captured for commit \`${SHA::8}\` · [Run log](https://github.com/${REPO}/actions/runs/${RUN_ID}) · [Download artifact](https://github.com/${REPO}/actions/runs/${RUN_ID}#artifacts) · Comment \`@pr-screenshots rerun\` to refresh."
+              echo
+              for d in tests/golden/ui/screenshots/*/ ; do
+                [ -d "$d" ] || continue
+                name=$(basename "$d")
+                echo "<details><summary><strong>${name}</strong></summary>"
+                echo
+                # Pair each full-res image with its .thumb.jpg companion;
+                # render as a clickable thumbnail.
+                for f in $(ls -1 "$d" 2>/dev/null | sort); do
+                  case "$f" in
+                    *.thumb.jpg) continue ;;
+                    *.jpg|*.jpeg|*.png) ;;
+                    *) continue ;;
+                  esac
+                  stem="${f%.*}"
+                  thumb_url="${BASE_RAW}/${name}/${stem}.thumb.jpg"
+                  full_url="${BASE_RAW}/${name}/${f}"
+                  echo "**${f}**"
+                  echo
+                  echo "<a href=\"${full_url}\"><img src=\"${thumb_url}\" alt=\"${f}\" width=\"240\"></a>"
+                  echo
+                done
+                echo "</details>"
+                echo
+              done
+            } > "$BODY"
+          fi
+          echo "body_path=${BODY}" >> "$GITHUB_OUTPUT"
+
+      # ── Optional: Claude visual review ──────────────────────────────
+      # Runs BEFORE we switch to the orphan branch — the working tree
+      # still has both the screenshots AND tools/claude_visual_review.py.
+      # Gated on ``ANTHROPIC_API_KEY`` so forks and contributors without
+      # the secret get a clean no-op.
+      - name: Claude visual review (optional)
+        if: success()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.meta.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "ANTHROPIC_API_KEY not configured — skipping Claude visual review."
+            exit 0
+          fi
+          if [ ! -f tools/claude_visual_review.py ]; then
+            echo "tools/claude_visual_review.py missing — skipping."
+            exit 0
+          fi
+          python tools/claude_visual_review.py \
+            --pr "${PR_NUMBER}" \
+            --repo "${REPO}" \
+            --sha "${SHA}" \
+            --screenshots-dir tests/golden/ui/screenshots/
+
+      - name: Push screenshots to pr-screenshots/<N>
+        if: success()
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          SHA: ${{ steps.meta.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          BRANCH="pr-screenshots/${PR_NUMBER}"
+          if [ ! -d tests/golden/ui/screenshots ] || [ -z "$(ls -A tests/golden/ui/screenshots 2>/dev/null)" ]; then
+            echo "No screenshots to push — skipping."
+            exit 0
+          fi
+          STAGE=$(mktemp -d)
+          cp -R tests/golden/ui/screenshots/. "$STAGE/"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan "$BRANCH"
+          git rm -rf . >/dev/null 2>&1 || true
+          rm -rf .[!.]* * 2>/dev/null || true
+          cp -R "$STAGE/." .
+          {
+            echo "# PR #${PR_NUMBER} — UI screenshots"
+            echo
+            echo "Auto-generated for commit \`${SHA}\` by \`.github/workflows/screenshots-on-pr.yml\`."
+            echo
+            echo "Force-pushed on every run; do not link to specific commits on this branch."
+          } > README.md
+          git add -A
+          git commit -m "Screenshots for PR #${PR_NUMBER} (${SHA})" || { echo "no changes"; exit 0; }
+          git push origin "${BRANCH}" --force
+
+      - name: Post / update sticky PR comment
+        if: success()
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BODY_PATH: ${{ steps.build_body.outputs.body_path }}
+        run: |
+          set -euo pipefail
+          EXISTING=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | startswith("<!-- pr-screenshots-bot -->")) | .id' \
+            | head -n1)
+          BODY_JSON=$(jq -Rs '{body: .}' < "${BODY_PATH}")
+          if [ -n "${EXISTING:-}" ]; then
+            echo "Updating sticky comment ${EXISTING}"
+            echo "${BODY_JSON}" | gh api -X PATCH "repos/${REPO}/issues/comments/${EXISTING}" --input -
+          else
+            echo "Posting new sticky comment"
+            echo "${BODY_JSON}" | gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" --input -
+          fi
