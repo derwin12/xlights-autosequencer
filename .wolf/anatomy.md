@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-28T04:50:42.922Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-04-30T20:49:37.799Z
 > Files: 583 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -1082,7 +1082,7 @@
 - `test_export_flow.py` — Export flow: the export screen renders without crash for an analyzed song. (~878 tok)
 - `test_folder_filter_flow.py` — Folder toggle + filter pill interactions on the library screen. (~980 tok)
 - `test_metadata_edit_flow.py` — Metadata override flow: edit artist/title on the analyze-screen banner, (~934 tok)
-- `test_multi_song_flow.py` — Multi-song library navigation: upload two songs, navigate between them, (~1028 tok)
+- `test_multi_song_flow.py` — Multi-song library navigation: upload two songs, navigate between them, (~1298 tok)
 - `test_timeline_flow.py` — Timeline screen navigation: tab access + analysis-gated placeholder. (~1108 tok)
 - `test_upload_flow.py` — Upload flow: pick a fixture MP3, POST /api/v1/import, verify analyze screen. (~398 tok)
 - `test_view_flow.py` — View flow: analyzed content renders in the UI coherently. (~602 tok)
