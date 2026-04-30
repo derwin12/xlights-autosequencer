@@ -113,14 +113,24 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e ".[dev,ui-tests]"
+      - name: Resolve Playwright version
+        # Key the browser cache on the *resolved* Playwright version, not on
+        # pyproject.toml. The pin is `playwright>=1.48` (a floor), so pip can
+        # resolve a newer Playwright that wants a newer browser revision while
+        # the pyproject.toml hash stays the same — restoring stale browsers
+        # from cache and skipping the install. See `pip show playwright`.
+        id: pw
+        run: |
+          version=$(python -c 'from importlib.metadata import version; print(version("playwright"))')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
-        # Playwright Chromium is ~90 MB — cache by the Playwright version
-        # pin in pyproject.toml so the download only happens on dep bumps.
+        # Playwright Chromium is ~90 MB — cache by Playwright version so the
+        # download only happens on dep bumps.
         uses: actions/cache@v4
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: playwright install chromium --with-deps
