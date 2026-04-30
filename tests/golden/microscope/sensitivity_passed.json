@@ -1,0 +1,31 @@
+{
+  "run_at": "2026-04-30T18:48:33Z",
+  "metric_set_hash": "d8ed8acdfc823807e4432535ff98ef21b1d516d7ebcd1bfd955a81ca46a5ea8d",
+  "all_passed": true,
+  "results": [
+    {
+      "probe_name": "single_effect",
+      "passed": true,
+      "detail": "distinct_effect_count=1.000000, effect_repeat_rate=0.980000 (N=50 placements, all Plasma)",
+      "failure_reason": null
+    },
+    {
+      "probe_name": "all_black_palette",
+      "passed": true,
+      "detail": "palette_luminance_mean=0.000000, palette_luminance_cv=0.000000 (N=5 placements, all #000000)",
+      "failure_reason": null
+    },
+    {
+      "probe_name": "forced_bad_pairing",
+      "passed": true,
+      "detail": "bad_pairing_pct_handlist=1.000000, bad_pairing_pct_catalog=0.000000, pairing_disagreement_pct=1.000000 (N=8 placements, all Plasma+outline)",
+      "failure_reason": null
+    },
+    {
+      "probe_name": "deterministic_seed",
+      "passed": true,
+      "detail": "determinism OK (17 scalar metrics matched within 1e-09); seed-flip placement diffs=2, length_delta=0 (seed=42: 68 placements, seed=9999: 68 placements)",
+      "failure_reason": null
+    }
+  ]
+}

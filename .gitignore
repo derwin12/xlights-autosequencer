@@ -101,3 +101,6 @@ docs/ssm/
 
 # Diagnostic screenshots from tests/ui/flows/test_screenshot_all_timelines.py — opt-in via -m screenshot_all
 tests/golden/timeline-screenshots/
+
+# Microscope per-run outputs (regenerated locally)
+microscope-out/

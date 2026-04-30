@@ -421,6 +421,37 @@ requires a paired entry in `docs/known-broken-tests.md` with diagnosis and
 remediation plan. **No silent quarantine** — quarantined tests rot, and a
 quarantine ratchet without a paired doc entry erodes the gate over time.
 
+### Visual-quality microscope
+
+The `microscope` subcommand group measures the visual quality of generated
+sequences against a panel of CC0 fixtures. It is a developer tool, not part
+of CI — run it locally when changing effect selection, palette, pacing, or
+prop-pairing logic.
+
+```bash
+# Per-song run (writes microscope-out/microscope/<slug>/metrics.json)
+xlight-evaluate microscope run path/to/song.mp3
+
+# Whole panel (4 fixtures: funshine, maple_leaf_rag, nostalgic_piano,
+# space_ambience) with optional --baseline diff
+xlight-evaluate microscope panel --baseline tests/golden/microscope/
+
+# Sensitivity gate — must pass before promoting any baseline. Writes
+# tests/golden/microscope/sensitivity_passed.json on success.
+xlight-evaluate microscope sensitivity
+
+# Promote per-song metrics.json into tests/golden/microscope/<slug>/baseline.json.
+# Refuses to run unless the sensitivity proof file exists and is at least as
+# recent as the most-recent commit touching src/evaluation/metrics/,
+# src/evaluation/xsq_reader.py, or src/effects/builtin_effects.json.
+xlight-evaluate microscope baseline
+```
+
+When the metric registry changes (new metric, removed metric, definition
+updated), the sensitivity proof's `metric_set_hash` no longer matches the
+current registry — re-run `microscope sensitivity` before any
+`microscope baseline`.
+
 ### Explicit override
 
 If the user explicitly says "just do it," "skip the design," or similar, comply

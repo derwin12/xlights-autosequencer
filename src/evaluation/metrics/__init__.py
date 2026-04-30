@@ -27,6 +27,13 @@ class MetricDefinition:
     tolerance: MetricTolerance | None   # None -> use DEFAULT_TOLERANCE
     compute: Callable                    # signature varies by metric
     pro_comparable: bool
+    # Direction-of-good for the metric's scalar value.
+    # ``None`` (the default) means the direction has not been validated
+    # against rendered output; the diff tool renders movement arrows
+    # without improvement claims. ``True``/``False`` are reserved for
+    # metrics whose direction has been validated. See OpenSpec change
+    # ``visual-quality-microscope`` design.md.
+    higher_is_better: bool | None = None
 
 
 DEFAULT_TOLERANCE = MetricTolerance(kind="relative", value=0.10)

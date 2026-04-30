@@ -20,6 +20,13 @@ def main() -> None:
     cli()
 
 
+# Register the microscope subcommand group. Imported lazily-at-module-load
+# (not inside ``main()``) so ``xlight-evaluate --help`` lists it.
+from src.cli.microscope import microscope_group  # noqa: E402
+
+cli.add_command(microscope_group, name="microscope")
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

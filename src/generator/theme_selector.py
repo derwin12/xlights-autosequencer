@@ -20,6 +20,7 @@ def select_themes(
     genre: str,
     occasion: str,
     scale: str | None = None,
+    base_variation_seed: int = 0,
 ) -> list[SectionAssignment]:
     """Select a theme for each song section based on mood, genre, and occasion.
 
@@ -31,6 +32,12 @@ def select_themes(
     - Repeated section types (e.g. Chorus 1, Chorus 2) get the same theme
       but with different variation_seed values
     - Fallback broadening: genre -> "any", then occasion -> "general"
+
+    ``base_variation_seed`` shifts every section's variation seed by a
+    constant offset (default 0 preserves the historical
+    ``variation_seed=section_index`` behaviour). The microscope tool
+    sets it from ``GenerationConfig.variation_seed`` for deterministic
+    measurement runs.
     """
     assignments: list[SectionAssignment] = []
     prev_theme_name: str | None = None
@@ -53,7 +60,7 @@ def select_themes(
         assignments.append(SectionAssignment(
             section=section,
             theme=theme,
-            variation_seed=i,
+            variation_seed=base_variation_seed + i,
         ))
         prev_theme_name = theme.name
 

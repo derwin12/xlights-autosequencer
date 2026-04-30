@@ -209,6 +209,12 @@ class GenerationConfig:
     mood_intent: str = "auto"           # Brief mood axis: auto/party/emotional/dramatic/playful
     duration_feel: str = "auto"         # Brief duration axis: auto/snappy/balanced/flowing
     accent_strength: str = "auto"       # Brief accent axis: auto/subtle/strong
+    # Base seed for theme selection variation. Each section's ThemeAssignment
+    # gets variation_seed = config.variation_seed + section_index, so changing
+    # this value reproducibly shifts every section's alternate selection. The
+    # microscope tool relies on this for deterministic runs (OpenSpec
+    # ``visual-quality-microscope``).
+    variation_seed: int = 0
 
     _VALID_CURVES_MODES = frozenset({"all", "brightness", "speed", "color", "none"})
     _VALID_MOOD_INTENTS = frozenset({"auto", "party", "emotional", "dramatic", "playful"})

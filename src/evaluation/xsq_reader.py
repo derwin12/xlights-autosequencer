@@ -12,12 +12,20 @@ from src.evaluation.models import Placement, SequenceSummary
 # ZIP magic bytes — first two bytes of every ZIP/xsqz file
 _ZIP_MAGIC = b"PK"
 
-# Ordered token → prop-type mappings (order matters: longer/more specific first)
+# Ordered token → prop-type mappings (order matters: first match wins).
+# Pre-existing token order is preserved as-is — reordering would change
+# inferences (e.g. ``MegaTree`` matches ``tree`` first today; swapping
+# ``tree`` and ``mega`` would change that). NEW additions follow the
+# rule "longest token first, ties broken alphabetically" but only among
+# themselves. See OpenSpec change ``visual-quality-microscope``
+# design.md "Extending the prop-type inference vocabulary".
 _PROP_TYPE_TOKENS: list[tuple[str, str]] = [
     ("snowflake", "snowflake"),
+    ("vertical", "vertical"),  # NEW — catalog vocabulary alignment
     ("outline", "outline"),
     ("candy", "candy"),
     ("matrix", "matrix"),
+    ("radial", "radial"),       # NEW — catalog vocabulary alignment
     ("arch", "arch"),
     ("tree", "tree"),
     ("star", "star"),

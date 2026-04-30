@@ -163,6 +163,7 @@ def build_plan(
     assignments = select_themes(
         section_energies, theme_library, inferred_genre, inferred_occasion,
         scale=scale,
+        base_variation_seed=config.variation_seed,
     )
 
     # Apply theme overrides before deriving the anchor palette so the anchor
@@ -555,6 +556,7 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
     assignments = select_themes(
         target_section_energies, theme_library, config.genre, config.occasion,
         scale=ef_regen.get("scale"),
+        base_variation_seed=config.variation_seed,
     )
 
     # Build rotation plan for regenerated sections

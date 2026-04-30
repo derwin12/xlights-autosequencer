@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "description": "Reference panel for microscope visual quality measurement",
+  "cc0_manifest": "tests/fixtures/cc0_music/manifest.json",
+  "slugs": ["funshine", "maple_leaf_rag", "nostalgic_piano", "space_ambience"],
+  "layout": "tests/fixtures/reference/layout.xml"
+}
