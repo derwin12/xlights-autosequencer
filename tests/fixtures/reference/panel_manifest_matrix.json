@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "description": "Matrix-heavy panel — auto-promotes two corner-positioned matrix props to HERO tier so the matrix-prop code path actually receives placements. Use alongside panel_manifest.json for changes that touch matrix selection logic.",
+  "cc0_manifest": "tests/fixtures/cc0_music/manifest.json",
+  "slugs": ["funshine", "maple_leaf_rag", "nostalgic_piano", "space_ambience"],
+  "layout": "tests/fixtures/reference/layout_matrix_heavy.xml"
+}

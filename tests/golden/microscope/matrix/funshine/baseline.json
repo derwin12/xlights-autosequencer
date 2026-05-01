@@ -1,0 +1,113 @@
+{
+  "slug": "funshine",
+  "audio_path": "/Users/rob/git/xlight-autosequencer/tests/fixtures/cc0_music/funshine.mp3",
+  "xsq_path": "/Users/rob/git/xlight-autosequencer/microscope-out-matrix/microscope/funshine/funshine.xsq",
+  "generated_at": "2026-05-01T03:27:24Z",
+  "config_snapshot": {
+    "genre": "pop",
+    "occasion": "general",
+    "force_reanalyze": false,
+    "target_sections": null,
+    "theme_overrides": null,
+    "tiers": null,
+    "transition_mode": "subtle",
+    "curves_mode": "none",
+    "focused_vocabulary": true,
+    "embrace_repetition": true,
+    "palette_restraint": true,
+    "duration_scaling": true,
+    "beat_accent_effects": true,
+    "tier_selection": true,
+    "mood_intent": "auto",
+    "duration_feel": "auto",
+    "accent_strength": "auto",
+    "variation_seed": 42
+  },
+  "metrics": {
+    "placements_per_minute": {
+      "value": 24.71723603142966,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "density_energy_correlation": {
+      "value": 0.0,
+      "kind": "scalar",
+      "reliability": "reduced"
+    },
+    "palette_top5_colors": {
+      "value": 0.11436804898914858,
+      "kind": "structured",
+      "reliability": "ok"
+    },
+    "per_section_palette_diversity": {
+      "value": 43.0,
+      "kind": "per_section",
+      "reliability": "ok"
+    },
+    "effect_type_histogram": {
+      "value": 0.0,
+      "kind": "distribution",
+      "reliability": "ok"
+    },
+    "beat_alignment_pct": {
+      "value": 0.0,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "section_transition_delta": {
+      "value": 0.0,
+      "kind": "per_section",
+      "reliability": "ok"
+    },
+    "tier_utilization": {
+      "value": 1.0,
+      "kind": "per_section",
+      "reliability": "ok"
+    },
+    "theme_assignment_consistency": {
+      "value": 1.0,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "palette_luminance_mean": {
+      "value": 126.82256981403935,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "palette_luminance_cv": {
+      "value": 0.26236864582468244,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "distinct_effect_count": {
+      "value": 3.0,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "effect_repeat_rate": {
+      "value": 0.9411764705882353,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "per_prop_type_diversity": {
+      "value": 2.0,
+      "kind": "structured",
+      "reliability": "ok"
+    },
+    "bad_pairing_pct_handlist": {
+      "value": 0.0,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "bad_pairing_pct_catalog": {
+      "value": 0.0,
+      "kind": "scalar",
+      "reliability": "ok"
+    },
+    "pairing_disagreement_pct": {
+      "value": 0.0,
+      "kind": "scalar",
+      "reliability": "ok"
+    }
+  }
+}

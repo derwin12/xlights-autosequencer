@@ -436,6 +436,13 @@ xlight-evaluate microscope run path/to/song.mp3
 # space_ambience) with optional --baseline diff
 xlight-evaluate microscope panel --baseline tests/golden/microscope/
 
+# Matrix-heavy panel — same 4 fixtures on a layout that auto-promotes two
+# corner-positioned matrix props to HERO tier so the matrix-prop code path
+# actually receives placements. Use when changing matrix-related logic.
+xlight-evaluate microscope panel \
+  --manifest tests/fixtures/reference/panel_manifest_matrix.json \
+  --baseline tests/golden/microscope/matrix/
+
 # Sensitivity gate — must pass before promoting any baseline. Writes
 # tests/golden/microscope/sensitivity_passed.json on success.
 xlight-evaluate microscope sensitivity

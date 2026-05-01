@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Reference layout for the matrix-heavy panel pass.
+
+  Identical to layout.xml plus two corner-positioned matrix props
+  (MatrixHeroTL, MatrixHeroBR) with parm1*parm2=2048 pixels each.
+  These dominate the layout's pixel-count distribution, so the
+  classifier's pixel-outlier rule (src/grouper/classifier.py:_find_pixel_outliers)
+  auto-promotes them to HERO tier. The grouper then emits
+  08_HERO_MatrixHeroTL and 08_HERO_MatrixHeroBR — placement-active
+  groups whose model_name contains the literal "matrix" token, so
+  src/evaluation/xsq_reader.py:_PROP_TYPE_TOKENS resolves them to
+  prop_type="matrix" and the suitability metrics' matrix code path
+  finally fires.
+
+  The original MatrixCenter is kept; it lands in 02_GEO_Mid/Center
+  (placement-inactive bins), so it doesn't exercise the matrix path.
+-->
+<xlightsproject>
+  <modelGroups>
+    <modelGroup name="All Props"
+      models="MatrixCenter,MatrixHeroTL,MatrixHeroBR,MegaTree,TreeLeft,TreeRight,ArchLeft,ArchRight,OutlineRoofLeft,OutlineRoofRight,RadialSpinner"
+      layout="minimalGrid" GridSize="800"/>
+  </modelGroups>
+  <models>
+    <!-- matrix at canvas center (placement-inactive, kept for parity with layout.xml) -->
+    <model name="MatrixCenter" DisplayAs="Matrix"
+           StringType="RGB Nodes" StartChannel="1" PixelCount="300"
+           WorldPosX="400" WorldPosY="300" WorldPosZ="0"
+           ScaleX="3.0" ScaleY="2.0" ScaleZ="1.0"/>
+
+    <!-- matrix top-left corner: 32×64=2048 px → pixel outlier → 08_HERO_MatrixHeroTL -->
+    <model name="MatrixHeroTL" DisplayAs="Matrix"
+           StringType="RGB Nodes" StartChannel="901"
+           parm1="32" parm2="64"
+           WorldPosX="100" WorldPosY="500" WorldPosZ="0"
+           ScaleX="2.0" ScaleY="2.0" ScaleZ="1.0"/>
+
+    <!-- matrix bot-right corner: 32×64=2048 px → pixel outlier → 08_HERO_MatrixHeroBR -->
+    <model name="MatrixHeroBR" DisplayAs="Matrix"
+           StringType="RGB Nodes" StartChannel="3001"
+           parm1="32" parm2="64"
+           WorldPosX="700" WorldPosY="100" WorldPosZ="0"
+           ScaleX="2.0" ScaleY="2.0" ScaleZ="1.0"/>
+
+    <model name="MegaTree" DisplayAs="Tree 360"
+           StringType="RGB Nodes" StartChannel="5101" PixelCount="200"
+           WorldPosX="400" WorldPosY="100" WorldPosZ="0"
+           ScaleX="1.5" ScaleY="3.0" ScaleZ="1.5"/>
+
+    <model name="TreeLeft" DisplayAs="Tree 360"
+           StringType="RGB Nodes" StartChannel="5701" PixelCount="100"
+           WorldPosX="150" WorldPosY="100" WorldPosZ="0"
+           ScaleX="1.0" ScaleY="2.0" ScaleZ="1.0"/>
+
+    <model name="TreeRight" DisplayAs="Tree 360"
+           StringType="RGB Nodes" StartChannel="6001" PixelCount="100"
+           WorldPosX="650" WorldPosY="100" WorldPosZ="0"
+           ScaleX="1.0" ScaleY="2.0" ScaleZ="1.0"/>
+
+    <model name="ArchLeft" DisplayAs="Arch"
+           StringType="RGB Nodes" StartChannel="6301" PixelCount="50"
+           WorldPosX="200" WorldPosY="50" WorldPosZ="0"
+           ScaleX="1.0" ScaleY="1.0" ScaleZ="1.0"/>
+
+    <model name="ArchRight" DisplayAs="Arch"
+           StringType="RGB Nodes" StartChannel="6451" PixelCount="50"
+           WorldPosX="600" WorldPosY="50" WorldPosZ="0"
+           ScaleX="1.0" ScaleY="1.0" ScaleZ="1.0"/>
+
+    <model name="OutlineRoofLeft" DisplayAs="Single Line"
+           StringType="RGB Nodes" StartChannel="6601" PixelCount="75"
+           WorldPosX="100" WorldPosY="500" WorldPosZ="0"
+           ScaleX="3.0" ScaleY="1.0" ScaleZ="1.0"/>
+
+    <model name="OutlineRoofRight" DisplayAs="Single Line"
+           StringType="RGB Nodes" StartChannel="6826" PixelCount="75"
+           WorldPosX="500" WorldPosY="500" WorldPosZ="0"
+           ScaleX="3.0" ScaleY="1.0" ScaleZ="1.0"/>
+
+    <model name="RadialSpinner" DisplayAs="Star"
+           StringType="RGB Nodes" StartChannel="7051" PixelCount="40"
+           WorldPosX="400" WorldPosY="500" WorldPosZ="0"
+           ScaleX="1.0" ScaleY="1.0" ScaleZ="1.0"/>
+  </models>
+</xlightsproject>
