@@ -13,9 +13,12 @@ from src.effects.library import EffectLibrary
 from src.effects.models import EffectDefinition
 from src.generator.effect_placer import (
     _BEAT_PUNCH_DURATION_MS,
+    _MATRIX_FRIENDLY_FALLBACKS,
+    _MATRIX_LOW_VALUE_EFFECTS,
     _build_effect_pool,
     _PROP_EFFECT_POOL,
     _place_per_beat,
+    _substitute_matrix_effect,
 )
 from src.generator.models import SectionEnergy
 
@@ -290,3 +293,65 @@ class TestEffectPoolFiltering:
         assert "Ripple" not in pool_names, "Ripple excluded by not_recommended for arch"
         assert "Spirals" in pool_names, "Spirals should be in pool"
         assert len(pool) == 1
+
+
+class TestSubstituteMatrixEffect:
+    """Tier-8 HERO matrix substitution — peer of the rotation-pool prop_type
+    filter inside ``_build_effect_pool``.  Surfaced by the matrix-heavy
+    microscope panel (PR #151) which showed Bars × 64 on
+    ``08_HERO_MatrixHeroTL`` even though the prop_suitability filter exists.
+    The hero placement path doesn't go through ``_build_effect_pool``, so
+    this substitution is the guard for that path."""
+
+    def test_low_value_effects_constant_matches_pr123(self):
+        """The HERO-tier guard should refuse the same set of effects that
+        PR #123 / the rotation-pool filter refuse for matrix prop_type."""
+        assert _MATRIX_LOW_VALUE_EFFECTS == frozenset(
+            {"Bars", "Single Strand", "Strobe", "Curtain"}
+        )
+
+    def test_substitutes_bars_to_first_available_fallback(self):
+        lib = _make_effect_lib({
+            "Bars": {},
+            "Plasma": {},
+            "Fire": {},
+        })
+        bars = lib.effects["Bars"]
+        out = _substitute_matrix_effect(bars, lib)
+        assert out.name == "Plasma", "first fallback in priority order"
+
+    def test_skips_to_next_fallback_when_first_missing(self):
+        lib = _make_effect_lib({
+            "Bars": {},
+            # No Plasma in this library.
+            "Fire": {},
+        })
+        bars = lib.effects["Bars"]
+        out = _substitute_matrix_effect(bars, lib)
+        assert out.name == "Fire", "should fall through to next available"
+
+    def test_returns_input_unchanged_when_not_low_value(self):
+        lib = _make_effect_lib({
+            "Plasma": {},
+            "Pinwheel": {},
+        })
+        plasma = lib.effects["Plasma"]
+        out = _substitute_matrix_effect(plasma, lib)
+        assert out is plasma, "non-low-value effect must pass through untouched"
+
+    def test_returns_input_when_no_fallback_available(self):
+        lib = _make_effect_lib({"Bars": {}})  # no fallbacks at all
+        bars = lib.effects["Bars"]
+        out = _substitute_matrix_effect(bars, lib)
+        assert out is bars, "fallback failure returns original, not a crash"
+
+    def test_every_low_value_effect_substitutes_when_fallbacks_present(self):
+        ratings = {name: {} for name in _MATRIX_FRIENDLY_FALLBACKS}
+        ratings.update({name: {} for name in _MATRIX_LOW_VALUE_EFFECTS})
+        lib = _make_effect_lib(ratings)
+        for low_name in _MATRIX_LOW_VALUE_EFFECTS:
+            out = _substitute_matrix_effect(lib.effects[low_name], lib)
+            assert out.name in _MATRIX_FRIENDLY_FALLBACKS, (
+                f"{low_name} did not substitute to a 2D-friendly fallback "
+                f"(got {out.name!r})"
+            )

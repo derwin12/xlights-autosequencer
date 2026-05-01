@@ -83,6 +83,22 @@ _BOUNDING_BOX_SAFE_FALLBACKS: tuple[str, ...] = (
     "Plasma", "Spirals", "Galaxy", "Ripple", "Color Wash",
 )
 
+# Effects whose visual pattern doesn't exploit 2D matrix resolution.  Applied
+# at the tier-8 HERO placement path (hero placements don't go through
+# _build_effect_pool, so the prop_type filter there can't fire).  Surfaced by
+# the matrix-heavy microscope panel: large matrices that auto-promote to HERO
+# were rendering Bars / Single Strand even when prop_suitability data marks
+# the pairing as not_recommended, because the layer's primary effect skips
+# the rotation pool.
+_MATRIX_LOW_VALUE_EFFECTS: frozenset[str] = frozenset({
+    "Bars", "Single Strand", "Strobe", "Curtain",
+})
+
+# 2D-friendly fallbacks for matrix props, in preference order.
+_MATRIX_FRIENDLY_FALLBACKS: tuple[str, ...] = (
+    "Plasma", "Fire", "Pinwheel", "Spirals", "Shockwave", "Galaxy",
+)
+
 
 def _darken_palette_hsl(palette: list[str], target_lightness: float = 0.15) -> list[str]:
     """Darken a palette via HSL lightness reduction, preserving hue and saturation.
@@ -680,8 +696,20 @@ def place_effects(
                             result.setdefault(p.model_or_group, []).append(p)
                         continue
 
+                    # Matrix-prop guard for tier-8 HERO via rotation plan
+                    # (peer of the rotation-pool prop_type filter inside
+                    # _build_effect_pool, which only runs on tier-6/7).
+                    placement_rotated_def = rotated_def
+                    if (
+                        tier == 8
+                        and getattr(group, "prop_type", None) == "matrix"
+                    ):
+                        placement_rotated_def = _substitute_matrix_effect(
+                            rotated_def, effect_library
+                        )
+
                     rot_placements = _place_effect_on_group(
-                        effect_def=rotated_def,
+                        effect_def=placement_rotated_def,
                         layer=layer,
                         group=group,
                         section=assignment.section,
@@ -696,9 +724,14 @@ def place_effects(
                         duration_scaling=duration_scaling,
                         bpm=bpm,
                     )
-                    # Override params from variant
-                    for p in rot_placements:
-                        p.parameters.update(rot_params)
+                    # Override params from variant — but only if the variant's
+                    # base_effect matches the placement effect.  When matrix
+                    # substitution rewrote rotated_def → placement_rotated_def,
+                    # the original variant's params target a different effect
+                    # and would scramble the substitute's parameter space.
+                    if placement_rotated_def is rotated_def:
+                        for p in rot_placements:
+                            p.parameters.update(rot_params)
                     # Apply direction cycle from variant
                     if rot_direction_cycle is not None:
                         dc_param = rot_direction_cycle.get("param", "")
@@ -868,8 +901,18 @@ def place_effects(
             # (COMP), and Tier 8 (HERO).  _compute_active_tiers guarantees only
             # one partition tier from {2, 4, 6, 7} is present, plus 1 and/or 8.
             for group in groups_for_tier:
+                # Matrix-prop guard for tier-8 HERO (peer of the rotation-pool
+                # filter inside _build_effect_pool, which only runs on tier-6/7).
+                placement_effect_def = effect_def
+                if (
+                    tier == 8
+                    and getattr(group, "prop_type", None) == "matrix"
+                ):
+                    placement_effect_def = _substitute_matrix_effect(
+                        effect_def, effect_library
+                    )
                 placements = _place_effect_on_group(
-                    effect_def=effect_def,
+                    effect_def=placement_effect_def,
                     layer=layer,
                     group=group,
                     section=assignment.section,
@@ -1282,6 +1325,28 @@ def _substitute_bounding_box_effect(
     if effect_def.name not in _BLOCKY_ON_BOUNDING_BOX:
         return effect_def
     for candidate in _BOUNDING_BOX_SAFE_FALLBACKS:
+        alt = effect_library.effects.get(candidate)
+        if alt is not None:
+            return alt
+    return effect_def
+
+
+def _substitute_matrix_effect(
+    effect_def: EffectDefinition,
+    effect_library: EffectLibrary,
+) -> EffectDefinition:
+    """Swap 1D-oriented effects with 2D-friendly alternatives for matrix props.
+
+    Matrix props have 2D resolution that flat or column-oriented effects
+    (Bars, Single Strand, Strobe, Curtain) don't exploit — they render as
+    flat color blocks on a 12×48 wall.  This is the HERO-tier counterpart
+    to the rotation-pool prop_type filter inside ``_build_effect_pool``;
+    that filter only runs on tier-6/7 PROP rotation, so large matrices
+    that auto-promote to HERO need this separate guard.
+    """
+    if effect_def.name not in _MATRIX_LOW_VALUE_EFFECTS:
+        return effect_def
+    for candidate in _MATRIX_FRIENDLY_FALLBACKS:
         alt = effect_library.effects.get(candidate)
         if alt is not None:
             return alt

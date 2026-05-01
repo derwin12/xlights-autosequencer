@@ -1,8 +1,8 @@
 {
   "slug": "space_ambience",
   "audio_path": "/Users/rob/git/xlight-autosequencer/tests/fixtures/cc0_music/space_ambience.mp3",
-  "xsq_path": "/Users/rob/git/xlight-autosequencer/microscope-out-matrix/microscope/space_ambience/space_ambience.xsq",
-  "generated_at": "2026-05-01T03:27:24Z",
+  "xsq_path": "/Users/rob/git/xlight-autosequencer/microscope-out-matrix-fix3/microscope/space_ambience/space_ambience.xsq",
+  "generated_at": "2026-05-01T16:27:47Z",
   "config_snapshot": {
     "genre": "pop",
     "occasion": "general",
@@ -80,12 +80,12 @@
       "reliability": "ok"
     },
     "distinct_effect_count": {
-      "value": 5.0,
+      "value": 4.0,
       "kind": "scalar",
       "reliability": "ok"
     },
     "effect_repeat_rate": {
-      "value": 0.989247311827957,
+      "value": 0.9913978494623656,
       "kind": "scalar",
       "reliability": "ok"
     },

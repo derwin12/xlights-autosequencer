@@ -46,7 +46,9 @@ HANDLIST_BAD_PAIRINGS: dict[str, set[str]] = {
     "Plasma":        {"outline", "arch"},
     "Pinwheel":      {"outline", "arch"},
     "Single Strand": {"matrix"},
-    "Bars":          {"radial"},
+    "Bars":          {"radial", "matrix"},
+    "Strobe":        {"matrix"},
+    "Curtain":       {"matrix"},
     "Fire":          {"arch", "outline"},
     "Butterfly":     {"outline", "arch"},
 }

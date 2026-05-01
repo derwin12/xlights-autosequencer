@@ -1,8 +1,8 @@
 {
   "slug": "funshine",
   "audio_path": "/Users/rob/git/xlight-autosequencer/tests/fixtures/cc0_music/funshine.mp3",
-  "xsq_path": "/Users/rob/git/xlight-autosequencer/microscope-out-matrix/microscope/funshine/funshine.xsq",
-  "generated_at": "2026-05-01T03:27:24Z",
+  "xsq_path": "/Users/rob/git/xlight-autosequencer/microscope-out-matrix-fix3/microscope/funshine/funshine.xsq",
+  "generated_at": "2026-05-01T16:27:47Z",
   "config_snapshot": {
     "genre": "pop",
     "occasion": "general",
