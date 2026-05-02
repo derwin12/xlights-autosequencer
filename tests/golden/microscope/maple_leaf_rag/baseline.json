@@ -2,7 +2,7 @@
   "slug": "maple_leaf_rag",
   "audio_path": "/Users/rob/git/xlight-autosequencer/tests/fixtures/cc0_music/maple_leaf_rag.mp3",
   "xsq_path": "/Users/rob/git/xlight-autosequencer/microscope-out/microscope/maple_leaf_rag/maple_leaf_rag.xsq",
-  "generated_at": "2026-05-01T17:54:16Z",
+  "generated_at": "2026-05-02T02:47:40Z",
   "config_snapshot": {
     "genre": "pop",
     "occasion": "general",
@@ -27,92 +27,188 @@
     "placements_per_minute": {
       "value": 29.755768662829247,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "density_energy_correlation": {
       "value": 0.0,
       "kind": "scalar",
-      "reliability": "reduced"
+      "reliability": "reduced",
+      "payload": null
     },
     "palette_top5_colors": {
       "value": 0.03932533187852337,
       "kind": "structured",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": [
+        [
+          "#004DEA",
+          0.03932533187852337
+        ],
+        [
+          "#D451FF",
+          0.02618657937806874
+        ],
+        [
+          "#001ED2",
+          0.026141116566648477
+        ],
+        [
+          "#4478E3",
+          0.026141116566648477
+        ],
+        [
+          "#0015EA",
+          0.021481178396072012
+        ]
+      ]
     },
     "per_section_palette_diversity": {
       "value": 139.0,
       "kind": "per_section",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": [
+        {
+          "section_label": "whole",
+          "start_ms": 0,
+          "end_ms": 179461,
+          "unique_colors": 139
+        }
+      ]
     },
     "effect_type_histogram": {
       "value": 0.0,
       "kind": "distribution",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": {
+        "histogram": {
+          "Single Strand": 0.5280898876404494,
+          "Bars": 0.15730337078651685,
+          "Ripple": 0.02247191011235955,
+          "Spirals": 0.1348314606741573,
+          "Shockwave": 0.0898876404494382,
+          "On": 0.06741573033707865
+        },
+        "unknown_fraction": 0.0
+      }
     },
     "beat_alignment_pct": {
       "value": 0.0,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "section_transition_delta": {
       "value": 0.0,
       "kind": "per_section",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": []
     },
     "tier_utilization": {
       "value": 1.0,
       "kind": "per_section",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": [
+        {
+          "section_label": "song",
+          "start_ms": 0,
+          "end_ms": 179461,
+          "utilization": 1.0,
+          "active_models": 2,
+          "total_models": 2
+        }
+      ]
     },
     "theme_assignment_consistency": {
       "value": 1.0,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": {}
     },
     "palette_luminance_mean": {
       "value": 101.76332219494441,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "palette_luminance_cv": {
       "value": 0.21474454741301163,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "distinct_effect_count": {
       "value": 6.0,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "effect_repeat_rate": {
       "value": 0.9101123595505618,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "per_prop_type_diversity": {
       "value": 2.0,
       "kind": "structured",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": {
+        "by_type": {
+          "tree": 4,
+          "radial": 2
+        },
+        "min_diversity": 2
+      }
     },
     "bad_pairing_pct_handlist": {
       "value": 0.0,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "bad_pairing_pct_catalog": {
       "value": 0.0,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "pairing_disagreement_pct": {
       "value": 0.0,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
     },
     "placement_coverage_pct": {
       "value": 0.2222222222222222,
       "kind": "scalar",
-      "reliability": "ok"
+      "reliability": "ok",
+      "payload": null
+    },
+    "tier_placement_breakdown": {
+      "value": 1.0,
+      "kind": "structured",
+      "reliability": "ok",
+      "payload": {
+        "counts": {
+          "08_HERO": 75,
+          "unknown": 14
+        },
+        "active_tiers": [
+          "08_HERO"
+        ]
+      }
+    },
+    "group_utilization": {
+      "value": 2.0,
+      "kind": "structured",
+      "reliability": "ok",
+      "payload": {
+        "counts": {
+          "08_HERO_MegaTree": 75,
+          "RadialSpinner": 14
+        }
+      }
     }
   }
 }

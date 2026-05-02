@@ -225,7 +225,7 @@ def test_to_dict_is_json_serializable(mocked_runner, tmp_path):
     assert "summary" not in decoded
     # Metric entries have the documented shape.
     sample_metric = next(iter(decoded["metrics"].values()))
-    assert set(sample_metric.keys()) == {"value", "kind", "reliability"}
+    assert set(sample_metric.keys()) == {"value", "kind", "reliability", "payload"}
 
 
 # ---------------------------------------------------------------------------
