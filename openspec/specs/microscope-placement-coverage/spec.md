@@ -1,5 +1,8 @@
-## ADDED Requirements
+# microscope-placement-coverage Specification
 
+## Purpose
+TBD - created by archiving change microscope-placement-coverage. Update Purpose after archive.
+## Requirements
 ### Requirement: SequenceSummary exposes the layout's model universe
 
 `SequenceSummary` SHALL include a `layout_model_names: tuple[str, ...]` field
@@ -107,10 +110,11 @@ registered with `kind=SCALAR`, `gated=False`, and `higher_is_better=True`
 
 ### Requirement: Sensitivity proof guards baselines after registration
 
-Adding `placement_coverage_pct` to the registry changes the
-`metric_set_hash` returned by `compute_metric_set_hash()`. The
-`microscope baseline` subcommand SHALL refuse to promote new baselines
-until `microscope sensitivity` is re-run with the new metric in place.
+The `microscope baseline` subcommand SHALL refuse to promote new
+baselines until `microscope sensitivity` has been re-run after
+`placement_coverage_pct` was added to the registry. Adding the metric
+changes the `metric_set_hash` returned by `compute_metric_set_hash()`,
+so any pre-existing proof file is stale by definition.
 
 #### Scenario: Stale proof blocks baseline promotion
 
@@ -125,3 +129,4 @@ until `microscope sensitivity` is re-run with the new metric in place.
   registered
 - **THEN** `tests/golden/microscope/sensitivity_passed.json` reflects
   the new `metric_set_hash` and `microscope baseline` proceeds
+
