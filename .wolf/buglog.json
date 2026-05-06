@@ -7,7 +7,7 @@
       "error_message": "Significant refactor of ",
       "file": ".gitignore",
       "root_cause": "6 lines replaced/restructured",
-      "fix": "Rewrote 7\u219211 lines (6 removed)",
+      "fix": "Rewrote 7→11 lines (6 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -23,7 +23,7 @@
       "error_message": "Wrong reference: Flask should be testing",
       "file": "src/review/server.py",
       "root_cause": "Used \"Flask\" instead of \"testing\"",
-      "fix": "Changed Flask \u2192 testing",
+      "fix": "Changed Flask → testing",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -39,7 +39,7 @@
       "error_message": "Wrong reference: preferences should be import_",
       "file": "src/review/api/v1/__init__.py",
       "root_cause": "Used \"preferences\" instead of \"import_\"",
-      "fix": "Changed preferences \u2192 import_",
+      "fix": "Changed preferences → import_",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -119,7 +119,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/analysis.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 6\u219211 lines (2 removed)",
+      "fix": "Rewrote 6→11 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -135,7 +135,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/sections.py",
       "root_cause": "24 lines replaced/restructured",
-      "fix": "Rewrote 32\u219211 lines (24 removed)",
+      "fix": "Rewrote 32→11 lines (24 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -151,7 +151,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/export.py",
       "root_cause": "7 lines replaced/restructured",
-      "fix": "Rewrote 35\u219246 lines (7 removed)",
+      "fix": "Rewrote 35→46 lines (7 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -166,8 +166,8 @@
       "timestamp": "2026-04-21T21:49:42.825Z",
       "error_message": "CSS fix: song",
       "file": "src/review/frontend/src/components/Chrome/Chrome.tsx",
-      "root_cause": "song: Song, screen: string) => void \u2192 Song) => void",
-      "fix": "Changed song: Song, screen: string) => void \u2192 Song) => void",
+      "root_cause": "song: Song, screen: string) => void → Song) => void",
+      "fix": "Changed song: Song, screen: string) => void → Song) => void",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -183,7 +183,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/library.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 11\u219216 lines (2 removed)",
+      "fix": "Rewrote 11→16 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -214,8 +214,8 @@
       "timestamp": "2026-04-21T21:57:55.997Z",
       "error_message": "CSS fix: background, color",
       "file": "src/review/frontend/src/components/Chrome/TweaksPanel.module.css",
-      "root_cause": "background: var(--accent) \u2192 var(--bg4, #333); color: var(--accent-ink) \u2192 var(--color-error, #ef4444)",
-      "fix": "Changed background: var(--accent) \u2192 var(--bg4, #333); color: var(--accent-ink) \u2192 var(--color-error, #ef4444)",
+      "root_cause": "background: var(--accent) → var(--bg4, #333); color: var(--accent-ink) → var(--color-error, #ef4444)",
+      "fix": "Changed background: var(--accent) → var(--bg4, #333); color: var(--accent-ink) → var(--color-error, #ef4444)",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -247,7 +247,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/server.py",
       "root_cause": "19 lines replaced/restructured",
-      "fix": "Rewrote 33\u219211 lines (19 removed)",
+      "fix": "Rewrote 33→11 lines (19 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -262,7 +262,7 @@
       "timestamp": "2026-04-21T22:00:36.682Z",
       "error_message": "Missing error handling in spa_index",
       "file": "src/review/server.py",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -279,7 +279,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/store/library.ts",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 5\u21929 lines (2 removed)",
+      "fix": "Rewrote 5→9 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -326,8 +326,8 @@
       "timestamp": "2026-04-21T22:02:16.606Z",
       "error_message": "CSS fix: overrides",
       "file": "src/review/frontend/src/screens/Theme.tsx",
-      "root_cause": "overrides: Record<string, number> \u2192 ParameterOverrides",
-      "fix": "Changed overrides: Record<string, number> \u2192 ParameterOverrides",
+      "root_cause": "overrides: Record<string, number> → ParameterOverrides",
+      "fix": "Changed overrides: Record<string, number> → ParameterOverrides",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -358,7 +358,7 @@
       "timestamp": "2026-04-21T22:29:37.376Z",
       "error_message": "Missing error handling in getExt",
       "file": "src/review/frontend/src/screens/Library.tsx",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -391,7 +391,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/analysis.py",
       "root_cause": "67 lines replaced/restructured",
-      "fix": "Rewrote 143\u2192260 lines (67 removed)",
+      "fix": "Rewrote 143→260 lines (67 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -407,7 +407,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/import_.py",
       "root_cause": "10 lines replaced/restructured",
-      "fix": "Rewrote 51\u219265 lines (10 removed)",
+      "fix": "Rewrote 51→65 lines (10 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -439,7 +439,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/screens/Analyze.tsx",
       "root_cause": "4 lines replaced/restructured",
-      "fix": "Rewrote 8\u219210 lines (4 removed)",
+      "fix": "Rewrote 8→10 lines (4 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -454,8 +454,8 @@
       "timestamp": "2026-04-21T22:47:44.083Z",
       "error_message": "CSS fix: body",
       "file": "src/review/frontend/src/screens/Analyze.tsx",
-      "root_cause": "body: JSON.stringify({ force: false \u2192 JSON.stringify({ force: forceRef.current",
-      "fix": "Changed body: JSON.stringify({ force: false \u2192 JSON.stringify({ force: forceRef.current",
+      "root_cause": "body: JSON.stringify({ force: false → JSON.stringify({ force: forceRef.current",
+      "fix": "Changed body: JSON.stringify({ force: false → JSON.stringify({ force: forceRef.current",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -486,8 +486,8 @@
       "timestamp": "2026-04-21T22:55:46.843Z",
       "error_message": "CSS fix: overflow",
       "file": "src/review/frontend/src/components/Chrome/Chrome.module.css",
-      "root_cause": "overflow: hidden \u2192 auto",
-      "fix": "Changed overflow: hidden \u2192 auto",
+      "root_cause": "overflow: hidden → auto",
+      "fix": "Changed overflow: hidden → auto",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -503,7 +503,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/analysis.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 9\u219212 lines (2 removed)",
+      "fix": "Rewrote 9→12 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -534,7 +534,7 @@
       "timestamp": "2026-04-21T23:01:34.527Z",
       "error_message": "Missing error handling in GlobalAudioPlayer",
       "file": "src/review/frontend/src/App.tsx",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -599,7 +599,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/components/SectionStrip/SectionStrip.tsx",
       "root_cause": "8 lines replaced/restructured",
-      "fix": "Rewrote 11\u21923 lines (8 removed)",
+      "fix": "Rewrote 11→3 lines (8 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -647,7 +647,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/screens/Timeline.tsx",
       "root_cause": "4 lines replaced/restructured",
-      "fix": "Rewrote 30\u219251 lines (4 removed)",
+      "fix": "Rewrote 30→51 lines (4 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -663,7 +663,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/components/Waveform/Waveform.tsx",
       "root_cause": "6 lines replaced/restructured",
-      "fix": "Rewrote 54\u219280 lines (6 removed)",
+      "fix": "Rewrote 54→80 lines (6 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -710,8 +710,8 @@
       "timestamp": "2026-04-21T23:24:15.340Z",
       "error_message": "CSS fix: min-width",
       "file": "src/review/frontend/src/components/SectionStrip/SectionStrip.module.css",
-      "root_cause": "min-width: 20px \u2192 0",
-      "fix": "Changed min-width: 20px \u2192 0",
+      "root_cause": "min-width: 20px → 0",
+      "fix": "Changed min-width: 20px → 0",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -743,7 +743,7 @@
       "error_message": "Wrong reference: 2000 should be 8000",
       "file": "src/review/api/v1/analysis.py",
       "root_cause": "Used \"2000\" instead of \"8000\"",
-      "fix": "Changed 2000 \u2192 8000",
+      "fix": "Changed 2000 → 8000",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -806,7 +806,7 @@
       "timestamp": "2026-04-21T23:41:39.188Z",
       "error_message": "Missing error handling in unknown",
       "file": "src/review/frontend/src/screens/Timeline.tsx",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -839,7 +839,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/analysis.py",
       "root_cause": "4 lines replaced/restructured",
-      "fix": "Rewrote 15\u219222 lines (4 removed) | Also: # Stems are cached adjacent to source file in a \"s; stems_dir = src.parent / \"stems\" | Also: stems_dir = src.parent / \"stems\"; audio_file = p",
+      "fix": "Rewrote 15→22 lines (4 removed) | Also: # Stems are cached adjacent to source file in a \"s; stems_dir = src.parent / \"stems\" | Also: stems_dir = src.parent / \"stems\"; audio_file = p",
       "tags": [
         "auto-detected",
         "refactor",
@@ -870,8 +870,8 @@
       "timestamp": "2026-04-21T23:54:17.527Z",
       "error_message": "CSS fix: padding",
       "file": "src/review/frontend/src/screens/Timeline.module.css",
-      "root_cause": "padding: 8px 0 \u2192 4px 10px",
-      "fix": "Changed padding: 8px 0 \u2192 4px 10px",
+      "root_cause": "padding: 8px 0 → 4px 10px",
+      "fix": "Changed padding: 8px 0 → 4px 10px",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -918,8 +918,8 @@
       "timestamp": "2026-04-22T00:07:31.699Z",
       "error_message": "CSS fix: display",
       "file": "src/review/frontend/src/components/AlgoTrack/AlgoTrack.tsx",
-      "root_cause": "display: 'block' \u2192 'block', cursor: onSeek ? 'pointer' : undefined",
-      "fix": "Changed display: 'block' \u2192 'block', cursor: onSeek ? 'pointer' : undefined",
+      "root_cause": "display: 'block' → 'block', cursor: onSeek ? 'pointer' : undefined",
+      "fix": "Changed display: 'block' → 'block', cursor: onSeek ? 'pointer' : undefined",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -935,7 +935,7 @@
       "error_message": "Wrong reference: StemWaveformsProps should be onSeek",
       "file": "src/review/frontend/src/components/StemWaveforms/StemWaveforms.tsx",
       "root_cause": "Used \"StemWaveformsProps\" instead of \"onSeek\"",
-      "fix": "Changed StemWaveformsProps \u2192 onSeek",
+      "fix": "Changed StemWaveformsProps → onSeek",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -983,7 +983,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/components/AlgoTrack/AlgoTrack.tsx",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 16\u219229 lines (2 removed)",
+      "fix": "Rewrote 16→29 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1015,7 +1015,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/analysis.py",
       "root_cause": "11 lines replaced/restructured",
-      "fix": "Rewrote 38\u2192189 lines (11 removed)",
+      "fix": "Rewrote 38→189 lines (11 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1047,7 +1047,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/api/v1/analysis.py",
       "root_cause": "8 lines replaced/restructured",
-      "fix": "Rewrote 15\u219220 lines (8 removed)",
+      "fix": "Rewrote 15→20 lines (8 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1062,8 +1062,8 @@
       "timestamp": "2026-04-22T03:21:53.194Z",
       "error_message": "CSS fix: position",
       "file": "src/review/frontend/src/components/Chrome/Chrome.module.css",
-      "root_cause": "position: relative \u2192 absolute",
-      "fix": "Changed position: relative \u2192 absolute",
+      "root_cause": "position: relative → absolute",
+      "fix": "Changed position: relative → absolute",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1078,7 +1078,7 @@
       "timestamp": "2026-04-22T03:22:09.586Z",
       "error_message": "Missing error handling in Chrome",
       "file": "src/review/frontend/src/components/Chrome/Chrome.tsx",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -1094,7 +1094,7 @@
       "timestamp": "2026-04-22T03:22:19.254Z",
       "error_message": "Missing error handling in unknown",
       "file": "src/review/frontend/src/screens/Timeline.tsx",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -1110,8 +1110,8 @@
       "timestamp": "2026-04-22T03:22:57.550Z",
       "error_message": "CSS fix: width, background",
       "file": "src/review/frontend/src/screens/Timeline.module.css",
-      "root_cause": "width: 300px \u2192 20px; background: var(--bg1, #1a1a20) \u2192 var(--bg3, #2a2a33)",
-      "fix": "Changed width: 300px \u2192 20px; background: var(--bg1, #1a1a20) \u2192 var(--bg3, #2a2a33)",
+      "root_cause": "width: 300px → 20px; background: var(--bg1, #1a1a20) → var(--bg3, #2a2a33)",
+      "fix": "Changed width: 300px → 20px; background: var(--bg1, #1a1a20) → var(--bg3, #2a2a33)",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1127,7 +1127,7 @@
       "error_message": "Significant refactor of ",
       "file": "scripts/boundary_confidence_map.py",
       "root_cause": "3 lines replaced/restructured",
-      "fix": "Rewrote 13\u219220 lines (3 removed) | Also: mp3_path: Path, duration_s: float; Fetch Genius sections + align with WhisperX.",
+      "fix": "Rewrote 13→20 lines (3 removed) | Also: mp3_path: Path, duration_s: float; Fetch Genius sections + align with WhisperX.",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1142,8 +1142,8 @@
       "timestamp": "2026-04-22T03:38:35.101Z",
       "error_message": "CSS fix: width",
       "file": "src/review/frontend/src/components/AlgoTrack/AlgoTrack.module.css",
-      "root_cause": "width: 180px \u2192 var(--track-gutter, 220px)",
-      "fix": "Changed width: 180px \u2192 var(--track-gutter, 220px)",
+      "root_cause": "width: 180px → var(--track-gutter, 220px)",
+      "fix": "Changed width: 180px → var(--track-gutter, 220px)",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1158,8 +1158,8 @@
       "timestamp": "2026-04-22T03:39:20.090Z",
       "error_message": "CSS fix: width",
       "file": "src/review/frontend/src/components/StemWaveforms/StemWaveforms.module.css",
-      "root_cause": "width: 58px \u2192 var(--track-gutter, 220px)",
-      "fix": "Changed width: 58px \u2192 var(--track-gutter, 220px)",
+      "root_cause": "width: 58px → var(--track-gutter, 220px)",
+      "fix": "Changed width: 58px → var(--track-gutter, 220px)",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1174,8 +1174,8 @@
       "timestamp": "2026-04-22T03:42:22.422Z",
       "error_message": "CSS fix: --track-gutter",
       "file": "src/review/frontend/src/screens/Timeline.module.css",
-      "root_cause": "--track-gutter: 220px \u2192 240px",
-      "fix": "Changed --track-gutter: 220px \u2192 240px",
+      "root_cause": "--track-gutter: 220px → 240px",
+      "fix": "Changed --track-gutter: 220px → 240px",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1191,7 +1191,7 @@
       "error_message": "Wrong reference: 220px should be 240px",
       "file": "src/review/frontend/src/components/AlgoTrack/AlgoTrack.module.css",
       "root_cause": "Used \"220px\" instead of \"240px\"",
-      "fix": "Changed 220px \u2192 240px",
+      "fix": "Changed 220px → 240px",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -1207,7 +1207,7 @@
       "error_message": "Wrong reference: 220px should be 240px",
       "file": "src/review/frontend/src/components/StemWaveforms/StemWaveforms.module.css",
       "root_cause": "Used \"220px\" instead of \"240px\"",
-      "fix": "Changed 220px \u2192 240px",
+      "fix": "Changed 220px → 240px",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -1223,7 +1223,7 @@
       "error_message": "Wrong reference: 240px should be 260px",
       "file": "src/review/frontend/src/screens/Timeline.module.css",
       "root_cause": "Used \"240px\" instead of \"260px\"",
-      "fix": "Changed 240px \u2192 260px",
+      "fix": "Changed 240px → 260px",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -1239,7 +1239,7 @@
       "error_message": "Significant refactor of ",
       "file": "scripts/boundary_confidence_summary.sh",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 12\u219222 lines (2 removed)",
+      "fix": "Rewrote 12→22 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1255,7 +1255,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/analyzer/genius_segments.py",
       "root_cause": "5 lines replaced/restructured",
-      "fix": "Rewrote 7\u21926 lines (5 removed)",
+      "fix": "Rewrote 7→6 lines (5 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1271,7 +1271,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/analyzer/genius_segments.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 9\u219215 lines (2 removed)",
+      "fix": "Rewrote 9→15 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1287,7 +1287,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/story/builder.py",
       "root_cause": "3 lines replaced/restructured",
-      "fix": "Rewrote 20\u219238 lines (3 removed)",
+      "fix": "Rewrote 20→38 lines (3 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1319,7 +1319,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/analyzer/genius_segments.py",
       "root_cause": "3 lines replaced/restructured",
-      "fix": "Rewrote 5\u21923 lines (3 removed)",
+      "fix": "Rewrote 5→3 lines (3 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1334,8 +1334,8 @@
       "timestamp": "2026-04-22T16:02:11.585Z",
       "error_message": "CSS fix: width, padding",
       "file": "src/review/frontend/src/screens/Theme.module.css",
-      "root_cause": "width: 180px \u2192 100%; padding: 16px \u2192 7px 20px",
-      "fix": "Changed width: 180px \u2192 100%; padding: 16px \u2192 7px 20px",
+      "root_cause": "width: 180px → 100%; padding: 16px → 7px 20px",
+      "fix": "Changed width: 180px → 100%; padding: 16px → 7px 20px",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1367,7 +1367,7 @@
       "error_message": "Wrong reference: str should be None",
       "file": "src/review/server.py",
       "root_cause": "Used \"str\" instead of \"None\"",
-      "fix": "Changed str \u2192 None",
+      "fix": "Changed str → None",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -1431,7 +1431,7 @@
       "error_message": "Significant refactor of ",
       "file": "scripts/qm_segmenter_sweep.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 16\u219223 lines (2 removed)",
+      "fix": "Rewrote 16→23 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1447,7 +1447,7 @@
       "error_message": "Significant refactor of ",
       "file": "specs/052-tauri-desktop-packaging/spec.md",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 3\u21925 lines (2 removed)",
+      "fix": "Rewrote 3→5 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1479,7 +1479,7 @@
       "error_message": "Significant refactor of ",
       "file": "specs/052-tauri-desktop-packaging/checklists/requirements.md",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 4\u219210 lines (2 removed)",
+      "fix": "Rewrote 4→10 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1511,7 +1511,7 @@
       "error_message": "Significant refactor of ",
       "file": ".worktrees/052/src/packaging/stems_paths.py",
       "root_cause": "6 lines replaced/restructured",
-      "fix": "Rewrote 11\u219217 lines (6 removed)",
+      "fix": "Rewrote 11→17 lines (6 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1543,7 +1543,7 @@
       "error_message": "Type error",
       "file": ".worktrees/052/src/review/frontend/src/screens/Drop.tsx",
       "root_cause": "Missing or incorrect type annotation",
-      "fix": "Added type assertion/annotation | Also: // 052 US3: in the packaged Tauri app we receive absolute fi; // import them via /api/v1/import/by-path \u2014 no multipart upl",
+      "fix": "Added type assertion/annotation | Also: // 052 US3: in the packaged Tauri app we receive absolute fi; // import them via /api/v1/import/by-path — no multipart upl",
       "tags": [
         "auto-detected",
         "type-fix",
@@ -1559,7 +1559,7 @@
       "error_message": "Wrong reference: inputRef should be handleClickToBrowse",
       "file": ".worktrees/052/src/review/frontend/src/screens/Drop.tsx",
       "root_cause": "Used \"inputRef\" instead of \"handleClickToBrowse\"",
-      "fix": "Changed inputRef \u2192 handleClickToBrowse",
+      "fix": "Changed inputRef → handleClickToBrowse",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -1574,7 +1574,7 @@
       "timestamp": "2026-04-22T21:09:03.727Z",
       "error_message": "Missing error handling in unknown",
       "file": ".worktrees/052/src/review/frontend/src/screens/Export.tsx",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -1607,7 +1607,7 @@
       "error_message": "Significant refactor of ",
       "file": ".worktrees/052/packaging/scripts/build-backend.sh",
       "root_cause": "5 lines replaced/restructured",
-      "fix": "Rewrote 18\u219231 lines (5 removed)",
+      "fix": "Rewrote 18→31 lines (5 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1639,7 +1639,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/story/builder.py",
       "root_cause": "3 lines replaced/restructured",
-      "fix": "Rewrote 5\u219217 lines (3 removed)",
+      "fix": "Rewrote 5→17 lines (3 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1654,8 +1654,8 @@
       "timestamp": "2026-04-23T13:35:46.028Z",
       "error_message": "CSS fix: onSongImported",
       "file": "src/review/frontend/src/screens/Drop.tsx",
-      "root_cause": "onSongImported: (song: Song) => void \u2192 (song: Song, created: boolean) => void",
-      "fix": "Changed onSongImported: (song: Song) => void \u2192 (song: Song, created: boolean) => void",
+      "root_cause": "onSongImported: (song: Song) => void → (song: Song, created: boolean) => void",
+      "fix": "Changed onSongImported: (song: Song) => void → (song: Song, created: boolean) => void",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1686,8 +1686,8 @@
       "timestamp": "2026-04-23T13:36:10.755Z",
       "error_message": "CSS fix: file",
       "file": "src/review/frontend/src/screens/Library.tsx",
-      "root_cause": "file: File, onDone: (song: Song) => void, onErr: (msg: string) => void) { \u2192 File,",
-      "fix": "Changed file: File, onDone: (song: Song) => void, onErr: (msg: string) => void) { \u2192 File,",
+      "root_cause": "file: File, onDone: (song: Song) => void, onErr: (msg: string) => void) { → File,",
+      "fix": "Changed file: File, onDone: (song: Song) => void, onErr: (msg: string) => void) { → File,",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1703,7 +1703,7 @@
       "error_message": "Wrong reference: void should be created",
       "file": "src/review/frontend/src/screens/Library.tsx",
       "root_cause": "Used \"void\" instead of \"created\"",
-      "fix": "Changed void \u2192 created",
+      "fix": "Changed void → created",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -1718,8 +1718,8 @@
       "timestamp": "2026-04-23T13:36:50.484Z",
       "error_message": "CSS fix: song",
       "file": "src/review/frontend/src/App.tsx",
-      "root_cause": "song: Song) => { \u2192 Song, created: boolean = true) => {",
-      "fix": "Changed song: Song) => { \u2192 Song, created: boolean = true) => {",
+      "root_cause": "song: Song) => { → Song, created: boolean = true) => {",
+      "fix": "Changed song: Song) => { → Song, created: boolean = true) => {",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1750,8 +1750,8 @@
       "timestamp": "2026-04-23T13:37:38.052Z",
       "error_message": "CSS fix: song",
       "file": "src/review/frontend/src/screens/Analyze.tsx",
-      "root_cause": "song: Song \u2192 Song) => void",
-      "fix": "Changed song: Song \u2192 Song) => void",
+      "root_cause": "song: Song → Song) => void",
+      "fix": "Changed song: Song → Song) => void",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -1767,7 +1767,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/screens/Analyze.tsx",
       "root_cause": "4 lines replaced/restructured",
-      "fix": "Rewrote 6\u219212 lines (4 removed)",
+      "fix": "Rewrote 6→12 lines (4 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1831,7 +1831,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/App.tsx",
       "root_cause": "4 lines replaced/restructured",
-      "fix": "Rewrote 16\u219229 lines (4 removed)",
+      "fix": "Rewrote 16→29 lines (4 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1863,7 +1863,7 @@
       "error_message": "Significant refactor of ",
       "file": "openspec/changes/acceptance-gate/tasks.md",
       "root_cause": "5 lines replaced/restructured",
-      "fix": "Rewrote 7\u21927 lines (5 removed)",
+      "fix": "Rewrote 7→7 lines (5 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1879,7 +1879,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/evaluation/acceptance_gate.py",
       "root_cause": "17 lines replaced/restructured",
-      "fix": "Rewrote 20\u21926 lines (17 removed)",
+      "fix": "Rewrote 20→6 lines (17 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1895,7 +1895,7 @@
       "error_message": "Significant refactor of ",
       "file": "openspec/changes/acceptance-gate/tasks.md",
       "root_cause": "6 lines replaced/restructured",
-      "fix": "Rewrote 8\u21928 lines (6 removed)",
+      "fix": "Rewrote 8→8 lines (6 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1911,7 +1911,7 @@
       "error_message": "Significant refactor of ",
       "file": "pyproject.toml",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 7\u219210 lines (2 removed)",
+      "fix": "Rewrote 7→10 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1927,7 +1927,7 @@
       "error_message": "Significant refactor of ",
       "file": "openspec/changes/acceptance-gate/tasks.md",
       "root_cause": "10 lines replaced/restructured",
-      "fix": "Rewrote 10\u219210 lines (10 removed)",
+      "fix": "Rewrote 10→10 lines (10 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1975,7 +1975,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/ui/conftest.py",
       "root_cause": "6 lines replaced/restructured",
-      "fix": "Rewrote 18\u219226 lines (6 removed)",
+      "fix": "Rewrote 18→26 lines (6 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -1991,7 +1991,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/ui/flows/test_view_flow.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 9\u219213 lines (2 removed)",
+      "fix": "Rewrote 9→13 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2007,7 +2007,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/ui/conftest.py",
       "root_cause": "21 lines replaced/restructured",
-      "fix": "Rewrote 26\u21928 lines (21 removed)",
+      "fix": "Rewrote 26→8 lines (21 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2023,7 +2023,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/ui/flows/test_view_flow.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 3\u21926 lines (2 removed)",
+      "fix": "Rewrote 3→6 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2039,7 +2039,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/review/frontend/src/screens/Analyze.tsx",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 6\u219215 lines (2 removed)",
+      "fix": "Rewrote 6→15 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2054,7 +2054,7 @@
       "timestamp": "2026-04-24T22:27:51.652Z",
       "error_message": "Missing error handling in unknown",
       "file": "pyproject.toml",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -2071,7 +2071,7 @@
       "error_message": "Significant refactor of ",
       "file": "src/evaluation/acceptance_gate.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 13\u219221 lines (2 removed)",
+      "fix": "Rewrote 13→21 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2086,7 +2086,7 @@
       "timestamp": "2026-04-24T22:35:12.956Z",
       "error_message": "Missing error handling in unknown",
       "file": "tests/ui/README.md",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -2103,7 +2103,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/ui/flows/test_content_flow.py",
       "root_cause": "4 lines replaced/restructured",
-      "fix": "Rewrote 12\u219219 lines (4 removed)",
+      "fix": "Rewrote 12→19 lines (4 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2118,8 +2118,8 @@
       "timestamp": "2026-04-24T22:54:09.965Z",
       "error_message": "CSS fix: secs",
       "file": "src/review/frontend/src/screens/Analyze.tsx",
-      "root_cause": "secs: Section[] = (data?.sections ?? data?.song_story?.sections ?? []).map( \u2192 Section[] = (data?.detected_sections ?? data?.sections ?? data?.song_story?.sections ?? []).map(",
-      "fix": "Changed secs: Section[] = (data?.sections ?? data?.song_story?.sections ?? []).map( \u2192 Section[] = (data?.detected_sections ?? data?.sections ?? data?.song_story?.sections ?? []).map(",
+      "root_cause": "secs: Section[] = (data?.sections ?? data?.song_story?.sections ?? []).map( → Section[] = (data?.detected_sections ?? data?.sections ?? data?.song_story?.sections ?? []).map(",
+      "fix": "Changed secs: Section[] = (data?.sections ?? data?.song_story?.sections ?? []).map( → Section[] = (data?.detected_sections ?? data?.sections ?? data?.song_story?.sections ?? []).map(",
       "tags": [
         "auto-detected",
         "style-fix",
@@ -2167,7 +2167,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/ui/flows/test_metadata_edit_flow.py",
       "root_cause": "4 lines replaced/restructured",
-      "fix": "Rewrote 9\u219212 lines (4 removed)",
+      "fix": "Rewrote 9→12 lines (4 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2183,7 +2183,7 @@
       "error_message": "Wrong operator: && should be ==",
       "file": "tests/ui/flows/test_metadata_edit_flow.py",
       "root_cause": "Used \"&&\" instead of \"==\"",
-      "fix": "Changed operator && \u2192 ==",
+      "fix": "Changed operator && → ==",
       "tags": [
         "auto-detected",
         "operator-fix",
@@ -2199,7 +2199,7 @@
       "error_message": "Wrong reference: None should be snapshot",
       "file": "tests/ui/flows/test_folder_filter_flow.py",
       "root_cause": "Used \"None\" instead of \"snapshot\"",
-      "fix": "Changed None \u2192 snapshot",
+      "fix": "Changed None → snapshot",
       "tags": [
         "auto-detected",
         "wrong-reference",
@@ -2214,7 +2214,7 @@
       "timestamp": "2026-04-26T03:27:17.753Z",
       "error_message": "Missing error handling in from_dict",
       "file": "src/evaluation/analyzer_baseline.py",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -2230,7 +2230,7 @@
       "timestamp": "2026-04-26T03:27:25.748Z",
       "error_message": "Missing error handling in unknown",
       "file": "src/evaluation/baseline.py",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -2246,7 +2246,7 @@
       "timestamp": "2026-04-26T03:28:06.352Z",
       "error_message": "Missing error handling in unknown",
       "file": "src/schema_check.py",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -2263,7 +2263,7 @@
       "error_message": "Significant refactor of ",
       "file": "openspec/changes/gate-parallelism/proposal.md",
       "root_cause": "3 lines replaced/restructured",
-      "fix": "Rewrote 3\u21925 lines (3 removed) | Also: - **`src/evaluation/acceptance_gate.py`** \u2014 `run_g; suites to a `ThreadPoolExecutor` (max_workers=4), ",
+      "fix": "Rewrote 3→5 lines (3 removed) | Also: - **`src/evaluation/acceptance_gate.py`** — `run_g; suites to a `ThreadPoolExecutor` (max_workers=4), ",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2279,7 +2279,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/evaluation/test_analyzer_baseline.py",
       "root_cause": "2 lines replaced/restructured",
-      "fix": "Rewrote 5\u219212 lines (2 removed)",
+      "fix": "Rewrote 5→12 lines (2 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2295,7 +2295,7 @@
       "error_message": "Significant refactor of ",
       "file": "tests/review/test_api_import.py",
       "root_cause": "3 lines replaced/restructured",
-      "fix": "Rewrote 10\u219229 lines (3 removed)",
+      "fix": "Rewrote 10→29 lines (3 removed)",
       "tags": [
         "auto-detected",
         "refactor",
@@ -2310,7 +2310,7 @@
       "timestamp": "2026-04-26T03:29:08.411Z",
       "error_message": "Missing error handling in _aggregate_exit_code",
       "file": "src/evaluation/acceptance_gate.py",
-      "root_cause": "Code path had no error handling \u2014 exceptions would propagate uncaught",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
       "fix": "Added try/catch block",
       "tags": [
         "auto-detected",
@@ -2339,6 +2339,198 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T03:29:58.878538Z"
+    },
+    {
+      "id": "bug-147",
+      "timestamp": "2026-05-01T16:24:43.673Z",
+      "error_message": "Significant refactor of ",
+      "file": "tests/unit/test_effect_placer.py",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 15→10 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T16:24:43.673Z"
+    },
+    {
+      "id": "bug-148",
+      "timestamp": "2026-05-01T16:27:41.612Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 19→36 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T16:27:41.612Z"
+    },
+    {
+      "id": "bug-149",
+      "timestamp": "2026-05-01T17:37:08.161Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/evaluation/xsq_reader.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 42→67 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:37:08.161Z"
+    },
+    {
+      "id": "bug-150",
+      "timestamp": "2026-05-01T17:40:23.002Z",
+      "error_message": "Incorrect value in code",
+      "file": "openspec/changes/microscope-placement-coverage/tasks.md",
+      "root_cause": "Had `tests/microscope/test_runner.py`",
+      "fix": "Changed to `panel.py:100`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:40:23.002Z"
+    },
+    {
+      "id": "bug-151",
+      "timestamp": "2026-05-01T17:46:26.579Z",
+      "error_message": "Significant refactor of ",
+      "file": "openspec/changes/microscope-placement-coverage/proposal.md",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 16→25 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:46:26.579Z"
+    },
+    {
+      "id": "bug-152",
+      "timestamp": "2026-05-01T17:46:46.103Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "openspec/changes/microscope-placement-coverage/proposal.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:46:46.103Z"
+    },
+    {
+      "id": "bug-153",
+      "timestamp": "2026-05-01T17:47:06.455Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "openspec/changes/microscope-placement-coverage/design.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:47:06.455Z"
+    },
+    {
+      "id": "bug-154",
+      "timestamp": "2026-05-01T17:47:14.860Z",
+      "error_message": "Significant refactor of ",
+      "file": "openspec/changes/microscope-placement-coverage/specs/microscope-placement-coverage/spec.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→10 lines (3 removed) | Also: The metric registry SHALL include `placement_cover; `len(set(model_names)) / len(set(layout_model_name",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-01T17:47:22.650Z"
+    },
+    {
+      "id": "bug-155",
+      "timestamp": "2026-05-01T17:48:06.900Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/evaluation/metrics/coverage.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 19→32 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:48:06.900Z"
+    },
+    {
+      "id": "bug-156",
+      "timestamp": "2026-05-01T17:49:22.601Z",
+      "error_message": "Wrong return value",
+      "file": "tests/microscope/test_runner.py",
+      "root_cause": "Was returning: captured",
+      "fix": "Now returns: {\"08_HERO_FAKE\": (\"FakeProp\",)}",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:49:22.601Z"
+    },
+    {
+      "id": "bug-157",
+      "timestamp": "2026-05-01T17:49:48.549Z",
+      "error_message": "Significant refactor of ",
+      "file": "tests/evaluation/test_coverage_metric.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 11→52 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T17:49:48.549Z"
+    },
+    {
+      "id": "bug-158",
+      "timestamp": "2026-05-02T00:55:49.061Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 28→39 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-02T00:55:49.061Z"
     }
   ]
 }

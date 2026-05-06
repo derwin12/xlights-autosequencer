@@ -452,6 +452,15 @@ xlight-evaluate microscope sensitivity
 # recent as the most-recent commit touching src/evaluation/metrics/,
 # src/evaluation/xsq_reader.py, or src/effects/builtin_effects.json.
 xlight-evaluate microscope baseline
+
+# Tier-coverage verification. Reads each fixture's metrics.json from a
+# previous `microscope panel` run and asserts the observed active_tiers
+# cover the manifest's declared tier_intent, plus that the required-tier
+# set (01_BASE, 02_GEO, 04_BEAT, 06_PROP, 08_HERO) is fully declared
+# across the panel. Exit 0 pass, 6 coverage regression, 2 manifest/output-dir error.
+xlight-evaluate microscope verify-coverage \
+  --manifest tests/fixtures/reference/panel_manifest.json \
+  --output-dir microscope-out/
 ```
 
 When the metric registry changes (new metric, removed metric, definition

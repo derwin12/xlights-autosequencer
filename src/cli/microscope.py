@@ -478,3 +478,59 @@ def sensitivity_command(
     )
     click.echo(f"Sensitivity proof written: {_SENSITIVITY_PROOF_PATH}")
     sys.exit(0)
+
+
+@microscope_group.command(name="verify-coverage")
+@click.option("--manifest", "manifest_path", type=click.Path(),
+              default=_DEFAULT_MANIFEST, show_default=True,
+              help="Panel manifest to verify against.")
+@click.option("--output-dir", "output_dir", type=click.Path(),
+              default=_DEFAULT_OUTPUT_DIR, show_default=True,
+              help="Output dir from a previous `microscope panel` run.")
+def verify_coverage_command(manifest_path: str, output_dir: str) -> None:
+    """Verify each fixture activates every tier listed in its tier_intent.
+
+    Reads the manifest's tier_intent declarations and the per-fixture
+    metrics.json files written by `microscope panel`. Exits 0 if every
+    fixture's actual active_tiers covers its declared intent AND the
+    panel's required-tier set is fully declared. Exits 6 on coverage
+    regression. Exits 2 on manifest/output-dir errors.
+    """
+    from src.microscope.verify import verify_panel_coverage
+
+    try:
+        report = verify_panel_coverage(Path(manifest_path), Path(output_dir))
+    except FileNotFoundError as exc:
+        click.echo(f"verify-coverage: {exc}", err=True)
+        sys.exit(2)
+    except ValueError as exc:
+        click.echo(f"verify-coverage: malformed manifest: {exc}", err=True)
+        sys.exit(2)
+
+    for f in report.fixtures:
+        if f.passed:
+            click.echo(
+                f"  [PASS] {f.slug}  declared={list(f.declared)} "
+                f"observed={list(f.observed)}"
+            )
+        else:
+            never_observed = ", ".join(f.missing)
+            click.echo(
+                f"  [FAIL] {f.slug}  declared tier(s) never observed: "
+                f"{never_observed}; actual active_tiers={list(f.observed)}",
+                err=True,
+            )
+
+    if report.orphaned_required_tiers:
+        click.echo(
+            f"  [ORPHAN] required tier(s) not declared by any fixture: "
+            f"{', '.join(report.orphaned_required_tiers)}",
+            err=True,
+        )
+
+    if not report.passed:
+        sys.exit(6)
+    n = len(report.fixtures)
+    declared = sum(len(f.declared) for f in report.fixtures)
+    click.echo(f"OK: {n} fixtures, {declared} tier intent(s) verified.")
+    sys.exit(0)

@@ -1,13 +1,13 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-30T20:49:37.799Z
-> Files: 583 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-06T16:36:31.774Z
+> Files: 610 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.DS_Store` (~1640 tok)
-- `.gitignore` — Git ignore rules (~420 tok)
-- `CLAUDE.md` — OpenWolf (~6866 tok)
+- `.gitignore` — Git ignore rules (~593 tok)
+- `CLAUDE.md` — OpenWolf (~8227 tok)
 - `LICENSE` — Project license (~285 tok)
 - `pyproject.toml` — Automatically generate xLights sequences from audio files (~752 tok)
 - `README.md` — Project documentation (~3264 tok)
@@ -983,6 +983,10 @@
 
 - `evaluate.yml` — CI: Acceptance Gate (Tier A) (~1647 tok)
 
+## docs/
+
+- `microscope-tier-effectiveness.md` — Tier and Layout Effectiveness — 2026-05-02 Diagnostic (~1637 tok)
+
 ## openspec/changes/acceptance-gate/
 
 - `tasks.md` — 1. Corpus wiring (reuse existing CC0 pattern) (~2580 tok)
@@ -1001,6 +1005,26 @@
 
 - `spec.md` — ADDED Requirements (~1018 tok)
 
+## openspec/changes/microscope-panel-tier-coverage/
+
+- `design.md` — Context (~1549 tok)
+- `proposal.md` — Why (~1233 tok)
+- `tasks.md` — 1. Research — find candidate fixtures (~1014 tok)
+
+## openspec/changes/microscope-panel-tier-coverage/specs/microscope-panel-tier-coverage/
+
+- `spec.md` — ADDED Requirements (~929 tok)
+
+## openspec/changes/microscope-placement-coverage/
+
+- `design.md` — Context (~2261 tok)
+- `proposal.md` — Why (~1035 tok)
+- `tasks.md` — 1. Schema bump on SequenceSummary (~975 tok)
+
+## openspec/changes/microscope-placement-coverage/specs/microscope-placement-coverage/
+
+- `spec.md` — ADDED Requirements (~1354 tok)
+
 ## scripts/
 
 - `boundary_confidence_map.py` — Boundary confidence map — diagnostic tool for section boundary detection. (~8430 tok)
@@ -1017,12 +1041,32 @@
 
 - `evaluate.py` — xlight-evaluate CLI — quality calibration subcommands. (~4748 tok)
 - `library.py` — ``library`` command group: list and refresh the user's analyzed song library. (~3148 tok)
+- `microscope.py` — xlight-evaluate microscope — visual-quality measurement subcommand group. (~5345 tok)
 
 ## src/evaluation/
 
 - `acceptance_gate.py` — Acceptance-gate orchestrator. (~3802 tok)
 - `analyzer_baseline.py` — Analyzer-layer regression baseline. (~3292 tok)
 - `corpus_resolver.py` — Corpus resolver for the acceptance gate. (~1310 tok)
+- `models.py` — Core data model for the quality calibration harness. (~1327 tok)
+- `xsq_reader.py` — Parser for xLights .xsq and .xsqz sequence files. (~2732 tok)
+
+## src/evaluation/metrics/
+
+- `coverage.py` — Placement coverage metric. (~686 tok)
+- `suitability.py` — Suitability metrics — variety + parallel pairing-fit signals. (~3865 tok)
+- `tier_breakdown.py` — Diagnostic metrics for tier and group activation. (~994 tok)
+
+## src/generator/
+
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~26888 tok)
+
+## src/microscope/
+
+- `panel.py` — Microscope panel runner. (~2393 tok)
+- `runner.py` — Microscope per-song runner. (~3014 tok)
+- `sensitivity.py` — Sensitivity gate for the visual-quality microscope. (~5057 tok)
+- `verify.py` — Tier-coverage verification for the microscope panel. (~1442 tok)
 
 ## src/review/
 
@@ -1058,12 +1102,21 @@
 ## tests/evaluation/
 
 - `test_analyzer_baseline.py` — Tests for src/evaluation/analyzer_baseline.py. (~2479 tok)
+- `test_coverage_metric.py` — Tests for ``placement_coverage_pct`` (OpenSpec change (~1372 tok)
 - `test_gate_cli.py` — Tests for `xlight-evaluate gate` — orchestration + exit code + JSON report. (~3073 tok)
+- `test_tier_breakdown_metric.py` — Tests for ``tier_placement_breakdown`` and ``group_utilization`` (~840 tok)
+- `test_xsq_reader_layout_models.py` — Tests for ``_read_layout_model_names`` and the ``layout_path`` kwarg on (~1143 tok)
 
 ## tests/fixtures/cc0_music/
 
 - `manifest.json` (~568 tok)
 - `README.md` — Project documentation (~616 tok)
+
+## tests/microscope/
+
+- `test_panel_manifest_intent.py` — Tests for tier_intent manifest schema (OpenSpec (~1192 tok)
+- `test_runner.py` — Tests for ``src.microscope.runner``. (~3473 tok)
+- `test_verify_coverage.py` — Tests for ``verify_panel_coverage`` (OpenSpec (~1668 tok)
 
 ## tests/review/
 
@@ -1089,6 +1142,7 @@
 
 ## tests/unit/
 
+- `test_effect_placer.py` — Tests for src/generator/effect_placer — _build_effect_pool prop_type filtering (spec 041). (~4954 tok)
 - `test_genius_segments.py` — Tests for genius_segments: sanitize_title, strip_boilerplate, parse_sections, (~6014 tok)
 - `test_id3_confirm.py` — Unit tests for the ID3 confirmation prompt + atomic write-back (§6a). (~2208 tok)
 

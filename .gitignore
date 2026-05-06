@@ -104,3 +104,4 @@ tests/golden/timeline-screenshots/
 
 # Microscope per-run outputs (regenerated locally)
 microscope-out/
+microscope-out-*/
