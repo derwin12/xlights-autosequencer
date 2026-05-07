@@ -87,9 +87,15 @@ def build_scoring_context(
 ) -> "ScoringContext":
     """Map SectionEnergy + PowerGroup + Theme to ScoringContext.
 
-    Mapping per research.md R2:
+    Mapping per research.md R2 (extended 2026-05-06 for tier-layering-policy):
     - energy_score 0-33 → "low", 34-66 → "medium", 67-100 → "high"
-    - group.tier → tier_affinity: 5→"mid", 6→"mid", 7→"foreground", 8→"hero"
+    - group.tier → tier_affinity:
+        1 BASE → "background"   2 GEO  → "background"
+        3 TYPE → "mid"          4 BEAT → "mid"
+        5 TEX  → "mid"          6 PROP → "mid"
+        7 COMP → "foreground"   8 HERO → "hero"
+      Tiers 1-4 added so the variant scorer can bias toward
+      background-tagged variants when those tiers are active.
     - section.label → section_role
     - theme.genre → genre
     - group.prop_type → prop_type
@@ -104,7 +110,16 @@ def build_scoring_context(
     else:
         energy_level = "high"
 
-    tier_map = {5: "mid", 6: "mid", 7: "foreground", 8: "hero"}
+    tier_map = {
+        1: "background",
+        2: "background",
+        3: "mid",
+        4: "mid",
+        5: "mid",
+        6: "mid",
+        7: "foreground",
+        8: "hero",
+    }
     tier_affinity = tier_map.get(group.tier, "mid")
 
     return ScoringContext(

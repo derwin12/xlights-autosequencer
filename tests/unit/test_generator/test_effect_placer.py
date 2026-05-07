@@ -193,13 +193,16 @@ def _make_aggressive_section(start_ms: int = 0, end_ms: int = 10000) -> SectionE
 
 
 class TestTierSelectionByMood:
-    """Integration: exactly one partition tier active per section, driven by mood.
+    """Integration: tier set active per section, driven by mood.
 
-    These tests assert which partition tier from {2, 4, 6, 7} receives placements.
-    Tier 8 (hero) is always in the active set per _compute_active_tiers, but whether
-    it receives placements depends on layer-to-tier mapping (single-layer themes
-    don't map any layer to tier 8).  TestComputeActiveTiers covers the full
-    active-set semantics directly.
+    Updated 2026-05-06 for tier-layering-policy: tier 1 BASE is now
+    always active; the partition tier from {2, 4, 6} layers on top.
+    These tests assert which partition tiers receive placements.
+    Tier 8 (hero) is always in the active set per _compute_active_tiers,
+    but whether it receives placements depends on layer-to-tier mapping
+    (single-layer themes don't map any layer to tier 8).
+    TestComputeActiveTiers covers the full active-set semantics
+    directly.
     """
 
     def _place(self, section: SectionEnergy, hierarchy: HierarchyResult) -> set[int]:
@@ -223,27 +226,27 @@ class TestTierSelectionByMood:
                                variant_library=variant_library)
         return _used_tiers(result, groups)
 
-    def test_ethereal_activates_tier_8_only(self) -> None:
-        """Ethereal mood → HERO only (tier 8); no exhaustive partition tier so most props stay dark."""
+    def test_ethereal_activates_base_and_hero(self) -> None:
+        """Ethereal mood → BASE + HERO; no partition tier so most other props stay dark."""
         section = _make_ethereal_section()
         used = self._place(section, _make_hierarchy(beat_times=[0, 500, 1000, 1500]))
         assert 8 in used
-        assert 1 not in used and 2 not in used and 4 not in used and 6 not in used and 7 not in used
+        assert 2 not in used and 4 not in used and 6 not in used and 7 not in used
 
-    def test_structural_without_phrase_structure_uses_tier_6(self) -> None:
-        """Structural + weak phrase structure → prop-type variety (tier 6)."""
+    def test_structural_without_phrase_structure_uses_base_and_prop(self) -> None:
+        """Structural + weak phrase structure → BASE + tier 6 PROP + HERO."""
         section = _make_section()  # default mood_tier="structural", no bars/curves
         used = self._place(section, _make_hierarchy(beat_times=[0, 500, 1000, 1500]))
         assert 6 in used
-        assert 1 not in used and 2 not in used and 4 not in used and 7 not in used
+        assert 2 not in used and 4 not in used and 7 not in used
 
-    def test_aggressive_uses_tier_4_chase(self) -> None:
-        """Aggressive mood → beat chase (tier 4)."""
+    def test_aggressive_uses_base_beat_and_prop(self) -> None:
+        """Aggressive mood → BASE + tier 4 BEAT + tier 6 PROP + HERO."""
         section = _make_aggressive_section()
         beat_times = list(range(0, 10000, 500))
         used = self._place(section, _make_hierarchy(beat_times=beat_times))
         assert 4 in used
-        assert 1 not in used and 2 not in used and 6 not in used and 7 not in used
+        assert 2 not in used and 7 not in used
 
     def test_explicit_tiers_override_bypasses_selection(self) -> None:
         """Explicit `tiers=` argument bypasses the mood-based selection."""
@@ -258,6 +261,47 @@ class TestTierSelectionByMood:
                                variant_library=variant_library)
         used = _used_tiers(result, groups)
         assert used == {1}
+
+
+class TestGroupDensityPreservesPartitionTiers:
+    """group_density truncation must not drop tier 4 BEAT_N partition slices.
+
+    Regression test for the BEAT_4 bug: at group_density=0.75, the old
+    code truncated tier-4 from 4 → 3 beat groups, so 1/4 of props never
+    fired on the beat. Partition tiers (2, 3, 4, 5) must keep all groups.
+    """
+
+    def _make_4_beat_groups(self) -> list[PowerGroup]:
+        return [
+            PowerGroup(name=f"04_BEAT_{i}", tier=4, members=[f"Model_{i}"])
+            for i in (1, 2, 3, 4)
+        ]
+
+    def test_aggressive_section_with_low_group_density_keeps_all_4_beats(self) -> None:
+        """At group_density=0.5, BEAT_1..BEAT_4 must all remain available
+        for the chase placer; truncation would silence 1-2 beat buckets."""
+        section = _make_aggressive_section()
+        layers = [EffectLayer(variant="Color Wash")]
+        assignment = SectionAssignment(
+            section=section,
+            theme=_make_theme(layers=layers),
+            active_tiers=frozenset({1, 4, 6, 8}),
+            group_density=0.5,  # aggressive truncation
+        )
+        groups = self._make_4_beat_groups() + [
+            PowerGroup(name="01_BASE_All", tier=1, members=["Model_1", "Model_2", "Model_3", "Model_4"]),
+        ]
+        library = _make_library(_make_effect("Color Wash"))
+        variant_library = _make_variant_library("Color Wash")
+        hierarchy = _make_hierarchy(beat_times=list(range(0, 10000, 500)))
+
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        beat_groups_with_placements = {n for n in result if n.startswith("04_BEAT")}
+        assert beat_groups_with_placements == {"04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4"}, (
+            f"all 4 beat groups must receive chase placements; got "
+            f"{beat_groups_with_placements}"
+        )
 
 
 class TestDurationTypeSection:
@@ -281,6 +325,79 @@ class TestDurationTypeSection:
         p = section_placements[0]
         assert p.start_ms <= 1000  # frame-aligned at or before section start
         assert p.end_ms >= 5000    # frame-aligned at or after section end
+
+
+class TestTier1AlwaysSectionSpanning:
+    """Tier 1 BASE always produces ONE section-spanning placement, regardless
+    of the effect's nominal duration_behavior or duration_scaling state.
+
+    Without this override, an effect like Color Wash with the default
+    "standard" duration_behavior under duration_scaling=True would get
+    subdivided into ~10 bar-aligned placements per section, producing
+    pulses instead of a continuous undertone wash.
+    """
+
+    def test_tier1_with_duration_scaling_still_section_spanning(self) -> None:
+        # Default _make_effect produces an effect with duration_behavior="standard"
+        # (no override). A non-None duration_target on the assignment puts the
+        # placer into "duration_scaling" mode — the path that would normally
+        # subdivide a structural effect into bar-aligned chunks.
+        from src.generator.models import DurationTarget
+        assignment = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=20000),
+            theme=_make_theme(layers=[EffectLayer(variant="Color Wash")]),
+            active_tiers=frozenset({1}),
+            duration_target=DurationTarget(min_ms=300, target_ms=1000, max_ms=3000),
+        )
+        groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
+        library = _make_library(_make_effect("Color Wash"))  # no duration_behavior
+        variant_library = _make_variant_library("Color Wash")
+        # Beat marks every 500ms — would normally drive bar-aligned subdivision
+        hierarchy = _make_hierarchy(beat_times=list(range(0, 20000, 500)),
+                                    duration_ms=20000)
+
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        base_placements = result.get("01_BASE_All", [])
+        assert len(base_placements) == 1, (
+            f"tier-1 BASE must collapse to one section-spanning placement; "
+            f"got {len(base_placements)} placements"
+        )
+        p = base_placements[0]
+        assert p.start_ms <= 0 and p.end_ms >= 20000, (
+            f"tier-1 placement must span full section; got "
+            f"[{p.start_ms}, {p.end_ms}]"
+        )
+
+
+class TestTier1AlwaysGetsMusicSparkles:
+    """Tier 1 BASE placements get music_sparkles > 0 even without palette
+    restraint, providing the music-reactive overlay that gives the BASE
+    wash visual depth instead of reading as a static sine wave."""
+
+    def test_tier1_placement_has_sparkles_without_palette_restraint(self) -> None:
+        # palette_target=None on the assignment ⇒ palette restraint OFF.
+        # The tier-1 sparkle path runs unconditionally (not gated by it).
+        assignment = SectionAssignment(
+            section=_make_section(energy_score=50),
+            theme=_make_theme(layers=[EffectLayer(variant="Color Wash")]),
+            active_tiers=frozenset({1}),
+        )
+        assert assignment.palette_target is None  # restraint OFF
+        groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
+        library = _make_library(_make_effect("Color Wash"))
+        variant_library = _make_variant_library("Color Wash")
+        hierarchy = _make_hierarchy(beat_times=[0, 500, 1000])
+
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        base_placements = result.get("01_BASE_All", [])
+        assert base_placements, "tier-1 placement expected"
+        for p in base_placements:
+            assert p.music_sparkles > 0, (
+                f"tier-1 placement must have music_sparkles > 0; got "
+                f"music_sparkles={p.music_sparkles} on '{p.effect_name}'"
+            )
 
 
 class TestDurationTypeBeat:
@@ -531,32 +648,38 @@ def _hierarchy_with_bars_and_curve(
 
 
 class TestComputeActiveTiers:
-    """_compute_active_tiers returns the single-partition tier set per section."""
+    """_compute_active_tiers returns the layered tier set per section.
 
-    def test_ethereal_returns_tiers_1_and_8(self) -> None:
+    Updated 2026-05-06 for tier-layering-policy: tier 1 BASE is now
+    always active alongside the partition tier, providing a constant
+    quiet undertone biased toward background-tagged variants via the
+    tier_affinity map in rotation.py.
+    """
+
+    def test_ethereal_returns_base_and_hero(self) -> None:
         from src.generator.effect_placer import _compute_active_tiers
         section = SectionEnergy(label="intro", start_ms=0, end_ms=10000,
                                 energy_score=20, mood_tier="ethereal", impact_count=0)
         hierarchy = _make_hierarchy()
-        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({8})
+        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({1, 8})
 
-    def test_aggressive_returns_tiers_4_and_8(self) -> None:
+    def test_aggressive_returns_base_beat_prop_hero(self) -> None:
         from src.generator.effect_placer import _compute_active_tiers
         section = SectionEnergy(label="chorus", start_ms=0, end_ms=10000,
                                 energy_score=85, mood_tier="aggressive", impact_count=0)
         hierarchy = _make_hierarchy()
-        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({4, 8})
+        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({1, 4, 6, 8})
 
-    def test_structural_without_phrase_uses_prop_tier(self) -> None:
-        """Structural section with no bar data → tier 6 (PROP variety)."""
+    def test_structural_without_phrase_returns_base_prop_hero(self) -> None:
+        """Structural section with no bar data → BASE + tier 6 PROP + HERO."""
         from src.generator.effect_placer import _compute_active_tiers
         section = SectionEnergy(label="verse", start_ms=0, end_ms=10000,
                                 energy_score=50, mood_tier="structural", impact_count=0)
         hierarchy = _make_hierarchy()  # no bars, no energy curves
-        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({6, 8})
+        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({1, 6, 8})
 
-    def test_structural_with_strong_phrase_uses_geo(self) -> None:
-        """Structural section with periodic bar-energy pattern → tier 2 (GEO call-response)."""
+    def test_structural_with_strong_phrase_returns_base_geo_hero(self) -> None:
+        """Structural section with periodic bar-energy pattern → BASE + tier 2 GEO + HERO."""
         from src.generator.effect_placer import _compute_active_tiers
         # 16 bars, every 4th bar is loud — classic phrase structure
         bar_times = list(range(0, 16 * 500, 500))
@@ -573,7 +696,7 @@ class TestComputeActiveTiers:
         section = SectionEnergy(label="verse", start_ms=0, end_ms=16 * 500,
                                 energy_score=50, mood_tier="structural", impact_count=0)
         hierarchy = _hierarchy_with_bars_and_curve(bar_times, energy_values=energy)
-        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({2, 8})
+        assert _compute_active_tiers(section, 0, hierarchy) == frozenset({1, 2, 8})
 
 
 class TestHasStrongPhraseStructure:

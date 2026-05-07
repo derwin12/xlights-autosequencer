@@ -608,12 +608,19 @@ def place_effects(
 
     # Group density: limit the number of active groups per tier for lower-energy
     # sections so most props stay dark, matching the pro pattern where quiet
-    # passages only light the key focal elements.  Tier 8 (HERO) is always kept
-    # in full — heroes are already a small subset of the display.
+    # passages only light the key focal elements.
+    #
+    # Only categorisation tiers (6 PROP, 7 COMP) get truncated.  Partition
+    # tiers (2 GEO, 3 TYPE, 4 BEAT, 5 TEX) place every prop in exactly one
+    # group — truncating drops a partition slice and means a fraction of
+    # props never fire on that tier (e.g. BEAT_4 would silently disappear
+    # at group_density=0.75, leaving 1/4 of props never beat-synced).  Tier
+    # 1 BASE has a single whole-house group (no truncation possible).
+    # Tier 8 HERO is already a curated focal subset.
     group_density = assignment.group_density
     if group_density < 1.0:
         for tier in list(tier_groups.keys()):
-            if tier == 8:
+            if tier not in (6, 7):
                 continue
             grps = tier_groups[tier]
             keep = max(1, round(len(grps) * group_density))
@@ -972,6 +979,22 @@ def place_effects(
                     section.energy_score, p.effect_name, sparkle_rng
                 )
 
+    # Tier 1 BASE always gets MusicSparkles regardless of palette restraint —
+    # the single section-spanning placement on BASE_All would otherwise read
+    # as a static sine wave; sparkles are the music-reactive overlay that
+    # gives the wash visual life. Tier 1 sparkles are unconditional (not the
+    # probabilistic compute_music_sparkles gate) but still skip
+    # already-audio-reactive effects to avoid double-coverage.
+    for group_name, placements in result.items():
+        if not group_name.startswith("01_BASE"):
+            continue
+        for p in placements:
+            if p.music_sparkles > 0:
+                continue  # already set (e.g. by palette-restraint pass above)
+            if p.effect_name in _AUDIO_REACTIVE_EFFECTS:
+                continue
+            p.music_sparkles = 15 + round(section.energy_score * 0.5)
+
     return result
 
 
@@ -1100,6 +1123,13 @@ def _place_effect_on_group(
     # Sustained effects (On, Color Wash, etc.) always span full sections.
     # Accent effects (Shockwave, Strobe, etc.) always use beat placement.
     duration_behavior = getattr(effect_def, "duration_behavior", "standard")
+    # Tier 1 BASE is always a section-spanning undertone wash, regardless
+    # of the effect's nominal duration_behavior. Without this override
+    # tier-1 background variants like Wave / Spirals / Plasma get
+    # subdivided into ~10 bar-aligned placements per section, which
+    # reads as pulses instead of a constant backdrop.
+    if group.tier == 1:
+        duration_behavior = "sustained"
     if duration_scaling and bar_parity is None:
         if duration_behavior == "sustained":
             placements = [_make_placement(
@@ -1966,28 +1996,36 @@ def _compute_active_tiers(
 ) -> frozenset[int]:
     """Return the tier set that should be active for this section.
 
-    Tiers 2, 4, 6, 7 are alternative partition schemes of the same physical
-    props — activating multiple simultaneously causes the higher-numbered
-    tier to silently overwrite the lower one on every shared prop.  To keep
-    each section visually intentional, we activate exactly ONE partition
-    tier at a time, chosen by mood and (for structural) phrase structure.
+    Layered tier model (2026-05-06, tier-layering-policy):
+    Layers compose correctly in xLights — earlier "silent overwrite"
+    concerns were a misdiagnosis of bold-effect-on-BASE producing
+    visual overwhelming, not structural overwrite.  Activating multiple
+    tiers simultaneously is the right approach so long as each tier
+    selects effects appropriate to its role; the variant tier_affinity
+    map in `rotation.py` biases tier 1 BASE / 2 GEO toward
+    background-tagged variants (Twinkle, Liquid, low-contrast Plasma)
+    so they sit underneath the partition tier rather than competing
+    with it.
 
-    Tier 8 (HERO) always runs independently — hero props don't appear in
-    partition tiers by design.  Tier 1 (BASE_All) is only meaningful for
-    ethereal sections; in other moods a partition tier covers every prop
-    and BASE would be immediately overridden.
+    Tier 1 BASE is now always active — it's the quiet wash that
+    provides a constant undertone.  The mood branch then selects which
+    partition tier (2 GEO / 4 BEAT / 6 PROP) layers on top of BASE,
+    and HERO always runs.  Tiers 3 TYPE, 5 TEX, 7 COMP are not
+    activated here; they remain dormant pending separate work.
     """
     if section.mood_tier == "ethereal":
-        # HERO-only for quiet sections: leave most of the display dark so only
-        # the focal props (matrices, mega trees) are lit during low-energy passages.
-        # Previously included Tier 1 (BASE_All) which covered every model and
-        # drove tier_utilization to ~100% even in silent moments.
-        return frozenset({8})
+        # Quiet sections: BASE wash + HERO focal props only.  No
+        # partition tier — for low-energy passages we want the rest
+        # of the display to stay dark so the matrices/mega trees read.
+        return frozenset({1, 8})
     if section.mood_tier == "structural":
         if _has_strong_phrase_structure(section, hierarchy):
-            return frozenset({2, 8})                # GEO call-response
-        return frozenset({6, 8})                    # Prop-type variety
-    return frozenset({4, 8})                        # aggressive: beat chase
+            return frozenset({1, 2, 8})             # BASE + GEO call-response + HERO
+        return frozenset({1, 6, 8})                 # BASE + prop-type variety + HERO
+    # Aggressive: BASE + beat chase + prop variety + HERO.  Tier 6
+    # is added here because BEAT_1..BEAT_4 partition props four ways,
+    # leaving many props dark per section without PROP backing.
+    return frozenset({1, 4, 6, 8})
 
 
 def _place_drum_accents(

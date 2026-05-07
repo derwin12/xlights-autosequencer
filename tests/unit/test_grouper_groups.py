@@ -7,7 +7,7 @@ import pytest
 
 from src.grouper.classifier import classify_props, normalize_coords
 from src.grouper.grouper import PowerGroup, generate_groups
-from src.grouper.layout import Prop, parse_layout
+from src.grouper.layout import Prop, SubModel, parse_layout
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "grouper"
 
@@ -233,6 +233,43 @@ class TestBeatGroups:
         beat = self._beat_groups(props)
         names = sorted(g.name for g in beat)
         assert names == ["04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4"]
+
+
+# ─── Tier 6 Radial Subgroups: pixel-count gate ───────────────────────────────
+
+class TestRadialSubPropPixelGate:
+    """_tier6_radial_subgroups skips small parent props.
+
+    Sub-prop chase work on tiny ornamental flakes / spinners produces
+    ~thousands of placements that read as visual noise — the pixel-count
+    gate (_RADIAL_PARENT_MIN_PIXELS) keeps sub-prop work to medium-and-
+    larger props that genuinely benefit from the per-spoke / per-ring
+    chase.
+    """
+
+    def _radial_groups(self, props: list[Prop]) -> list[PowerGroup]:
+        return [g for g in generate_groups(props) if g.prop_type == "radial"]
+
+    def _flake_subs(self, n: int = 6) -> list[SubModel]:
+        return [SubModel(name=f"Spoke {i+1}", pixel_indices=(i+1,)) for i in range(n)]
+
+    def test_small_radial_prop_does_not_produce_subgroup(self):
+        # 6×6 = 36 pixels — well below the 400 floor
+        small = make_prop("Small Flake", parm1=6, parm2=6,
+                          sub_models=self._flake_subs())
+        normalize_coords([small])
+        classify_props([small])
+        assert self._radial_groups([small]) == []
+
+    def test_large_radial_prop_does_produce_subgroup(self):
+        # 32×32 = 1024 pixels — above the 400 floor
+        big = make_prop("Big Flake", parm1=32, parm2=32,
+                        sub_models=self._flake_subs())
+        normalize_coords([big])
+        classify_props([big])
+        radial = self._radial_groups([big])
+        assert len(radial) == 1
+        assert all(m.startswith("Big Flake/Spoke ") for m in radial[0].members)
 
 
 # ─── T006: PowerGroup.prop_type population ──────────────────────────────────

@@ -7,13 +7,18 @@ from src.grouper.layout import Prop, SubModel
 
 
 def _flake(name: str, sub_model_names: list[str]) -> Prop:
-    """Build a Custom prop with the given subModel names (pixel indices stubbed)."""
+    """Build a Custom prop with the given subModel names (pixel indices stubbed).
+
+    Pixel count (parm1*parm2 = 800) is set above _RADIAL_PARENT_MIN_PIXELS=400
+    so radial subgroups are promoted. The pixel-count gate itself has its own
+    coverage in tests/unit/test_grouper_groups.py::TestRadialSubPropPixelGate.
+    """
     return Prop(
         name=name,
         display_as="Custom",
         world_x=0.0, world_y=0.0, world_z=0.0,
         scale_x=1.0, scale_y=1.0,
-        parm1=10, parm2=10,
+        parm1=20, parm2=40,
         sub_models=[SubModel(name=n, pixel_indices=(1, 2, 3)) for n in sub_model_names],
     )
 

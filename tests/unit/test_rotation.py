@@ -208,6 +208,30 @@ class TestBuildScoringContext:
 
     # ---- tier_affinity mapping ----
 
+    def test_tier_1_is_background(self):
+        ctx = build_scoring_context(
+            self._section(50), self._group(tier=1), self._theme()
+        )
+        assert ctx.tier_affinity == "background"
+
+    def test_tier_2_is_background(self):
+        ctx = build_scoring_context(
+            self._section(50), self._group(tier=2), self._theme()
+        )
+        assert ctx.tier_affinity == "background"
+
+    def test_tier_3_is_mid(self):
+        ctx = build_scoring_context(
+            self._section(50), self._group(tier=3), self._theme()
+        )
+        assert ctx.tier_affinity == "mid"
+
+    def test_tier_4_is_mid(self):
+        ctx = build_scoring_context(
+            self._section(50), self._group(tier=4), self._theme()
+        )
+        assert ctx.tier_affinity == "mid"
+
     def test_tier_5_is_mid(self):
         ctx = build_scoring_context(
             self._section(50), self._group(tier=5), self._theme()

@@ -30,6 +30,16 @@ _RADIAL_SUBMODEL_PATTERNS: dict[str, "re.Pattern[str]"] = {
 }
 _RADIAL_MIN_MEMBERS = 2
 
+# Minimum parent-prop pixel count required to promote its radial
+# submodels into their own chase group.  Without a floor, every flake
+# arm and every spinner spoke gets its own placement loop, producing
+# ~2900 sub-prop placements on a typical residential layout — visually
+# overwhelming even on prop-level effects.  A 400-pixel floor admits
+# medium-and-larger custom props (mega flakes, big spinners) while
+# excluding the small ornamental ones (small flake/spinner sub-props
+# fire as part of their parent group instead).
+_RADIAL_PARENT_MIN_PIXELS = 400
+
 # Show profile → set of active tier numbers
 PROFILE_TIERS: dict[str, set[int]] = {
     "energetic": {3, 4, 6, 8},
@@ -235,6 +245,12 @@ def _tier6_radial_subgroups(props: list[Prop]) -> list[PowerGroup]:
     groups: list[PowerGroup] = []
     for p in props:
         if not p.sub_models:
+            continue
+        # Pixel-count gate: small props (e.g. flakes ≤ 96 pixels)
+        # don't get sub-routed — their parent-group effect alone
+        # already gives every sub-pixel coverage.  See
+        # _RADIAL_PARENT_MIN_PIXELS for rationale.
+        if getattr(p, "pixel_count", 0) < _RADIAL_PARENT_MIN_PIXELS:
             continue
         for label, pattern in _RADIAL_SUBMODEL_PATTERNS.items():
             matches: list[tuple[int, str]] = []
