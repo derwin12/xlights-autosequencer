@@ -105,3 +105,6 @@ tests/golden/timeline-screenshots/
 # Microscope per-run outputs (regenerated locally)
 microscope-out/
 microscope-out-*/
+
+# Render-panel harness outputs (regenerated locally)
+render-out/
