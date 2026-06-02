@@ -82,6 +82,16 @@ step "Vamp plugins → $VAMP_DIR"
 
 mkdir -p "$VAMP_DIR"
 
+# Offline fast path: copy any self-contained binaries vendored in the repo for
+# this platform before falling back to a network download. See vendor/vamp/README.md.
+if [[ "$PLATFORM" == "linux" ]]; then
+  VENDOR_DIR="$REPO_ROOT/vendor/vamp/linux-$(uname -m)"
+  if [[ -d "$VENDOR_DIR" ]] && ls "$VENDOR_DIR"/*.so &>/dev/null 2>&1; then
+    cp "$VENDOR_DIR"/*.so "$VENDOR_DIR"/*.cat "$VENDOR_DIR"/*.n3 "$VAMP_DIR/" 2>/dev/null || true
+    ok "Copied vendored Vamp plugins from $VENDOR_DIR"
+  fi
+fi
+
 REQUIRED_PLUGINS="qm-vamp-plugins segmentino bbc-vamp-plugins beatroot-vamp pyin nnls-chroma vamp-aubio"
 MISSING=""
 for p in $REQUIRED_PLUGINS; do

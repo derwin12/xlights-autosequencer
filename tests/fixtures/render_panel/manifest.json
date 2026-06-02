@@ -1,0 +1,9 @@
+{
+  "_comment": "Render-panel fixture for the visual feedback loop. Layout is Rob's real 81-prop show with networks sanitized (placeholder IPs, generic machine name). Songs are CC0 — fetch with `python -m tests.validation.download_fixtures` before running. Stories supply librosa-derived sections with song-normalized energy so the generator places effects without the vamp segmenter.",
+  "layout": "xlights_rgbeffects.xml",
+  "networks": "xlights_networks.xml",
+  "songs": [
+    {"song": "../cc0_music/maple_leaf_rag.mp3", "story": "maple_leaf_rag_story.json"},
+    {"song": "../cc0_music/nostalgic_piano.mp3", "story": "nostalgic_piano_story.json"}
+  ]
+}

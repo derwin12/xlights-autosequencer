@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Networks computer="render-fixture" GlobalFPPProxy="" GlobalForceLocalIP="" AutoUpdateFromBase="0" BaseShowDir="">
+  <Controller Id="1" Name="Falcon_F16V5_DA82" Description="" Type="Ethernet" Vendor="Falcon" Model="F16V5" Variant="" AutoSize="1" FromBase="0" FullxLightsControl="TRUE" DefaultBrightnessUnderFullControl="30" DefaultGammaUnderFullControl="1" ActiveState="Active" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="10.0.0.1" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+    <network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="10.0.0.1" BaudRate="1" NetworkType="DDP" MaxChannels="15645"/>
+  </Controller>
+  <Controller Id="3" Name="Matrix" Description="" Type="Ethernet" Vendor="FPP" Model="LED Panels" Variant="" AutoSize="1" FromBase="0" FullxLightsControl="TRUE" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="10.0.0.1" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+    <network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="10.0.0.1" BaudRate="3" NetworkType="DDP" MaxChannels="147456" FPPProxy=""/>
+  </Controller>
+  <Controller Id="2" Name="KulpK16" Description="" Type="Ethernet" Vendor="KulpLights" Model="K16" Variant="K16-Max" AutoSize="1" FromBase="0" FullxLightsControl="TRUE" DefaultBrightnessUnderFullControl="30" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="1" SuppressDuplicates="0" Monitor="1" IP="10.0.0.1" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+    <network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="10.0.0.1" BaudRate="2" NetworkType="DDP" MaxChannels="12477"/>
+  </Controller>
+  <Controller Id="5" Name="tuneto" Description="" Type="Ethernet" Vendor="FPP" Model="LED Panels" Variant="" AutoSize="1" FromBase="0" FullxLightsControl="TRUE" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="10.0.0.1" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+    <network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="10.0.0.1" BaudRate="5" NetworkType="DDP" MaxChannels="24576"/>
+  </Controller>
+  <Controller Id="4" Name="mainplayer" Description="" Type="Ethernet" Vendor="FPP" Model="FPP Player Only" Variant="" AutoSize="1" FromBase="0" FullxLightsControl="TRUE" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="Active" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="10.0.0.1" Protocol="Player Only" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP=""/>
+  <testpreset name="test">
+    <channelr start="1" end="945"/>
+  </testpreset>
+</Networks>

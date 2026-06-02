@@ -46,6 +46,30 @@ Writes `render-out/<slug>/`: the `.xsq`, `.mp4`, extracted frames, and
 **placement count** — `0` means the generator produced an unlit
 timing-only sequence (see note).
 
+## Committed fixture — the standing visual loop
+
+A ready-to-run panel lives at `tests/fixtures/render_panel/`:
+
+- `xlights_rgbeffects.xml` — a real 81-prop show layout.
+- `xlights_networks.xml` — sanitized (placeholder IPs, generic machine name);
+  channel structure preserved so rendering is faithful.
+- `maple_leaf_rag_story.json`, `nostalgic_piano_story.json` — librosa-derived
+  sections with song-normalized energy, so the generator places effects
+  without the vamp segmenter.
+- `manifest.json` — wires the above to the two CC0 songs.
+
+Run it in any session (songs are gitignored — fetch them first):
+
+```bash
+python -m tests.validation.download_fixtures              # fetch CC0 mp3s
+python -m tools.render_panel.run setup                    # fetch xLights (once)
+python -m tools.render_panel.run panel \
+    --manifest tests/fixtures/render_panel/manifest.json
+```
+
+That's the repeatable feedback loop: change generator code → run the panel →
+look at `render-out/panel_contact_sheet.jpg`.
+
 ## Render a panel
 
 ```bash

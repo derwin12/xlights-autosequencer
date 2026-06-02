@@ -2566,6 +2566,48 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-30T17:26:48.991505Z"
+    },
+    {
+      "id": "bug-161",
+      "timestamp": "2026-06-02",
+      "error_message": "ImportError: cannot import name 'MutableSequence' from 'collections' \u2014 madmom_beats/madmom_downbeats silently absent on Python 3.11",
+      "file": "src/analyzer/vamp_runner.py, src/analyzer/capabilities.py",
+      "root_cause": "madmom 0.16.1 processors.py does `from collections import MutableSequence`, removed from collections (moved to collections.abc) in Python 3.10. Repo had a numpy-alias shim before madmom import but no collections equivalent, so the import failed and was swallowed as 'madmom unavailable'.",
+      "fix": "Mirror the numpy-alias shim: restore collections.MutableSequence from collections.abc before any madmom import, in vamp_runner.py (module top) and capabilities.py (both the .venv-vamp probe string and the in-process detect_capabilities branch). Verified detect_capabilities()['madmom']=True after.",
+      "tags": [
+        "madmom",
+        "python3.11",
+        "collections",
+        "MutableSequence",
+        "analyzer",
+        "shim",
+        "capabilities"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-02"
+    },
+    {
+      "id": "bug-162",
+      "timestamp": "2026-06-02",
+      "error_message": "madmom_downbeats failed (ValueError): setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (2, 2) + inhomogeneous part.",
+      "file": "src/analyzer/algorithms/madmom_beat.py",
+      "root_cause": "madmom 0.16.1 features/downbeats.py:287 does np.argmax(np.asarray(results)[:,1]) where results is [(viterbi_path_array, log_prob), ...] (one per beats_per_bar HMM); the path arrays differ in length so np.asarray(results) is ragged. numpy>=1.24 raises ValueError on ragged array creation; pre-1.24 it made an object array, which madmom relies on.",
+      "fix": "_patch_downbeats_asarray() in madmom_beat.py replaces only the `np` name inside madmom.features.downbeats with a proxy that delegates to numpy except asarray, which falls back to dtype=object on ValueError (restoring pre-1.24 semantics). Idempotent, module-scoped; called in MadmomDownbeatAlgorithm._run after import. Verified 25 downbeat marks produced.",
+      "tags": [
+        "madmom",
+        "numpy",
+        "ragged-array",
+        "inhomogeneous",
+        "asarray",
+        "downbeats",
+        "analyzer"
+      ],
+      "related_bugs": [
+        "bug-161"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-02"
     }
   ]
 }

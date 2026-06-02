@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.1.0",
+  "preferences": {
+    "genre": "piano",
+    "occasion": "general",
+    "intensity": 1.0
+  },
+  "sections": [
+    {
+      "role": "intro",
+      "start": 0.0,
+      "end": 96.36,
+      "character": {
+        "energy_score": 80
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "verse",
+      "start": 96.36,
+      "end": 120.3,
+      "character": {
+        "energy_score": 100
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "chorus",
+      "start": 120.3,
+      "end": 140.36,
+      "character": {
+        "energy_score": 73
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "verse",
+      "start": 140.36,
+      "end": 153.39,
+      "character": {
+        "energy_score": 64
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "bridge",
+      "start": 153.39,
+      "end": 188.22,
+      "character": {
+        "energy_score": 75
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "chorus",
+      "start": 188.22,
+      "end": 193.72,
+      "character": {
+        "energy_score": 5
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "verse",
+      "start": 193.72,
+      "end": 196.32,
+      "character": {
+        "energy_score": 0
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    }
+  ]
+}

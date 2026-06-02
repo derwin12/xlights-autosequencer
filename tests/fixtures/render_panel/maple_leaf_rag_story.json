@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.1.0",
+  "preferences": {
+    "genre": "ragtime",
+    "occasion": "general",
+    "intensity": 1.0
+  },
+  "sections": [
+    {
+      "role": "intro",
+      "start": 0.0,
+      "end": 35.892,
+      "character": {
+        "energy_score": 0
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "verse",
+      "start": 35.892,
+      "end": 71.784,
+      "character": {
+        "energy_score": 50
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "chorus",
+      "start": 71.784,
+      "end": 107.677,
+      "character": {
+        "energy_score": 100
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "verse",
+      "start": 107.677,
+      "end": 143.569,
+      "character": {
+        "energy_score": 54
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    },
+    {
+      "role": "outro",
+      "start": 143.569,
+      "end": 179.461,
+      "character": {
+        "energy_score": 10
+      },
+      "lighting": {
+        "moment_count": 3
+      },
+      "overrides": {}
+    }
+  ]
+}

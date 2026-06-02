@@ -6,6 +6,42 @@ import numpy as np
 from src.analyzer.algorithms.base import Algorithm
 from src.analyzer.result import TimingMark, TimingTrack
 
+_DOWNBEATS_ASARRAY_PATCHED = False
+
+
+def _patch_downbeats_asarray() -> None:
+    """Restore pre-1.24 numpy ``asarray`` semantics inside madmom's downbeats.
+
+    madmom 0.16.1 ``features/downbeats.py`` does
+    ``np.argmax(np.asarray(results)[:, 1])`` where ``results`` is a list of
+    ``(viterbi_path, log_prob)`` pairs whose path arrays differ in length.
+    numpy >= 1.24 refuses to build that ragged array (``ValueError:
+    inhomogeneous shape``); older numpy silently produced an object array,
+    which madmom relies on. Replace only the ``np`` name in that one module
+    with a proxy that delegates everything to numpy except ``asarray``, which
+    falls back to ``dtype=object`` on the ragged-array error. Idempotent;
+    other modules' numpy is untouched.
+    """
+    global _DOWNBEATS_ASARRAY_PATCHED
+    if _DOWNBEATS_ASARRAY_PATCHED:
+        return
+    import numpy as _real_np
+    from madmom.features import downbeats as _dbm
+
+    class _NumpyAsarrayCompat:
+        def __getattr__(self, name):
+            return getattr(_real_np, name)
+
+        @staticmethod
+        def asarray(a, *args, **kwargs):
+            try:
+                return _real_np.asarray(a, *args, **kwargs)
+            except ValueError:
+                return _real_np.asarray(a, dtype=object)
+
+    _dbm.np = _NumpyAsarrayCompat()
+    _DOWNBEATS_ASARRAY_PATCHED = True
+
 
 class MadmomBeatAlgorithm(Algorithm):
     """RNN+DBN beat tracker via madmom."""
@@ -51,6 +87,7 @@ class MadmomDownbeatAlgorithm(Algorithm):
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         from madmom.features.downbeats import RNNDownBeatProcessor, DBNDownBeatTrackingProcessor
 
+        _patch_downbeats_asarray()
         proc = DBNDownBeatTrackingProcessor(beats_per_bar=[3, 4], fps=100)
         act = RNNDownBeatProcessor()(audio.astype(np.float32))
         downbeats = proc(act)

@@ -36,6 +36,9 @@ def _probe_venv_vamp() -> dict[str, bool]:
         "    for a,t in [('float',_np.float64),('int',_np.int64),"
         "('bool',_np.bool_),('complex',_np.complex128)]:\n"
         "        setattr(_np, a, t) if not hasattr(_np, a) else None\n"
+        "    import collections, collections.abc\n"
+        "    if not hasattr(collections, 'MutableSequence'):\n"
+        "        collections.MutableSequence = collections.abc.MutableSequence\n"
         "    import madmom; r['madmom'] = True\n"
         "except ImportError:\n"
         "    r['madmom'] = False\n"
@@ -121,6 +124,11 @@ def detect_capabilities() -> dict[str, bool]:
         _np.int = _np.int64       # type: ignore[attr-defined]
         _np.bool = _np.bool_      # type: ignore[attr-defined]
         _np.complex = _np.complex128  # type: ignore[attr-defined]
+        # madmom's processors.py does `from collections import MutableSequence`,
+        # removed from collections (moved to collections.abc) in Python 3.10.
+        import collections, collections.abc
+        if not hasattr(collections, "MutableSequence"):
+            collections.MutableSequence = collections.abc.MutableSequence
         import madmom  # noqa: F401
         caps["madmom"] = True
     except (ImportError, AttributeError):

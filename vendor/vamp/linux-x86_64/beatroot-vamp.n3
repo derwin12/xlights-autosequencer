@@ -1,0 +1,101 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/beatroot-vamp#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+<>  a   vamp:PluginDescription ;
+    foaf:maker          <http://www.vamp-plugins.org/doap.rdf#template-generator> ;
+    foaf:primaryTopic   <http://vamp-plugins.org/rdf/plugins/beatroot-vamp> .
+
+:maker
+    foaf:name "Simon Dixon and Chris Cannam" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/> .
+
+plugbase:library a  vamp:PluginLibrary ;
+    vamp:identifier "beatroot-vamp"  ; 
+    vamp:available_plugin plugbase:beatroot ; 
+    foaf:page <http://code.soundsoftware.ac.uk/projects/beatroot-vamp> ;
+    foaf:maker :maker ;
+    dc:title "BeatRoot" ;
+    dc:description "A plugin implementation of the BeatRoot beat tracking system" ;
+    .
+
+plugbase:beatroot a   vamp:Plugin ;
+    dc:title              "BeatRoot Beat Tracker" ;
+    vamp:name             "BeatRoot Beat Tracker" ;
+    dc:description        """Identify beat locations in music""" ;
+    foaf:maker            :maker ;
+    dc:rights             """GPL""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "beatroot" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:FrequencyDomain ;
+
+
+    vamp:parameter   plugbase:beatroot_param_preMarginFactor ;
+    vamp:parameter   plugbase:beatroot_param_postMarginFactor ;
+    vamp:parameter   plugbase:beatroot_param_maxChange ;
+    vamp:parameter   plugbase:beatroot_param_expiryTime ;
+
+    vamp:output      plugbase:beatroot_output_beats ;
+    .
+plugbase:beatroot_param_preMarginFactor a  vamp:Parameter ;
+    vamp:identifier     "preMarginFactor" ;
+    dc:title            "Pre-Margin Factor" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.15 ;
+    vamp:value_names     ();
+    .
+plugbase:beatroot_param_postMarginFactor a  vamp:Parameter ;
+    vamp:identifier     "postMarginFactor" ;
+    dc:title            "Post-Margin Factor" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.3 ;
+    vamp:value_names     ();
+    .
+plugbase:beatroot_param_maxChange a  vamp:Parameter ;
+    vamp:identifier     "maxChange" ;
+    dc:title            "Maximum Change" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.2 ;
+    vamp:value_names     ();
+    .
+plugbase:beatroot_param_expiryTime a  vamp:Parameter ;
+    vamp:identifier     "expiryTime" ;
+    dc:title            "Expiry Time" ;
+    dc:format           "" ;
+    vamp:min_value       2 ;
+    vamp:max_value       120 ;
+    vamp:unit           ""  ;
+    vamp:default_value   10 ;
+    vamp:value_names     ();
+    .
+plugbase:beatroot_output_beats a  vamp:SparseOutput ;
+    vamp:identifier       "beats" ;
+    dc:title              "Beats" ;
+    dc:description        """Estimated beat locations"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      44100 ;
+    vamp:computes_event_type   af:Beat ;
+    .
+

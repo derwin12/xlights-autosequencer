@@ -35,6 +35,14 @@ for _alias, _target in [("float", _np.float64), ("int", _np.int64),
     if not hasattr(_np, _alias):
         setattr(_np, _alias, _target)
 
+# ── Restore collections aliases removed in Python 3.10 ───────────────────────
+# madmom 0.16.1's processors.py does `from collections import MutableSequence`,
+# which moved to collections.abc in 3.10. Restore it before any madmom import.
+import collections as _collections  # noqa: E402
+import collections.abc as _collections_abc  # noqa: E402
+if not hasattr(_collections, "MutableSequence"):
+    _collections.MutableSequence = _collections_abc.MutableSequence
+
 # ── Add the repo root to sys.path so src.* imports work ──────────────────────
 # This file lives at src/analyzer/vamp_runner.py → repo root is 2 levels up.
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
