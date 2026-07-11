@@ -45,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN ARCH=$(dpkg --print-architecture) && \
   if [ "$ARCH" = "amd64" ]; then \
     apt-get update && apt-get install -y --no-install-recommends \
-      xvfb libfuse2 libgtk-3-0 freeglut3 \
+      xvfb libfuse2 libgtk-3-0 libglut3.12 \
       libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
       libsdl2-2.0-0 mesa-utils libgl1-mesa-dri libgl1-mesa-glx \
     && apt-get clean && rm -rf /var/lib/apt/lists/*; \
@@ -148,49 +148,12 @@ RUN pip3 install --break-system-packages --no-cache-dir "whisperx==3.3.0" "nltk>
   python3 -c "import nltk; nltk.download('cmudict', quiet=True)"
 
 # ── Vamp Plugins ─────────────────────────────────────────────────────────────
-# On x86_64: download pre-built binaries
-# On arm64: build from source (no pre-built binaries available)
+# Built from source on all architectures. code.soundsoftware.ac.uk (the former
+# source of pre-built amd64 binaries) has gone offline permanently; building
+# from the upstream GitHub repos avoids depending on it at all.
 USER root
 RUN mkdir -p /usr/local/lib/vamp && \
-  ARCH=$(dpkg --print-architecture) && \
-  if [ "$ARCH" = "amd64" ]; then \
-    cd /tmp && \
-    # QM Vamp Plugins
-    (wget -q -T 15 --read-timeout=15 --tries=1 "https://code.soundsoftware.ac.uk/attachments/download/2588/qm-vamp-plugins-linux64-v1.8.0.tar.gz" -O qm.tar.gz && \
-      tar -xzf qm.tar.gz && \
-      cp qm-vamp-plugins-linux64-v1.8.0/*.so /usr/local/lib/vamp/ && \
-      cp qm-vamp-plugins-linux64-v1.8.0/*.cat /usr/local/lib/vamp/ && \
-      cp qm-vamp-plugins-linux64-v1.8.0/*.n3 /usr/local/lib/vamp/ && \
-      rm -rf qm.tar.gz qm-vamp-plugins-linux64-v1.8.0 || echo "WARN: QM Vamp Plugins download failed, skipping") && \
-    # pYIN
-    (wget -q -T 15 --read-timeout=15 --tries=1 "https://code.soundsoftware.ac.uk/attachments/download/1741/pyin-linux64-v1.2.2.tar.gz" -O pyin.tar.gz && \
-      tar -xzf pyin.tar.gz && \
-      cp pyin-linux64-v1.2.2/*.so /usr/local/lib/vamp/ && \
-      cp pyin-linux64-v1.2.2/*.cat /usr/local/lib/vamp/ && \
-      cp pyin-linux64-v1.2.2/*.n3 /usr/local/lib/vamp/ && \
-      rm -rf pyin.tar.gz pyin-linux64-v1.2.2 || echo "WARN: pYIN download failed, skipping") && \
-    # NNLS-Chroma (Chordino)
-    (wget -q -T 15 --read-timeout=15 --tries=1 "https://code.soundsoftware.ac.uk/attachments/download/1576/nnls-chroma-linux64-v1.1.tar.gz" -O nnls.tar.gz && \
-      tar -xzf nnls.tar.gz && \
-      cp nnls-chroma-linux64-v1.1/*.so /usr/local/lib/vamp/ && \
-      cp nnls-chroma-linux64-v1.1/*.cat /usr/local/lib/vamp/ && \
-      cp nnls-chroma-linux64-v1.1/*.n3 /usr/local/lib/vamp/ && \
-      rm -rf nnls.tar.gz nnls-chroma-linux64-v1.1 || echo "WARN: NNLS-Chroma download failed, skipping") && \
-    # BeatRoot
-    (wget -q -T 15 --read-timeout=15 --tries=1 "https://code.soundsoftware.ac.uk/attachments/download/1744/beatroot-vamp-linux64-v1.0.2.tar.gz" -O beatroot.tar.gz && \
-      tar -xzf beatroot.tar.gz && \
-      cp beatroot-vamp-linux64-v1.0.2/*.so /usr/local/lib/vamp/ && \
-      cp beatroot-vamp-linux64-v1.0.2/*.cat /usr/local/lib/vamp/ && \
-      cp beatroot-vamp-linux64-v1.0.2/*.n3 /usr/local/lib/vamp/ && \
-      rm -rf beatroot.tar.gz beatroot-vamp-linux64-v1.0.2 || echo "WARN: BeatRoot download failed, skipping") && \
-    # Vamp Plugin Pack (x86-64 installer — includes segmentino, silvet, aubio, tempogram, BBC)
-    (wget -q -T 30 --read-timeout=30 --tries=1 "https://code.soundsoftware.ac.uk/attachments/download/2690/vamp-plugin-pack-linux64-v2.0.tar.gz" -O pack.tar.gz && \
-      tar -xzf pack.tar.gz && \
-      cp vamp-plugin-pack-linux64-v2.0/*.so /usr/local/lib/vamp/ && \
-      cp vamp-plugin-pack-linux64-v2.0/*.cat /usr/local/lib/vamp/ 2>/dev/null; \
-      cp vamp-plugin-pack-linux64-v2.0/*.n3 /usr/local/lib/vamp/ 2>/dev/null; \
-      rm -rf pack.tar.gz vamp-plugin-pack-linux64-v2.0 || echo "WARN: Vamp Plugin Pack download failed, skipping"); \
-  else \
+    ARCH=$(dpkg --print-architecture) && \
     echo "Building Vamp plugins from source for $ARCH..." && \
     cd /tmp && \
     # 1. Vamp Plugin SDK
@@ -292,12 +255,16 @@ RUN mkdir -p /usr/local/lib/vamp && \
     cp vamp-aubio.so /usr/local/lib/vamp/ && \
     cp vamp-aubio.cat vamp-aubio.n3 /usr/local/lib/vamp/ 2>/dev/null; \
     cd /tmp && \
-    # 11. Silvet (note transcription — strip all SSE flags from submodules too)
+    # 11. Silvet (note transcription — strip all SSE flags from submodules too).
+    # No -j here: `all` depends on both the constant-q-cpp submodule and the
+    # plugin binary, but the plugin's link step isn't declared to depend on
+    # the submodule's build completing, so parallel make races and fails to
+    # find constant-q-cpp/libcq.a.
     git clone --depth 1 --recursive https://github.com/cannam/silvet.git && \
     cd silvet && \
     find . -name "Makefile*" -exec sed -i 's/-msse //g; s/-msse2 //g; s/-mfpmath=sse //g' {} \; && \
     sed -i 's|I../vamp-plugin-sdk/|I/tmp/vamp-plugin-sdk/|' Makefile.linux && \
-    make -f Makefile.linux -j$(nproc) && \
+    make -f Makefile.linux && \
     cp silvet.so /usr/local/lib/vamp/ && \
     cp silvet.cat silvet.n3 /usr/local/lib/vamp/ 2>/dev/null; \
     cd /tmp && \
@@ -317,8 +284,7 @@ RUN mkdir -p /usr/local/lib/vamp && \
     cd / && rm -rf /tmp/vamp-plugin-sdk /tmp/qm-dsp /tmp/qm-vamp-plugins \
       /tmp/nnls-chroma /tmp/segmentino /tmp/bbc-vamp-plugins /tmp/pyin \
       /tmp/beatroot-vamp /tmp/vamp-aubio-plugins /tmp/silvet /tmp/vamp-tempogram \
-      /tmp/boost* /tmp/qm-dsp-mk /tmp/qm-vamp-mk; \
-  fi
+      /tmp/boost* /tmp/qm-dsp-mk /tmp/qm-vamp-mk
 
 ENV VAMP_PATH=/usr/local/lib/vamp
 USER node

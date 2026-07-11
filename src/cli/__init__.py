@@ -9,6 +9,8 @@ file so that commands are registered before ``cli`` is invoked.
 """
 from __future__ import annotations
 
+import sys
+
 import click
 
 
@@ -18,6 +20,11 @@ def cli() -> None:
 
 
 def main() -> None:
+    # Windows defaults stdout/stderr to cp1252 unless the console is UTF-8,
+    # which crashes on unicode glyphs (✓/✗) used throughout CLI output.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     cli()
 
 
