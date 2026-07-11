@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import errno
 import json
+import os
 import sys
 import threading
 import webbrowser
@@ -162,6 +163,11 @@ def review_cmd(audio_or_json: str | None) -> None:
     """
     from src.review.server import create_app
 
+    # Docker's -p port mapping only reaches sockets bound to a container's
+    # non-loopback interface, so running the review server in a container
+    # (e.g. to keep vamp/madmom available for re-analyze) needs 0.0.0.0.
+    review_host = os.environ.get("XLIGHT_REVIEW_HOST", "127.0.0.1")
+
     if audio_or_json is None:
         app = create_app()
         url = "http://127.0.0.1:5173/"
@@ -169,7 +175,7 @@ def review_cmd(audio_or_json: str | None) -> None:
         click.echo("Press Ctrl-C to stop.")
         threading.Timer(0.5, webbrowser.open, args=[url]).start()
         try:
-            app.run(host="127.0.0.1", port=5173, use_reloader=False, debug=False)
+            app.run(host=review_host, port=5173, use_reloader=False, debug=False)
         except OSError as exc:
             if exc.errno == errno.EADDRINUSE:
                 click.echo(
@@ -191,7 +197,7 @@ def review_cmd(audio_or_json: str | None) -> None:
         click.echo("Press Ctrl-C to stop.")
         threading.Timer(0.5, webbrowser.open, args=[url]).start()
         try:
-            app.run(host="127.0.0.1", port=5173, use_reloader=False, debug=False)
+            app.run(host=review_host, port=5173, use_reloader=False, debug=False)
         except OSError as exc:
             if exc.errno == errno.EADDRINUSE:
                 click.echo("ERROR: Port 5173 is already in use.", err=True)
@@ -257,7 +263,7 @@ def review_cmd(audio_or_json: str | None) -> None:
     threading.Timer(0.5, webbrowser.open, args=[url]).start()
 
     try:
-        app.run(host="127.0.0.1", port=5173, use_reloader=False, debug=False)
+        app.run(host=review_host, port=5173, use_reloader=False, debug=False)
     except OSError as exc:
         if exc.errno == errno.EADDRINUSE:
             click.echo(

@@ -9,6 +9,7 @@ from __future__ import annotations
 from flask import jsonify, request
 
 from . import api_v1
+from .themes import _load_themes
 from src.review.storage.library import load_library, save_library
 from src.review.storage.assignments import load_session, save_session
 
@@ -19,15 +20,10 @@ _DEFAULT_OVERRIDES = {
     "color_shift": 0.0,
 }
 
-# Valid built-in theme IDs (mirrors themes.py)
-_VALID_THEME_IDS = {
-    "shimmer-wash",
-    "driving-pulse",
-    "peak-flash",
-    "solo-chase",
-    "bridge-burn",
-    "neutral-glow",
-}
+
+def _valid_theme_ids() -> set[str]:
+    """Real theme catalog IDs (built-in + custom), loaded live so this never goes stale."""
+    return {theme["theme_id"] for theme in _load_themes()}
 
 
 def _get_song_or_error(song_id: str):
@@ -71,7 +67,7 @@ def put_assignment(song_id: str, section_index: int):
     theme_id = body.get("theme_id")
     overrides_patch = body.get("overrides") or {}
 
-    if theme_id and theme_id not in _VALID_THEME_IDS:
+    if theme_id and theme_id not in _valid_theme_ids():
         return jsonify({"error": {"code": "theme_not_found",
                                    "message": f"Theme '{theme_id}' not found"}}), 404
 

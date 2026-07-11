@@ -2728,6 +2728,40 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-11T00:00:00.000Z"
+    },
+    {
+      "id": "bug-169",
+      "timestamp": "2026-07-11T00:00:00.000Z",
+      "error_message": "UI shows \"Theme 'bio-lume' not found\" when assigning any real theme from the Theme screen's grid",
+      "file": "src/review/api/v1/assignments.py",
+      "root_cause": "_VALID_THEME_IDS was a hardcoded set of 6 placeholder slugs (shimmer-wash, driving-pulse, peak-flash, solo-chase, bridge-burn, neutral-glow) left over from before the real theme catalog (feature 019/041, 21+ themes) was wired up. The real catalog is loaded and slugified by themes.py:_load_themes(), which the frontend actually uses to populate the grid, so every real theme_id it sends back was rejected",
+      "fix": "Replaced the hardcoded set with a live _valid_theme_ids() helper that calls themes.py:_load_themes() and reads real theme_id values, so it can never go stale again",
+      "tags": [
+        "review-ui",
+        "themes",
+        "stale-whitelist",
+        "assignments"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-11T00:00:00.000Z"
+    },
+    {
+      "id": "bug-170",
+      "timestamp": "2026-07-11T00:00:00.000Z",
+      "error_message": "review command duplicated: editing src/cli_old.py review_cmd had zero effect on actual xlight-analyze review behavior",
+      "file": "src/cli/review.py",
+      "root_cause": "src/cli/__init__.py imports the new split modules (analyze, library, review, scoring) BEFORE extras.py re-registers leftover cli_old.py commands, and extras.py only adds a legacy command 'if cmd_name not in cli.commands' -- so src/cli/review.py's own @cli.command('review') always wins and cli_old.py's identically-named review_cmd is dead code, silently never invoked",
+      "fix": "Made the intended change (host=0.0.0.0 override via XLIGHT_REVIEW_HOST env var, for running the review server inside Docker with -p port mapping) in src/cli/review.py instead, and reverted the pointless edit in cli_old.py",
+      "tags": [
+        "cli",
+        "dead-code",
+        "command-registration",
+        "review"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-11T00:00:00.000Z"
     }
   ]
 }
