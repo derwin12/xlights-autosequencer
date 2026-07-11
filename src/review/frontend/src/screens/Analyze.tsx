@@ -1,28 +1,15 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import styles from './Analyze.module.css';
-import { MetadataBanner } from './MetadataBanner';
-import {
-  Id3ConfirmModal,
-  type Id3ConfirmResponse,
-} from '../components/Id3ConfirmModal/Id3ConfirmModal';
 
 interface Song {
   song_id: string;
   title: string;
   artist?: string | null;
-  override_artist?: string | null;
-  override_title?: string | null;
   status: string;
   duration_ms: number;
   folder_id: string;
   imported_at: string;
   source_paths: string[];
-}
-
-interface GeniusLookup {
-  section_source: string | null;
-  match: { url: string; artist: string; title: string; genius_id?: number } | null;
-  reject_reason: string | null;
 }
 
 interface DetectorRow {
@@ -225,18 +212,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   const [analysisComplete, setAnalysisComplete] = useState(alreadyAnalyzedAtMount);
   const [error, setError] = useState<string | null>(null);
   const [logLines, setLogLines] = useState<LogLine[]>([]);
-  // Genius provenance: populated either by the `genius_lookup` SSE event
-  // during an in-flight run, or by fetching /analysis for an already-completed
-  // one. Null means "we haven't heard yet" (not "Genius didn't run").
-  const [geniusLookup, setGeniusLookup] = useState<GeniusLookup | null>(null);
-  // Local copy of the song's override fields so MetadataBanner updates
-  // feel instantaneous without requiring a parent-level library re-fetch.
-  const [localOverrideArtist, setLocalOverrideArtist] = useState<string | null>(
-    song.override_artist ?? null,
-  );
-  const [localOverrideTitle, setLocalOverrideTitle] = useState<string | null>(
-    song.override_title ?? null,
-  );
   const [findings, setFindings] = useState<Findings>({
     beats: 0,
     bars: 0,
@@ -247,54 +222,12 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   const [elapsedMs, setElapsedMs] = useState(0);
 
   const esRef = useRef<EventSource | null>(null);
-  // ID3 confirmation modal — single state covers both invocation paths.
-  // ``mode: "preflight"`` is shown before POST /analyze; the user's
-  // choice is forwarded into the request body. ``mode: "sse"`` is shown
-  // when an ``id3_confirm_prompt`` event arrives mid-pipeline; the
-  // choice is POSTed to /analyze/id3-confirm to unblock the analyzer.
-  const [id3Modal, setId3Modal] = useState<
-    { id3Title: string; id3Artist: string; mode: 'preflight' | 'sse' } | null
-  >(null);
-  // Resolver for the pending preflight modal — set when we open the
-  // modal, called when the user submits, then cleared.
-  const id3PreflightResolverRef = useRef<
-    ((r: Id3ConfirmResponse) => void) | null
-  >(null);
   // Seed forceRef with forceOnMount so the initial POST /analyze carries
   // force=true when the parent asked for a re-run (set on re-drop).
   const forceRef = useRef(forceOnMount);
   const startTimeRef = useRef<number | null>(null);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
-
-  // Handle the user's choice from the ID3 confirmation modal. The
-  // implementation forks on ``mode``: preflight resolves the pending
-  // promise so startAnalysis() can continue with the right body fields;
-  // sse POSTs the choice to /analyze/id3-confirm so the waiting
-  // analyzer thread unblocks.
-  const handleId3Submit = useCallback((resp: Id3ConfirmResponse) => {
-    const mode = id3Modal?.mode;
-    setId3Modal(null);
-    if (mode === 'preflight') {
-      const resolver = id3PreflightResolverRef.current;
-      id3PreflightResolverRef.current = null;
-      resolver?.(resp);
-      return;
-    }
-    if (mode === 'sse') {
-      const body: Record<string, unknown> = { response: resp.response };
-      if (resp.response === 'correct') {
-        if (resp.title) body.title = resp.title;
-        if (resp.artist) body.artist = resp.artist;
-        if (resp.write_back) body.write_back = true;
-      }
-      fetch(`/api/v1/songs/${song.song_id}/analyze/id3-confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }).catch(() => {});
-    }
-  }, [id3Modal, song.song_id]);
 
   function handleReanalyze() {
     esRef.current?.close();
@@ -372,17 +305,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       if (secs.length > 0) {
         setFindings((prev) => ({ ...prev, sections: secs, themesAssigned: true }));
       }
-      // Genius provenance — populated for completed runs; SSE stream delivered
-      // it live for in-flight runs. Either path ends up here.
-      if (data?.section_source !== undefined
-          || data?.genius_match !== undefined
-          || data?.section_source_reject_reason !== undefined) {
-        setGeniusLookup({
-          section_source: data?.section_source ?? null,
-          match: data?.genius_match ?? null,
-          reject_reason: data?.section_source_reject_reason ?? null,
-        });
-      }
     } catch {}
   }, [song.song_id]);
 
@@ -393,41 +315,9 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       return;
     }
 
-    async function gatherPreflight(): Promise<Id3ConfirmResponse> {
-      // Read ID3 tags from the source so the modal can prefill them.
-      // Treat any failure as empty tags — the modal still renders and
-      // the user can still confirm/correct/skip.
-      let title = '';
-      let artist = '';
-      try {
-        const r = await fetch(`/api/v1/songs/${song.song_id}/id3-tags`);
-        if (r.ok) {
-          const body = await r.json();
-          title = (body?.title ?? '').toString();
-          artist = (body?.artist ?? '').toString();
-        }
-      } catch {}
-      return new Promise<Id3ConfirmResponse>((resolve) => {
-        id3PreflightResolverRef.current = resolve;
-        setId3Modal({ id3Title: title, id3Artist: artist, mode: 'preflight' });
-      });
-    }
-
     async function startAnalysis() {
       try {
-        // Pre-flight: confirm/correct/skip ID3 before we kick off the
-        // analyzer. The user's choice is forwarded via the POST body,
-        // so the backend never has to fire its SSE prompt for the
-        // happy path (Path A in OpenSpec §6a).
-        const id3Choice = await gatherPreflight();
         const body: Record<string, unknown> = { force: forceRef.current };
-        if (id3Choice.response === 'correct') {
-          if (id3Choice.title) body.override_title = id3Choice.title;
-          if (id3Choice.artist) body.override_artist = id3Choice.artist;
-          if (id3Choice.write_back) body.write_back = true;
-        } else if (id3Choice.response === 'skip') {
-          body.skip_genius = true;
-        }
         const res = await fetch(`/api/v1/songs/${song.song_id}/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -530,21 +420,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
                   { text: `✗ ${data.detector}: ${data.error ?? 'failed'}`, kind: 'err' },
                 ]);
               }
-            } else if (data.genius_lookup) {
-              setGeniusLookup({
-                section_source: data.genius_lookup.section_source ?? null,
-                match: data.genius_lookup.match ?? null,
-                reject_reason: data.genius_lookup.reject_reason ?? null,
-              });
-            } else if (data.id3_confirm_prompt) {
-              // Mid-pipeline ID3 confirmation (Path B). Surface the
-              // modal in SSE mode; the submit handler will POST to
-              // /analyze/id3-confirm to unblock the analyzer thread.
-              setId3Modal({
-                id3Title: (data.id3_title ?? '').toString(),
-                id3Artist: (data.id3_artist ?? '').toString(),
-                mode: 'sse',
-              });
             } else if (data.log) {
               const kind = data.log.level === 'error' ? 'err'
                 : data.log.level === 'warn' ? 'warn'
@@ -604,7 +479,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   // show — the SSE stream was never opened — and it renders empty bars and
   // a "waiting for detectors…" message which reads as "stuck halfway". We
   // bypass all of that and show a summary card instead.
-  if (alreadyAnalyzedAtMount && !error) {
+  if (alreadyAnalyzedAtMount && analysisComplete && !error) {
     return (
       <div data-testid="analyze-screen" className={styles.root}>
         <div className={styles.header}>
@@ -617,19 +492,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
             ▶ review timeline →
           </button>
         </div>
-        <MetadataBanner
-          songId={song.song_id}
-          id3Title={song.title}
-          id3Artist={song.artist ?? ''}
-          overrideArtist={localOverrideArtist}
-          overrideTitle={localOverrideTitle}
-          genius={geniusLookup}
-          onSaved={(next) => {
-            setLocalOverrideArtist(next.override_artist);
-            setLocalOverrideTitle(next.override_title);
-          }}
-        />
-
         <div style={{
           padding: '24px 32px',
           color: 'var(--color-text-muted, #888)',
@@ -675,13 +537,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
             Re-analyze
           </button>
         </div>
-        {id3Modal && (
-          <Id3ConfirmModal
-            id3Title={id3Modal.id3Title}
-            id3Artist={id3Modal.id3Artist}
-            onSubmit={handleId3Submit}
-          />
-        )}
       </div>
     );
   }
@@ -727,19 +582,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
           </button>
         )}
       </div>
-
-      <MetadataBanner
-        songId={song.song_id}
-        id3Title={song.title}
-        id3Artist={song.artist ?? ''}
-        overrideArtist={localOverrideArtist}
-        overrideTitle={localOverrideTitle}
-        genius={geniusLookup}
-        onSaved={(next) => {
-          setLocalOverrideArtist(next.override_artist);
-          setLocalOverrideTitle(next.override_title);
-        }}
-      />
 
       {error && (
         <div className={styles.errorBox}>
@@ -997,14 +839,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
             Re-analyze
           </button>
         </div>
-      )}
-
-      {id3Modal && (
-        <Id3ConfirmModal
-          id3Title={id3Modal.id3Title}
-          id3Artist={id3Modal.id3Artist}
-          onSubmit={handleId3Submit}
-        />
       )}
     </div>
   );

@@ -39,7 +39,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v brew &>/dev/null; then
     fail "Homebrew not found. Install from https://brew.sh then re-run."
   fi
-  for pkg in ffmpeg python@3.11; do
+  for pkg in ffmpeg python@3.11 node; do
     if brew list "$pkg" &>/dev/null 2>&1; then
       ok "$pkg already installed"
     else
@@ -56,6 +56,12 @@ else
     sudo apt-get install -y ffmpeg
   else
     ok "ffmpeg already installed"
+  fi
+  if ! command -v npm &>/dev/null; then
+    echo "  Installing Node.js/npm..."
+    sudo apt-get install -y nodejs npm
+  else
+    ok "Node.js/npm already installed"
   fi
   # Find a Python 3.11 or 3.12 for .venv-vamp (needs numpy<2 / madmom compat)
   PYTHON311=""
@@ -239,26 +245,6 @@ else
   ok "Added VAMP_PATH to .env"
 fi
 
-# ── 3b. Genius API token ───────────────────────────────────────────────────────
-step "Genius API token (lyric sections)"
-
-if grep -qF "GENIUS_API_TOKEN" "$ENV_FILE" 2>/dev/null; then
-  ok "GENIUS_API_TOKEN already in .env"
-else
-  echo ""
-  echo "  Genius API token enables lyric-based section detection."
-  echo "  Get one free at: https://genius.com/api-clients"
-  echo "  (Create an account → New API Client → copy the Client Access Token)"
-  echo ""
-  read -r -p "  Paste your Genius Client Access Token (or press Enter to skip): " GENIUS_TOKEN
-  if [[ -n "$GENIUS_TOKEN" ]]; then
-    echo "export GENIUS_API_TOKEN=\"$GENIUS_TOKEN\"" >> "$ENV_FILE"
-    ok "GENIUS_API_TOKEN added to .env"
-  else
-    warn "Skipped — lyric section detection will be unavailable"
-  fi
-fi
-
 # ── 4. Main Python venv ────────────────────────────────────────────────────────
 step "Main Python virtualenv (venv/)"
 
@@ -323,7 +309,7 @@ else
   ok "vamp + madmom installed in .venv-vamp"
 fi
 
-# WhisperX and lyricsgenius — checked separately so they install even if
+# WhisperX and syncedlyrics — checked separately so they install even if
 # vamp/madmom were already present from a previous run.
 if "$VAMP_PYTHON" -c "import whisperx" &>/dev/null 2>&1; then
   ok "whisperx already installed in .venv-vamp"
@@ -337,15 +323,31 @@ else
   ok "whisperx installed in .venv-vamp"
 fi
 
-if "$VAMP_PYTHON" -c "import lyricsgenius" &>/dev/null 2>&1; then
-  ok "lyricsgenius already installed in .venv-vamp"
+if "$VAMP_PYTHON" -c "import syncedlyrics" &>/dev/null 2>&1; then
+  ok "syncedlyrics already installed in .venv-vamp"
 else
-  echo "  Installing lyricsgenius (Genius API)..."
-  "$VAMP_PYTHON" -m pip install --quiet lyricsgenius
-  ok "lyricsgenius installed in .venv-vamp"
+  echo "  Installing syncedlyrics (lyric-anchored boundary refinement)..."
+  "$VAMP_PYTHON" -m pip install --quiet syncedlyrics
+  ok "syncedlyrics installed in .venv-vamp"
 fi
 
-# ── 6. Verify ─────────────────────────────────────────────────────────────────
+# ── 6. Frontend build (review UI) ─────────────────────────────────────────────
+step "Frontend build (src/review/frontend/)"
+
+if ! command -v npm &>/dev/null; then
+  fail "npm not found. Install Node.js (https://nodejs.org) then re-run."
+fi
+
+(
+  cd "$REPO_ROOT/src/review/frontend"
+  echo "  Installing frontend dependencies..."
+  npm install --silent
+  echo "  Building frontend bundle..."
+  npm run build --silent
+)
+ok "Frontend built to src/review/frontend/dist/ (git-ignored — rebuild after pulling frontend changes)"
+
+# ── 7. Verify ─────────────────────────────────────────────────────────────────
 step "Verifying capabilities"
 
 export VAMP_PATH="$VAMP_DIR"
@@ -363,13 +365,12 @@ labels = {
     'demucs':    'Demucs stem separation',
     'essentia':  'Essentia (optional)',
     'whisperx':  'WhisperX phonemes (optional)',
-    'genius':    'Genius API lyrics (optional)',
 }
 all_good = True
 for k, label in labels.items():
     v = caps.get(k, False)
-    icon = '✓' if v else ('⚠' if k in ('essentia','whisperx','genius') else '✗')
-    if not v and k not in ('essentia','whisperx','genius'):
+    icon = '✓' if v else ('⚠' if k in ('essentia','whisperx') else '✗')
+    if not v and k not in ('essentia','whisperx'):
         all_good = False
     print(f'  {icon} {label}')
 if not all_good:

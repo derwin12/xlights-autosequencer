@@ -167,36 +167,24 @@ def library_refresh_cmd(library_path: str | None, dry_run: bool) -> None:
 
     refreshed = 0
     scanned = 0
-    # Non-interactive caller: enable title-only Genius fallback for any
-    # subprocess Genius lookup triggered by the rebuild path. See
-    # OpenSpec change `lyric-anchored-boundary-refinement` §6b.
-    import os as _os
-    _prev_fallback = _os.environ.get("_GENIUS_ALLOW_TITLE_ONLY_FALLBACK")
-    _os.environ["_GENIUS_ALLOW_TITLE_ONLY_FALLBACK"] = "1"
-    try:
-        for entry in entries:
-            scanned += 1
-            slug = _slug_for(entry)
-            verdict = _refresh_entry(
-                entry,
-                dry_run=dry_run,
-                build_fn=build_song_story,
-                write_fn=write_song_story,
-            )
+    for entry in entries:
+        scanned += 1
+        slug = _slug_for(entry)
+        verdict = _refresh_entry(
+            entry,
+            dry_run=dry_run,
+            build_fn=build_song_story,
+            write_fn=write_song_story,
+        )
 
-            if verdict.action == "refreshed":
-                refreshed += 1
-                click.echo(f"[refreshed] {slug} ({verdict.reason})")
-            elif verdict.action == "would-refresh":
-                refreshed += 1  # Counted as "would have been refreshed" for dry-run summary.
-                click.echo(f"[would-refresh] {slug} ({verdict.reason})")
-            else:
-                click.echo(f"[skipped: {verdict.reason}] {slug}")
-    finally:
-        if _prev_fallback is None:
-            _os.environ.pop("_GENIUS_ALLOW_TITLE_ONLY_FALLBACK", None)
+        if verdict.action == "refreshed":
+            refreshed += 1
+            click.echo(f"[refreshed] {slug} ({verdict.reason})")
+        elif verdict.action == "would-refresh":
+            refreshed += 1  # Counted as "would have been refreshed" for dry-run summary.
+            click.echo(f"[would-refresh] {slug} ({verdict.reason})")
         else:
-            _os.environ["_GENIUS_ALLOW_TITLE_ONLY_FALLBACK"] = _prev_fallback
+            click.echo(f"[skipped: {verdict.reason}] {slug}")
 
     suffix = " (dry-run)" if dry_run else ""
     click.echo(f"Refreshed {refreshed} / scanned {scanned}{suffix}")

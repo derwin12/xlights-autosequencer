@@ -39,20 +39,6 @@ def _upload_via_api(base_url: str, mp3_path: Path) -> str:
     return data.get("song_id") or data["song"]["song_id"]
 
 
-def _dismiss_id3_modal(page: Page) -> None:
-    """Dismiss the ID3 preflight modal that Analyze opens on mount.
-
-    Per PR #142, clicking an unanalyzed song row navigates to Analyze, which
-    immediately opens an ID3 confirm modal as a preflight before starting the
-    analyzer. Its overlay blocks pointer events on the surrounding chrome
-    (e.g. the Library nav tab), so multi-song navigation tests must dismiss it.
-    """
-    modal = page.get_by_test_id("id3-confirm-modal")
-    expect(modal).to_be_visible(timeout=10000)
-    page.get_by_test_id("id3-modal-skip").click()
-    expect(modal).not_to_be_visible(timeout=5000)
-
-
 @pytest.mark.flaky(reruns=2, reruns_delay=1)
 def test_multi_song_library_click_navigation(
     page: Page, base_url: str, snapshot
@@ -75,11 +61,6 @@ def test_multi_song_library_click_navigation(
     # Click song A → navigate away from library.
     row_a.click()
     expect(page.get_by_test_id("library-screen")).not_to_be_visible(timeout=10000)
-    # Analyze opens an ID3 preflight modal before kicking off analysis on any
-    # not-yet-analyzed song; its overlay intercepts pointer events, so dismiss
-    # it before reaching for the nav tab. "Skip Genius" avoids any network
-    # dependency in CI.
-    _dismiss_id3_modal(page)
     snapshot("after-click-song-a")
 
     # Return to library via the Chrome's "Library" nav tab (aria-label).
@@ -95,7 +76,6 @@ def test_multi_song_library_click_navigation(
     # Click song B → navigate to a distinct song's context.
     page.get_by_test_id(f"song-row-{song_b}").click()
     expect(page.get_by_test_id("library-screen")).not_to_be_visible(timeout=10000)
-    _dismiss_id3_modal(page)
     snapshot("after-click-song-b")
 
     # Final round-trip via nav tab: library state survives.

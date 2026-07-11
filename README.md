@@ -17,7 +17,7 @@
 3. **Effect Library** — 35 xLights effects cataloged with parameters, prop suitability ratings, and analysis-to-parameter mappings
 4. **Variant Library** — 123+ pre-tuned effect variants with contextual tags (energy, tier, section role, genre) for quick effect selection
 5. **Theme Engine** — 21 composite "looks" (Inferno, Aurora, Winter Wonderland, etc.) organized by mood, occasion, and genre
-6. **Song Story** — Automatic section classification with Genius lyrics integration, energy arcs, and lighting moment detection
+6. **Song Story** — Automatic section classification with lyric-anchored boundary refinement (syncedlyrics), energy arcs, and lighting moment detection
 7. **Sequence Generation** — Produces `.xsq` files ready to import into xLights with effects placed by tier, energy, and theme
 8. **Web UI** — Browser-based dashboard for the full workflow: upload, analyze, review, edit themes, browse variants, group layout, and export
 
@@ -28,14 +28,19 @@
 ### Prerequisites
 
 - **Python 3.11 or 3.12** — [python.org](https://www.python.org/downloads/) or `brew install python@3.12`
+- **Node.js 18+ and npm** — [nodejs.org](https://nodejs.org/) or `brew install node` — required to build the review UI (`src/review/frontend/`)
 - **ffmpeg** — `brew install ffmpeg`
 - **Vamp plugins** (recommended) — Download from [vamp-plugins.org](https://vamp-plugins.org/pack.html) and copy `.dylib` files to `~/Library/Audio/Plug-Ins/Vamp/`:
   - QM Vamp Plugins, BeatRoot, pYIN, NNLS Chroma/Chordino, Silvet
 
+> **Fastest path:** `./scripts/install.sh` runs every step below automatically (system deps, Vamp plugins, both Python venvs, and the frontend build) and verifies capabilities at the end.
+
+> **Windows:** `scripts/install.sh` only supports macOS and Linux — Vamp/madmom require a Linux build toolchain. On Windows, build and run inside a Linux container instead; `.devcontainer/Dockerfile` in this repo already builds the full stack (Vamp SDK, QM plugins, madmom) from source for a Linux container and can be adapted for that purpose.
+
 ### Install
 
 ```bash
-git clone https://github.com/bobbyfriday/xlight-autosequencer.git
+git clone https://github.com/derwin12/xlight-autosequencer.git
 cd xlight-autosequencer
 python3.12 -m venv .venv
 source .venv/bin/activate
@@ -64,6 +69,17 @@ deactivate
 ```
 
 When `.venv-vamp/` exists, Vamp and madmom algorithms run through it automatically (~14 additional tracks).
+
+### Build the review UI
+
+The web dashboard is a React app that must be built before `xlight-analyze review` can serve it — the built bundle (`src/review/frontend/dist/`) is git-ignored, so this step is required on every fresh clone and after pulling frontend changes:
+
+```bash
+cd src/review/frontend
+npm install
+npm run build
+cd ../../..
+```
 
 ---
 
@@ -106,7 +122,7 @@ That's the entire screen — the app is deliberately empty here so the call to a
 After you drop a file, the app jumps straight to **Analyze** and starts the pipeline.
 
 1. **Title bar** — *"Analyzing... `<slug>` · `<duration>`"* on the left, *"`<elapsed>` / ~`<eta>`"* and a **skip to timeline →** escape hatch on the right. The skip button shows up once enough has been detected to render *something* in the timeline.
-2. **Artist / Title fields** — read from the MP3's ID3 tags. Edit either to override what's used for the Genius lyrics lookup.
+2. **Artist / Title fields** — read from the MP3's ID3 tags. Edit either to override what's used for the synced-lyrics lookup.
 3. **Phase pills** — seven logical phases (loading audio → separating stems → tracking beats → finding bars → segmenting structure → song story → assigning themes). The active phase is outlined; completed phases get a green checkmark.
 4. **Detectors column** (left) — every algorithm the pipeline will run, in execution order. Each row shows status (queued / running / done), library tag (system, demucs, librosa, vamp, madmom), and progress.
 5. **Stream column** (middle) — live SSE log lines from the pipeline. Mostly the same information as the Detectors column but in narrative form, with elapsed time per detector.
@@ -126,7 +142,7 @@ Same screen, after the pipeline finishes (~60–90 s on a typical song with cach
 3. **Detectors** — full list (33 / 33 done), each with its detected mark count visible (e.g. `librosa_beats · 288`, `aubio_onset (drums) · 700 marks`).
 4. **Stream** — the full progress log, scrollable.
 5. **Findings** — 100 %, with per-category counts (`waveform ✓`, `beats 459`, `bars 80`, `sections 5`, `themes ✓`) and the actual section list with role + duration (`01 Verse · 20s`, `02 Pre Chorus · 19s`, ...).
-6. **Re-analyze** button (bottom left) — re-runs the pipeline from scratch, ignoring any cache. Useful after a story-builder schema bump, or when you've edited the artist/title fields and want a fresh Genius lookup.
+6. **Re-analyze** button (bottom left) — re-runs the pipeline from scratch, ignoring any cache. Useful after a story-builder schema bump, or when you've edited the artist/title fields and want a fresh synced-lyrics lookup.
 
 ---
 
@@ -264,7 +280,7 @@ src/
 │   └── library.py          # Load, query by mood/occasion/genre
 ├── story/                  # Song story builder
 │   ├── models.py           # SongStory, Section, Moment, MoodCurve
-│   ├── builder.py          # Build story from hierarchy + Genius
+│   ├── builder.py          # Build story from hierarchy + lyric-anchored refinement
 │   ├── section_classifier.py # Detect verse/chorus/bridge/etc.
 │   ├── energy_arc.py       # Energy curve computation
 │   └── lighting_mapper.py  # Map story to lighting cues

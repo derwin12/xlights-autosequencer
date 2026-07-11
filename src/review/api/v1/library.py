@@ -153,42 +153,6 @@ def patch_song_folder(song_id: str):
     return jsonify(_song_with_source_exists(song)), 200
 
 
-# ─── Metadata override (artist/title for Genius lookup) ──────────────────────
-
-@api_v1.route("/songs/<song_id>/metadata", methods=["PATCH"])
-def patch_song_metadata(song_id: str):
-    """Override the ID3-derived artist/title used for Genius lookups.
-
-    Body: ``{"artist": "Mariah Carey", "title": "All I Want for Christmas Is You"}``
-
-    Either field may be omitted (""→ clear the override and fall back to ID3).
-    The override is persisted in the song's library entry and automatically
-    passed into subsequent Genius subprocess calls via ``_GENIUS_OVERRIDE_ARTIST``
-    and ``_GENIUS_OVERRIDE_TITLE`` environment variables.
-    """
-    lib = load_library()
-    song = next((s for s in lib.get("songs", []) if s["song_id"] == song_id), None)
-    if song is None:
-        return jsonify({"error": {"code": "song_not_found", "message": "Song not found"}}), 404
-
-    body = request.get_json(silent=True) or {}
-    if "artist" in body:
-        val = str(body["artist"] or "").strip()
-        if val:
-            song["override_artist"] = val
-        else:
-            song.pop("override_artist", None)
-    if "title" in body:
-        val = str(body["title"] or "").strip()
-        if val:
-            song["override_title"] = val
-        else:
-            song.pop("override_title", None)
-
-    save_library(lib)
-    return jsonify(_song_with_source_exists(song)), 200
-
-
 # ─── Song delete + cache purge ───────────────────────────────────────────────
 
 def _analysis_cache_path(song_id: str) -> Path:

@@ -29,7 +29,6 @@ class WizardConfig:
     use_phonemes: bool = True
     whisper_model: str = "base"
     use_structure: bool = True
-    use_genius: bool = True
 
     def to_analyze_kwargs(self) -> dict:
         """Map WizardConfig fields to analyze_cmd keyword arguments (FR-014)."""
@@ -38,7 +37,6 @@ class WizardConfig:
             "use_phonemes": self.use_phonemes,
             "phoneme_model": self.whisper_model,
             "use_structure": self.use_structure,
-            "genius": self.use_genius,
             "no_cache": self.cache_strategy in ("regenerate", "skip_write"),
             "skip_cache_write": self.cache_strategy == "skip_write",
             "include_vamp": "vamp" in self.algorithm_groups,
@@ -135,11 +133,6 @@ class WizardRunner:
             if result is False:
                 return None
 
-            # Step 3: Genius lyrics
-            result = self._step_genius(config)
-            if result is False:
-                return None
-
             # Step 4: Whisper model (conditional)
             if config.use_phonemes:
                 result = self._step_whisper_model(config)
@@ -178,12 +171,6 @@ class WizardRunner:
             config.whisper_model = f["phoneme_model"]
         if "use_structure" in f:
             config.use_structure = f["use_structure"]
-        if "genius" in f:
-            config.use_genius = f["genius"]
-        # In non-interactive mode, disable Genius if no token is available
-        import os
-        if config.use_genius and not os.environ.get("GENIUS_API_TOKEN"):
-            config.use_genius = False
 
         # Cache strategy from flags
         if f.get("use_cache"):
@@ -289,44 +276,6 @@ class WizardRunner:
         config.use_phonemes = "phonemes" in answer
         return True
 
-    def _step_genius(self, config: WizardConfig):
-        """Ask whether to fetch lyrics from Genius; prompt for API token if missing."""
-        import os
-        import questionary
-
-        token = os.environ.get("GENIUS_API_TOKEN", "")
-        if token:
-            status_line = "Genius API token found in environment"
-        else:
-            status_line = "No GENIUS_API_TOKEN found in environment"
-
-        print(f"\n  {status_line}")
-        answer = questionary.confirm(
-            "Fetch lyrics and song structure from Genius?", default=True
-        ).ask()
-        if answer is None:
-            return False
-
-        if not answer:
-            config.use_genius = False
-            return True
-
-        # Token missing — prompt for it
-        if not token:
-            token = questionary.text(
-                "Paste your Genius API token (from genius.com/api-clients):"
-            ).ask()
-            if not token or not token.strip():
-                print("  No token provided — skipping Genius.")
-                config.use_genius = False
-                return True
-            token = token.strip()
-            os.environ["GENIUS_API_TOKEN"] = token
-            print("  Token set for this session.")
-
-        config.use_genius = True
-        return True
-
     def _step_whisper_model(self, config: WizardConfig):
         """Choose Whisper model size (only shown when phonemes enabled)."""
         import questionary
@@ -347,14 +296,12 @@ class WizardRunner:
         import questionary
         stems_label = "yes" if config.use_stems else "no"
         phonemes_label = f"yes ({config.whisper_model})" if config.use_phonemes else "no"
-        genius_label = "yes" if config.use_genius else "no"
         summary = (
             f"  Audio:     {config.audio_path}\n"
             f"  Cache:     {config.cache_strategy}\n"
             f"  Algorithms:{', '.join(sorted(config.algorithm_groups))}\n"
             f"  Stems:     {stems_label}\n"
-            f"  Phonemes:  {phonemes_label}\n"
-            f"  Genius:    {genius_label}"
+            f"  Phonemes:  {phonemes_label}"
         )
         print(summary)
         answer = questionary.confirm("Start analysis?").ask()

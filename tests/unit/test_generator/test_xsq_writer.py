@@ -544,3 +544,63 @@ class TestStemOnsetTimingTracks:
         tracks = _collect_timing_tracks(hierarchy)
         assert "Onsets (drums)" in tracks
         assert "Onsets (vocals)" not in tracks
+
+
+class TestLyricsTimingTrack:
+    """Synced-lyrics lines get embedded as a "Lyrics" timing track."""
+
+    def test_lyrics_produce_a_timing_track(self):
+        lyrics = [
+            {"t_ms": 1000, "duration_ms": 2000, "text": "la la placeholder line one"},
+            {"t_ms": 3000, "duration_ms": 2000, "text": "la la placeholder line two"},
+        ]
+        tracks = _collect_timing_tracks(None, lyrics)
+        assert "Lyrics" in tracks
+        assert [m.label for m in tracks["Lyrics"]] == [
+            "la la placeholder line one",
+            "la la placeholder line two",
+        ]
+        assert tracks["Lyrics"][0].time_ms == 1000
+        assert tracks["Lyrics"][0].duration_ms == 2000
+
+    def test_no_lyrics_produces_no_lyrics_track(self):
+        tracks = _collect_timing_tracks(None, None)
+        assert "Lyrics" not in tracks
+
+    def test_empty_lyrics_list_produces_no_lyrics_track(self):
+        tracks = _collect_timing_tracks(None, [])
+        assert "Lyrics" not in tracks
+
+    def test_write_xsq_embeds_lyrics_element(self, tmp_path: Path) -> None:
+        """End-to-end: write_xsq(..., lyrics=...) emits a Lyrics <Element>
+        with one <Effect> per line, in the same shape as Beats/Bars/etc.
+
+        Like every other timing track here, an Effect's endTime is the next
+        mark's startTime (or the song duration for the last mark) — the
+        line's own duration_ms isn't separately serialized.
+        """
+        lyrics = [
+            {"t_ms": 1000, "duration_ms": 2000, "text": "la la placeholder line one"},
+            {"t_ms": 3000, "duration_ms": 7000, "text": "la la placeholder line two"},
+        ]
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, lyrics=lyrics)
+        root = ET.parse(out).getroot()
+
+        display_els = root.find("DisplayElements").findall("Element")
+        lyrics_display = [e for e in display_els if e.get("name") == "Lyrics"]
+        assert len(lyrics_display) == 1
+        assert lyrics_display[0].get("type") == "timing"
+
+        effect_els = root.find("ElementEffects").findall("Element")
+        lyrics_effects = [e for e in effect_els if e.get("name") == "Lyrics"]
+        assert len(lyrics_effects) == 1
+        effects = lyrics_effects[0].find("EffectLayer").findall("Effect")
+        assert [e.get("label") for e in effects] == [
+            "la la placeholder line one",
+            "la la placeholder line two",
+        ]
+        assert effects[0].get("startTime") == "1000"
+        assert effects[0].get("endTime") == "3000"
+        assert effects[1].get("startTime") == "3000"
+        assert effects[1].get("endTime") == "10000"  # last mark → song duration

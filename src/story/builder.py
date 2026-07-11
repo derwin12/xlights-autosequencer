@@ -8,7 +8,6 @@ import copy
 import json
 import math
 import os
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -17,7 +16,6 @@ from src.analyzer.boundary_cluster import (
     AgreementCluster,
     agreement_score_at,
     build_clusters_for_hierarchy,
-    snap_to_cluster,
 )
 from src.story.section_merger import merge_sections
 from src.story.section_classifier import classify_section_roles
@@ -39,90 +37,41 @@ def _portable_audio_path(audio_path: str | Path) -> str:
     from src.paths import to_show_relative
     return to_show_relative(audio_path)
 
-# ── Genius label → our role vocabulary ────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────────
 
-_GENIUS_ROLE_MAP = {
-    "intro": "intro",
-    "verse": "verse",
-    "chorus": "chorus",
-    "hook": "chorus",
-    "refrain": "chorus",
-    "pre-chorus": "pre_chorus",
-    "pre chorus": "pre_chorus",
-    "post-chorus": "post_chorus",
-    "post chorus": "post_chorus",
-    "bridge": "bridge",
-    "outro": "outro",
-    "interlude": "interlude",
-    "instrumental": "instrumental_break",
-    "guitar solo": "instrumental_break",
-    "solo": "instrumental_break",
-    "sax solo": "instrumental_break",
-    "piano solo": "instrumental_break",
-    "drum solo": "instrumental_break",
-    "break": "instrumental_break",
-    "rap": "verse",
-}
+def _discover_vocals_stem(audio_path: str) -> Path | None:
+    """Find a cached vocals stem next to ``audio_path``, or None if absent."""
+    audio_p = Path(audio_path)
+    for stem_dir in (
+        audio_p.parent / "stems",
+        audio_p.parent / ".stems",
+        audio_p.parent / audio_p.stem / "stems",
+        audio_p.parent / audio_p.stem / ".stems",
+    ):
+        for ext in ("mp3", "wav"):
+            candidate = stem_dir / f"vocals.{ext}"
+            if candidate.exists():
+                return candidate
+    return None
 
 
-def _normalize_genius_label(label: str) -> str:
-    """Convert a Genius section label like 'Verse 1' or 'Chorus: feat. X' to our role."""
-    raw = label.lower().strip()
-    # Strip artist/feature annotations: "Chorus: Ray Parker Jr." → "chorus"
-    if ":" in raw:
-        raw = raw.split(":")[0].strip()
-    # Strip parenthetical: "Verse (Remix)" → "verse"
-    raw = raw.split("(")[0].strip()
+def _try_free_transcription(audio_path: str, duration_ms: int) -> list[dict]:
+    """Run a standalone WhisperX free-transcription pass for boundary refinement.
 
-    # Exact match
-    if raw in _GENIUS_ROLE_MAP:
-        return _GENIUS_ROLE_MAP[raw]
-    # Prefix match (e.g. "verse 1" → "verse")
-    for key, role in _GENIUS_ROLE_MAP.items():
-        if raw.startswith(key):
-            return role
-    return "verse"  # safe default for unknown Genius labels
+    No reference lyrics are involved — the model transcribes whatever it
+    hears. Used as ground-truth "is anyone audibly singing here" evidence by
+    ``src.story.boundary_refinement`` (Fix 3: split a pre-vocal instrumental
+    lead-in off a vocal section).
 
+    Returns a list of {label, start_ms, end_ms} dicts, or [] when whisperx
+    isn't available, no vocals stem/audio can be read, or the subprocess fails.
 
-def _try_genius_sections(
-    audio_path: str,
-    duration_ms: int,
-    override_artist: str | None = None,
-    override_title: str | None = None,
-) -> tuple[
-    list[tuple[int, int, str]] | None,
-    dict | None,
-    list[dict],
-    list[dict],
-    str | None,
-]:
-    """Try to get section boundaries from Genius lyrics.
-
-    Returns ``(sections, match_info, free_words, forced_words, chorus_body)`` where:
-      - ``sections`` is a list of (start_ms, end_ms, role) on success, or None.
-      - ``match_info`` is a dict with {url, artist, title, genius_id} describing
-        the Genius page Lyricsgenius returned for this search, or None if no
-        lookup happened (no token, subprocess failure, etc.). Populated even
-        when sections is None, so callers can show the user *what* Genius
-        returned when structure extraction failed.
-      - ``free_words`` is a list of {label, start_ms, end_ms} dicts from a
-        WhisperX free transcription pass (no lyrics input). Empty list when
-        the subprocess didn't run far enough to produce them. Used by
-        boundary refinement (OpenSpec change ``lyric-anchored-boundary-refinement``).
-      - ``forced_words`` is a list of {label, start_ms, end_ms} dicts from
-        WhisperX forced alignment of the Genius lyrics. Empty list when
-        alignment didn't run.
-      - ``chorus_body`` is the first non-empty chorus body from the parsed
-        Genius lyrics, or None when no Chorus section was found.
-
-    whisperx and lyricsgenius live in .venv-vamp — run the pipeline there
-    via subprocess to avoid import issues in the main venv.
+    whisperx lives in .venv-vamp — run it there via subprocess to avoid
+    import issues in the main venv (same pattern as the retired Genius
+    pipeline).
     """
-    token = os.environ.get("GENIUS_API_TOKEN", "")
-    if not token:
-        return None, None, [], [], None
-
     import subprocess as _sp
+    import sys
 
     repo_root = Path(__file__).resolve().parents[2]
     vamp_python = (
@@ -131,193 +80,55 @@ def _try_genius_sections(
         else repo_root / ".venv-vamp" / "bin" / "python"
     )
     if not vamp_python.exists():
-        return None, None, [], [], None
+        return []
 
-    # Small script to run inside .venv-vamp
+    vocals_path = _discover_vocals_stem(audio_path)
+    transcribe_path = str(vocals_path) if vocals_path is not None else str(audio_path)
+    duration_s = duration_ms / 1000.0 if duration_ms > 0 else 0.0
+
     script = f'''
 import json, os, sys
 sys.path.insert(0, {str(repo_root)!r})
-os.environ["GENIUS_API_TOKEN"] = {token!r}
-# Disable HuggingFace's Xet download client — hangs in some restricted
-# network environments. Stock HTTPS download is fine for our use.
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
-# torch 2.6 flipped torch.load default to weights_only=True, which rejects
-# pyannote/whisperx alignment checkpoints that pickle a long list of
-# classes (ListConfig, DictConfig, typing.Any, etc). Rather than chase
-# every rejected class with add_safe_globals, restore the pre-2.6 default
-# by monkey-patching torch.load. Safe here because the models come from
-# pinned HuggingFace sources we trust.
 try:
     import torch
     _orig_torch_load = torch.load
     def _torch_load_compat(*args, **kwargs):
-        # Force weights_only=False regardless of caller (pytorch_lightning
-        # sometimes passes weights_only=None explicitly, which turns into
-        # True downstream on torch 2.6+).
         kwargs["weights_only"] = False
         return _orig_torch_load(*args, **kwargs)
     torch.load = _torch_load_compat
 except Exception:
-    pass  # best-effort; if torch isn't importable the load will fail with a clearer error
-from pathlib import Path
-from src.analyzer.genius_segments import GeniusSegmentAnalyzer
-audio_path = {str(audio_path)!r}
-audio_p = Path(audio_path)
-# Stem layout varies across callers:
-#   main pipeline:  <audio_parent>/stems/
-#   older analyses: <audio_parent>/.stems/
-#   review library: <audio_parent>/<audio_stem>/stems/ (nested per-song dir)
-for _candidate in (
-    audio_p.parent / "stems",
-    audio_p.parent / ".stems",
-    audio_p.parent / audio_p.stem / "stems",
-    audio_p.parent / audio_p.stem / ".stems",
-):
-    if _candidate.exists():
-        stem_dir = _candidate
-        break
-else:
-    stem_dir = audio_p.parent / "stems"  # doesn't exist; analyzer falls back to full mix
-analyzer = GeniusSegmentAnalyzer()
-structure, _phonemes, warnings = analyzer.run(
-    audio_path=audio_path,
-    token=os.environ["GENIUS_API_TOKEN"],
-    stem_dir=stem_dir if stem_dir.exists() else None,
-    duration_ms={duration_ms},
+    pass
+from src.analyzer.free_transcription import transcribe_free
+words = transcribe_free(
+    {transcribe_path!r}, language="en", device="cpu",
+    duration_s={duration_s!r} or None,
 )
-match = analyzer.last_match
-match_info = None
-if match is not None:
-    match_info = {{
-        "url": match.url,
-        "artist": match.artist,
-        "title": match.title,
-        "genius_id": match.genius_id,
-        "fallback_used": getattr(match, "fallback_used", False),
-    }}
-def _wm_dict(w):
-    return {{"label": w.label, "start_ms": int(w.start_ms), "end_ms": int(w.end_ms)}}
-free_words_out = [_wm_dict(w) for w in (analyzer.last_free_words or [])]
-forced_words_out = [_wm_dict(w) for w in (analyzer.last_forced_words or [])]
-chorus_body_out = analyzer.last_chorus_body or None
-if structure is None or not structure.segments:
-    print(json.dumps({{
-        "ok": False, "warnings": warnings, "match": match_info,
-        "free_words": free_words_out, "forced_words": forced_words_out,
-        "chorus_body": chorus_body_out,
-    }}))
-else:
-    segs = [{{"label": s.label, "start_ms": s.start_ms, "end_ms": s.end_ms}}
-            for s in structure.segments]
-    print(json.dumps({{
-        "ok": True, "segments": segs, "warnings": warnings, "match": match_info,
-        "free_words": free_words_out, "forced_words": forced_words_out,
-        "chorus_body": chorus_body_out,
-    }}))
+print(json.dumps([
+    {{"label": w.label, "start_ms": int(w.start_ms), "end_ms": int(w.end_ms)}}
+    for w in words
+]))
 '''
-    env = {**os.environ, "GENIUS_API_TOKEN": token}
-    # Overrides from function args take precedence over any ambient env vars
-    # (the ambient path is kept for CLI users and pre-existing shell workflows).
-    if override_artist:
-        env["_GENIUS_OVERRIDE_ARTIST"] = override_artist
-    elif "_GENIUS_OVERRIDE_ARTIST" in os.environ:
-        env["_GENIUS_OVERRIDE_ARTIST"] = os.environ["_GENIUS_OVERRIDE_ARTIST"]
-    if override_title:
-        env["_GENIUS_OVERRIDE_TITLE"] = override_title
-    elif "_GENIUS_OVERRIDE_TITLE" in os.environ:
-        env["_GENIUS_OVERRIDE_TITLE"] = os.environ["_GENIUS_OVERRIDE_TITLE"]
-
-    import sys
     try:
         proc = _sp.run(
             [str(vamp_python), "-c", script],
             capture_output=True, text=True, timeout=600,
-            env=env,
         )
-    except _sp.TimeoutExpired as exc:
-        print(
-            f"[genius subprocess timed out after {exc.timeout}s — "
-            "first whisperx run can take several minutes for model download]",
-            file=sys.stderr,
-        )
-        return None, None, [], [], None
     except Exception as exc:
-        print(f"[genius subprocess exception: {exc}]", file=sys.stderr)
-        return None, None, [], [], None
+        print(f"[free-transcription subprocess exception: {exc}]", file=sys.stderr)
+        return []
 
     if proc.returncode != 0:
-        print(f"[genius subprocess stderr]\n{proc.stderr[:800]}", file=sys.stderr)
-        return None, None, [], [], None
+        print(f"[free-transcription subprocess stderr]\n{proc.stderr[:800]}", file=sys.stderr)
+        return []
     try:
-        data = json.loads(proc.stdout.strip().split("\n")[-1])
+        return json.loads(proc.stdout.strip().split("\n")[-1])
     except (json.JSONDecodeError, IndexError) as exc:
-        print(
-            f"[genius subprocess: could not parse stdout: {exc}]\n"
-            f"stdout tail: {proc.stdout[-400:]}\n"
-            f"stderr tail: {proc.stderr[-400:]}",
-            file=sys.stderr,
-        )
-        return None, None, [], [], None
-    match_info = data.get("match")
-    free_words = data.get("free_words") or []
-    forced_words = data.get("forced_words") or []
-    chorus_body = data.get("chorus_body")
-    if not data.get("ok"):
-        warnings = data.get("warnings") or []
-        if warnings:
-            print("[genius subprocess returned no sections]", file=sys.stderr)
-            for w in warnings[:5]:
-                print(f"  warning: {w}", file=sys.stderr)
-        return None, match_info, free_words, forced_words, chorus_body
-    result: list[tuple[int, int, str]] = []
-    for seg in data["segments"]:
-        role = _normalize_genius_label(seg["label"])
-        result.append((seg["start_ms"], seg["end_ms"], role))
-    return result, match_info, free_words, forced_words, chorus_body
+        print(f"[free-transcription subprocess: could not parse stdout: {exc}]", file=sys.stderr)
+        return []
 
 
-def _genius_quality_check(
-    genius_sections: list[tuple[int, int, str]],
-    duration_ms: int,
-) -> tuple[bool, str | None]:
-    """Return (ok, reject_reason). ``reject_reason`` is a short human-readable
-    string explaining why the Genius result was rejected, or None on accept.
 
-    Rejects Genius data when:
-    - No sections at all
-    - Too few sections (<3 for songs >60s)
-    - Any single section covers >60% of the song
-    - Fewer than 2 distinct roles (e.g. all mapped to "verse")
-    - Most sections are very short (<3s), suggesting bad alignment
-    """
-    if not genius_sections:
-        return False, "no sections returned"
-
-    n = len(genius_sections)
-    dur_s = duration_ms / 1000.0
-
-    if dur_s > 60 and n < 3:
-        return False, f"only {n} section(s) for a {int(dur_s)}s song — likely a wrong-song match"
-
-    for start, end, _role in genius_sections:
-        pct = (end - start) / duration_ms * 100 if duration_ms else 0
-        if (end - start) > duration_ms * 0.6:
-            return False, f"one section covers {pct:.0f}% of the song — likely a wrong-song match"
-
-    roles = set(r for _, _, r in genius_sections)
-    if len(roles) < 2:
-        return False, f"only one distinct section role ({next(iter(roles))!r})"
-
-    short_count = sum(1 for s, e, _ in genius_sections if (e - s) < 3_000)
-    if short_count > n * 0.5:
-        return False, (
-            f"{short_count} of {n} sections are under 3s — poor WhisperX alignment"
-        )
-
-    return True, None
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _fmt_time(seconds: float) -> str:
     """Format seconds as MM:SS.mmm."""
@@ -346,8 +157,6 @@ def _compute_moment_pattern(moments_in_section: list[dict]) -> str:
 def build_song_story(
     hierarchy: dict,
     audio_path: str,
-    override_artist: str | None = None,
-    override_title: str | None = None,
 ) -> dict:
     """Orchestrate all foundational modules to produce a complete song story dict.
 
@@ -378,168 +187,65 @@ def build_song_story(
     stems_available: list[str] = list(hierarchy.get("stems_available") or [])
 
     # ── Step 2a: Build multi-source agreement clusters ──────────────────────
-    # These are used to (a) snap Genius boundaries to nearby high-agreement
-    # clusters (corrects small WhisperX word-alignment drift), and (b) score
-    # each final section by how many independent sources corroborate its
-    # start boundary. See src.analyzer.boundary_cluster for details.
+    # Used to score each final section by how many independent sources
+    # corroborate its start boundary. See src.analyzer.boundary_cluster.
     bar_ms = int(round(60_000.0 / max(estimated_bpm, 1.0) * 4))
     clusters: list[AgreementCluster] = build_clusters_for_hierarchy(
         hierarchy, bar_ms,
     )
 
-    # ── Step 2: Try Genius lyrics as primary section source ─────────────────
-    # When Genius API is available, it provides ground-truth section labels
-    # (chorus, verse, bridge, etc.) with WhisperX-aligned timestamps.
-    # Fall back to segmentino + energy heuristics when Genius isn't available.
-    (
-        genius_sections,
-        genius_match,
-        genius_free_words,
-        genius_forced_words,
-        genius_chorus_body,
-    ) = _try_genius_sections(
-        audio_path, duration_ms,
-        override_artist=override_artist, override_title=override_title,
-    )
-    if genius_sections:
-        genius_ok, genius_reject_reason = _genius_quality_check(
-            genius_sections, duration_ms,
-        )
-    else:
-        genius_ok = False
-        genius_reject_reason = None if genius_match is None else "no sections returned"
-    section_source = "genius" if genius_ok else "heuristic"
+    # ── Step 2: Section boundaries — segmentino + energy heuristics ─────────
+    section_source = "heuristic"
 
-    if genius_ok:
-        # Snap each internal Genius boundary to the nearest ≥3-source cluster
-        # within ±1 bar. WhisperX word alignment can drift 1-3s on sustained
-        # vocals; snapping lands sections on the real instrumental transition
-        # (stem entries, energy impacts, QM boundaries, etc).
-        #
-        # Snap every Genius section's start (including the first — which is
-        # *not* t=0; t=0 is auto-prepended as an intro later). When a start
-        # is snapped, the previous section's end moves with it so sections
-        # stay contiguous.
-        snapped: list[tuple[int, int, str]] = list(genius_sections)
-        for i in range(len(snapped)):
-            orig_start = snapped[i][0]
-            if orig_start == 0:
-                continue  # never snap a boundary that starts at the song origin
-            new_start, _score = snap_to_cluster(
-                orig_start, clusters, tolerance_ms=bar_ms, min_score=3,
-            )
-            if new_start != orig_start:
-                snapped[i] = (new_start, snapped[i][1], snapped[i][2])
-                if i > 0:
-                    prev = snapped[i - 1]
-                    snapped[i - 1] = (prev[0], new_start, prev[2])
-        genius_sections = snapped
+    raw_sections: list[dict] = hierarchy.get("sections") or []
+    raw_boundaries: list[int] = [int(s["time_ms"]) for s in raw_sections if "time_ms" in s]
+    # Build a time→label map so we can propagate labels through merging
+    boundary_label: dict[int, str] = {
+        int(s["time_ms"]): s["label"]
+        for s in raw_sections
+        if "time_ms" in s and s.get("label")
+    }
+    boundaries_ms: list[int] = sorted(set([0] + raw_boundaries))
 
-        # Use Genius sections directly as our section boundaries + roles
-        sections_ms = [(s, e) for s, e, _r in genius_sections]
-        roles = [{"role": r, "confidence": 0.95} for _s, _e, r in genius_sections]
+    # ── Step 3: Merge sections ────────────────────────────────────────────
+    sections_ms = merge_sections(boundaries_ms, duration_ms)
 
-        # Post-process: detect implicit intro before first Genius section.
-        # Genius sections start at the first lyric, but there's often an
-        # instrumental intro before that.
-        if sections_ms and sections_ms[0][0] > 3_000:
-            sections_ms.insert(0, (0, sections_ms[0][0]))
-            roles.insert(0, {"role": "intro", "confidence": 0.90})
-
-        # Post-process: detect an implicit outro at the end.
-        # Genius often has no [Outro] tag — the last section runs to the song end.
-        # If the energy drops significantly in the tail, split off an outro.
-        if len(sections_ms) >= 2 and roles[-1]["role"] != "outro":
-            last_start, last_end = sections_ms[-1]
-            last_dur = last_end - last_start
-            energy_curves = hierarchy.get("energy_curves") or {}
-            full_mix = energy_curves.get("full_mix", {})
-            fm_vals = full_mix.get("values", [])
-            fm_fps = float(full_mix.get("fps") or full_mix.get("sample_rate") or 10)
-
-            if fm_vals and last_dur > 15_000:
-                # Compare energy in first half vs last 15 seconds of this section
-                mid_ms = last_start + (last_dur // 2)
-                first_si = int(last_start / 1000 * fm_fps)
-                mid_si = int(mid_ms / 1000 * fm_fps)
-                tail_si = int((last_end - 15_000) / 1000 * fm_fps)
-                end_si = int(last_end / 1000 * fm_fps)
-
-                first_chunk = fm_vals[first_si:mid_si]
-                tail_chunk = fm_vals[tail_si:end_si]
-
-                if first_chunk and tail_chunk:
-                    first_mean = sum(first_chunk) / len(first_chunk)
-                    tail_mean = sum(tail_chunk) / len(tail_chunk)
-
-                    # If tail energy < 60% of first half → split off outro
-                    if first_mean > 5 and tail_mean < first_mean * 0.6:
-                        # Find the crossover point: scan backwards to find where
-                        # energy drops below 70% of first-half mean
-                        threshold = first_mean * 0.7
-                        split_idx = end_si
-                        for idx in range(end_si - 1, mid_si, -1):
-                            if idx < len(fm_vals) and fm_vals[idx] >= threshold:
-                                split_idx = idx + 1
-                                break
-                        split_ms = int(split_idx / fm_fps * 1000)
-                        # Clamp to reasonable range
-                        split_ms = max(mid_ms, min(split_ms, last_end - 5_000))
-
-                        sections_ms[-1] = (last_start, split_ms)
-                        sections_ms.append((split_ms, last_end))
-                        roles.append({"role": "outro", "confidence": 0.80})
-    else:
-        # Fallback: segmentino boundaries + energy/vocal heuristics
-        raw_sections: list[dict] = hierarchy.get("sections") or []
-        raw_boundaries: list[int] = [int(s["time_ms"]) for s in raw_sections if "time_ms" in s]
-        # Build a time→label map so we can propagate labels through merging
-        boundary_label: dict[int, str] = {
-            int(s["time_ms"]): s["label"]
-            for s in raw_sections
-            if "time_ms" in s and s.get("label")
-        }
-        boundaries_ms: list[int] = sorted(set([0] + raw_boundaries))
-
-        # ── Step 3: Merge sections ────────────────────────────────────────────
-        sections_ms = merge_sections(boundaries_ms, duration_ms)
-
-        # Derive dominant segmentino label for each merged section.
-        def _dominant_label(start_ms: int, end_ms: int) -> str | None:
-            candidates = [
-                (t, boundary_label[t])
-                for t in boundary_label
-                if start_ms <= t < end_ms
-            ]
-            if not candidates:
-                before = [(t, boundary_label[t]) for t in boundary_label if t <= start_ms]
-                if before:
-                    return max(before, key=lambda x: x[0])[1]
-                return None
-            return min(candidates, key=lambda x: x[0])[1]
-
-        section_labels: list[str | None] = [
-            _dominant_label(start, end) for start, end in sections_ms
+    # Derive dominant segmentino label for each merged section.
+    def _dominant_label(start_ms: int, end_ms: int) -> str | None:
+        candidates = [
+            (t, boundary_label[t])
+            for t in boundary_label
+            if start_ms <= t < end_ms
         ]
+        if not candidates:
+            before = [(t, boundary_label[t]) for t in boundary_label if t <= start_ms]
+            if before:
+                return max(before, key=lambda x: x[0])[1]
+            return None
+        return min(candidates, key=lambda x: x[0])[1]
 
-        # ── Step 4: Classify roles ────────────────────────────────────────────
-        roles = classify_section_roles(sections_ms, hierarchy, section_labels)
+    section_labels: list[str | None] = [
+        _dominant_label(start, end) for start, end in sections_ms
+    ]
 
-        # ── Step 4b: Merge consecutive same-role sections ─────────────────────
-        merged_sections: list[tuple[int, int]] = []
-        merged_roles: list[dict] = []
-        for sec, role in zip(sections_ms, roles):
-            if merged_sections and merged_roles[-1]["role"] == role["role"]:
-                prev_start = merged_sections[-1][0]
-                merged_sections[-1] = (prev_start, sec[1])
-                if role["confidence"] > merged_roles[-1]["confidence"]:
-                    merged_roles[-1] = role
-            else:
-                merged_sections.append(sec)
-                merged_roles.append(role)
+    # ── Step 4: Classify roles ────────────────────────────────────────────
+    roles = classify_section_roles(sections_ms, hierarchy, section_labels)
 
-        sections_ms = merged_sections
-        roles = merged_roles
+    # ── Step 4b: Merge consecutive same-role sections ─────────────────────
+    merged_sections: list[tuple[int, int]] = []
+    merged_roles: list[dict] = []
+    for sec, role in zip(sections_ms, roles):
+        if merged_sections and merged_roles[-1]["role"] == role["role"]:
+            prev_start = merged_sections[-1][0]
+            merged_sections[-1] = (prev_start, sec[1])
+            if role["confidence"] > merged_roles[-1]["confidence"]:
+                merged_roles[-1] = role
+        else:
+            merged_sections.append(sec)
+            merged_roles.append(role)
+
+    sections_ms = merged_sections
+    roles = merged_roles
 
     # ── Step 5: Profile each section ──────────────────────────────────────────
     profiles: list[dict] = [
@@ -747,8 +453,8 @@ def build_song_story(
     # ``chorus_ssm_supported``: True iff at least one other Chorus is
     # in the same repetition group, OR if the section's time-span
     # overlaps any group with two-or-more members (the latter covers
-    # the case where the SSM detects a repeat but Genius only labels
-    # one of the occurrences as Chorus).
+    # the case where the SSM detects a repeat but the heuristic classifier
+    # only labels one of the occurrences as Chorus).
     #
     # Tri-state ``repetition_groups`` source semantics (see HierarchyResult
     # docstring): None = SSM skipped/errored; [] = SSM ran, no groups;
@@ -822,39 +528,48 @@ def build_song_story(
                 sec["chorus_ssm_supported"] = True
 
     # ── Step 15c: Lyric-anchored boundary refinement ──────────────────────────
-    # OpenSpec change ``lyric-anchored-boundary-refinement``. Three small,
-    # targeted refinements applied after the existing boundary derivation:
-    # (1) merge short post_chorus tails, (2) relabel/split bridges whose sung
-    # content opens with the chorus first-line hook, (3) split pre-vocal
-    # instrumental ramps off vocal sections. Validated against a 16-song
-    # corpus (6 fires, 0 false positives) — always-on as of 2026-04-28.
+    # OpenSpec change ``lyric-anchored-boundary-refinement``. Fix 3 (split a
+    # pre-vocal instrumental lead-in off a vocal section) runs on a standalone
+    # WhisperX free-transcription pass. Fix 1 (merge short post_chorus tails)
+    # and Fix 2 (relabel/split bridges whose sung content opens with the
+    # chorus first-line hook) need forced-aligned lyric text and a known
+    # chorus body — sourced from ``syncedlyrics`` (token-free, multi-provider
+    # lookup; Genius provider excluded — see
+    # docs/segment-classification-changelog.md) since the retired Genius
+    # integration no longer supplies them.
     from src.analyzer.phonemes import WordMark
+    from src.analyzer.synced_lyrics import get_boundary_refinement_inputs
     from src.story.boundary_refinement import refine_section_boundaries
 
-    forced_marks = [
-        WordMark(label=w["label"], start_ms=int(w["start_ms"]), end_ms=int(w["end_ms"]))
-        for w in (genius_forced_words or [])
-    ]
+    free_words_raw = _try_free_transcription(audio_path, duration_ms)
     free_marks = [
         WordMark(label=w["label"], start_ms=int(w["start_ms"]), end_ms=int(w["end_ms"]))
-        for w in (genius_free_words or [])
+        for w in free_words_raw
     ]
+    forced_marks, chorus_body, lyric_line_marks = get_boundary_refinement_inputs(
+        title, artist, duration_ms
+    )
     sections_out, refinement_notes = refine_section_boundaries(
         sections_out,
         forced_words=forced_marks,
         free_words=free_marks,
-        chorus_body=genius_chorus_body,
+        chorus_body=chorus_body,
     )
     refinement_warnings: list[str] = []
-    if not genius_chorus_body:
-        refinement_warnings.append(
-            "boundary refinement skipped: Fix 2 (relabel/split bridge) "
-            "— no chorus body from Genius"
-        )
     if not free_marks:
         refinement_warnings.append(
-            "boundary refinement skipped: Fix 2/3 — no free-transcription "
+            "boundary refinement skipped: Fix 3 — no free-transcription "
             "word marks (whisperx unavailable or no vocals)"
+        )
+    if not chorus_body:
+        refinement_warnings.append(
+            "boundary refinement skipped: Fix 2 — no synced lyrics found "
+            "(no chorus body to match against)"
+        )
+    if not forced_marks:
+        refinement_warnings.append(
+            "boundary refinement skipped: Fix 1 — no synced lyrics found "
+            "(no forced-aligned word marks)"
         )
 
     # ── Assemble the complete story dict ──────────────────────────────────────
@@ -879,8 +594,6 @@ def build_song_story(
             "onset_density_avg": round(onset_density_avg, 4),
             "stems_available": stems_available,
             "section_source": section_source,
-            "genius_match": genius_match,
-            "section_source_reject_reason": genius_reject_reason,
         },
         "preferences": {
             "mood": None,
@@ -893,6 +606,13 @@ def build_song_story(
         "sections": sections_out,
         "moments": moments,
         "stems": stem_curves,
+        # Synced-lyrics line track for the Timeline UI (Fix 1/2 above reuse
+        # the same fetch — see get_boundary_refinement_inputs). One entry
+        # per LRC line: {t_ms, duration_ms, text}. Empty when no match.
+        "lyrics": [
+            {"t_ms": m.time_ms, "duration_ms": m.duration_ms, "text": m.label}
+            for m in lyric_line_marks
+        ],
         "review": {
             "status": "draft",
             "reviewed_at": None,

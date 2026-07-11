@@ -10,7 +10,7 @@ to pick it up cold.
 - Move items to `docs/iteration-backlog-shipped.md` when their PR merges.
 - Add new items as they're observed — keep them concrete, not aspirational.
 
-Last updated: 2026-05-07 (after PR #158 tier-layering V1 expanded merged + PR #159 roles track opened).
+Last updated: 2026-07-11 (added Cluster F after external comparison against helix-sequencer).
 
 ---
 
@@ -77,6 +77,25 @@ independent of code changes. Excellent parallelization candidate.
 |---|---|---|---|
 | E1 | Audit all `tier_affinity: "background"` variants against actual visual brightness. Today 75 variants tagged background across 20 base effects; uncertain how many actually read as quiet wash vs. competing-with-foreground. Spawn one agent per base effect, render a 10s test sequence per variant, classify as keep / re-tag / consider removing. | L (data) | Highly parallelizable |
 | E2 | Audit duration_behavior tags. Some effects may be misclassified (`Color Wash` is `standard` today but the comment says it should always span full sections). | S | Independent |
+
+---
+
+## Cluster F — Ideas from external comparison (helix-sequencer, 2026-07-11)
+
+**File overlap:** none yet — these are investigation/design items, not code
+changes. Surfaced by reviewing `H:\Github\helix-sequencer`, a separate
+Python audio→xLights `.xsq` generator with a similar library stack
+(librosa/madmom/demucs/essentia, direct XML template-clone output, no
+xLights automation API). Most of its architecture doesn't suggest anything
+we're missing (its theme/effect selection is actually more rigid than ours —
+a single deterministic rule table per style preset, vs. our
+variant-pool + `variation_seed` selection; its AI/LLM bridge modules are
+intentionally stubbed and unused). One idea stood out as a real difference
+worth a look.
+
+| ID | Item | Size | Status |
+|---|---|---|---|
+| F1 | Iterative self-scoring convergence loop. helix has `autonomous_masterpiece_evaluator.py` / `iterative_quality_convergence.py` that score a *candidate* generated sequence against quality rubrics (density, palette discipline, motif memory) and re-render/adjust before settling on final output — i.e. scoring is part of generation, not a separate after-the-fact pass. Today our `microscope` tool (`src/evaluation/metrics/`) is developer-facing only: generate once, measure, diff against a baseline manually. Investigate whether a cheap subset of microscope's metrics (e.g. `tier_utilization`, `repetition_avoidance`) could run inline during `build_plan()` to reject/retry a bad section-level effect pick before committing to it, rather than only surfacing the problem after a full render. | L investigation + design | Needs OpenSpec design — not yet scoped, no code read to confirm feasibility of running metrics mid-generation vs. only post-render |
 
 ---
 

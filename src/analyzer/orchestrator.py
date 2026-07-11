@@ -692,8 +692,8 @@ def run_orchestrator(
     # Per design D1 in
     # ``openspec/changes/agreement-score-operationalization/design.md``
     # SSM is a *validator* — never a source of truth for section roles.
-    # The story builder reads this list to flag Genius-labeled Choruses
-    # without an SSM peer for human review.
+    # The story builder reads this list to flag heuristically-labeled
+    # Choruses without an SSM peer for human review.
     repetition_groups = None
     try:
         from src.analyzer.self_similarity import compute_repetition_groups

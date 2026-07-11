@@ -23,7 +23,6 @@ class TestWizardConfig:
             use_phonemes=True,
             whisper_model="base",
             use_structure=True,
-            use_genius=False,
         )
         defaults.update(overrides)
         return WizardConfig(**defaults)
@@ -57,16 +56,6 @@ class TestWizardConfig:
         cfg = self._make_config(use_structure=True)
         kwargs = cfg.to_analyze_kwargs()
         assert kwargs["use_structure"] is True
-
-    def test_to_analyze_kwargs_use_genius(self):
-        cfg = self._make_config(use_genius=True)
-        kwargs = cfg.to_analyze_kwargs()
-        assert kwargs["genius"] is True
-
-    def test_to_analyze_kwargs_no_genius(self):
-        cfg = self._make_config(use_genius=False)
-        kwargs = cfg.to_analyze_kwargs()
-        assert kwargs["genius"] is False
 
     def test_to_analyze_kwargs_cache_strategy_regenerate(self):
         cfg = self._make_config(cache_strategy="regenerate")

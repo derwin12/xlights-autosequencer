@@ -40,7 +40,7 @@ def _story(n_sections: int = 3, *, marker: str = "v1") -> dict:
                 "label": f"{marker}-{i}",
                 "agreement_score": 0.5 + 0.1 * i,
                 "chorus_ssm_supported": (i == 1),
-                "source": "genius",
+                "source": "heuristic",
             }
             for i in range(n_sections)
         ],

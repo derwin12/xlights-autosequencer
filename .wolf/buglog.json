@@ -2762,6 +2762,43 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-11T00:00:00.000Z"
+    },
+    {
+      "id": "bug-171",
+      "timestamp": "2026-07-11T00:00:00.000Z",
+      "error_message": "User: 'i click re-analyze and there is no feedback to let me know if it is doing anything' -- backend log confirmed the pipeline was actually re-running (demucs/vamp) but the Analyze screen kept showing the static 'Analysis complete' summary card",
+      "file": "src/review/frontend/src/screens/Analyze.tsx",
+      "root_cause": "The compact 'already analyzed' summary card at Analyze.tsx:482 was gated only on `alreadyAnalyzedAtMount`, a ref computed once at mount and never updated. handleReanalyze() correctly flips the live `analysisComplete` state to false and restarts the SSE-driven analysis, but the render's early-return didn't check `analysisComplete`, so the sticky summary card never yielded to the live progress view (phase strip/detector list/elapsed timer) while re-analysis ran.",
+      "fix": "Changed the guard from `if (alreadyAnalyzedAtMount && !error)` to `if (alreadyAnalyzedAtMount && analysisComplete && !error)` so the summary only shows when nothing is in flight.",
+      "tags": [
+        "frontend",
+        "tsx",
+        "stale-ref",
+        "missing-feedback",
+        "analyze-screen"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-11T00:00:00.000Z"
+    },
+    {
+      "id": "bug-172",
+      "timestamp": "2026-07-11T00:00:00.000Z",
+      "error_message": "User: 'the generated sequence is basically empty and useless' -- downloaded .xsq only contained bare <section_assignment> XML attributes, no props/effects/timing",
+      "file": "src/review/api/v1/export.py",
+      "root_cause": "_run_export called build_plan(source_file=, sections=, assignments=, layout=) -- kwargs that never matched the real signature build_plan(config: GenerationConfig, hierarchy, props, groups, effect_library, theme_library) (src/generator/plan.py:88). This TypeError'd on every export, 100% of the time, and was swallowed by a bare `except Exception: pass` with no logging anywhere, silently falling back to a hand-rolled stub XML writer (just serialized override values as XML attributes) that was never a real xLights sequence. Separately, the Import Layout endpoint (src/review/api/v1/layout.py::post_layout) parsed the uploaded xlights_rgbeffects.xml in memory for a prop-summary preview and discarded the raw bytes -- so even a correct build_plan() call would have had no real layout_path to parse full model geometry from.",
+      "fix": "Wired _run_export to call the existing, tested src.evaluation.generator_runner.run() (orchestrator -> parse_layout -> classify_props/generate_groups -> load effect/variant/theme libraries -> build_plan -> write_xsq) instead of the broken inline call, and made it raise/surface real errors instead of swallowing them. layout.py now persists the uploaded XML to ~/.xlight/layouts/<layout_id>.xml (src/review/storage/paths.py::layout_xml_path) and registers it via src.settings.save_settings so a real layout_path exists. Also added an optional theme_overrides param threaded through generator_runner.run() -> GenerationConfig so the user's per-section Theme-screen picks (session assignments) are honored instead of being silently ignored by the auto theme-selector. Known remaining gap (documented in docs/known-broken-tests.md): per-section brightness/hit_strength/dwell_time/color_shift sliders still have zero wiring into build_plan/effect_placer.",
+      "tags": [
+        "backend",
+        "python",
+        "swallowed-error",
+        "fake-integration",
+        "export",
+        "generator-pipeline"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-11T00:00:00.000Z"
     }
   ]
 }

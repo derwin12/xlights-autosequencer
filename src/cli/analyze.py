@@ -249,7 +249,6 @@ def _run_analysis_from_config(
         lyrics_path=None,
         phoneme_model=kwargs["phoneme_model"],
         use_structure=kwargs["use_structure"],
-        use_genius=kwargs["genius"],
         no_cache=kwargs["no_cache"],
         scoring_config_path=scoring_config_path,
         scoring_profile_name=scoring_profile_name,
@@ -285,8 +284,6 @@ def _run_analysis_from_config(
 )
 @click.option("--structure/--no-structure", "use_structure", default=True,
               help="Enable/disable song structure detection")
-@click.option("--genius/--no-genius", "use_genius", is_flag=True, default=False,
-              help="Enable/disable Genius lyrics fetch")
 @click.option("--scoring-config", "scoring_config_path", default=None,
               type=click.Path(exists=True, dir_okay=False),
               help="Path to a TOML scoring configuration file")
@@ -307,7 +304,6 @@ def wizard_cmd(
     use_phonemes: bool,
     phoneme_model: str,
     use_structure: bool,
-    use_genius: bool,
     scoring_config_path: str | None,
     scoring_profile_name: str | None,
 ) -> None:
@@ -343,7 +339,6 @@ def wizard_cmd(
         "use_phonemes": use_phonemes,
         "phoneme_model": phoneme_model,
         "use_structure": use_structure,
-        "genius": use_genius,
     }
 
     runner = WizardRunner(flags=flags)

@@ -4,6 +4,7 @@ import { Transport } from '../components/Transport/Transport';
 import { Waveform } from '../components/Waveform/Waveform';
 import { Ruler } from '../components/Ruler/Ruler';
 import { SectionStrip } from '../components/SectionStrip/SectionStrip';
+import { LyricTrack } from '../components/LyricTrack/LyricTrack';
 import { LightsPreview } from '../components/LightsPreview/LightsPreview';
 import { AlgoTrack } from '../components/AlgoTrack/AlgoTrack';
 import { StemWaveforms } from '../components/StemWaveforms/StemWaveforms';
@@ -39,6 +40,7 @@ interface Analysis {
   section_boundaries?: number[];
   chord_changes?: number[];
   key_changes?: number[];
+  lyrics?: { t_ms: number; duration_ms: number; text: string }[];
   value_curves?: Record<string, { fps: number; values: number[] }>;
   detectors: { name: string; library: string; status: string; confidence: number | null; error: string | null; marks?: number; kind?: string }[];
   completed_at: string;
@@ -167,6 +169,9 @@ export function Timeline({ song, analysis, assignments, onNavigateTheme }: Timel
 
   const [drawerOpen, setDrawerOpen] = useState<boolean>(true);
   const [hiddenDetectors, setHiddenDetectors] = useState<Set<string>>(new Set());
+  // Lyrics render as their own dedicated lane (see LyricTrack below), not as
+  // a tick-mark row here — it has no matching getDetectorEvents() case.
+  const drawerDetectors = analysis.detectors.filter((det) => det.kind !== 'lyrics');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [viewStartMs, setViewStartMs] = useState<number>(0);
   const [windowPeaks, setWindowPeaks] = useState<number[] | null>(null);
@@ -418,6 +423,16 @@ export function Timeline({ song, analysis, assignments, onNavigateTheme }: Timel
             />
           </div>
 
+          <div className={styles.trackAligned}>
+            <div className={styles.trackAlignedLabel}>LYRICS</div>
+            <LyricTrack
+              lines={analysis.lyrics ?? []}
+              durationMs={durationMs}
+              viewStartMs={zoomLevel > 1 ? viewStartMs : undefined}
+              viewEndMs={zoomLevel > 1 ? viewEndMs : undefined}
+            />
+          </div>
+
           <div className={styles.previewRow}>
             <LightsPreview
               n={16}
@@ -445,7 +460,7 @@ export function Timeline({ song, analysis, assignments, onNavigateTheme }: Timel
                 {drawerOpen ? '▾' : '▸'} RAW ALGORITHM TRACKS
               </span>
               <span className={styles.drawerCount}>
-                {analysis.detectors.length - hiddenDetectors.size} / {analysis.detectors.length} visible
+                {drawerDetectors.length - hiddenDetectors.size} / {drawerDetectors.length} visible
               </span>
               <div className={styles.drawerSpacer} />
               <span className={styles.drawerHint}>click to toggle · events flash near playhead</span>
@@ -453,7 +468,7 @@ export function Timeline({ song, analysis, assignments, onNavigateTheme }: Timel
 
             {drawerOpen && (
               <div className={styles.drawerRows}>
-                {analysis.detectors.map((det, i) => {
+                {drawerDetectors.map((det, i) => {
                   const isCurve = det.kind === 'curve';
                   const curveData = isCurve ? analysis.value_curves?.[det.name] : undefined;
                   const events = isCurve ? [] : getDetectorEvents(det.name, analysis, song.duration_ms, det.marks ?? 0);

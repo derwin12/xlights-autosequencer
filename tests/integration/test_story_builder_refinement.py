@@ -2,13 +2,24 @@
 
 Exercises Step 15c of ``src/story/builder.py``: the call into
 ``src.story.boundary_refinement.refine_section_boundaries`` and the
-plumbing that surfaces forced/free word marks + chorus body across the
-Genius subprocess boundary.
+plumbing that surfaces free-transcription word marks from a standalone
+WhisperX pass (``_try_free_transcription``).
 
-The Genius subprocess is mocked via monkey-patching ``_try_genius_sections``
-so the test runs without ``.venv-vamp`` / WhisperX / a real audio fixture.
-The point of this test is the wiring, not the algorithm — algorithm
-correctness is covered by ``tests/unit/test_boundary_refinement.py``.
+Fix 1 (merge short post_chorus tails) and Fix 2 (relabel/split a bridge
+whose sung content opens with the chorus first-line hook) required
+Genius-sourced forced-aligned text and a known chorus body; since the
+Genius integration was removed (see
+docs/segment-classification-changelog.md, 2026-07-11), those two fixes are
+now permanently inactive — ``forced_words`` is always ``[]`` and
+``chorus_body`` is always ``None``. Only Fix 3 (split a pre-vocal
+instrumental lead-in off a vocal section) still has live capability,
+sourced from ``_try_free_transcription`` instead of the retired Genius
+subprocess.
+
+``_try_free_transcription`` is mocked so the test runs without
+``.venv-vamp`` / WhisperX / a real audio fixture. The point of this test is
+the wiring, not the algorithm — algorithm correctness is covered by
+``tests/unit/test_boundary_refinement.py``.
 """
 from __future__ import annotations
 
@@ -27,34 +38,9 @@ def hierarchy():
     return make_hierarchy_dict()
 
 
-def _stub_genius_sections_factory(
-    *,
-    sections,
-    free_words: list[dict] | None = None,
-    forced_words: list[dict] | None = None,
-    chorus_body: str | None = None,
-    match_info: dict | None = None,
-):
-    """Build a stub for ``_try_genius_sections`` returning the supplied tuple."""
-    def _stub(audio_path, duration_ms, *, override_artist=None, override_title=None):
-        return (
-            sections,
-            match_info,
-            free_words or [],
-            forced_words or [],
-            chorus_body,
-        )
-    return _stub
-
-
-def test_flag_off_emits_empty_boundary_refinements_field(hierarchy, monkeypatch):
-    """Default-off: every section gets boundary_refinements: [], no fix runs."""
-    monkeypatch.setattr(builder_mod, "_try_genius_sections", _stub_genius_sections_factory(
-        sections=None,
-        free_words=[],
-        forced_words=[],
-        chorus_body=None,
-    ))
+def test_no_free_words_emits_empty_boundary_refinements_field(hierarchy, monkeypatch):
+    """No free-transcription word marks: every section gets boundary_refinements: []."""
+    monkeypatch.setattr(builder_mod, "_try_free_transcription", lambda *a, **kw: [])
 
     story = build_song_story(hierarchy, AUDIO_PATH)
     assert story["schema_version"] == "1.1.0"
@@ -63,33 +49,17 @@ def test_flag_off_emits_empty_boundary_refinements_field(hierarchy, monkeypatch)
         assert sec["boundary_refinements"] == []
 
 
-def test_flag_on_no_genius_data_still_emits_empty_field(hierarchy, monkeypatch):
-    """Flag on but Genius returned nothing — every section still gets []."""
-    monkeypatch.setattr(builder_mod, "_try_genius_sections", _stub_genius_sections_factory(
-        sections=None,
-        free_words=[],
-        forced_words=[],
-        chorus_body=None,
-    ))
-
-    story = build_song_story(hierarchy, AUDIO_PATH)
-    for sec in story["sections"]:
-        assert sec["boundary_refinements"] == []
-
-
-def test_flag_on_fix3_fires_for_late_vocal_entry(hierarchy, monkeypatch):
-    """Flag on with synthetic free_words showing a vocal section starts late.
+def test_fix3_fires_for_late_vocal_entry(hierarchy, monkeypatch):
+    """Synthetic free_words showing a vocal section starts late triggers Fix 3.
 
     The fixture hierarchy contains multiple sections; we feed free_words
     consistent with one of them having its first transcribed word > 5 s
     after the section start. Fix 3 should split it.
     """
 
-    # First, build with flag off to discover what sections the fixture
+    # First, build with no free words to discover what sections the fixture
     # produces. Then we know which one to target with synthetic free_words.
-    monkeypatch.setattr(builder_mod, "_try_genius_sections", _stub_genius_sections_factory(
-        sections=None,
-    ))
+    monkeypatch.setattr(builder_mod, "_try_free_transcription", lambda *a, **kw: [])
 
     baseline = build_song_story(hierarchy, AUDIO_PATH)
 
@@ -114,12 +84,7 @@ def test_flag_on_fix3_fires_for_late_vocal_entry(hierarchy, monkeypatch):
         {"label": "WORLD", "start_ms": word_start_ms + 600, "end_ms": word_start_ms + 1000},
     ]
 
-    monkeypatch.setattr(builder_mod, "_try_genius_sections", _stub_genius_sections_factory(
-        sections=None,
-        free_words=free_words,
-        forced_words=[],
-        chorus_body=None,
-    ))
+    monkeypatch.setattr(builder_mod, "_try_free_transcription", lambda *a, **kw: free_words)
     refined = build_song_story(hierarchy, AUDIO_PATH)
 
     # Fix 3 should produce a new instrumental section preceding the vocal one.
@@ -147,10 +112,7 @@ def test_legacy_story_dict_section_from_dict_handles_missing_field(hierarchy, mo
     """Section.from_dict tolerates legacy section dicts lacking the field."""
     from src.story.models import Section
 
-    # Build a real story (flag off → no refinement notes added beyond []).
-    monkeypatch.setattr(builder_mod, "_try_genius_sections", _stub_genius_sections_factory(
-        sections=None,
-    ))
+    monkeypatch.setattr(builder_mod, "_try_free_transcription", lambda *a, **kw: [])
     story = build_song_story(hierarchy, AUDIO_PATH)
     legacy_dict = dict(story["sections"][0])
     # Simulate a legacy story that predates the field.

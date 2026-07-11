@@ -1,0 +1,32 @@
+.strip {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 22px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted, #888);
+  font-size: 11px;
+  font-style: italic;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  border-left: 1px solid var(--line, #2a2a33);
+}
+
+.emptyLabel {
+  color: var(--ink3, #6a6a78);
+  font-size: 11px;
+  font-style: italic;
+  padding: 0 4px;
+}

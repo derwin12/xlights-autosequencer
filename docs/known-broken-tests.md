@@ -114,6 +114,26 @@ theme_routes from batch 1):
   upload-via-multipart. Marked `pytest.mark.skip` with a clear reason; drop
   the marker when the route lands.
 
+- `tests/review/test_api_export.py::TestExportOverrides::test_export_with_non_default_overrides_differs_from_defaults`
+  (2026-07-11) — Was passing only because `/api/v1/songs/<id>/export`
+  called `build_plan()` with a kwarg signature (`source_file=`, `sections=`,
+  `assignments=`, `layout=`) that never matched the real function
+  (`build_plan(config, hierarchy, props, groups, effect_library,
+  theme_library)`). Every export silently `TypeError`'d and fell back to a
+  stub XML that literally serialized `overrides` dict values as XML
+  attributes — which is what this test was actually asserting differed,
+  not real xLights output. Fixed the real bug: `_run_export` now calls the
+  tested `src.evaluation.generator_runner.run()` pipeline and passes
+  section→theme picks through the newly-added `theme_overrides` param on
+  `GenerationConfig`. But per-section `brightness`/`hit_strength`/
+  `dwell_time`/`color_shift` sliders (the review UI's Theme-screen
+  parameter sliders) still have zero wiring into `build_plan`/
+  `effect_placer` — confirmed via `grep -r "hit_strength\|dwell_time\|
+  color_shift" src/generator/` returning no matches. Remediation: extend
+  `GenerationConfig` with a per-section parameter-override hook analogous
+  to `theme_overrides` and thread it through `effect_placer`/
+  `value_curves`, then remove this skip.
+
 ## Recently resolved (batch 1, PR #98)
 
 - Fixed: `tests/evaluation/test_xsq_reader.py` + `test_integration_smoke.py`

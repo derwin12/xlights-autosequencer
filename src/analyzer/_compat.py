@@ -4,7 +4,7 @@ torchaudio 2.11 removed several top-level APIs that pyannote.audio 3.3.2 still
 uses (AudioMetaData as a return-type hint, list_audio_backends() and info()
 called at module load / runtime via Audio(...) construction). Anything that
 transitively imports pyannote.audio — whisperx, speechbrain, the analyzer's
-genius/phoneme paths — fails with AttributeError before our code runs.
+phoneme/transcription paths — fails with AttributeError before our code runs.
 
 This module restores the three attributes on ``torchaudio`` with minimal stubs:
 

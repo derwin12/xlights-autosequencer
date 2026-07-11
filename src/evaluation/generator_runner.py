@@ -28,6 +28,8 @@ def run(
     audio_path: Path | str,
     audio_hash: str,
     layout_path: Optional[Path] = None,
+    theme_overrides: Optional[dict[int, str]] = None,
+    lyrics: Optional[list[dict]] = None,
 ) -> bytes:
     """Run the generator deterministically and return .xsq bytes.
 
@@ -37,6 +39,11 @@ def run(
         audio_hash: "md5:..." hash string used to derive the seed.
         layout_path: Optional path to xlights_rgbeffects.xml layout.
                      If None, reads from settings.
+        theme_overrides: Optional {section_index: theme_name} map — forces
+                         specific sections to a caller-chosen theme instead
+                         of the auto-selected one (see GenerationConfig).
+        lyrics: Optional synced-lyrics lines (``{t_ms, duration_ms, text}``)
+                embedded as a "Lyrics" timing track in the output .xsq.
 
     Returns:
         Raw .xsq XML bytes.
@@ -70,14 +77,21 @@ def run(
     np.random.seed(seed % (2**32))
 
     try:
-        return _run_pipeline(audio_path, layout_path, seed)
+        return _run_pipeline(audio_path, layout_path, seed, theme_overrides=theme_overrides,
+                              lyrics=lyrics)
     except GeneratorError:
         raise
     except Exception as exc:
         raise GeneratorError(f"Generator pipeline failed: {exc}") from exc
 
 
-def _run_pipeline(audio_path: Path, layout_path: Path, seed: int) -> bytes:
+def _run_pipeline(
+    audio_path: Path,
+    layout_path: Path,
+    seed: int,
+    theme_overrides: Optional[dict[int, str]] = None,
+    lyrics: Optional[list[dict]] = None,
+) -> bytes:
     """Execute the full generation pipeline and return .xsq bytes."""
     from src.analyzer.orchestrator import run_orchestrator
     from src.effects.library import load_effect_library
@@ -114,6 +128,7 @@ def _run_pipeline(audio_path: Path, layout_path: Path, seed: int) -> bytes:
             audio_path=audio_path,
             layout_path=layout_path,
             output_dir=Path(tmp_dir),
+            theme_overrides=theme_overrides,
         )
 
         # Re-seed after config construction (which may trigger path resolution calls)
@@ -125,6 +140,6 @@ def _run_pipeline(audio_path: Path, layout_path: Path, seed: int) -> bytes:
 
         # Write .xsq to a temp file, then read back as bytes
         output_path = Path(tmp_dir) / "output.xsq"
-        write_xsq(plan, output_path, hierarchy=hierarchy, audio_path=audio_path)
+        write_xsq(plan, output_path, hierarchy=hierarchy, audio_path=audio_path, lyrics=lyrics)
 
         return output_path.read_bytes()

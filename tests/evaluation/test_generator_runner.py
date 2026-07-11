@@ -96,6 +96,42 @@ def test_run_returns_xml_bytes():
 
 
 @_SKIP_INTEGRATION
+def test_run_with_lyrics_embeds_lyrics_timing_track():
+    """run(..., lyrics=[...]) must thread lyric lines into the .xsq as a
+    "Lyrics" timing track — the Export screen's actual bug report."""
+    from src.evaluation.generator_runner import run
+
+    lyrics = [
+        {"t_ms": 1000, "duration_ms": 2000, "text": "la la placeholder line one"},
+    ]
+    result = run(
+        song_id="test-song",
+        audio_path=_FIXTURE_WAV,
+        audio_hash=_FAKE_HASH,
+        layout_path=_FIXTURE_LAYOUT,
+        lyrics=lyrics,
+    )
+    text = result.decode("utf-8")
+    assert 'name="Lyrics"' in text
+    assert "la la placeholder line one" in text
+
+
+@_SKIP_INTEGRATION
+def test_run_without_lyrics_has_no_lyrics_track():
+    """run() with no lyrics arg must not emit a Lyrics timing track."""
+    from src.evaluation.generator_runner import run
+
+    result = run(
+        song_id="test-song",
+        audio_path=_FIXTURE_WAV,
+        audio_hash=_FAKE_HASH,
+        layout_path=_FIXTURE_LAYOUT,
+    )
+    text = result.decode("utf-8")
+    assert 'name="Lyrics"' not in text
+
+
+@_SKIP_INTEGRATION
 def test_deterministic_run_same_bytes():
     """Two calls with the same audio_hash must produce byte-identical .xsq bytes."""
     from src.evaluation.generator_runner import run

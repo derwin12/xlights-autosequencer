@@ -41,54 +41,9 @@ class _RunState:
         self.pending_assignments: list[dict] | None = None
         self.lock = threading.Lock()
 
-        # ID3 confirmation gate (OpenSpec lyric-anchored-boundary-refinement §6a).
-        # The mid-pipeline SSE-blocking variant: builder pushes
-        # ``id3_confirm_prompt`` and waits on ``_id3_event``. The frontend
-        # consumes the SSE event and POSTs to /analyze/id3-confirm to unblock.
-        # Independent from the pre-flight path, where overrides are supplied
-        # in the initial POST body and this gate is skipped entirely.
-        self._id3_event = threading.Event()
-        self.id3_response: str | None = None
-        self.id3_corrected_title: str | None = None
-        self.id3_corrected_artist: str | None = None
-        self.id3_write_back: bool = False
-
     def push(self, event: dict) -> None:
         with self.lock:
             self.events.append(event)
-
-    def prompt_id3_confirm(self, id3_title: str, id3_artist: str) -> None:
-        """Emit an id3_confirm_prompt SSE event and clear the wait flag."""
-        with self.lock:
-            self._id3_event.clear()
-            self.id3_response = None
-            self.id3_corrected_title = None
-            self.id3_corrected_artist = None
-            self.id3_write_back = False
-            self.events.append({
-                "id3_confirm_prompt": True,
-                "id3_title": id3_title,
-                "id3_artist": id3_artist,
-            })
-
-    def wait_for_id3_response(self, timeout: float = 120.0) -> str | None:
-        """Block until the user submits an ID3 response, or the timeout expires."""
-        self._id3_event.wait(timeout=timeout)
-        return self.id3_response
-
-    def submit_id3_response(
-        self,
-        response: str,
-        title: str | None = None,
-        artist: str | None = None,
-        write_back: bool = False,
-    ) -> None:
-        """Called by /analyze/id3-confirm to unblock the waiting analysis thread."""
-        self.id3_response = response
-        self.id3_corrected_title = title
-        self.id3_corrected_artist = artist
-        self.id3_write_back = bool(write_back)
-        self._id3_event.set()
 
 
 def _now_iso() -> str:
@@ -223,13 +178,7 @@ def _analyze_stub(state: "_RunState", source_path: str, song_id: str) -> None:
 
 
 def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
-                            audio_bytes: bytes | None,
-                            override_artist: str | None = None,
-                            override_title: str | None = None,
-                            *,
-                            skip_genius: bool = False,
-                            write_back: bool = False,
-                            prompt_id3: bool = False) -> None:
+                            audio_bytes: bytes | None) -> None:
     """Run the full hierarchy analysis pipeline in a background thread.
 
     Calls run_orchestrator() with a progress_callback that streams SSE events,
@@ -330,114 +279,24 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         state.push({"overall": {"status": "running", "progress": 0.90,
                                 "eta_ms": 5000, "elapsed_ms": elapsed_ms}})
 
-        # ── ID3 confirmation gate (OpenSpec §6a) ─────────────────────────────
-        # Pre-flight path: caller supplied overrides / skip_genius via the
-        # initial POST body — honor them, optionally write back to the MP3,
-        # and skip the SSE prompt entirely.
-        # SSE-blocking path: caller asked us to prompt mid-pipeline. Read
-        # the file's ID3 tags, push id3_confirm_prompt, and block until the
-        # frontend POSTs /analyze/id3-confirm. On timeout, proceed with
-        # prefilled values (best-effort).
-        _local_skip_genius = bool(skip_genius)
-        _local_override_artist = override_artist
-        _local_override_title = override_title
-        if write_back and (override_title or override_artist):
-            try:
-                from src.review.server import (
-                    read_id3_metadata as _read_id3,
-                    write_id3_metadata_atomic as _write_id3_atomic,
-                )
-                _cur_t, _cur_a = _read_id3(str(src))
-                _write_id3_atomic(
-                    str(src),
-                    (override_title or _cur_t),
-                    (override_artist or _cur_a),
-                )
-            except Exception as exc:
-                hierarchy.warnings.append(
-                    f"ID3 write-back failed: {exc}. "
-                    "Analyzer will use corrected metadata in memory."
-                )
-        if prompt_id3 and not (override_title or override_artist or skip_genius):
-            try:
-                from src.review.server import read_id3_metadata as _read_id3
-                _id3_t, _id3_a = _read_id3(str(src))
-            except Exception:
-                _id3_t, _id3_a = "", ""
-            state.prompt_id3_confirm(_id3_t, _id3_a)
-            _resp = state.wait_for_id3_response(timeout=120.0)
-            if _resp == "skip":
-                _local_skip_genius = True
-            elif _resp == "correct":
-                _local_override_title = (state.id3_corrected_title or "").strip() or _id3_t
-                _local_override_artist = (state.id3_corrected_artist or "").strip() or _id3_a
-                if state.id3_write_back:
-                    try:
-                        from src.review.server import write_id3_metadata_atomic as _write_id3_atomic
-                        _write_id3_atomic(
-                            str(src), _local_override_title, _local_override_artist,
-                        )
-                    except Exception as exc:
-                        hierarchy.warnings.append(
-                            f"ID3 write-back failed: {exc}. "
-                            "Analyzer will use corrected metadata in memory."
-                        )
-            # else: "confirm" or timeout → proceed with prefilled values.
-
-        # ── Story builder — section roles + Genius labels ────────────────────
-        state.push({"detector": "song story (genius + roles)", "library": "story",
+        # ── Story builder — section roles ────────────────────────────────────
+        state.push({"detector": "song story (roles)", "library": "story",
                     "status": "running", "progress": 0.0})
         try:
             from src.story.builder import build_song_story
-            if _local_skip_genius:
-                # Force Genius lookup to abort by clearing the API token for
-                # the duration of the story build. Mirrors the legacy path
-                # in src/review/server.py:408-421.
-                import os as _os
-                _prev_token = _os.environ.get("GENIUS_API_TOKEN")
-                _os.environ["GENIUS_API_TOKEN"] = ""
-                try:
-                    story = build_song_story(
-                        hierarchy.to_dict(), str(src),
-                        override_artist=_local_override_artist,
-                        override_title=_local_override_title,
-                    )
-                finally:
-                    if _prev_token is None:
-                        _os.environ.pop("GENIUS_API_TOKEN", None)
-                    else:
-                        _os.environ["GENIUS_API_TOKEN"] = _prev_token
-            else:
-                story = build_song_story(
-                    hierarchy.to_dict(), str(src),
-                    override_artist=_local_override_artist,
-                    override_title=_local_override_title,
-                )
+            story = build_song_story(hierarchy.to_dict(), str(src))
             story_sections = story.get("sections", [])
             # Surface Step-15c capability skips (one entry per skipped fix
             # per song) on HierarchyResult.warnings so the analyze-step API
             # payload's existing ``warnings`` field carries them to the UI's
-            # warnings panel. Per OpenSpec change
-            # ``lyric-anchored-boundary-refinement`` §7. Per-section non-fires
-            # do NOT produce warnings — those are silent.
+            # warnings panel. Per-section non-fires do NOT produce warnings
+            # — those are silent.
             hierarchy.warnings.extend(story.get("refinement_warnings") or [])
-            # Emit the Genius match / reject info so the UI can display it
-            # the moment the story step completes — the user can then
-            # confirm or edit the artist/title without waiting for the full
-            # analysis to finish.
-            _g = story.get("global", {})
-            state.push({
-                "genius_lookup": {
-                    "section_source": _g.get("section_source"),
-                    "match": _g.get("genius_match"),
-                    "reject_reason": _g.get("section_source_reject_reason"),
-                },
-            })
-            state.push({"detector": "song story (genius + roles)", "library": "story",
+            state.push({"detector": "song story (roles)", "library": "story",
                         "status": "done", "confidence": 1.0,
                         "marks": len(story_sections)})
         except Exception as exc:
-            state.push({"detector": "song story (genius + roles)", "library": "story",
+            state.push({"detector": "song story (roles)", "library": "story",
                         "status": "failed", "error": str(exc)})
             state.push({"log": {"at_ms": elapsed_ms, "level": "warn",
                                 "message": f"Story builder failed: {exc}"}})
@@ -586,6 +445,9 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         chord_changes_list = [m.time_ms for m in (hierarchy.chords.marks if hierarchy.chords else [])]
         key_changes_list = [m.time_ms for m in (hierarchy.key_changes.marks if hierarchy.key_changes else [])]
 
+        # ── Synced lyric lines (display track, not a boundary-detection signal) ─
+        lyrics_list = list((story or {}).get("lyrics") or [])
+
         # ── Value curves (BBC energy per stem + spectral flux) ───────────────
         # Downsample to ≤2000 points each to keep the response size manageable.
         # Adjust fps proportionally so (len(values) / fps) still equals the
@@ -622,7 +484,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                 lib = "vamp"
             elif "madmom" in base_name:
                 lib = "madmom"
-            elif "story" in base_name or "genius" in base_name:
+            elif "story" in base_name:
                 lib = "story"
             kind = "curve" if base_name in _CURVE_DETECTORS else "marks"
             detectors.append({"name": display, "library": lib,
@@ -636,6 +498,16 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                            "status": "done" if story else "failed",
                            "confidence": None,
                            "marks": len(story_sections) if story else None,
+                           "error": None})
+
+        # Add lyrics detector (kind="lyrics" so the frontend renders labeled
+        # blocks rather than tick marks; empty is a normal "no match" outcome,
+        # not a failure — syncedlyrics frequently has no result for a song).
+        detectors.append({"name": "lyrics", "library": "story",
+                           "status": "done" if story else "failed",
+                           "confidence": None,
+                           "marks": len(lyrics_list),
+                           "kind": "lyrics",
                            "error": None})
 
         pipeline_version = f"full-{hierarchy.schema_version}"
@@ -656,6 +528,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             "section_boundaries": section_boundaries_list,
             "chord_changes": chord_changes_list,
             "key_changes": key_changes_list,
+            "lyrics": lyrics_list,
             "value_curves": curves_out,
             "peaks": peaks,
             "detectors": detectors,
@@ -664,13 +537,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             "estimated_bpm": hierarchy.estimated_bpm,
             "capabilities": hierarchy.capabilities,
             "warnings": hierarchy.warnings,
-            # Section source provenance — lets the UI show whether the labels
-            # came from Genius lyric headers or the heuristic classifier, plus
-            # the Genius page that was matched (for user confirmation) and the
-            # reason Genius was rejected when it ran but the result looked bad.
             "section_source": story_global.get("section_source"),
-            "genius_match": story_global.get("genius_match"),
-            "section_source_reject_reason": story_global.get("section_source_reject_reason"),
         }
 
         # ── Persist to session (unless force=True — wait for commit) ─────────
@@ -682,6 +549,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                     "detected_sections": sections,
                     "assignments": assignments,
                     "ghost_boundaries": [],
+                    "lyrics": lyrics_list,
                 })
             except Exception:
                 pass
@@ -739,18 +607,6 @@ def start_analyze(song_id: str):
     body = request.get_json(silent=True) or {}
     force = bool(body.get("force", False))
 
-    # ID3 confirmation pre-flight fields (OpenSpec §6a, Path A). When the
-    # frontend has already shown the modal, it forwards the user's choice
-    # here. ``override_*`` win over the song-level ``override_*`` from
-    # PATCH .../metadata. ``write_back`` opts in to atomic MP3 tag rewrite.
-    # ``skip_genius`` short-circuits the Genius lookup. ``prompt_id3``
-    # opts the run into the SSE-blocking variant (Path B).
-    body_override_title = (body.get("override_title") or "").strip() or None
-    body_override_artist = (body.get("override_artist") or "").strip() or None
-    body_skip_genius = bool(body.get("skip_genius", False))
-    body_write_back = bool(body.get("write_back", False))
-    body_prompt_id3 = bool(body.get("prompt_id3", False))
-
     with _runs_lock:
         existing = _runs.get(song_id)
         if existing and existing.status == "running":
@@ -760,19 +616,10 @@ def start_analyze(song_id: str):
         state = _RunState(_run_id(), song_id, force=force)
         _runs[song_id] = state
 
-    # Audio bytes not needed since we use the file path directly. Pass the
-    # user-supplied Genius metadata overrides (set via PATCH .../metadata) so
-    # the Genius step hits the right song. Body overrides win when supplied.
-    override_artist = body_override_artist or song.get("override_artist")
-    override_title = body_override_title or song.get("override_title")
+    # Audio bytes not needed since we use the file path directly.
     t = threading.Thread(
         target=_analyze_in_background,
-        args=(state, source_path, song_id, None, override_artist, override_title),
-        kwargs={
-            "skip_genius": body_skip_genius,
-            "write_back": body_write_back,
-            "prompt_id3": body_prompt_id3,
-        },
+        args=(state, source_path, song_id, None),
         daemon=True,
     )
     t.start()
@@ -836,6 +683,10 @@ def commit_analyze(song_id: str):
     # Apply assignment_mapping: carry over themes from old assignments where specified
     session = load_session(song_id)
     old_assignments = session.get("assignments", []) if session else []
+    # Carry the lyrics track through re-persistence — it's produced once by
+    # the story builder and isn't recomputed on this commit path.
+    lyrics_list = (result.get("lyrics") if result else None) or \
+        (session.get("lyrics") if session else None) or []
 
     final_assignments = list(pending_assignments)  # start from suggested defaults
     for entry in assignment_mapping:
@@ -860,6 +711,7 @@ def commit_analyze(song_id: str):
             "detected_sections": pending_sections,
             "assignments": final_assignments,
             "ghost_boundaries": [],
+            "lyrics": lyrics_list,
         })
     except Exception as exc:
         return jsonify({"error": {"code": "internal_error", "message": str(exc)}}), 500
@@ -914,67 +766,6 @@ def analyze_status(song_id: str):
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-@api_v1.route("/songs/<song_id>/id3-tags", methods=["GET"])
-def get_id3_tags(song_id: str):
-    """Return the song's ID3 ``title`` and ``artist`` for the pre-flight
-    confirmation modal (OpenSpec §6a, Path A). Empty strings are returned
-    when the file lacks tags or is unreadable; no error is raised so the
-    modal can still render with empty fields.
-    """
-    lib = load_library()
-    song = next((s for s in lib["songs"] if s["song_id"] == song_id), None)
-    if song is None:
-        return jsonify({"error": {"code": "song_not_found",
-                                   "message": "Song not found"}}), 404
-
-    source_paths = song.get("source_paths") or []
-    src = next((Path(p) for p in source_paths if Path(p).exists()), None)
-    if src is None:
-        return jsonify({"error": {"code": "source_file_missing",
-                                   "message": "Audio source not found on disk"}}), 409
-    try:
-        from src.review.server import read_id3_metadata as _read_id3
-        title, artist = _read_id3(str(src))
-    except Exception:
-        title, artist = "", ""
-    return jsonify({"title": title or "", "artist": artist or ""}), 200
-
-
-@api_v1.route("/songs/<song_id>/analyze/id3-confirm", methods=["POST"])
-def analyze_id3_confirm(song_id: str):
-    """Receive the user's mid-pipeline ID3 confirmation response (Path B).
-
-    Body: ``{response: "confirm"|"correct"|"skip", title?, artist?, write_back?}``.
-    For ``correct`` at least one of ``title`` / ``artist`` is required.
-    Unblocks the analysis thread waiting on ``state.wait_for_id3_response``.
-    """
-    with _runs_lock:
-        state = _runs.get(song_id)
-    if state is None or state.status != "running":
-        return jsonify({"error": {"code": "run_not_found",
-                                   "message": "No active analysis run"}}), 400
-
-    data = request.get_json(silent=True) or {}
-    response = (data.get("response") or "").strip().lower()
-    if response not in ("confirm", "correct", "skip"):
-        return jsonify({"error": {"code": "bad_response",
-                                   "message": "response must be one of: confirm, correct, skip"}}), 400
-    title_val: str | None = None
-    artist_val: str | None = None
-    write_back = False
-    if response == "correct":
-        title_val = (data.get("title") or "").strip() or None
-        artist_val = (data.get("artist") or "").strip() or None
-        if not title_val and not artist_val:
-            return jsonify({"error": {"code": "bad_response",
-                                       "message": "correct requires title and/or artist"}}), 400
-        write_back = bool(data.get("write_back", False))
-    state.submit_id3_response(
-        response, title=title_val, artist=artist_val, write_back=write_back,
-    )
-    return jsonify({"ok": True}), 200
 
 
 @api_v1.route("/songs/<song_id>/analysis", methods=["GET"])
@@ -1188,7 +979,7 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
             lib_tag = "vamp"
         elif "madmom" in base_name:
             lib_tag = "madmom"
-        elif "story" in base_name or "genius" in base_name:
+        elif "story" in base_name:
             lib_tag = "story"
         kind = "curve" if base_name in _CURVE_DETECTORS else "marks"
         # Mark counts: from event tracks for onset-type detectors, else from
@@ -1203,12 +994,17 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
                            "status": "done", "confidence": None,
                            "marks": marks, "kind": kind, "error": None})
 
+    detectors.append({"name": "lyrics", "library": "story", "status": "done",
+                       "confidence": None, "marks": len(lyrics_list),
+                       "kind": "lyrics", "error": None})
+
     # Sections — load from session if available, else derive from hierarchy.
     # Both paths need to expose `agreement_score` + `low_confidence` so the
     # Analyze screen renders the same low-confidence indicator regardless of
     # whether sections came from a fresh story builder run, a persisted
     # session, or a hierarchy fallback.
     session = load_session(song_id)
+    lyrics_list = list((session or {}).get("lyrics") or [])
     if session and "sections" in session:
         sections = []
         for sec in session["sections"]:
@@ -1264,6 +1060,7 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
         "section_boundaries": section_boundaries_list,
         "chord_changes": chord_changes_list,
         "key_changes": key_changes_list,
+        "lyrics": lyrics_list,
         "value_curves": curves_out,
         "peaks": peaks,
         "detectors": detectors,

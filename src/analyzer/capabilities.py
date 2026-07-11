@@ -67,7 +67,7 @@ def detect_capabilities() -> dict[str, bool]:
     """Detect installed optional analysis tools.
 
     Returns a dict mapping capability name to availability bool.
-    Checks: vamp (package + plugins), madmom, demucs, whisperx, genius.
+    Checks: vamp (package + plugins), madmom, demucs, whisperx.
     """
     caps: dict[str, bool] = {
         "vamp": False,
@@ -75,7 +75,6 @@ def detect_capabilities() -> dict[str, bool]:
         "demucs": False,
         "essentia": False,
         "whisperx": False,
-        "genius": False,
     }
 
     # vamp/madmom/demucs live in .venv-vamp (separate virtualenv with numpy<2).
@@ -152,7 +151,5 @@ def detect_capabilities() -> dict[str, bool]:
         caps["essentia"] = True
     except ImportError:
         pass
-
-    caps["genius"] = bool(os.environ.get("GENIUS_API_TOKEN"))
 
     return caps

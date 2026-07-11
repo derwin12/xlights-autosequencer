@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import styles from './Export.module.css';
 
 interface Song {
@@ -11,16 +11,56 @@ interface Song {
 interface ExportProps {
   song: Song;
   layoutId: string | null;
+  layoutXmlPath?: string | null;
   onExportComplete?: (outputPath: string) => void;
+  onLayoutImported?: (layoutId: string, xmlPath: string) => void;
 }
 
-export function Export({ song, layoutId, onExportComplete }: ExportProps) {
+export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayoutImported }: ExportProps) {
   const [exporting, setExporting] = useState(false);
   const [outputPath, setOutputPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [importingLayout, setImportingLayout] = useState(false);
+  const [layoutError, setLayoutError] = useState<string | null>(null);
+  const layoutInputRef = useRef<HTMLInputElement>(null);
 
   const isThemed = song.status === 'themed';
-  const hasLayout = layoutId != null;
+  // A layout imported before file persistence was added has a layoutId but
+  // no xml_path on disk — treat that the same as "no layout" so re-import
+  // stays reachable instead of only surfacing as an export-time failure.
+  const hasLayout = layoutId != null && layoutXmlPath != null;
+  const needsReimport = layoutId != null && layoutXmlPath == null;
+
+  async function handleLayoutFile(file: File) {
+    setLayoutError(null);
+    setImportingLayout(true);
+    try {
+      const formData = new FormData();
+      formData.append('layout_xml', file);
+
+      const res = await fetch('/api/v1/layout', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const body = await res.json();
+      if (!res.ok) {
+        setLayoutError(body?.error?.message ?? 'Layout import failed');
+        return;
+      }
+
+      onLayoutImported?.(body.layout.layout_id, body.layout.xml_path);
+    } catch (err) {
+      setLayoutError(err instanceof Error ? err.message : 'Layout import failed');
+    } finally {
+      setImportingLayout(false);
+    }
+  }
+
+  function handleLayoutInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleLayoutFile(file);
+  }
 
   async function handleRender() {
     setError(null);
@@ -78,7 +118,33 @@ export function Export({ song, layoutId, onExportComplete }: ExportProps) {
     return (
       <div data-testid="layout-required" className={styles.block}>
         <h3>Layout Required</h3>
-        <p>Import your <code>xlights_rgbeffects.xml</code> to continue.</p>
+        {needsReimport ? (
+          <p>
+            This layout was imported before file persistence was added.
+            Re-import your <code>xlights_rgbeffects.xml</code> below, then
+            try exporting again.
+          </p>
+        ) : (
+          <p>Import your <code>xlights_rgbeffects.xml</code> to continue.</p>
+        )}
+        <input
+          data-testid="layout-file-input"
+          ref={layoutInputRef}
+          type="file"
+          accept=".xml"
+          style={{ display: 'none' }}
+          onChange={handleLayoutInputChange}
+        />
+        <button
+          className={styles.layoutBtn}
+          onClick={() => layoutInputRef.current?.click()}
+          disabled={importingLayout}
+        >
+          {importingLayout ? 'Importing…' : 'Import Layout'}
+        </button>
+        {layoutError && (
+          <p data-testid="layout-error-message" className={styles.error}>{layoutError}</p>
+        )}
       </div>
     );
   }
@@ -102,6 +168,13 @@ export function Export({ song, layoutId, onExportComplete }: ExportProps) {
         <div className={styles.success}>
           <p>Export complete!</p>
           <code className={styles.path}>{outputPath}</code>
+          <a
+            className={styles.downloadBtn}
+            href={`/api/v1/songs/${song.song_id}/export/download`}
+            download
+          >
+            Download .xsq
+          </a>
         </div>
       ) : (
         <button

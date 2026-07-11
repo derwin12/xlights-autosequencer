@@ -275,3 +275,129 @@ insert a synthetic `instrumental` section from `section.start_ms` to
 `first_word.start_ms - 250 ms` and shift the section's start to that
 boundary. Reasoning: a five-second-plus pre-vocal gap inside a "verse" is
 audibly an intro/break, not part of the verse. (~95 words)
+
+---
+
+## 2026-07-11 — Genius lyrics integration removed entirely
+
+**Files:** `src/analyzer/genius_segments.py` (deleted), `src/story/builder.py`,
+`src/analyzer/capabilities.py`, `src/review/server.py`,
+`src/review/api/v1/analysis.py`, `src/review/api/v1/library.py`,
+`src/wizard.py`, `src/cli/analyze.py`, `src/cli/library.py`, `src/cli_old.py`
+
+**Problem:** `genius.com/api-clients` (the page needed to obtain a
+`GENIUS_API_TOKEN`) was returning a server-side "Whoops! Something went
+wrong" error and could not be used to provision a token. Independent of that
+outage, this project's only path to Genius-sourced section labels
+(`section_source == "genius"`) required a token in the environment; with no
+token configured on this deployment, `section_source` was *already* always
+`"heuristic"` in practice — this change makes that the only path, instead of
+a fallback.
+
+**What was removed:**
+- `GeniusSegmentAnalyzer` (fetch Genius lyrics via `lyricsgenius`, parse
+  `[Section]` headers, WhisperX-force-align the fetched lyric text to audio)
+  and its quality gate (`_genius_quality_check`, added 2026-03-31) and
+  implicit intro/outro post-processing for Genius sections (added
+  2026-03-31, see above) — those steps only ever ran on the now-deleted
+  Genius branch.
+- `_normalize_genius_label` / `_GENIUS_ROLE_MAP` (Genius label → role
+  vocabulary) — no longer has any input to normalize.
+- The web UI's ID3-confirm-before-Genius gate and Genius-retry prompt
+  (`prompt_id3_confirm`/`prompt_genius` events, `/genius-retry`,
+  `/id3-confirm`, `/analyze/id3-confirm`, `/songs/<id>/id3-tags`,
+  `PATCH /songs/<id>/metadata`) — these existed solely to correct
+  artist/title before a Genius lookup or retry it with corrected metadata.
+- The CLI wizard's Genius step (`WizardRunner._step_genius`, the
+  `--genius/--no-genius` flag) and the `_GENIUS_ALLOW_TITLE_ONLY_FALLBACK`
+  env-var plumbing in `src/cli/library.py`'s `refresh` command.
+- The `lyricsgenius` dependency (`pyproject.toml`, `.devcontainer/Dockerfile`).
+
+**What changed in `build_song_story`:** `section_source` is now a hardcoded
+`"heuristic"` constant (schema field kept for downstream compatibility —
+readers that check this field are unaffected). Genius's forced-aligned word
+marks and parsed chorus body are gone, so `boundary_refinement.py`'s **Fix 1**
+(merge short post_chorus tails) and **Fix 2** (relabel/split a bridge whose
+sung content opens with the chorus first-line hook) are now **permanently
+inactive** — both required text known in advance to force-align or match
+against, which only Genius provided. **Fix 3** (split a pre-vocal
+instrumental lead-in off a vocal section) only ever needed free-transcription
+word marks (no reference text), so it was re-wired to run as a standalone
+WhisperX pass (`_try_free_transcription` in `src/story/builder.py`) instead
+of being nested inside the Genius pipeline, and continues to fire.
+
+**Do not re-add** a dependency on `genius.com`/`lyricsgenius` to restore
+Fix 1/Fix 2 without re-reading this entry — the heuristic + agreement-cluster
+path (`src/analyzer/boundary_cluster.py`) is the sole, load-bearing section
+source for every user of this project as of this change, not a fallback, so
+any future reintroduction must not regress the assumption that
+`section_source` is always `"heuristic"`.
+
+---
+
+## 2026-07-11 — Fix 1/Fix 2 restored via `syncedlyrics` (no genius.com access)
+
+**Files:** `src/analyzer/synced_lyrics.py` (new), `src/story/builder.py`,
+`pyproject.toml`
+
+**Problem:** The 2026-07-11 Genius removal (previous entry) left
+boundary-refinement Fix 1 (merge short post_chorus tails) and Fix 2
+(relabel/split a bridge whose sung content opens with the chorus first-line
+hook) permanently inactive, since both need forced-aligned lyric text and a
+known chorus body that only Genius provided.
+
+**Fix:** `syncedlyrics` (a token-free, multi-provider LRC lyrics aggregator
+— lrclib, Musixmatch, NetEase, Deezer, Megalobiz, Lyricsify) supplies
+line-timed lyric text without any API token or account. Two alternatives
+were evaluated and rejected first:
+- Scraping `genius.com` directly (`syncedlyrics` even ships a Genius
+  provider) — rejected; this project does not access genius.com in any
+  form. The provider allowlist in `synced_lyrics.py`
+  (`_ALLOWED_PROVIDERS`) explicitly excludes it.
+- `essentia`'s `SBic` structural segmenter, considered as a vamp-independent
+  boundary-detection fallback for the unrelated "single giant Intro
+  section" bug (heuristic mode has no boundary source at all without the
+  vamp `segmentino`/`qm_segments` plugins) — rejected: essentia has no
+  prebuilt Windows wheel and fails to build from source on Windows, so it
+  would only ever run in the same Linux devcontainer where vamp already
+  works, making it redundant with vamp's segmenter there and useless as a
+  Windows-native fallback. That vamp-availability gap is addressed by using
+  the devcontainer, not by this change.
+
+**Key difference from Genius:** LRC format has no `[Chorus]`/`[Verse]`
+structural headers — `syncedlyrics` only supplies line-timed text, not
+section labels. `find_chorus_body()` in `synced_lyrics.py` derives a
+best-guess chorus block by finding the most-repeated contiguous 2-line
+window in the lyric text (a chorus repeats near-verbatim; a verse doesn't).
+This is a heuristic proxy for what Genius's explicit `[Chorus]` header gave
+directly — worth revisiting if Fix 2's false-positive/negative rate on a
+larger corpus suggests the repetition heuristic needs tightening.
+
+**Not restored:** `section_source` remains hardcoded `"heuristic"` (previous
+entry) — this change only feeds the two refinement fixes, it does not
+reinstate Genius-style primary section-boundary detection from lyrics.
+
+---
+
+## 2026-07-11 — Synced lyrics exposed as a Timeline track (`story["lyrics"]`)
+
+**Files:** `src/analyzer/synced_lyrics.py`, `src/story/builder.py`,
+`src/analyzer/result.py`, `src/review/api/v1/analysis.py`,
+`src/review/frontend/src/screens/Timeline.tsx`
+
+**Problem:** The `syncedlyrics` line data fetched by
+`get_boundary_refinement_inputs()` (previous entry) was only ever consumed
+internally by Fix 1/Fix 2 and then discarded — it never reached the story
+dict, the analysis JSON, or the UI, so users had no visible lyric track
+despite the lookup already running on every song.
+
+**Change:** `get_boundary_refinement_inputs()` now returns a 3-tuple
+(`forced_words`, `chorus_body`, `line_marks`) instead of 2 — `line_marks` is
+one `TimingMark` per LRC line (`lines_to_timing_marks()`, new), reusing the
+same parsed `(start_ms, text)` lines rather than re-fetching. `builder.py`
+attaches these to `story["lyrics"]` as `[{t_ms, duration_ms, text}, ...]`
+(empty list when no match — this is NOT a boundary-detection signal, purely
+a display track, so an empty result is not a capability-skip warning).
+**No change to section detection, merging, or role classification** — this
+entry exists only because it modifies the same Step 15c call site as the
+2026-07-11 Fix 1/Fix 2 entry above and touches `builder.py`.

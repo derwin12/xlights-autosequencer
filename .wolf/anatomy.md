@@ -1033,10 +1033,6 @@
 
 - `cli_old.py` — CLI entry point for xlight-analyze. (~34201 tok)
 
-## src/analyzer/
-
-- `genius_segments.py` — Genius lyric segment timing: fetch, parse, and align section headers to audio. (~8841 tok)
-
 ## src/cli/
 
 - `evaluate.py` — xlight-evaluate CLI — quality calibration subcommands. (~4748 tok)
@@ -1086,14 +1082,12 @@
 - `Analyze.tsx` — When true, run analysis on mount even if the song is already marked (~8302 tok)
 - `Drop.tsx` — Called after a successful /api/v1/import response. (~995 tok)
 - `Library.tsx` — ALLOWED_EXTS (~2965 tok)
-- `MetadataBanner.tsx` — ID3-derived display title (from song.title on the Song record). (~2351 tok)
 - `Timeline.tsx` — Returns the beat entry whose t_ms is <= timeMs (last beat at or before playhead) (~7150 tok)
 
 ## src/review/frontend/tests/screens/
 
 - `Analyze.test.tsx` — mockFetch (~547 tok)
 - `Drop.test.tsx` — Mock fetch globally (~616 tok)
-- `MetadataBanner.test.tsx` — Tests for the analyze-screen MetadataBanner: (~1704 tok)
 
 ## src/story/
 
@@ -1118,10 +1112,6 @@
 - `test_runner.py` — Tests for ``src.microscope.runner``. (~3473 tok)
 - `test_verify_coverage.py` — Tests for ``verify_panel_coverage`` (OpenSpec (~1668 tok)
 
-## tests/review/
-
-- `test_api_metadata_override.py` — Tests for PATCH /api/v1/songs/<id>/metadata and the ``override_artist`` / (~1646 tok)
-
 ## tests/ui/
 
 - `conftest.py` — Shared fixtures for browser-driven UI flow tests. (~1887 tok)
@@ -1143,8 +1133,6 @@
 ## tests/unit/
 
 - `test_effect_placer.py` — Tests for src/generator/effect_placer — _build_effect_pool prop_type filtering (spec 041). (~4954 tok)
-- `test_genius_segments.py` — Tests for genius_segments: sanitize_title, strip_boilerplate, parse_sections, (~6014 tok)
-- `test_id3_confirm.py` — Unit tests for the ID3 confirmation prompt + atomic write-back (§6a). (~2208 tok)
 
 ## tests/validation/
 

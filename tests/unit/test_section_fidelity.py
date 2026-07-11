@@ -22,7 +22,7 @@ from src.evaluation import section_fidelity as sf
 # Fixtures
 # ---------------------------------------------------------------------------
 
-def _story(sections: list[dict], section_source: str = "genius") -> dict:
+def _story(sections: list[dict], section_source: str = "heuristic") -> dict:
     return {
         "sections": sections,
         "global": {"section_source": section_source},
@@ -76,7 +76,7 @@ def test_summarize_song_basic_counts() -> None:
     ])
     s = sf.summarize_song("song-x", story)
     assert s["name"] == "song-x"
-    assert s["source"] == "genius"
+    assert s["source"] == "heuristic"
     assert s["n_sections"] == 4
     assert s["n_zero"] == 2
     assert s["n_strong"] == 2

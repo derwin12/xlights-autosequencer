@@ -110,19 +110,6 @@ class AnalysisJob:
         self.error_message: str | None = None
         self.summary: dict | None = None
         self.lock = threading.Lock()
-        # Genius retry: background thread waits on this event
-        self._genius_event = threading.Event()
-        self.genius_artist: str | None = None
-        self.genius_title: str | None = None
-        # ID3 confirmation (§6a): background thread waits on this event
-        # for the user's pre-Genius confirmation response. Per OpenSpec
-        # change `lyric-anchored-boundary-refinement` D8.
-        self._id3_event = threading.Event()
-        # Response: "confirm" | "correct" | "skip" | None (timeout)
-        self.id3_response: str | None = None
-        self.id3_corrected_title: str | None = None
-        self.id3_corrected_artist: str | None = None
-        self.id3_write_back: bool = False
 
     def record_progress(self, idx: int, total: int, name: str, mark_count: int = 0) -> None:
         with self.lock:
@@ -142,172 +129,9 @@ class AnalysisJob:
         with self.lock:
             self.events.append({"stage": stage, "label": label})
 
-    def prompt_genius(self, guessed_title: str, guessed_artist: str) -> None:
-        """Emit a genius_prompt event and clear the wait flag."""
-        with self.lock:
-            self._genius_event.clear()
-            self.events.append({
-                "genius_prompt": True,
-                "guessed_title": guessed_title,
-                "guessed_artist": guessed_artist,
-            })
-
-    def wait_for_genius_response(self, timeout: float = 120.0) -> tuple[str | None, str | None]:
-        """Block until the user submits artist/title or timeout expires."""
-        self._genius_event.wait(timeout=timeout)
-        return self.genius_artist, self.genius_title
-
-    def submit_genius_response(self, artist: str, title: str) -> None:
-        """Called by the /genius-retry endpoint to unblock the waiting thread."""
-        self.genius_artist = artist
-        self.genius_title = title
-        self._genius_event.set()
-
-    def prompt_id3_confirm(self, id3_title: str, id3_artist: str) -> None:
-        """Emit an id3_confirm_prompt event and clear the wait flag.
-
-        Fires before any Genius lookup. The frontend SHOULD respond via
-        ``/id3-confirm`` with one of {confirm, correct, skip} so the
-        waiting analysis thread can proceed. Per OpenSpec change
-        `lyric-anchored-boundary-refinement` §6a.
-        """
-        with self.lock:
-            self._id3_event.clear()
-            self.id3_response = None
-            self.id3_corrected_title = None
-            self.id3_corrected_artist = None
-            self.id3_write_back = False
-            self.events.append({
-                "id3_confirm_prompt": True,
-                "id3_title": id3_title,
-                "id3_artist": id3_artist,
-            })
-
-    def wait_for_id3_response(self, timeout: float = 120.0) -> str | None:
-        """Block until the user submits an ID3 response or timeout expires.
-
-        Returns one of {"confirm", "correct", "skip"} on response, or
-        None if the wait timed out (caller should treat None as "confirm
-        with prefilled values" — best-effort progress).
-        """
-        self._id3_event.wait(timeout=timeout)
-        return self.id3_response
-
-    def submit_id3_response(
-        self,
-        response: str,
-        title: str | None = None,
-        artist: str | None = None,
-        write_back: bool = False,
-    ) -> None:
-        """Called by the /id3-confirm endpoint to unblock the waiting thread.
-
-        ``response`` is one of {"confirm", "correct", "skip"}. For
-        "correct" the caller SHOULD supply ``title``/``artist``; for
-        "confirm" and "skip" they are ignored.
-        """
-        self.id3_response = response
-        self.id3_corrected_title = title
-        self.id3_corrected_artist = artist
-        self.id3_write_back = bool(write_back)
-        self._id3_event.set()
-
 
 _current_job: AnalysisJob | None = None
 _job_lock = threading.Lock()
-
-
-# ── ID3 read / write helpers (§6a) ────────────────────────────────────────────
-
-def read_id3_metadata(mp3_path: str) -> tuple[str, str]:
-    """Return ``(title, artist)`` from the file's ID3 tags.
-
-    Empty strings are returned for any field that is missing or unreadable;
-    no exception is raised. The reader prefers the EasyID3 view (which
-    handles legacy tag variants) and falls back to the raw ID3 frames
-    ``TIT2`` / ``TPE1``. A file with no tags at all yields ``("", "")``.
-    """
-    title = ""
-    artist = ""
-    try:
-        from mutagen.easyid3 import EasyID3  # type: ignore[import-not-found]
-        from mutagen.id3 import ID3NoHeaderError  # type: ignore[import-not-found]
-        try:
-            tags = EasyID3(mp3_path)
-            title = (tags.get("title") or [""])[0] or ""
-            artist = (tags.get("artist") or [""])[0] or ""
-        except ID3NoHeaderError:
-            return "", ""
-    except Exception:
-        # Fall back to raw frames if EasyID3 view isn't available.
-        try:
-            from mutagen.id3 import ID3  # type: ignore[import-not-found]
-            try:
-                tags = ID3(mp3_path)
-                title = str(tags.get("TIT2", "") or "")
-                artist = str(tags.get("TPE1", "") or "")
-            except Exception:
-                return "", ""
-        except Exception:
-            return "", ""
-    return title, artist
-
-
-def write_id3_metadata_atomic(mp3_path: str, title: str, artist: str) -> None:
-    """Write corrected ``title`` / ``artist`` to the MP3 atomically.
-
-    The original file is first copied to a sibling ``<file>.bak``. The
-    corrected file is written to a temp path in the same directory and
-    then ``os.replace``d into place. On failure between backup and
-    rename, the ``.bak`` is preserved so the user can recover. Per
-    OpenSpec change `lyric-anchored-boundary-refinement` §6a, design
-    discussion of `pattern_atomic_write`.
-    """
-    import os
-    import shutil
-    import tempfile
-
-    src = Path(mp3_path)
-    if not src.exists():
-        raise FileNotFoundError(mp3_path)
-    bak = src.with_name(src.name + ".bak")
-
-    # Step 1: write the .bak first (containing the original bytes).
-    shutil.copy2(src, bak)
-
-    # Step 2: copy the original to a temp file and modify the tags there.
-    tmp_fd, tmp_name = tempfile.mkstemp(
-        prefix=src.name + ".", suffix=".tmp", dir=str(src.parent),
-    )
-    os.close(tmp_fd)
-    tmp = Path(tmp_name)
-    try:
-        shutil.copy2(src, tmp)
-        from mutagen.easyid3 import EasyID3  # type: ignore[import-not-found]
-        from mutagen.id3 import ID3NoHeaderError  # type: ignore[import-not-found]
-        try:
-            tags = EasyID3(str(tmp))
-        except ID3NoHeaderError:
-            # File has no ID3 header — create one.
-            from mutagen.mp3 import MP3  # type: ignore[import-not-found]
-            mp3 = MP3(str(tmp))
-            mp3.add_tags()
-            mp3.save()
-            tags = EasyID3(str(tmp))
-        tags["title"] = [title]
-        tags["artist"] = [artist]
-        tags.save()
-
-        # Step 3: atomic replace. If this raises, the .bak remains for
-        # recovery and we surface the error to the caller.
-        os.replace(str(tmp), str(src))
-    except Exception:
-        # Clean up the temp file but NOT the .bak — preserves recovery.
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
-        raise
 
 
 def _run_analysis(app: Flask, job: AnalysisJob) -> None:
@@ -369,83 +193,7 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
                     from src.story.builder import build_song_story
                     hierarchy_dict = json.loads(Path(out_path).read_text(encoding="utf-8"))
 
-                    # ── ID3 confirmation gate (§6a) ────────────────────────────
-                    # Surface the file's ID3 tags to the user *before* the
-                    # analyzer kicks off Genius so wrong tags can be fixed
-                    # at the source rather than after a failed lookup. The
-                    # user has three choices: confirm (use as-is), correct
-                    # (replace title/artist, optionally write back to MP3),
-                    # or skip (don't try Genius this run). Per OpenSpec
-                    # change `lyric-anchored-boundary-refinement` D8.
-                    _id3_skip_genius = False
-                    _override_artist: str | None = None
-                    _override_title: str | None = None
-                    try:
-                        _id3_title, _id3_artist = read_id3_metadata(job.mp3_path)
-                    except Exception:
-                        _id3_title, _id3_artist = "", ""
-                    job.prompt_id3_confirm(_id3_title, _id3_artist)
-                    _resp = job.wait_for_id3_response(timeout=120)
-                    if _resp == "skip":
-                        _id3_skip_genius = True
-                    elif _resp == "correct":
-                        _override_title = (job.id3_corrected_title or "").strip() or _id3_title
-                        _override_artist = (job.id3_corrected_artist or "").strip() or _id3_artist
-                        if job.id3_write_back:
-                            try:
-                                write_id3_metadata_atomic(
-                                    job.mp3_path, _override_title, _override_artist,
-                                )
-                            except Exception as exc:
-                                # Surface to UI but proceed with in-memory metadata.
-                                job.record_warning(
-                                    f"ID3 write-back failed: {exc}. "
-                                    "Analyzer will use corrected metadata in memory."
-                                )
-                    # else: "confirm" or timeout → proceed with prefilled values.
-
-                    # First attempt: automatic Genius lookup (or skip).
-                    if _id3_skip_genius:
-                        # Build the story without invoking Genius. We
-                        # signal this by setting a sentinel override that
-                        # forces the Genius subprocess to abort early.
-                        import os as _os
-                        _prev_token = _os.environ.get("GENIUS_API_TOKEN")
-                        _os.environ["GENIUS_API_TOKEN"] = ""
-                        try:
-                            story_dict = build_song_story(hierarchy_dict, job.mp3_path)
-                        finally:
-                            if _prev_token is None:
-                                _os.environ.pop("GENIUS_API_TOKEN", None)
-                            else:
-                                _os.environ["GENIUS_API_TOKEN"] = _prev_token
-                    else:
-                        story_dict = build_song_story(
-                            hierarchy_dict, job.mp3_path,
-                            override_artist=_override_artist,
-                            override_title=_override_title,
-                        )
-                    section_source = story_dict.get("global", {}).get("section_source", "")
-
-                    # If Genius failed, prompt user for artist/title and retry
-                    if section_source != "genius":
-                        # Extract what we guessed from the filename/ID3
-                        guessed_title = story_dict.get("song", {}).get("title", "")
-                        guessed_artist = story_dict.get("song", {}).get("artist", "")
-                        job.prompt_genius(guessed_title, guessed_artist)
-
-                        user_artist, user_title = job.wait_for_genius_response(timeout=120)
-                        if (user_artist is not None and user_title is not None
-                                and user_title != "__skip__"):
-                            # Retry with user-provided info
-                            import os as _os
-                            _os.environ["_GENIUS_OVERRIDE_ARTIST"] = user_artist
-                            _os.environ["_GENIUS_OVERRIDE_TITLE"] = user_title
-                            try:
-                                story_dict = build_song_story(hierarchy_dict, job.mp3_path)
-                            finally:
-                                _os.environ.pop("_GENIUS_OVERRIDE_ARTIST", None)
-                                _os.environ.pop("_GENIUS_OVERRIDE_TITLE", None)
+                    story_dict = build_song_story(hierarchy_dict, job.mp3_path)
 
                     story_out = str(mp3.parent / (mp3.stem + "_story.json"))
                     Path(story_out).write_text(
@@ -464,7 +212,7 @@ def _run_analysis(app: Flask, job: AnalysisJob) -> None:
                 _title = None
                 _artist = None
                 _filename_stem = mp3.stem
-                # Prefer story metadata (Genius-resolved)
+                # Prefer story metadata (ID3-resolved)
                 if story_path:
                     try:
                         _story = json.loads(Path(story_path).read_text(encoding="utf-8"))
@@ -865,7 +613,7 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
             except Exception:
                 pass
 
-            # Story JSON: Genius-resolved title/artist
+            # Story JSON: ID3-resolved title/artist
             if has_story and (not title or not artist):
                 try:
                     story_data = json.loads(story_path.read_text(encoding="utf-8"))
@@ -1165,9 +913,6 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
         job.total = 0
         job.error_message = None
         job.lock = threading.Lock()
-        job._genius_event = threading.Event()
-        job.genius_artist = None
-        job.genius_title = None
         with _job_lock:
             _current_job = job
         return jsonify({"ok": True, "story_path": story_path_str}), 200
@@ -1226,55 +971,8 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
         job.total = 0
         job.error_message = None
         job.lock = threading.Lock()
-        job._genius_event = threading.Event()
-        job.genius_artist = None
-        job.genius_title = None
         with _job_lock:
             _current_job = job
-        return jsonify({"ok": True})
-
-    @app.route("/genius-retry", methods=["POST"])
-    def genius_retry():
-        job = _current_job
-        if job is None or job.status != "running":
-            return jsonify({"error": "No active analysis job"}), 400
-        data = request.get_json(silent=True) or {}
-        artist_val = (data.get("artist") or "").strip()
-        title_val = (data.get("title") or "").strip()
-        if not title_val:
-            return jsonify({"error": "Title is required"}), 400
-        job.submit_genius_response(artist_val, title_val)
-        return jsonify({"ok": True})
-
-    @app.route("/id3-confirm", methods=["POST"])
-    def id3_confirm():
-        """Receive the user's pre-Genius ID3 confirmation response.
-
-        Expects a JSON body with ``response`` ∈ {"confirm", "correct",
-        "skip"}. For ``correct`` the body MAY include ``title``,
-        ``artist`` (replacement values) and ``write_back`` (bool, opt-in
-        write-back to the MP3). Per OpenSpec change
-        `lyric-anchored-boundary-refinement` §6a.
-        """
-        job = _current_job
-        if job is None or job.status != "running":
-            return jsonify({"error": "No active analysis job"}), 400
-        data = request.get_json(silent=True) or {}
-        response = (data.get("response") or "").strip().lower()
-        if response not in ("confirm", "correct", "skip"):
-            return jsonify({"error": "response must be one of: confirm, correct, skip"}), 400
-        title_val: str | None = None
-        artist_val: str | None = None
-        write_back = False
-        if response == "correct":
-            title_val = (data.get("title") or "").strip() or None
-            artist_val = (data.get("artist") or "").strip() or None
-            if not title_val and not artist_val:
-                return jsonify({"error": "correct requires title and/or artist"}), 400
-            write_back = bool(data.get("write_back", False))
-        job.submit_id3_response(
-            response, title=title_val, artist=artist_val, write_back=write_back,
-        )
         return jsonify({"ok": True})
 
     @app.route("/upload", methods=["POST"])

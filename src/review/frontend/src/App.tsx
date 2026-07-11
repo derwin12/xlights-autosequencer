@@ -62,6 +62,7 @@ interface AppData {
   analysis: Analysis | null;
   assignments: Assignment[];
   layoutId: string | null;
+  layoutXmlPath: string | null;
 }
 
 const SCREENS: Screen[] = ['library', 'drop', 'analyze', 'timeline', 'theme', 'export'];
@@ -291,6 +292,7 @@ export default function App() {
     analysis: null,
     assignments: [],
     layoutId: null,
+    layoutXmlPath: null,
   });
 
   // Cache purge dialog state (T099)
@@ -380,7 +382,9 @@ export default function App() {
         return r.json();
       })
       .then((body) => {
-        if (body?.layout_id) setData((d) => ({ ...d, layoutId: body.layout_id }));
+        if (body?.layout_id) {
+          setData((d) => ({ ...d, layoutId: body.layout_id, layoutXmlPath: body.xml_path ?? null }));
+        }
       })
       .catch(() => {});
   }, []);
@@ -530,7 +534,7 @@ export default function App() {
 
   // render active screen content
   function renderScreen() {
-    const { song, themes, analysis, assignments, layoutId } = data;
+    const { song, themes, analysis, assignments, layoutId, layoutXmlPath } = data;
 
     switch (screen) {
       case 'library':
@@ -611,8 +615,12 @@ export default function App() {
           <Export
             song={song}
             layoutId={layoutId}
+            layoutXmlPath={layoutXmlPath}
             onExportComplete={(outputPath) => {
               void outputPath;
+            }}
+            onLayoutImported={(newLayoutId, newXmlPath) => {
+              setData((d) => ({ ...d, layoutId: newLayoutId, layoutXmlPath: newXmlPath }));
             }}
           />
         );

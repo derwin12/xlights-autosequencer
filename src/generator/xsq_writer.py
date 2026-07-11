@@ -211,6 +211,7 @@ def write_xsq(
     audio_path: Path | None = None,
     scoped_duration_ms: int | None = None,
     audio_offset_ms: int | None = None,
+    lyrics: list[dict] | None = None,
 ) -> None:
     """Write a SequencePlan as a valid xLights .xsq XML file.
 
@@ -229,6 +230,9 @@ def write_xsq(
       placement's startTime/endTime so the output timeline starts at 0.
       EffectPlacement objects are NOT mutated — the shift is applied only
       during serialization.
+    - lyrics: optional synced-lyrics lines (``{t_ms, duration_ms, text}``,
+      from ``story["lyrics"]``) embedded as a "Lyrics" timing track,
+      alongside Beats/Bars/Sections/Chords.
     """
     # Warn if audio is outside the mounted show directory (devcontainer-specific).
     # The XSQ will still be written, but xLights on the host won't find the audio.
@@ -344,7 +348,7 @@ def write_xsq(
             displayed_models.add(group_name)
 
     # Add timing track display elements
-    timing_tracks = _collect_timing_tracks(hierarchy) if hierarchy else {}
+    timing_tracks = _collect_timing_tracks(hierarchy, lyrics) if (hierarchy or lyrics) else {}
     for track_name in timing_tracks:
         elem = ET.SubElement(display_el, "Element")
         elem.set("type", "timing")
@@ -680,32 +684,40 @@ def _remove_overlaps(placements: list[EffectPlacement]) -> list[EffectPlacement]
     return [p for p in result if p.end_ms > p.start_ms]
 
 
-def _collect_timing_tracks(hierarchy: HierarchyResult | None) -> dict[str, list[TimingMark]]:
-    """Collect timing tracks from hierarchy for embedding in the .xsq."""
-    if hierarchy is None:
-        return {}
-
+def _collect_timing_tracks(
+    hierarchy: HierarchyResult | None,
+    lyrics: list[dict] | None = None,
+) -> dict[str, list[TimingMark]]:
+    """Collect timing tracks from hierarchy (+ optional lyrics) for embedding in the .xsq."""
     tracks: dict[str, list[TimingMark]] = {}
 
-    if hierarchy.beats and hierarchy.beats.marks:
-        tracks["Beats"] = hierarchy.beats.marks
+    if hierarchy is not None:
+        if hierarchy.beats and hierarchy.beats.marks:
+            tracks["Beats"] = hierarchy.beats.marks
 
-    if hierarchy.bars and hierarchy.bars.marks:
-        tracks["Bars"] = hierarchy.bars.marks
+        if hierarchy.bars and hierarchy.bars.marks:
+            tracks["Bars"] = hierarchy.bars.marks
 
-    if hierarchy.sections:
-        tracks["Sections"] = hierarchy.sections
+        if hierarchy.sections:
+            tracks["Sections"] = hierarchy.sections
 
-    if hierarchy.chords and hierarchy.chords.marks:
-        tracks["Chords"] = hierarchy.chords.marks
+        if hierarchy.chords and hierarchy.chords.marks:
+            tracks["Chords"] = hierarchy.chords.marks
 
-    # Emit one timing track per stem with onsets.  Stem-aware trigger placement
-    # (drum Shockwaves, vocal accents, bass pulses) routes to its matching
-    # Onsets (<stem>) track, so every stem with marks must be emitted — not
-    # only the first one.
-    for stem_name, track in hierarchy.events.items():
-        if track.marks:
-            tracks[f"Onsets ({stem_name})"] = track.marks
+        # Emit one timing track per stem with onsets.  Stem-aware trigger placement
+        # (drum Shockwaves, vocal accents, bass pulses) routes to its matching
+        # Onsets (<stem>) track, so every stem with marks must be emitted — not
+        # only the first one.
+        for stem_name, track in hierarchy.events.items():
+            if track.marks:
+                tracks[f"Onsets ({stem_name})"] = track.marks
+
+    if lyrics:
+        tracks["Lyrics"] = [
+            TimingMark(time_ms=line["t_ms"], confidence=None,
+                       label=line["text"], duration_ms=line["duration_ms"])
+            for line in lyrics
+        ]
 
     return tracks
 

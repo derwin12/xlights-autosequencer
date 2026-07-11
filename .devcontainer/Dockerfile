@@ -118,7 +118,6 @@ RUN pip3 install --break-system-packages --no-cache-dir \
   "rich>=13.0" \
   "librosa>=0.10" \
   "mutagen>=1.47" \
-  "lyricsgenius>=3.0" \
   "vamp" \
   "demucs" \
   "Cython" \

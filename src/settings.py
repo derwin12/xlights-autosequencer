@@ -2,9 +2,23 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
+
 SETTINGS_PATH: Path = Path.home() / ".xlight" / "settings.json"
+
+
+def _settings_path() -> Path:
+    """Return the settings file path, honoring XLIGHT_STATE_HOME for test isolation.
+
+    Checked fresh on every call (not cached at import time) so a test that sets
+    XLIGHT_STATE_HOME via monkeypatch is isolated even though src.settings was
+    already imported. Falls back to the module-level SETTINGS_PATH (also
+    patchable directly, e.g. via unittest.mock.patch) when the env var is unset.
+    """
+    override = os.environ.get("XLIGHT_STATE_HOME")
+    return Path(override) / "settings.json" if override else SETTINGS_PATH
 
 
 def load_settings() -> dict:
@@ -13,7 +27,7 @@ def load_settings() -> dict:
     Returns an empty dict if the file is missing or contains invalid JSON.
     """
     try:
-        return json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        return json.loads(_settings_path().read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
@@ -26,12 +40,13 @@ def save_settings(updates: dict) -> None:
     """
     from src.paths import to_show_relative
 
-    SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    path = _settings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
     existing = load_settings()
     if "layout_path" in updates and updates["layout_path"]:
         updates = {**updates, "layout_path": to_show_relative(updates["layout_path"])}
     existing.update(updates)
-    SETTINGS_PATH.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
 
 
 def get_layout_path() -> Path | None:

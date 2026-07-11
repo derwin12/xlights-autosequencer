@@ -14,6 +14,7 @@ from flask import jsonify, request
 
 from . import api_v1
 from src.review.storage.library import load_library, save_library
+from src.review.storage.paths import layout_xml_path
 
 
 def _now_iso() -> str:
@@ -81,12 +82,22 @@ def post_layout():
     )
     total_pixels = sum(p["pixel_count"] for p in props)
 
+    # Persist the raw XML so the generator pipeline (which needs a real file
+    # path to re-parse full model geometry, not just this summary) can find it.
+    saved_path = layout_xml_path(layout_id)
+    saved_path.parent.mkdir(parents=True, exist_ok=True)
+    saved_path.write_bytes(xml_bytes)
+
+    from src.settings import save_settings
+    save_settings({"layout_path": str(saved_path)})
+
     layout = {
         "layout_id": layout_id,
         "display_name": display_name,
         "imported_at": _now_iso(),
         "props": props,
         "total_pixels": total_pixels,
+        "xml_path": str(saved_path),
     }
 
     lib = load_library()

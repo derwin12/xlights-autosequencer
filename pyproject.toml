@@ -39,17 +39,20 @@ stems = ["demucs>=4.0"]
 # matplotlib is pulled in by pyannote.audio 3.3.2 at import time
 # (pyannote/audio/tasks/segmentation/mixins.py) even when unused.
 phonemes = ["whisperx>=3.1", "nltk>=3.8", "matplotlib>=3.5"]
+# Token-free, multi-provider synced-lyrics lookup for boundary-refinement
+# Fix 1/Fix 2 (see docs/segment-classification-changelog.md). Pure Python —
+# no native/platform-specific build step, works on every OS this project runs on.
+lyrics = ["syncedlyrics>=1.0"]
 # Install everything: pip install -e ".[all]"
 all = [
     "demucs>=4.0",
     "vamp>=1.1",
     "whisperx>=3.1",
     "nltk>=3.8",
-    "lyricsgenius>=3.0",
-    "mutagen>=1.47",
     "matplotlib>=3.5",
     "scipy>=1.11",
     "zstandard>=0.21",
+    "syncedlyrics>=1.0",
 ]
 dev = [
     "pytest>=7.4",
