@@ -110,3 +110,7 @@ microscope-out-*/
 render-out/
 
 docs/arch_sequencing_corpus/_generated/
+
+# Sequencing-technique corpora mined from reference packages — local only
+docs/arch_sequencing_corpus/
+docs/snowflake_sequencing_corpus/
