@@ -2819,6 +2819,43 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-12"
+    },
+    {
+      "id": "bug-174",
+      "timestamp": "2026-07-12",
+      "error_message": "xlight-evaluate gate: analyzer suite FAILs with ~3113 qm_onsets_phase timing drifts (every event index-shifted by one)",
+      "file": "tests/golden/analyzer (stale baseline)",
+      "root_cause": "Analyzer golden baseline (last snapshotted at d3210a8) predates f5435dc, which rebuilt all 9 Vamp plugins from upstream source after code.soundsoftware.ac.uk went offline. The rebuilt QM onset detector emits one extra early event, shifting every subsequent index past the 50ms tolerance. Pre-existing on main; unrelated to any feature diff (verified: fix/xonset-analyze-commit touches only frontend files).",
+      "fix": "NOT YET FIXED. Remediation: re-run 'xlight-evaluate snapshot-analyzer' in the devcontainer on the new plugin stack and commit refreshed baselines as a standalone chore (after confirming main produces the same drift).",
+      "tags": [
+        "evaluate",
+        "gate",
+        "baseline",
+        "vamp",
+        "qm-onsets",
+        "devcontainer"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-12"
+    },
+    {
+      "id": "bug-175",
+      "timestamp": "2026-07-12",
+      "error_message": "UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' \u2014 xlight-evaluate gate crashes printing its summary on Windows",
+      "file": "src/cli/evaluate.py",
+      "root_cause": "f5435dc reconfigured stdout/stderr to UTF-8 in src/cli/__init__.py:main(), but xlight-evaluate has its own entrypoint (src/cli/evaluate.py:main) that never got the same reconfigure, so click.echo of '\u2192' dies on cp1252 Windows consoles after the gate has fully run.",
+      "fix": "NOT YET FIXED. Workaround: PYTHONIOENCODING=utf-8. Real fix: apply the same stdout/stderr reconfigure in src/cli/evaluate.py:main().",
+      "tags": [
+        "windows",
+        "charmap",
+        "unicode",
+        "cli",
+        "evaluate"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-12"
     }
   ]
 }
