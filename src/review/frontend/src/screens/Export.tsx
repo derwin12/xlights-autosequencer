@@ -45,6 +45,23 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
   const renderLogRef = useRef<HTMLDivElement>(null);
   const renderStartRef = useRef<number | null>(null);
   const runningStageRef = useRef<string | null>(null);
+  const [progressPct, setProgressPct] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopElapsedTimer() {
+    if (elapsedTimerRef.current) {
+      clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = null;
+    }
+    if (renderStartRef.current != null) {
+      setElapsedMs(Date.now() - renderStartRef.current);
+    }
+  }
+
+  useEffect(() => () => {
+    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+  }, []);
   const [importingLayout, setImportingLayout] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const layoutInputRef = useRef<HTMLInputElement>(null);
@@ -128,7 +145,15 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
     setStageOrder(RENDER_STAGES);
     setStageStatus({});
     setRenderLog([{ text: `› render: ${song.title}`, kind: 'info' }]);
+    setProgressPct(0);
+    setElapsedMs(0);
     renderStartRef.current = Date.now();
+    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    elapsedTimerRef.current = setInterval(() => {
+      if (renderStartRef.current != null) {
+        setElapsedMs(Date.now() - renderStartRef.current);
+      }
+    }, 250);
     try {
       const res = await fetch(`/api/v1/songs/${song.song_id}/export`, {
         method: 'POST',
@@ -139,6 +164,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
       if (!res.ok) {
         setError(body?.error?.message ?? 'Export failed');
         setExporting(false);
+        stopElapsedTimer();
         return;
       }
       // Stream stage progress
@@ -159,8 +185,10 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
             pushLog({ text: `✓ done · ${elapsedSec()}`, kind: 'ok' });
             pushLog({ text: `  → ${data.output_path}`, kind: 'ok' });
             setOutputPath(data.output_path);
+            setProgressPct(100);
             onExportComplete?.(data.output_path);
             setExporting(false);
+            stopElapsedTimer();
             es.close();
           } else if (stage === 'failed') {
             const running = runningStageRef.current;
@@ -171,6 +199,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
             pushLog({ text: `✗ ${data.error ?? 'Export failed'}`, kind: 'err' });
             setError(data.error ?? 'Export failed');
             setExporting(false);
+            stopElapsedTimer();
             es.close();
           } else {
             // A pipeline stage started: previous running stage is done.
@@ -188,6 +217,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
             setStageStatus((prev) => ({ ...prev, [stage]: 'running' }));
             pushLog({ text: `› ${stage.replace(/_/g, ' ')}: running…`, kind: 'info' });
             if (typeof data.progress === 'number') {
+              setProgressPct(Math.round(data.progress * 100));
               pushLog({
                 text: `  ${Math.round(data.progress * 100)}% · ${elapsedSec()}`,
                 kind: 'progress',
@@ -199,10 +229,12 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
       es.onerror = () => {
         es.close();
         setExporting(false);
+        stopElapsedTimer();
       };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed');
       setExporting(false);
+      stopElapsedTimer();
     }
   }
 
@@ -310,6 +342,52 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
       )}
 
       {renderLog.length > 0 && (
+        <>
+        <div data-testid="render-phase-strip" className={styles.phaseStrip}>
+          {stageOrder.map((stage, i) => {
+            const status: StageStatus = stageStatus[stage.id] ?? 'pending';
+            const isDone = status === 'done';
+            const isActive = status === 'running';
+            const isFailed = status === 'failed';
+            const fillPct = isDone ? 100 : isActive ? progressPct : 0;
+            return (
+              <div
+                key={stage.id}
+                className={[
+                  styles.phaseCard,
+                  isDone ? styles.phaseCardDone : '',
+                  isActive ? styles.phaseCardActive : '',
+                  isFailed ? styles.phaseCardFailed : '',
+                  status === 'pending' ? styles.phaseCardPending : '',
+                ].join(' ')}
+              >
+                <div className={styles.phaseCardInner}>
+                  <span className={[
+                    styles.phaseGlyph,
+                    isDone ? styles.phaseGlyphDone
+                    : isActive ? styles.phaseGlyphActive
+                    : isFailed ? styles.phaseGlyphFailed
+                    : styles.phaseGlyphPending,
+                  ].join(' ')}>
+                    {isDone ? '✓' : isActive ? '●' : isFailed ? '✗' : String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span className={[styles.phaseLabel, isActive ? styles.phaseLabelActive : ''].join(' ')}>
+                    {stage.label}
+                  </span>
+                </div>
+                <div className={styles.phaseBar}>
+                  <i
+                    className={styles.phaseBarFill}
+                    style={{
+                      width: `${fillPct}%`,
+                      background: isFailed ? 'var(--err, #d43a2f)' : 'var(--ok, #4ade80)',
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
         <div data-testid="render-progress" className={styles.progressGrid}>
           <div className={styles.stagePanel}>
             <div className={styles.panelHeader}>
@@ -365,21 +443,69 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
               {exporting && <span className={styles.cursor}>▍</span>}
             </div>
           </div>
+          <div data-testid="render-inspector" className={styles.inspector}>
+            <div className={styles.inspectorHeader}>
+              <span>render</span>
+              <span className={error ? styles.statusFailed : outputPath ? styles.statusDone : styles.statusLive}>
+                {error ? '✗ failed' : outputPath ? '✓ done' : '● live'}
+              </span>
+            </div>
+            <div className={styles.inspectorProgress}>
+              <div className={styles.inspectorPctRow}>
+                <span
+                  className={styles.inspectorPct}
+                  style={{ color: error ? 'var(--err, #d43a2f)' : 'var(--accent, #4ade80)' }}
+                >
+                  {progressPct}%
+                </span>
+                <span className={styles.inspectorTime}>{Math.round(elapsedMs / 1000)}s</span>
+              </div>
+              <div className={styles.inspectorBar}>
+                <i
+                  className={styles.inspectorBarFill}
+                  style={{
+                    width: `${progressPct}%`,
+                    background: error ? 'var(--err, #d43a2f)' : 'var(--accent, #4ade80)',
+                  }}
+                />
+              </div>
+              <div className={styles.inspectorPhaseLabel}>
+                {error ? 'failed'
+                  : outputPath ? 'complete'
+                  : (stageOrder.find((s) => stageStatus[s.id] === 'running')?.label ?? 'starting…')}
+              </div>
+            </div>
+            <div className={styles.inspectorSection}>
+              <div className={styles.inspectorSectionHeader}>result</div>
+              {[
+                { key: 'effect plan', done: stageStatus['building_plan'] === 'done' },
+                { key: 'effects placed', done: stageStatus['placing_effects'] === 'done' },
+                { key: 'xsq written', done: stageStatus['writing_xml'] === 'done' },
+                { key: 'output file', done: outputPath != null },
+              ].map((row) => (
+                <div key={row.key} className={styles.resultRow}>
+                  <span className={row.done ? styles.resultGlyphHas : styles.resultGlyphNot}>
+                    {row.done ? '✓' : '·'}
+                  </span>
+                  <span className={row.done ? styles.resultKey : styles.resultKeyDim}>{row.key}</span>
+                </div>
+              ))}
+              {outputPath && (
+                <>
+                  <div className={styles.resultFile}>{outputPath.split('/').pop()}</div>
+                  <a
+                    className={styles.inspectorDownload}
+                    href={`/api/v1/songs/${song.song_id}/export/download`}
+                    download
+                  >
+                    Download .xsq
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-      )}
-
-      {outputPath && (
-        <div className={styles.success}>
-          <p>Export complete!</p>
-          <code className={styles.path}>{outputPath}</code>
-          <a
-            className={styles.downloadBtn}
-            href={`/api/v1/songs/${song.song_id}/export/download`}
-            download
-          >
-            Download .xsq
-          </a>
-        </div>
+        </>
       )}
     </div>
   );
