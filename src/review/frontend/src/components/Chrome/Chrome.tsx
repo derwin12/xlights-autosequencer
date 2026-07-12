@@ -1,7 +1,16 @@
 import React from 'react';
 import type { Screen } from 'src/store/app';
 import type { Song, Folder } from 'src/store/library';
+import { About } from '../About/About';
 import styles from './Chrome.module.css';
+
+function fmtBuildTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
 
 const TABS: { id: Screen; label: string; key: string }[] = [
   { id: 'library', label: 'Library', key: '1' },
@@ -53,6 +62,8 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
     });
   };
 
+  const [aboutOpen, setAboutOpen] = React.useState(false);
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
@@ -72,7 +83,26 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
             </button>
           ))}
         </nav>
+        <button
+          data-testid="build-stamp"
+          onClick={() => setAboutOpen(true)}
+          title="Frontend build — click for details"
+          style={{
+            marginLeft: 'auto',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--color-text-muted, #666)',
+            fontSize: 11,
+            fontFamily: 'monospace',
+            whiteSpace: 'nowrap',
+            padding: '0 12px',
+          }}
+        >
+          {__GIT_COMMIT__} · built {fmtBuildTime(__BUILD_TIME__)}
+        </button>
       </header>
+      <About open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {showRail && railCollapsed && (
           <div

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './Export.module.css';
 
 interface Song {
@@ -24,12 +24,31 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const layoutInputRef = useRef<HTMLInputElement>(null);
 
+  // Details of the currently-stored layout, shown so the user always sees —
+  // and can replace — which rgbeffects file a render will target (rather
+  // than silently reusing whatever was imported in an earlier session).
+  const [layoutInfo, setLayoutInfo] = useState<{
+    display_name?: string;
+    props?: unknown[];
+    imported_at?: string;
+  } | null>(null);
+
   const isThemed = song.status === 'themed';
   // A layout imported before file persistence was added has a layoutId but
   // no xml_path on disk — treat that the same as "no layout" so re-import
   // stays reachable instead of only surfacing as an export-time failure.
   const hasLayout = layoutId != null && layoutXmlPath != null;
   const needsReimport = layoutId != null && layoutXmlPath == null;
+
+  useEffect(() => {
+    if (layoutId == null) return;
+    fetch('/api/v1/layout')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (body) setLayoutInfo(body);
+      })
+      .catch(() => {});
+  }, [layoutId, layoutXmlPath]);
 
   async function handleLayoutFile(file: File) {
     setLayoutError(null);
@@ -161,6 +180,37 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
   return (
     <div data-testid="export-form" className={styles.root}>
       <h2 className={styles.title}>Export: {song.title}</h2>
+
+      <div data-testid="layout-summary" style={{ marginBottom: 16 }}>
+        <p style={{ margin: '0 0 8px', color: 'var(--color-text-muted, #888)', fontSize: 13 }}>
+          Layout: <strong style={{ color: 'var(--color-text, #f5f5f0)' }}>
+            {layoutInfo?.display_name ?? layoutId}
+          </strong>
+          {layoutInfo?.props ? ` · ${layoutInfo.props.length} props` : ''}
+          {layoutInfo?.imported_at
+            ? ` · imported ${new Date(layoutInfo.imported_at).toLocaleDateString()}`
+            : ''}
+        </p>
+        <input
+          data-testid="layout-file-input"
+          ref={layoutInputRef}
+          type="file"
+          accept=".xml"
+          style={{ display: 'none' }}
+          onChange={handleLayoutInputChange}
+        />
+        <button
+          data-testid="layout-replace-btn"
+          className={styles.layoutBtn}
+          onClick={() => layoutInputRef.current?.click()}
+          disabled={importingLayout}
+        >
+          {importingLayout ? 'Importing…' : 'Replace Layout…'}
+        </button>
+        {layoutError && (
+          <p data-testid="layout-error-message" className={styles.error}>{layoutError}</p>
+        )}
+      </div>
 
       {error && <p className={styles.error}>{error}</p>}
 

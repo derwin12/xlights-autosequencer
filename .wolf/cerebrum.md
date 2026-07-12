@@ -13,6 +13,7 @@
 - **Keep changes scoped.** Do exactly what was asked — nothing more, nothing less. No "while I was in here" refactors, no speculative abstractions, no preemptive cleanup.
 - **Branches required.** Never work directly on `main`/`master`. Every new task gets a new branch (`fix/`, `feat/`, `refactor/`, `chore/`). See Branch Discipline in OPENWOLF.md.
 - **No hacks.** No `# HACK`, no `# TODO: fix properly later`, no workaround comments, no try/except-pass, no hard-coded special cases to mask bad data. If the right fix is too large for scope, say so — don't ship a band-aid.
+- (2026-07-12) Always ask the user which xlights_rgbeffects.xml (layout) file to use BEFORE generating any sequence — multiple show folders exist (ShowFolder3D, ShowFolderAI, per-package layouts) and assuming one risks targeting nonexistent models.
 
 ## Key Learnings
 
