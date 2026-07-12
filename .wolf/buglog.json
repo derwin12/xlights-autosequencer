@@ -2935,6 +2935,27 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-12"
+    },
+    {
+      "id": "bug-180",
+      "timestamp": "2026-07-12",
+      "error_message": "import whisperx fails in xlight-dev devcontainer: AttributeError: module 'torchaudio' has no attribute 'AudioMetaData' — phoneme alignment silently skipped, no singing faces",
+      "file": "devcontainer environment (no repo file)",
+      "root_cause": "Container had whisperx 3.3.0 + pyannote.audio 3.3.2 against torchaudio 2.11; pyannote 3.x references torchaudio.AudioMetaData (removed in torchaudio 2.9+) in a runtime-evaluated annotation.",
+      "fix": "pip install --user --break-system-packages whisperx==3.8.6 pyannote.audio==4.0.7 (versions mirrored from the working Windows .venv), then re-pin numpy<2 (the upgrade dragged numpy to 2.4.6, breaking madmom). pyannote-core/metrics declare numpy>=2 but run fine on 1.26.4. Verified whisperx + madmom import and a full VAD/alignment run in-container.",
+      "tags": [
+        "devcontainer",
+        "whisperx",
+        "pyannote",
+        "numpy-pin",
+        "singing-faces",
+        "environment"
+      ],
+      "related_bugs": [
+        "bug-178"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-12"
     }
   ]
 }
