@@ -2956,6 +2956,26 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-12"
+    },
+    {
+      "id": "bug-181",
+      "timestamp": "2026-07-12",
+      "error_message": "User: 'didnt look like the face effect was placed' — rendered .xsq had 0 Faces/Text placements; separate Words/Phonemes timing tracks not usable by xLights",
+      "file": "src/generator/xsq_writer.py",
+      "root_cause": "Two causes: (1) the session had no words/phonemes (analyzed before the whisperx fix/server restart), so export had nothing to place; (2) even with marks, the writer emitted separate single-layer Words/Phonemes tracks, but xLights consumes lyrics as ONE 3-layer track (phrases/words/phonemes) — Faces takes TimingTrack=<track name>, Text takes LyricTrack='<track> - Words'.",
+      "fix": "xsq_writer now emits a 3-layer 'Lyrics' timing element when word+phoneme marks exist (_build_lyric_layers); Faces references TimingTrack=Lyrics, Text references 'Lyrics - Words'. Faces/Text settings replaced with strings copied verbatim from user-verified working effects. Tests: TestLyricLayeredTimingTrack.",
+      "tags": [
+        "xsq_writer",
+        "singing-faces",
+        "timing-track",
+        "xlights-conventions"
+      ],
+      "related_bugs": [
+        "bug-178",
+        "bug-180"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-12"
     }
   ]
 }
