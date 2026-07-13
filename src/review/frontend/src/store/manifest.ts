@@ -8,6 +8,7 @@ export interface Manifest {
   target_arch: string | null;
   frontend_commit: string | null;
   backend_commit: string | null;
+  backend_started_at?: string | null;
   bundled_vamp_plugins: string[];
   download_model_manifest_url: string | null;
   is_bundled?: boolean;

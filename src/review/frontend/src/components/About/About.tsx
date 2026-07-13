@@ -12,6 +12,12 @@ import { useManifestStore } from "../../store/manifest";
 
 const DOWNLOAD_PAGE_URL = "https://xlight.example.com/download"; // TODO: set real URL at ship
 
+/** Full 40-char hashes (bundled manifests) are trimmed; short dev hashes
+ * keep their "-dirty" suffix intact. */
+export function shortCommit(commit: string): string {
+  return commit.length > 16 ? commit.slice(0, 10) : commit;
+}
+
 export function About({ open, onClose }: { open: boolean; onClose: () => void }) {
   const manifest = useManifestStore((s) => s.manifest);
   const load = useManifestStore((s) => s.load);
@@ -67,10 +73,17 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
           </div>
         )}
 
-        {manifest?.frontend_commit && manifest?.backend_commit && (
+        {(manifest?.frontend_commit || manifest?.backend_commit) && (
           <div className={styles.commits}>
-            <div>frontend: <code>{manifest.frontend_commit.slice(0, 10)}</code></div>
-            <div>backend: <code>{manifest.backend_commit.slice(0, 10)}</code></div>
+            {manifest?.frontend_commit && (
+              <div>frontend: <code>{manifest.frontend_commit.slice(0, 10)}</code></div>
+            )}
+            {manifest?.backend_commit && (
+              <div>backend: <code>{shortCommit(manifest.backend_commit)}</code></div>
+            )}
+            {manifest?.backend_started_at && (
+              <div>backend up since: <code>{manifest.backend_started_at}</code></div>
+            )}
           </div>
         )}
 
