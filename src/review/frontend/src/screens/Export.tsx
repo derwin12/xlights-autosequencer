@@ -209,23 +209,31 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
                 ? prev
                 : [...prev, { id: stage, label: stage.replace(/_/g, ' ') }],
             );
+            // A stage may emit many events (e.g. per-group placement detail
+            // during placing_effects) — only log the stage transition once,
+            // but surface every detail line and keep the progress bar live.
+            const stageChanged = runningStageRef.current !== stage;
             const prevRunning = runningStageRef.current;
-            if (prevRunning && prevRunning !== stage) {
+            if (stageChanged && prevRunning) {
               setStageStatus((prev) => ({ ...prev, [prevRunning]: 'done' }));
               pushLog({ text: `✓ ${prevRunning.replace(/_/g, ' ')}`, kind: 'ok' });
             }
             runningStageRef.current = stage;
-            setStageStatus((prev) => ({ ...prev, [stage]: 'running' }));
-            pushLog({ text: `› ${stage.replace(/_/g, ' ')}: running…`, kind: 'info' });
+            if (stageChanged) {
+              setStageStatus((prev) => ({ ...prev, [stage]: 'running' }));
+              pushLog({ text: `› ${stage.replace(/_/g, ' ')}: running…`, kind: 'info' });
+            }
             if (typeof data.detail === 'string' && data.detail) {
               pushLog({ text: `  ${data.detail}`, kind: 'info' });
             }
             if (typeof data.progress === 'number') {
               setProgressPct(Math.round(data.progress * 100));
-              pushLog({
-                text: `  ${Math.round(data.progress * 100)}% · ${elapsedSec()}`,
-                kind: 'progress',
-              });
+              if (stageChanged) {
+                pushLog({
+                  text: `  ${Math.round(data.progress * 100)}% · ${elapsedSec()}`,
+                  kind: 'progress',
+                });
+              }
             }
           }
         } catch {}
