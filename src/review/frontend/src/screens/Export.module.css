@@ -104,7 +104,9 @@
 
 .progressGrid {
   display: grid;
-  grid-template-columns: 1fr minmax(0, 0.9fr) 280px;
+  /* Stage labels are short and fixed; the stream log carries per-group
+     placement detail and needs the flexible width so lines don't wrap. */
+  grid-template-columns: 180px minmax(0, 1fr) 280px;
   border: 1px solid var(--line, #222);
   margin: 4px 0 16px;
   max-width: 1100px;
