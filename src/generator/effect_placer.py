@@ -144,15 +144,23 @@ _CORPUS_MASK_PRIMARIES: tuple[str, ...] = (
 )
 
 
-def _vivid_mask_color(palette: list[str] | None, variation_seed: int) -> str:
+def _vivid_mask_color(
+    palette: list[str] | None, variation_seed: int, group_name: str = "",
+) -> str:
     """Pick a vivid color for a corpus recipe's On unmask layer.
 
-    White-over-white reads as colorless, so the first *saturated* palette
-    color wins, pushed to near-full saturation/value the way the reference
-    packages' mask colors are. A palette with no saturated color (all
-    white/gray) falls back to rotating the corpus primaries per section.
+    White-over-white reads as colorless, so candidates are the palette's
+    *saturated* colors pushed to near-full saturation/value the way the
+    reference packages' mask colors are. The pick is spread by group name and
+    section so different prop families carry different colors in the same
+    section (the corpus runs blue/cyan/red/yellow masks simultaneously) —
+    without spreading, every family inherits the same shared anchor color and
+    the whole yard converges on one hue. Thin palettes (fewer than 3
+    saturated colors) are extended with the corpus primaries.
     """
     import colorsys
+    import zlib
+    candidates: list[str] = []
     for color in palette or []:
         c = color.lstrip("#")
         if len(c) != 6:
@@ -161,8 +169,15 @@ def _vivid_mask_color(palette: list[str] | None, variation_seed: int) -> str:
         h, s, v = colorsys.rgb_to_hsv(r, g, b)
         if s >= 0.25 and v >= 0.15:
             r, g, b = colorsys.hsv_to_rgb(h, max(s, 0.75), max(v, 0.95))
-            return f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
-    return _CORPUS_MASK_PRIMARIES[variation_seed % len(_CORPUS_MASK_PRIMARIES)]
+            vivid = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
+            if vivid not in candidates:
+                candidates.append(vivid)
+    if len(candidates) < 3:
+        candidates.extend(
+            c for c in _CORPUS_MASK_PRIMARIES if c not in candidates
+        )
+    spread = zlib.crc32(group_name.encode("utf-8")) if group_name else 0
+    return candidates[(variation_seed + spread) % len(candidates)]
 
 
 def _saturated_colors(palette: list[str]) -> list[str]:
@@ -1900,7 +1915,7 @@ def _place_corpus_recipe(
         return None
 
     if on_def is not None:
-        color = _vivid_mask_color(theme_palette, variation_seed)
+        color = _vivid_mask_color(theme_palette, variation_seed, group.name)
         color_layer = _make_placement(
             on_def, group.name, section.start_ms, section.end_ms,
             {"T_CHOICE_LayerMethod": "2 is Unmask"}, [color],

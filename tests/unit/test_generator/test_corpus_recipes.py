@@ -640,7 +640,7 @@ class TestVividMaskColor:
 
     def test_white_skipped_for_first_saturated(self) -> None:
         from src.generator.effect_placer import _vivid_mask_color
-        assert _vivid_mask_color(["#FFFFFF", "#FF0000"], 0) == "#FF0000"
+        assert _vivid_mask_color(["#FFFFFF", "#FF0000", "#00FF00", "#0000FF"], 0) == "#FF0000"
 
     def test_all_white_palette_falls_back_to_primary_rotation(self) -> None:
         from src.generator.effect_placer import (
@@ -648,6 +648,33 @@ class TestVividMaskColor:
         )
         assert _vivid_mask_color(["#FFFFFF", "#EEEEEE"], 0) == _CORPUS_MASK_PRIMARIES[0]
         assert _vivid_mask_color(["#FFFFFF"], 3) == _CORPUS_MASK_PRIMARIES[3]
+
+    def test_groups_spread_across_palette_colors(self) -> None:
+        from src.generator.effect_placer import _vivid_mask_color
+        palette = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00"]
+        groups = [
+            "06_PROP_Cane", "06_PROP_Tree", "06_PROP_Matrix",
+            "06_PROP_Snowflake", "06_PROP_Horizontal_Lines",
+            "06_PROP_Vertical_Lines", "08_HERO_Mega_Tree",
+        ]
+        colors = {g: _vivid_mask_color(palette, 0, g) for g in groups}
+        # Different families land on different colors in the same section.
+        assert len(set(colors.values())) >= 3
+
+    def test_same_group_varies_across_sections(self) -> None:
+        from src.generator.effect_placer import _vivid_mask_color
+        palette = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00"]
+        colors = {
+            _vivid_mask_color(palette, seed, "06_PROP_Cane") for seed in range(4)
+        }
+        assert len(colors) == 4
+
+    def test_deterministic_per_group_and_seed(self) -> None:
+        from src.generator.effect_placer import _vivid_mask_color
+        palette = ["#FF0000", "#00FF00", "#0000FF"]
+        a = _vivid_mask_color(palette, 2, "06_PROP_Cane")
+        b = _vivid_mask_color(palette, 2, "06_PROP_Cane")
+        assert a == b
 
     def test_recipe_on_layer_is_never_white(self) -> None:
         # Even a white-heavy section palette must not produce a white unmask.
