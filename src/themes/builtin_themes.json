@@ -1170,6 +1170,277 @@
         "#009933",
         "#FF99CC"
       ]
+    },
+    "White Heat": {
+      "name": "White Heat",
+      "mood": "aggressive",
+      "occasion": "general",
+      "genre": "pop",
+      "intent": "White-first pro look — blinding white energy over a hot magenta wash, the accent color flashing through on peaks",
+      "layers": [
+        {
+          "variant": "Color Wash Smooth",
+          "blend_mode": "Normal"
+        },
+        {
+          "variant": "Shockwave Medium Thin",
+          "blend_mode": "Additive"
+        }
+      ],
+      "alternates": [
+        {
+          "layers": [
+            {
+              "variant": "Plasma Classic Fast",
+              "blend_mode": "Normal"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Chase Fast Multi",
+              "blend_mode": "Normal"
+            }
+          ]
+        }
+      ],
+      "palette": [
+        "#FF00FF",
+        "#B000B0",
+        "#FFFFFF",
+        "#4B004B"
+      ],
+      "accent_palette": [
+        "#FFFFFF",
+        "#FF00FF"
+      ]
+    },
+    "Ice Crystal": {
+      "name": "Ice Crystal",
+      "mood": "ethereal",
+      "occasion": "general",
+      "genre": "any",
+      "intent": "White-first pro look — cool white sparkle over deep blue and glacier-blue washes, like moonlight on ice",
+      "layers": [
+        {
+          "variant": "Color Wash Vertical Fade",
+          "blend_mode": "Normal"
+        },
+        {
+          "variant": "Twinkle Gentle",
+          "blend_mode": "Additive"
+        }
+      ],
+      "alternates": [
+        {
+          "layers": [
+            {
+              "variant": "Wave Dual Slow",
+              "blend_mode": "Normal"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Plasma Ethereal",
+              "blend_mode": "Normal"
+            }
+          ]
+        }
+      ],
+      "palette": [
+        "#0000FF",
+        "#007DFB",
+        "#FFFFFF",
+        "#001A66"
+      ],
+      "accent_palette": [
+        "#FFFFFF",
+        "#00FFFF"
+      ]
+    },
+    "Violet Night": {
+      "name": "Violet Night",
+      "mood": "dark",
+      "occasion": "general",
+      "genre": "any",
+      "intent": "White-first pro look — slow white movement over a deep violet field, regal and shadowed",
+      "layers": [
+        {
+          "variant": "Color Wash Flat",
+          "blend_mode": "Normal"
+        },
+        {
+          "variant": "Spirals 3D Slow Spin",
+          "blend_mode": "Additive"
+        }
+      ],
+      "alternates": [
+        {
+          "layers": [
+            {
+              "variant": "Plasma Dense Slow",
+              "blend_mode": "Normal"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Wave Triple Slow",
+              "blend_mode": "Normal"
+            }
+          ]
+        }
+      ],
+      "palette": [
+        "#8000FF",
+        "#4B0082",
+        "#2A004B",
+        "#FFFFFF"
+      ],
+      "accent_palette": [
+        "#FFFFFF",
+        "#8000FF"
+      ]
+    },
+    "Scarlet Ribbon": {
+      "name": "Scarlet Ribbon",
+      "mood": "structural",
+      "occasion": "christmas",
+      "genre": "any",
+      "intent": "White-first pro look — crisp white chases wrapped in classic deep red, a ribbon around the house",
+      "layers": [
+        {
+          "variant": "Color Wash Smooth",
+          "blend_mode": "Normal"
+        },
+        {
+          "variant": "Chase Left-Right Medium",
+          "blend_mode": "Additive"
+        }
+      ],
+      "alternates": [
+        {
+          "layers": [
+            {
+              "variant": "Marquee Thick Slow",
+              "blend_mode": "Normal"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Chase To Middle Full",
+              "blend_mode": "Normal"
+            }
+          ]
+        }
+      ],
+      "palette": [
+        "#FF0000",
+        "#B00000",
+        "#FFFFFF",
+        "#4B0000"
+      ],
+      "accent_palette": [
+        "#FFFFFF",
+        "#FF0000"
+      ],
+      "background_accent_variant": "Snowflakes Driving Few"
+    },
+    "Solar Gold": {
+      "name": "Solar Gold",
+      "mood": "aggressive",
+      "occasion": "general",
+      "genre": "any",
+      "intent": "White-first pro look — hot white bursts over saturated gold, with the whole house glowing like stage lighting",
+      "layers": [
+        {
+          "variant": "Color Wash Circular",
+          "blend_mode": "Normal"
+        },
+        {
+          "variant": "Pinwheel 6-Arm Medium",
+          "blend_mode": "Additive"
+        }
+      ],
+      "alternates": [
+        {
+          "layers": [
+            {
+              "variant": "Fan 6-Blade Medium",
+              "blend_mode": "Normal"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Butterfly Geometric",
+              "blend_mode": "Normal"
+            }
+          ]
+        }
+      ],
+      "palette": [
+        "#FFFF00",
+        "#FFB400",
+        "#FFFFFF",
+        "#7A5A00"
+      ],
+      "accent_palette": [
+        "#FFFFFF",
+        "#FFFF00"
+      ]
+    },
+    "Ember White": {
+      "name": "Ember White",
+      "mood": "structural",
+      "occasion": "general",
+      "genre": "any",
+      "intent": "White-first pro look — warm white shimmer over amber and candle-orange, cozy but precise",
+      "layers": [
+        {
+          "variant": "Color Wash Horizontal Fade",
+          "blend_mode": "Normal"
+        },
+        {
+          "variant": "Shimmer Subtle",
+          "blend_mode": "Additive"
+        }
+      ],
+      "alternates": [
+        {
+          "layers": [
+            {
+              "variant": "Fire Ember",
+              "blend_mode": "Normal"
+            }
+          ]
+        },
+        {
+          "layers": [
+            {
+              "variant": "Twinkle Medium",
+              "blend_mode": "Normal"
+            }
+          ]
+        }
+      ],
+      "palette": [
+        "#D76B00",
+        "#FF6600",
+        "#FFF3E8",
+        "#5A2D00"
+      ],
+      "accent_palette": [
+        "#FFFFFF",
+        "#FF6600"
+      ]
     }
   }
 }
