@@ -828,3 +828,94 @@ class TestOffBackdrop:
             if p.color_palette == ["#FFFFFF"]
         ]
         assert len(recipe_placements) == len(_BEATS)
+
+
+# ── whole-house All-group recipe (tier 1 BASE) ────────────────────────────────
+
+
+_BASE_ALL_GROUP = PowerGroup(
+    name="01_BASE_All", tier=1, members=["Tree 1", "Arch 1", "Matrix 1"],
+)
+_LIBRARY_ALL = ("Color Wash", "Shockwave", "Pinwheel", "On", "Ripple",
+                "Single Strand", "Spirals")
+
+
+def _place_base(section: SectionEnergy, variation_seed: int = 0,
+                layers: list[EffectLayer] | None = None):
+    return _place(
+        section, _BASE_ALL_GROUP, variation_seed=variation_seed,
+        layers=layers, library_names=_LIBRARY_ALL,
+        active_tiers=frozenset({1}),
+    )
+
+
+class TestAllGroupRecipe:
+    def test_base_all_group_matches(self) -> None:
+        assert recipe_for_group(_BASE_ALL_GROUP).family == "all_group"
+
+    def test_base_all_fades_does_not_match(self) -> None:
+        g = PowerGroup(name="01_BASE_All_FADES", tier=1,
+                       members=["Tree 1", "Arch 1"])
+        assert recipe_for_group(g) is None
+
+    def test_tier1_member_majority_fallback_disabled(self) -> None:
+        # A tier-1 group holds the entire display; a tree-heavy layout must
+        # not hand the whole-house canvas the minitree recipe via the
+        # member-majority pass.
+        g = PowerGroup(name="01_BASE_Zone", tier=1,
+                       members=["Tree 1", "Tree 2", "Tree 3"])
+        assert recipe_for_group(g) is None
+
+    def test_tree_heavy_members_do_not_disqualify_name_match(self) -> None:
+        g = PowerGroup(name="01_BASE_All", tier=1,
+                       members=["Tree 1", "Tree 2", "Tree 3"])
+        assert recipe_for_group(g).family == "all_group"
+
+    def test_chorus_gets_per_beat_shockwave_with_on_color_layer(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place_base(section)
+        placements = result["01_BASE_All"]
+        bursts = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(bursts) == len(_BEATS)
+        params = dict(bursts[0].parameters)
+        assert params["E_SLIDER_Shockwave_End_Radius"] == "150"
+        assert params["E_SLIDER_Shockwave_End_Width"] == "56"
+        ons = [p for p in placements if p.effect_name == "On"]
+        assert len(ons) == 1
+        assert ons[0].parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
+        assert ons[0].layer == 0
+        # The static theme wash must be fully replaced on qualifying sections.
+        assert not any(p.effect_name == "Color Wash" for p in placements)
+
+    def test_repeated_section_alternates_to_bottom_pinwheel(self) -> None:
+        # Same halved-parity alternation as the other recipes: seeds 2-3
+        # select the alternate effect.
+        result = _place_base(_make_section(label="chorus"), variation_seed=3)
+        placements = result["01_BASE_All"]
+        pinwheels = [p for p in placements if p.effect_name == "Pinwheel"]
+        assert len(pinwheels) == len(_BEATS)
+        params = dict(pinwheels[0].parameters)
+        assert params["E_SLIDER_Pinwheel_Arms"] == "10"
+        assert params["E_SLIDER_PinwheelYC"] == "-100"
+        assert params["E_SLIDER_Pinwheel_Thickness"] == "2"
+
+    def test_low_energy_verse_keeps_wash_and_sparkles(self) -> None:
+        result = _place_base(_make_section(label="verse", energy=40))
+        placements = result["01_BASE_All"]
+        assert [p.effect_name for p in placements] == ["Color Wash"]
+        assert placements[0].music_sparkles > 0
+
+    def test_recipe_placements_get_no_sparkles(self) -> None:
+        result = _place_base(_make_section(label="chorus"))
+        assert all(p.music_sparkles == 0 for p in result["01_BASE_All"])
+
+    def test_multi_layer_theme_does_not_stack_wash_over_recipe(self) -> None:
+        layers = [
+            EffectLayer(variant="Color Wash"),
+            EffectLayer(variant="Ripple"),
+        ]
+        result = _place_base(_make_section(label="chorus"), layers=layers)
+        placements = result["01_BASE_All"]
+        assert not any(p.effect_name in ("Color Wash", "Ripple") for p in placements)
+        bursts = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(bursts) == len(_BEATS)
