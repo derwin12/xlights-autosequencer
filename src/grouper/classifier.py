@@ -6,7 +6,7 @@ import re
 from src.grouper.layout import Prop
 
 _HERO_PATTERN = re.compile(
-    r"face|megatree|mega[_ ]tree",
+    r"face|megatree|mega[_ ]tree|topper",
     re.IGNORECASE,
 )
 
