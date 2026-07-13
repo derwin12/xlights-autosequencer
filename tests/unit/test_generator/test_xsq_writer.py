@@ -14,7 +14,11 @@ from src.generator.models import (
     SequencePlan,
     SongProfile,
 )
-from src.generator.xsq_writer import _collect_timing_tracks, write_xsq
+from src.generator.xsq_writer import (
+    _collect_timing_tracks,
+    _serialize_effect_params,
+    write_xsq,
+)
 from src.themes.models import EffectLayer, Theme
 
 
@@ -677,6 +681,49 @@ class TestLyricLayeredTimingTrack:
         layers = lyrics_el.findall("EffectLayer")
         assert len(layers) == 3
         assert [e.get("label") for e in layers[1].findall("Effect")] == ["HELLO", "WORLD"]
+
+
+class TestSliderTextctrlDedup:
+    """Obsolete slider params must not survive alongside their textctrl
+    replacement (Spirals Movement migrated slider -> float textctrl)."""
+
+    def _spirals_placement(self, parameters: dict) -> EffectPlacement:
+        return EffectPlacement(
+            effect_name="Spirals",
+            xlights_id="Spirals",
+            model_or_group="Arch Group",
+            start_ms=0,
+            end_ms=4000,
+            parameters=parameters,
+            color_palette=["#FFFFFF"],
+        )
+
+    def test_spirals_defaults_use_textctrl_movement(self) -> None:
+        settings = _serialize_effect_params(self._spirals_placement({}))
+        assert "E_SLIDER_Spirals_Movement" not in settings
+        assert "E_TEXTCTRL_Spirals_Movement=10" in settings
+
+    def test_textctrl_override_drops_obsolete_slider(self) -> None:
+        # An explicit slider param (e.g. from a stale variant/theme) must be
+        # dropped when the textctrl form of the same param is present.
+        settings = _serialize_effect_params(self._spirals_placement({
+            "E_SLIDER_Spirals_Movement": "80",
+            "E_TEXTCTRL_Spirals_Movement": "4",
+        }))
+        assert "E_SLIDER_Spirals_Movement" not in settings
+        assert "E_TEXTCTRL_Spirals_Movement=4" in settings
+
+    def test_no_builtin_spirals_variant_uses_slider_movement(self) -> None:
+        import json
+        from pathlib import Path
+
+        data = json.loads(
+            (Path("src/variants/builtins/Spirals.json")).read_text(encoding="utf-8")
+        )
+        for variant in data["variants"]:
+            assert "E_SLIDER_Spirals_Movement" not in variant.get(
+                "parameter_overrides", {}
+            ), variant["name"]
 
 
 class TestFacesAndTextEffectSerialization:

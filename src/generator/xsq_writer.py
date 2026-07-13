@@ -99,7 +99,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHECKBOX_Spirals_Grow": "0",
         "E_CHECKBOX_Spirals_Shrink": "0",
         "E_SLIDER_Spirals_Count": "1",
-        "E_SLIDER_Spirals_Movement": "100",
+        "E_TEXTCTRL_Spirals_Movement": "10",
         "E_SLIDER_Spirals_Rotation": "20",
         "E_SLIDER_Spirals_Thickness": "50",
     },
@@ -535,6 +535,11 @@ def _serialize_effect_params(placement: EffectPlacement) -> str:
             defaults[key] = "1" if val else "0"
         else:
             defaults[key] = str(val)
+
+    # A slider/textctrl pair sharing a bare name means xLights migrated the
+    # param from int slider to float textctrl; only the textctrl is live.
+    for key in [k for k in defaults if k.startswith("E_TEXTCTRL_")]:
+        defaults.pop("E_SLIDER_" + key[len("E_TEXTCTRL_"):], None)
 
     # Add fades
     if placement.fade_in_ms > 0:

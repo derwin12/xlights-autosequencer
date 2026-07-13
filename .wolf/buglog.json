@@ -3151,6 +3151,26 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-13"
+    },
+    {
+      "id": "bug-192",
+      "timestamp": "2026-07-13",
+      "error_message": "Generated Spirals effects contain both E_SLIDER_Spirals_Movement and E_TEXTCTRL_Spirals_Movement (slider is obsolete in xLights)",
+      "file": "src/generator/xsq_writer.py",
+      "root_cause": "_XLIGHTS_EFFECT_DEFAULTS['Spirals'] still carried the obsolete E_SLIDER_Spirals_Movement; corpus recipes override with the modern E_TEXTCTRL key, and _serialize_effect_params merges overrides onto defaults by key, so both survived into the effect string. Variant library + builtin_effects.json also still used the slider key.",
+      "fix": "Defaults now use E_TEXTCTRL_Spirals_Movement=10 (slider/10 scale); builtin_effects.json Spirals_Movement migrated to textctrl/float -20..20 default 1.0; 4 Spirals variants converted (80/120/200/60 -> 8/12/20/6); generic guard in _serialize_effect_params drops E_SLIDER_X whenever E_TEXTCTRL_X with the same bare name is present; regression tests in TestSliderTextctrlDedup.",
+      "tags": [
+        "spirals",
+        "textctrl",
+        "slider",
+        "obsolete-param",
+        "xsq_writer",
+        "variants",
+        "builtin_effects"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
     }
   ]
 }
