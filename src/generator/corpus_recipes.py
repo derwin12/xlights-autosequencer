@@ -444,6 +444,27 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
     ),
+    # Mega toppers — mined from the same 12 packages (docs/topper_sequencing_
+    # corpus/, 3.8k placements over 12 songs). The topper is the tree's
+    # accent crown: co-active with the tree 85% of the time but not slaved
+    # to it (20% same effect) — the dominant mined pairing is per-beat
+    # topper Shockwave over the tree's sustained Spirals (474 pairs), then
+    # Shockwave-over-Shockwave (227). No alternate on purpose: keeping the
+    # topper on Shockwave while the megatree recipe alternates
+    # Shockwave/Spirals reproduces exactly those two pairings. The burst
+    # preset on toppers is field-identical to the snowflake preset. Color
+    # comes from the On "2 is Unmask" layer (438 placements, 7/12 songs,
+    # ~0.5s blocks — bar-cycling is our closest form), and toppers carry a
+    # real Off backdrop (31 placements, 10/12 songs, ~14s section tiles).
+    PropFamilyRecipe(
+        family="megatopper",
+        match_tokens=("topper",),
+        effect_name="Shockwave",
+        parameter_overrides=_SHOCKWAVE_BURST,
+        color_over_mask=True,
+        color_cycle_bars=True,
+        off_backdrop=True,
+    ),
     # Icicles — mined from the same 12 packages (docs/icicle_sequencing_
     # corpus/, 1.6k placements over 9 songs). Per-song effect choice varies,
     # but the structure is one idiom: white motion in 1-4 beat segments

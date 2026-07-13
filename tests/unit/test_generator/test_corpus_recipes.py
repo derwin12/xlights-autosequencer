@@ -182,10 +182,10 @@ class TestRecipeMatching:
                        members=["Mega Tree 1", "Mega Tree 2", "Palm Tree"])
         assert recipe_for_group(g).family == "megatree"
 
-    def test_mega_topper_does_not_match_megatree(self) -> None:
+    def test_mega_topper_matches_its_own_family_not_megatree(self) -> None:
         g = PowerGroup(name="06_PROP_Mega_Topper", tier=6,
                        members=["Mega Topper 1", "Mega Topper 2"])
-        assert recipe_for_group(g) is None
+        assert recipe_for_group(g).family == "megatopper"
 
     def test_hero_megatree_group_matches(self) -> None:
         # A solo mega tree never forms a tier-6 pair group — it is promoted
@@ -1028,3 +1028,52 @@ class TestIcicleRecipe:
         assert not any(p.effect_name == "Spirals" and
                        dict(p.parameters).get("E_SLIDER_Spirals_Thickness") == "33"
                        for p in placements)
+
+
+# ── mega-topper recipe ────────────────────────────────────────────────────────
+
+
+_TOPPER_GROUP = PowerGroup(
+    name="08_HERO_Mega_Topper", tier=8, members=["Mega Topper"],
+)
+_LIBRARY_TOPPER = ("Color Wash", "Shockwave", "On", "Off", "Ripple",
+                   "Single Strand", "Spirals")
+
+
+class TestMegaTopperRecipe:
+    def test_hero_topper_matches(self) -> None:
+        assert recipe_for_group(_TOPPER_GROUP).family == "megatopper"
+
+    def test_megatree_group_does_not_match_megatopper(self) -> None:
+        assert recipe_for_group(_MEGATREE_GROUP).family == "megatree"
+
+    def test_chorus_stack_bursts_on_color_and_off_backdrop(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place(section, _TOPPER_GROUP, library_names=_LIBRARY_TOPPER,
+                        active_tiers=frozenset({1, 8}))
+        placements = result["08_HERO_Mega_Topper"]
+        bursts = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(bursts) == len(_BEATS)  # no volley: per-beat like the corpus
+        assert all(p.layer == 1 for p in bursts)
+        params = dict(bursts[0].parameters)
+        assert params["E_SLIDER_Shockwave_End_Radius"] == "100"  # prop-scale burst
+        ons = sorted((p for p in placements if p.effect_name == "On"),
+                     key=lambda p: p.start_ms)
+        assert len(ons) == 2  # bar-cycling color
+        assert ons[0].color_palette != ons[1].color_palette
+        offs = [p for p in placements if p.effect_name == "Off"]
+        assert len(offs) == 1
+        assert offs[0].layer == 2
+        assert offs[0].start_ms == section.start_ms
+        assert offs[0].end_ms == section.end_ms
+
+    def test_no_alternate_on_repeated_sections(self) -> None:
+        # The topper deliberately has no alt effect: it stays on Shockwave
+        # while the megatree recipe alternates to Spirals, reproducing the
+        # corpus's dominant Shockwave-over-Spirals pairing.
+        result = _place(_make_section(label="chorus"), _TOPPER_GROUP,
+                        variation_seed=3, library_names=_LIBRARY_TOPPER,
+                        active_tiers=frozenset({1, 8}))
+        placements = result["08_HERO_Mega_Topper"]
+        bursts = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(bursts) == len(_BEATS)
