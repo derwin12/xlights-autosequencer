@@ -120,11 +120,16 @@ class TestPlaceEndOfSongFade:
         assert fade.parameters["T_CHOICE_LayerMethod"] == "Min"
         assert fade.parameters["T_SLIDER_EffectLayerMix"] == "0"
 
-    def test_no_trailing_silence_no_fade(self) -> None:
+    def test_no_trailing_silence_still_fades_last_two_seconds(self) -> None:
+        # The fade always fires: with no silent tail it overlaps the final
+        # stretch of audio, spanning at least the last 2 seconds.
         assignments = [_make_assignment(0, 29500)]
         library = _make_library("On")
         _place_end_of_song_fade(assignments, _GROUPS, library, _make_hierarchy(30000))
-        assert "01_BASE_All_FADES" not in assignments[-1].group_effects
+        fades = assignments[-1].group_effects["01_BASE_All_FADES"]
+        assert len(fades) == 1
+        assert fades[0].start_ms == 28000
+        assert fades[0].end_ms == 30000
 
     def test_missing_fades_group_is_noop(self) -> None:
         assignments = [_make_assignment(0, 20000)]
@@ -172,7 +177,7 @@ class TestPlaceEndOfSongFade:
         assert fades[0].start_ms == 20000
         assert fades[0].end_ms == 30000
 
-    def test_energy_curve_with_no_trailing_silence_no_fade(self) -> None:
+    def test_energy_curve_with_no_trailing_silence_fades_minimum_window(self) -> None:
         from src.analyzer.result import ValueCurve
 
         assignments = [_make_assignment(0, 29900)]
@@ -182,4 +187,7 @@ class TestPlaceEndOfSongFade:
         )
         library = _make_library("On")
         _place_end_of_song_fade(assignments, _GROUPS, library, hierarchy)
-        assert "01_BASE_All_FADES" not in assignments[-1].group_effects
+        fades = assignments[-1].group_effects["01_BASE_All_FADES"]
+        assert len(fades) == 1
+        assert fades[0].start_ms == 28000
+        assert fades[0].end_ms == 30000

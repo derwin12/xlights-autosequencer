@@ -3240,6 +3240,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-13"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-07-13",
+      "error_message": "08_HERO_Mega_Topper never received placements even though the hero group forms and the megatopper recipe matches",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_select_groups_for_layer tier-8 branch picks exactly one hero per layer (available[layer_idx % len]); with two heroes (tree + topper) the spotlight always landed on the tree and the topper was never selected for placement.",
+      "fix": "Tier-8 selection keeps the rotating spotlight pick but additionally includes every hero with a corpus recipe (recipe_for_group not None), so corpus-paired heroes (mega tree + mega topper) always place together; verified via fresh dashboard export.",
+      "tags": [
+        "hero",
+        "tier8",
+        "megatopper",
+        "effect_placer",
+        "group-selection"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
     }
   ]
 }

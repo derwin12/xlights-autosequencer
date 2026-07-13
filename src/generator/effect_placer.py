@@ -1331,8 +1331,17 @@ def _select_groups_for_layer(
             selected[tier] = available
 
         elif tier == 8:
-            # HERO: pick one
-            selected[tier] = [available[layer_idx % len(available)]]
+            # HERO: rotate the spotlight pick per layer — but corpus-paired
+            # heroes (those with a family recipe, e.g. mega tree + mega
+            # topper) always place together: the reference packages run the
+            # topper co-active with the tree 85% of the time, never solo'd
+            # away by a spotlight rotation.
+            spotlight = available[layer_idx % len(available)]
+            paired = [
+                g for g in available
+                if g is not spotlight and recipe_for_group(g) is not None
+            ]
+            selected[tier] = [spotlight] + paired
 
     return selected
 

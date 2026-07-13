@@ -1148,3 +1148,23 @@ class TestStarRecipe:
             dict(p.parameters).get("E_SLIDER_Shockwave_End_Radius") == "100"
             for p in result.get("06_PROP_Star", [])
         )
+
+    def test_tree_and_topper_heroes_place_together(self) -> None:
+        # The hero spotlight rotation must not solo one of a corpus-paired
+        # hero couple: the reference packages run the topper co-active with
+        # the tree.
+        tree = PowerGroup(name="08_HERO_Mega_Tree", tier=8, members=["Mega Tree"])
+        topper = PowerGroup(name="08_HERO_Mega_Topper", tier=8,
+                            members=["Mega Topper"])
+        library = _make_library(*_LIBRARY_TOPPER)
+        variant_library = _make_variant_library(*_LIBRARY_TOPPER)
+        assignment = _make_assignment(
+            _make_section(label="chorus"), [EffectLayer(variant="Color Wash")],
+            active_tiers=frozenset({8}),
+        )
+        result = place_effects(
+            assignment, [tree, topper], library, _make_hierarchy(_BEATS),
+            variant_library=variant_library,
+        )
+        assert "08_HERO_Mega_Tree" in result
+        assert "08_HERO_Mega_Topper" in result
