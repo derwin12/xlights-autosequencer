@@ -150,3 +150,36 @@ class TestPlaceEndOfSongFade:
         _place_end_of_song_fade(assignments, _GROUPS, library, _make_hierarchy(30000))
         fades = assignments[-1].group_effects["01_BASE_All_FADES"]
         assert fades[0].start_ms == 25000
+
+    def test_energy_curve_overrides_section_tiling(self) -> None:
+        # The section builder tiles the full duration (the last section's
+        # end_ms covers trailing silence), so the audible end must come from
+        # the full-mix energy curve: audio dies at 20s of a 30s file even
+        # though the section runs to 29.9s.
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(0, 29900)]
+        hierarchy = _make_hierarchy(30000)
+        # 10 fps, 300 frames: energy 50 for 200 frames (0-20s), then 0.
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10,
+            values=[50] * 200 + [0] * 100,
+        )
+        library = _make_library("On")
+        _place_end_of_song_fade(assignments, _GROUPS, library, hierarchy)
+        fades = assignments[-1].group_effects["01_BASE_All_FADES"]
+        assert len(fades) == 1
+        assert fades[0].start_ms == 20000
+        assert fades[0].end_ms == 30000
+
+    def test_energy_curve_with_no_trailing_silence_no_fade(self) -> None:
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(0, 29900)]
+        hierarchy = _make_hierarchy(30000)
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10, values=[50] * 300,
+        )
+        library = _make_library("On")
+        _place_end_of_song_fade(assignments, _GROUPS, library, hierarchy)
+        assert "01_BASE_All_FADES" not in assignments[-1].group_effects

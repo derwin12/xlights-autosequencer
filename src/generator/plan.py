@@ -321,6 +321,32 @@ def build_plan(
 # tails are analysis rounding, not an actual silent outro.
 _TRAILING_SILENCE_MIN_MS = 1500
 
+# Energy (0-100) below which the full-mix curve counts as silence. The section
+# builder tiles the entire audio duration — the last section's end_ms extends
+# over trailing silence — so audible-end detection must come from the energy
+# curve, not from section boundaries.
+_SILENCE_ENERGY_THRESHOLD = 5
+
+
+def _audible_end_ms(
+    assignments: list[SectionAssignment], hierarchy: HierarchyResult
+) -> int:
+    """Return when the song's audio actually goes quiet.
+
+    Uses the last full-mix energy frame at or above
+    ``_SILENCE_ENERGY_THRESHOLD``; falls back to the latest section end when
+    no energy curve is available (curves are optional analyzer output).
+    """
+    curve = hierarchy.energy_curves.get("full_mix")
+    if curve is not None and curve.values and curve.fps > 0:
+        last_idx = max(
+            (i for i, v in enumerate(curve.values) if v >= _SILENCE_ENERGY_THRESHOLD),
+            default=-1,
+        )
+        if last_idx >= 0:
+            return int((last_idx + 1) * 1000 / curve.fps)
+    return max(a.section.end_ms for a in assignments)
+
 
 def _place_end_of_song_fade(
     assignments: list[SectionAssignment],
@@ -330,8 +356,9 @@ def _place_end_of_song_fade(
 ) -> None:
     """Fade the whole display to black over trailing silence.
 
-    When the sequence duration extends past the end of the last section by at
-    least ``_TRAILING_SILENCE_MIN_MS``, place one white On effect on the
+    When the sequence duration extends past the audible end of the song (see
+    ``_audible_end_ms``) by at least ``_TRAILING_SILENCE_MIN_MS``, place one
+    white On effect on the
     ``01_BASE_All_FADES`` group spanning the tail: brightness ramps 100 -> 0
     (``Eff_On_End=0``) and ``LayerMethod=Min`` clamps every layer rendered
     beneath it, so the display is black by the end of the sequence no matter
@@ -341,7 +368,7 @@ def _place_end_of_song_fade(
         return
     if not any(g.name == "01_BASE_All_FADES" for g in groups):
         return
-    song_end = max(a.section.end_ms for a in assignments)
+    song_end = _audible_end_ms(assignments, hierarchy)
     if hierarchy.duration_ms - song_end < _TRAILING_SILENCE_MIN_MS:
         return
     on_def = effect_library.effects.get("On")

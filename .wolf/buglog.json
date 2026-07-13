@@ -3117,6 +3117,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-13"
+    },
+    {
+      "id": "bug-190",
+      "timestamp": "2026-07-13",
+      "error_message": "End-of-song fade never fired on real songs (Raining Tacos render had no 01_BASE_All_FADES element)",
+      "file": "src/generator/plan.py",
+      "root_cause": "The fade trigger used the last section's end_ms as 'song end', but the section builder tiles the entire audio duration \u2014 trailing silence is inside the last section, so the tail was always ~0ms",
+      "fix": "_audible_end_ms: detect the audible end from the full_mix energy curve (last frame >= 5/100), falling back to section end only when curves are absent",
+      "tags": [
+        "generator",
+        "fade",
+        "sections",
+        "energy-curve",
+        "silent-failure"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
     }
   ]
 }
