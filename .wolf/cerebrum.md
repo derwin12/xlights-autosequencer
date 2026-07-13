@@ -44,6 +44,7 @@
 
 ## Do-Not-Repeat
 
+- **Restarting the dashboard in the devcontainer: never put `pkill -f <pattern>` in the same `docker exec sh -c` as the relaunch** — the shell's own command line contains the pattern, so pkill kills the launcher before the restart happens (bit us twice on 2026-07-13). Kill and relaunch in two separate `docker exec` calls: `docker exec xlight-dev pkill -f 'bin/xlight-review --dev'` then `docker exec -d xlight-dev sh -c 'cd /workspace && exec ~/.local/bin/xlight-review --dev --host 0.0.0.0 --port 5000 >/tmp/xlight-review.log 2>&1'`. Verify with GET /api/v1/manifest → backend_commit.
 - **Never write the reference-corpus author's name or file prefix into anything tracked by git** — commit messages, code comments, docs, buglog, tests, or this file. (2026-07-13: a commit message named the author and had to be amended.) Say "the 12 hand-built reference packages" instead. The privacy rule covers the name itself, not just the corpus extracts; the name appears only in gitignored local files (memory.md, corpus dirs) and the auto-memory dir.
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
