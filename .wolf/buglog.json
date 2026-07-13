@@ -3194,6 +3194,33 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-13"
+    },
+    {
+      "id": "bug-194",
+      "timestamp": "2026-07-13",
+      "error_message": "Ripple (and 4 more effects) emit obsolete E_SLIDER_ params that current xLights replaced with E_TEXTCTRL_ widgets - same class as bugs 192/193",
+      "file": "src/generator/xsq_writer.py",
+      "root_cause": "Systematic sweep of writer defaults against the 12 hand-built reference packages (written by current xLights) found 14 more migrated params: ColorWash_Cycles, Shimmer_Cycles, Ripple_Cycles (x2 catalog entries), Wave_Speed, and 9 Liquid params (Gravity/GravityAngle/LifeTime/X1/Y1/Direction1/Velocity1/Flow1/SourceSize1). Cycles-type params and Liquid_Gravity are slider/10 floats; the rest are 1:1 renames.",
+      "fix": "xsq_writer defaults, builtin_effects.json storage_names, and 16 builtin variant overrides migrated to the E_TEXTCTRL_ forms with documented ratios (docs/xlights-effect-params.md); TestMigratedSliderKeysAbsent sweeps defaults/variants/catalog for all 16 migrated bare names so none can creep back.",
+      "tags": [
+        "ripple",
+        "colorwash",
+        "shimmer",
+        "wave",
+        "liquid",
+        "textctrl",
+        "slider",
+        "obsolete-param",
+        "xsq_writer",
+        "variants",
+        "builtin_effects"
+      ],
+      "related_bugs": [
+        "bug-192",
+        "bug-193"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
     }
   ]
 }

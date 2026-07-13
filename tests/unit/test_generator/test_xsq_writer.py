@@ -836,3 +836,56 @@ class TestFacesAndTextEffectSerialization:
         assert len(texts) == 1
         assert "E_CHOICE_Text_LyricTrack=Lyrics - Words" in texts[0]
         assert "E_FONTPICKER_Text_Font=" in texts[0]
+
+
+# Bare parameter names whose slider widget was replaced by a float/int
+# textctrl in current xLights (bugs 192-194). The obsolete E_SLIDER_ form
+# corrupts rendering when emitted; only the E_TEXTCTRL_ form may appear in
+# writer defaults or builtin variant overrides.
+_MIGRATED_TO_TEXTCTRL = (
+    "Spirals_Movement",
+    "Chase_Rotations",
+    "Chase_Offset",
+    "ColorWash_Cycles",
+    "Shimmer_Cycles",
+    "Ripple_Cycles",
+    "Wave_Speed",
+    "LifeTime",
+    "Liquid_Gravity",
+    "Liquid_GravityAngle",
+    "Liquid_SourceSize1",
+    "X1",
+    "Y1",
+    "Direction1",
+    "Velocity1",
+    "Flow1",
+)
+
+
+class TestMigratedSliderKeysAbsent:
+    def test_writer_defaults_carry_no_migrated_slider_keys(self) -> None:
+        from src.generator.xsq_writer import _XLIGHTS_EFFECT_DEFAULTS
+
+        for effect, params in _XLIGHTS_EFFECT_DEFAULTS.items():
+            for bare in _MIGRATED_TO_TEXTCTRL:
+                assert f"E_SLIDER_{bare}" not in params, (effect, bare)
+
+    def test_builtin_variants_carry_no_migrated_slider_keys(self) -> None:
+        import json
+        from pathlib import Path
+
+        for path in Path("src/variants/builtins").glob("*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for variant in data.get("variants", []):
+                overrides = variant.get("parameter_overrides", {})
+                for bare in _MIGRATED_TO_TEXTCTRL:
+                    assert f"E_SLIDER_{bare}" not in overrides, (
+                        path.name, variant["name"], bare,
+                    )
+
+    def test_builtin_effects_catalog_carries_no_migrated_slider_keys(self) -> None:
+        from pathlib import Path
+
+        text = Path("src/effects/builtin_effects.json").read_text(encoding="utf-8")
+        for bare in _MIGRATED_TO_TEXTCTRL:
+            assert f'"E_SLIDER_{bare}"' not in text, bare

@@ -159,7 +159,7 @@
       "description": "Fast ripple with medium thickness. Dynamic ripple expansion for energetic sections.",
       "parameter_overrides": {
         "E_SLIDER_Ripple_Thickness": 4,
-        "E_SLIDER_Ripple_Cycles": 3
+        "E_TEXTCTRL_Ripple_Cycles": 0.3
       },
       "tags": {
         "tier_affinity": "mid",
@@ -181,7 +181,7 @@
       "description": "Medium-speed ripple with thick rings. Bold visible ripple for mid-energy sections.",
       "parameter_overrides": {
         "E_SLIDER_Ripple_Thickness": 5,
-        "E_SLIDER_Ripple_Cycles": 2
+        "E_TEXTCTRL_Ripple_Cycles": 0.2
       },
       "tags": {
         "tier_affinity": "background",
@@ -203,7 +203,7 @@
       "description": "Medium-speed ripple with thin rings. Subtle ripple motion for background fill.",
       "parameter_overrides": {
         "E_SLIDER_Ripple_Thickness": 3,
-        "E_SLIDER_Ripple_Cycles": 2
+        "E_TEXTCTRL_Ripple_Cycles": 0.2
       },
       "tags": {
         "tier_affinity": "background",

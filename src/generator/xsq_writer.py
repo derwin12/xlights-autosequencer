@@ -30,7 +30,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
     "Color Wash": {
         "E_CHECKBOX_ColorWash_HFade": "0",
         "E_CHECKBOX_ColorWash_VFade": "0",
-        "E_SLIDER_ColorWash_Cycles": "1",
+        "E_TEXTCTRL_ColorWash_Cycles": "1.0",
     },
     "Meteors": {
         "E_CHECKBOX_Meteors_UseMusic": "0",
@@ -70,7 +70,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
     "Shimmer": {
         "E_CHECKBOX_Shimmer_Use_All_Colors": "0",
         "E_SLIDER_Shimmer_Duty_Factor": "50",
-        "E_SLIDER_Shimmer_Cycles": "10",
+        "E_TEXTCTRL_Shimmer_Cycles": "1.0",
     },
     "Strobe": {
         "E_SLIDER_Number_Strobes": "3",
@@ -90,7 +90,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHOICE_Ripple_Draw_Style": "Old",
         "E_SLIDER_RIPPLE_POINTS": "5",
         "E_SLIDER_Ripple_Thickness": "3",
-        "E_SLIDER_Ripple_Cycles": "10",
+        "E_TEXTCTRL_Ripple_Cycles": "1.0",
         "E_SLIDER_Ripple_Scale": "100",
     },
     "Spirals": {
@@ -166,14 +166,14 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHECKBOX_LeftBarrier": "0",
         "E_CHECKBOX_RightBarrier": "0",
         "E_CHOICE_ParticleType": "Elastic",
-        "E_SLIDER_Liquid_Gravity": "100",
-        "E_SLIDER_Liquid_GravityAngle": "0",
-        "E_SLIDER_LifeTime": "1000",
-        "E_SLIDER_X1": "50",
-        "E_SLIDER_Y1": "100",
-        "E_SLIDER_Direction1": "270",
-        "E_SLIDER_Velocity1": "100",
-        "E_SLIDER_Flow1": "100",
+        "E_TEXTCTRL_Liquid_Gravity": "10.0",
+        "E_TEXTCTRL_Liquid_GravityAngle": "0",
+        "E_TEXTCTRL_LifeTime": "1000",
+        "E_TEXTCTRL_X1": "50",
+        "E_TEXTCTRL_Y1": "100",
+        "E_TEXTCTRL_Direction1": "270",
+        "E_TEXTCTRL_Velocity1": "100",
+        "E_TEXTCTRL_Flow1": "100",
     },
     "Galaxy": {
         "E_CHECKBOX_Galaxy_Blend_Edges": "1",
@@ -198,7 +198,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_SLIDER_Number_Waves": "180",
         "E_SLIDER_Thickness_Percentage": "25",
         "E_SLIDER_Wave_Height": "50",
-        "E_SLIDER_Wave_Speed": "10",
+        "E_TEXTCTRL_Wave_Speed": "10.0",
         "T_CHECKBOX_Canvas": "1",
     },
     # Copied verbatim from a user-verified working effect (2026-07-12).

@@ -87,7 +87,7 @@
       "base_effect": "Liquid",
       "description": "Fast surging liquid. High-energy fluid rush for intense sections.",
       "parameter_overrides": {
-        "E_SLIDER_Velocity1": 200
+        "E_TEXTCTRL_Velocity1": 200
       },
       "tags": {
         "tier_affinity": "mid",
@@ -108,7 +108,7 @@
       "base_effect": "Liquid",
       "description": "Medium-fast liquid current. Active flowing energy for mid-high sections.",
       "parameter_overrides": {
-        "E_SLIDER_Velocity1": 120
+        "E_TEXTCTRL_Velocity1": 120
       },
       "tags": {
         "tier_affinity": "background",
@@ -129,7 +129,7 @@
       "base_effect": "Liquid",
       "description": "Slow drifting liquid. Gentle motion for calm ambient sections.",
       "parameter_overrides": {
-        "E_SLIDER_Velocity1": 70
+        "E_TEXTCTRL_Velocity1": 70
       },
       "tags": {
         "tier_affinity": "background",
@@ -150,7 +150,7 @@
       "base_effect": "Liquid",
       "description": "Very slow creeping liquid. Minimal motion for the quietest passages.",
       "parameter_overrides": {
-        "E_SLIDER_Velocity1": 50
+        "E_TEXTCTRL_Velocity1": 50
       },
       "tags": {
         "tier_affinity": "background",
