@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,7 @@ def build_plan(
     groups: list[PowerGroup],
     effect_library: EffectLibrary,
     theme_library: ThemeLibrary,
+    progress_cb: Callable[[str, float], None] | None = None,
 ) -> SequencePlan:
     """Build a SequencePlan from all upstream data.
 
@@ -220,11 +221,22 @@ def build_plan(
     # decision off the assignment fields populated above.
     model_names = [p.name for p in props]
     props_by_name = {p.name: p for p in props}
-    for assignment in assignments:
+    n_sections = max(len(assignments), 1)
+    for si, assignment in enumerate(assignments):
+        section_cb = None
+        if progress_cb is not None:
+            label = assignment.section.label or "section"
+            progress_cb(f"section {si + 1}/{n_sections} · {label}", si / n_sections)
+            section_cb = (
+                lambda msg, _si=si, _label=label:
+                progress_cb(f"{msg} · section {_si + 1}/{n_sections} ({_label})",
+                            _si / n_sections)
+            )
         group_effects = place_effects(
             assignment, groups, effect_library, hierarchy,
             variant_library=variant_library,
             rotation_plan=rotation_plan,
+            progress_cb=section_cb,
         )
         assignment.group_effects = group_effects
 

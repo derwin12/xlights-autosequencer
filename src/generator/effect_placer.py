@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Any, Optional
+import re
+from typing import Any, Callable, Optional
 
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import EffectLibrary
@@ -258,6 +259,10 @@ _DRUM_VARIANT_MAP: dict[str, str] = {
 }
 _DRUM_ACCENT_DEFAULT_VARIANT = "Shockwave Full Fast"
 _DRUM_ACCENT_ALTERNATING = ("Shockwave Full Fast", "On Bold")
+
+# xLights effects that render only the first palette color — checking more
+# colors on these is invalid in the sequencer and the extras never show.
+_FIRST_COLOR_ONLY_EFFECTS: frozenset[str] = frozenset({"On", "Shockwave"})
 _DRUM_BIAS_THRESHOLD = 0.80  # >80% same label → use alternating kick/snare fallback
 
 # 042B: Whole-house impact accent at section peaks
@@ -555,6 +560,7 @@ def place_effects(
     hierarchy: HierarchyResult,
     variant_library=None,
     rotation_plan: RotationPlan | None = None,
+    progress_cb: Callable[[str], None] | None = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place effects from theme layers onto power groups, aligned to timing tracks.
 
@@ -574,6 +580,9 @@ def place_effects(
     """
     section = assignment.section
     theme = assignment.theme
+    # Groups already announced to progress_cb this call (a group can appear
+    # under several theme layers — report it once per section).
+    _announced: set[str] = set()
     section_index = assignment.section_index
     working_set = assignment.working_set
     focused_vocabulary = working_set is not None
@@ -707,6 +716,16 @@ def place_effects(
         )
 
         for tier, groups_for_tier in selected.items():
+            # Progress detail for the export UI: name each prop-level group
+            # once per section as it comes up for placement. Tiers 6-8 carry
+            # the names users recognize (Arches, Snowflakes, Mega Tree);
+            # lower tiers are partitions/canvases with synthetic names.
+            if progress_cb is not None and tier in (6, 7, 8):
+                for g in groups_for_tier:
+                    if g.name not in _announced:
+                        _announced.add(g.name)
+                        progress_cb(f"placing {_humanize_group_name(g.name)}")
+
             # Per-tier palette selection
             if tier in _TIER_BRIGHTNESS:
                 # Tiers 1-2: dim background
@@ -727,11 +746,12 @@ def place_effects(
             # Tier 5-8: use rotation plan when available
             if tier in (5, 6, 7, 8) and groups_for_tier and rotation_plan is not None:
                 for group in groups_for_tier:
-                    # Corpus-mined prop-family idiom (snowflakes, arches)
-                    # overrides rotation on qualifying sections.
+                    # Corpus-mined prop-family idiom (snowflakes, arches,
+                    # mega trees) overrides rotation on qualifying sections.
+                    # Tier 8 included: a solo mega tree is a HERO group.
                     recipe = recipe_for_group(group)
                     if (
-                        tier == 6
+                        tier in (6, 8)
                         and recipe is not None
                         and group.name not in corpus_recipe_done
                         and section_qualifies(recipe, section)
@@ -739,6 +759,7 @@ def place_effects(
                         recipe_placements = _place_corpus_recipe(
                             group, recipe, layer, section, hierarchy,
                             effect_library, assignment.variation_seed,
+                            theme_palette=tier_palette,
                         )
                         if recipe_placements:
                             corpus_recipe_done.add(group.name)
@@ -851,6 +872,7 @@ def place_effects(
                             recipe_placements = _place_corpus_recipe(
                                 group, recipe, layer, section, hierarchy,
                                 effect_library, assignment.variation_seed,
+                                theme_palette=tier_palette,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -920,6 +942,7 @@ def place_effects(
                             recipe_placements = _place_corpus_recipe(
                                 group, recipe, layer, section, hierarchy,
                                 effect_library, assignment.variation_seed,
+                                theme_palette=tier_palette,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1021,6 +1044,27 @@ def place_effects(
             # (COMP), and Tier 8 (HERO).  _compute_active_tiers guarantees only
             # one partition tier from {2, 4, 6, 7} is present, plus 1 and/or 8.
             for group in groups_for_tier:
+                # Corpus-mined prop-family idiom for HERO props: a solo mega
+                # tree never forms a tier-6 pair group, so it reaches this
+                # default path as 08_HERO_Mega_Tree. Same override semantics
+                # as the tier-6 recipe sites above.
+                recipe = recipe_for_group(group)
+                if (
+                    tier == 8
+                    and recipe is not None
+                    and group.name not in corpus_recipe_done
+                    and section_qualifies(recipe, section)
+                ):
+                    recipe_placements = _place_corpus_recipe(
+                        group, recipe, layer, section, hierarchy,
+                        effect_library, assignment.variation_seed,
+                        theme_palette=tier_palette,
+                    )
+                    if recipe_placements:
+                        corpus_recipe_done.add(group.name)
+                        result.setdefault(group.name, []).extend(recipe_placements)
+                        continue
+
                 # Matrix-prop guard for tier-8 HERO (peer of the rotation-pool
                 # filter inside _build_effect_pool, which only runs on tier-6/7).
                 placement_effect_def = effect_def
@@ -1714,6 +1758,14 @@ _BEAT_PUNCH_CONFIDENCE_THRESHOLD = 0.7
 _BEAT_PUNCH_DURATION_MS = 250
 
 
+def _humanize_group_name(name: str) -> str:
+    """'06_PROP_Mega_Tree' → 'Mega Tree' — tier prefix stripped, underscores
+    spaced, for progress display in the export UI."""
+    m = re.match(r"^\d{2}_[A-Z]+_(.+)$", name)
+    label = m.group(1) if m else name
+    return label.replace("_", " ").strip()
+
+
 def _place_corpus_recipe(
     group: PowerGroup,
     recipe: PropFamilyRecipe,
@@ -1722,6 +1774,7 @@ def _place_corpus_recipe(
     hierarchy: HierarchyResult,
     effect_library: EffectLibrary,
     variation_seed: int,
+    theme_palette: list[str] | None = None,
 ) -> list[EffectPlacement] | None:
     """Place a corpus-mined prop-family idiom: solid-palette segments spanning
     consecutive beats, back-to-back across the section (the mined shows place
@@ -1753,11 +1806,22 @@ def _place_corpus_recipe(
     median_interval = marks[len(marks) // 2].time_ms - marks[len(marks) // 2 - 1].time_ms
     placements: list[EffectPlacement] = []
     palette = list(recipe.palette)
-    # The mined parameter preset belongs to the primary effect; the alternate
-    # has a different parameter space and keeps library defaults.
-    params: dict[str, Any] = (
-        dict(recipe.parameter_overrides) if effect_name == recipe.effect_name else {}
+    # Each effect gets its own mined preset; their parameter spaces differ.
+    params: dict[str, Any] = dict(
+        recipe.parameter_overrides
+        if effect_name == recipe.effect_name
+        else recipe.alt_parameter_overrides
     )
+    # Two-layer "color over mask" (mega trees): a section-spanning On sits on
+    # the top layer with LayerMethod "2 is Unmask", so the motion effect on
+    # the layer below only contributes shape/brightness while the On supplies
+    # the color. Falls back to the flat single-layer form when the catalog
+    # has no On definition.
+    on_def = (
+        effect_library.effects.get("On") if recipe.color_over_mask else None
+    )
+    mask_layer_idx = 1 if on_def is not None else 0
+
     for i, mark in enumerate(marks):
         start = mark.time_ms
         if i + 1 < len(marks):
@@ -1766,11 +1830,39 @@ def _place_corpus_recipe(
             end = min(start + max(median_interval, FRAME_INTERVAL_MS), section.end_ms)
         if end <= start:
             continue
-        placements.append(_make_placement(
+        p = _make_placement(
             effect_def, group.name, start, end,
             params, palette, layer.blend_mode, "beat", instance_index=i,
-        ))
-    return placements or None
+        )
+        p.layer = mask_layer_idx
+        placements.append(p)
+    if not placements:
+        return None
+
+    if on_def is not None:
+        color = (theme_palette or ["#FFFFFF"])[0]
+        color_layer = _make_placement(
+            on_def, group.name, section.start_ms, section.end_ms,
+            {"T_CHOICE_LayerMethod": "2 is Unmask"}, [color],
+            layer.blend_mode, "section",
+        )
+        color_layer.layer = 0
+        placements.append(color_layer)
+
+    # Corpus idiom for snowflakes/arches: a section-spanning Off on the layer
+    # beneath the bursts keeps the group black between bursts instead of
+    # picking up whole-house bleed (the reference packages tile qualifying
+    # sections with 12-15s Off blocks on the group's second layer).
+    if recipe.off_backdrop:
+        off_def = effect_library.effects.get("Off")
+        if off_def is not None:
+            backdrop = _make_placement(
+                off_def, group.name, section.start_ms, section.end_ms,
+                {}, ["#000000"], layer.blend_mode, "section",
+            )
+            backdrop.layer = mask_layer_idx + 1
+            placements.append(backdrop)
+    return placements
 
 
 def _place_per_beat(
@@ -2279,8 +2371,26 @@ def _place_drum_accents(
     # Tier-6 groups for radial props often don't form (when only 1-2 exist with
     # different name prefixes), so we scan individual props instead of groups.
     # Each qualifying prop becomes its own placement target (model name, not group name).
+    #
+    # Exception: props whose tier-6 PROP group received placements this section
+    # are skipped — in xLights a model-level effect covers the group's render on
+    # that model, so per-model accents would hide the group effect (e.g. the
+    # corpus snowflake Shockwave). The per-model scan is a fallback for layouts
+    # where no tier-6 group formed around these props, not an additive layer.
+    covered_by_prop_group: set[str] = {
+        member
+        for g in groups
+        if g.tier == 6 and assignment.group_effects.get(g.name)
+        for member in g.members
+    }
     small_radial_model_names: list[str] = []
     for model_name, prop in props_by_name.items():
+        if model_name in covered_by_prop_group:
+            logger.debug(
+                "drum_accents: prop '%s' covered by a placed tier-6 group, skipping",
+                model_name,
+            )
+            continue
         display_as = getattr(prop, "display_as", "")
         is_radial = prop_type_for_display_as(display_as) == "radial"
 
@@ -2372,6 +2482,10 @@ def _place_drum_accents(
             params = dict(variant.parameter_overrides) if variant is not None else {}
             effect_base = variant.base_effect if variant is not None else "Shockwave"
 
+            accent_palette = list(assignment.theme.palette[:2])
+            if effect_base in _FIRST_COLOR_ONLY_EFFECTS:
+                accent_palette = accent_palette[:1]
+
             start_ms = frame_align(hit.time_ms)
             end_ms = frame_align(hit.time_ms + _DRUM_ACCENT_DURATION_MS)
             placement = EffectPlacement(
@@ -2381,7 +2495,7 @@ def _place_drum_accents(
                 start_ms=start_ms,
                 end_ms=end_ms,
                 parameters=params,
-                color_palette=list(assignment.theme.palette[:2]),
+                color_palette=accent_palette,
                 layer=1,
             )
             result.setdefault(model_name, []).append(placement)

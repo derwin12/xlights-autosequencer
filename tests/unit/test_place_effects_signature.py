@@ -25,6 +25,10 @@ _EXPECTED_PARAMS = (
     "hierarchy",
     "variant_library",
     "rotation_plan",
+    # progress_cb is an observability hook (export UI progress detail), not a
+    # per-section creative decision — FR-020 forbids decision kwargs that
+    # belong on SectionAssignment, which this is not.
+    "progress_cb",
 )
 
 _FORBIDDEN_PARAMS = frozenset({
@@ -39,7 +43,7 @@ _FORBIDDEN_PARAMS = frozenset({
 
 
 def test_place_effects_signature_is_exactly_six_params() -> None:
-    """`place_effects` has exactly the six parameters listed in FR-020."""
+    """`place_effects` has exactly the FR-020 parameters (plus progress_cb)."""
     sig = inspect.signature(place_effects)
     actual = tuple(sig.parameters.keys())
     assert actual == _EXPECTED_PARAMS, (

@@ -2993,6 +2993,82 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-12"
+    },
+    {
+      "id": "bug-183",
+      "timestamp": "2026-07-12",
+      "error_message": "Snowflake drum accents show only first color: On/Shockwave placements carried 2 palette colors, invalid in xLights",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_place_drum_accents always set color_palette=theme.palette[:2] regardless of base effect; On and Shockwave render only palette color 1",
+      "fix": "Trim accent palette to 1 color when variant base_effect is in _FIRST_COLOR_ONLY_EFFECTS ({'On','Shockwave'}); Strobe keeps 2",
+      "tags": [
+        "generator",
+        "drum-accents",
+        "palette",
+        "xlights",
+        "on-effect",
+        "shockwave"
+      ],
+      "related_bugs": [
+        "bug-184"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-12"
+    },
+    {
+      "id": "bug-184",
+      "timestamp": "2026-07-12",
+      "error_message": "Effects on snowflake group hidden by per-model drum-accent effects on the individual snowflake props",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_place_drum_accents targets individual radial props as a fallback for layouts with no tier-6 group, but fired even when the props' tier-6 group received placements — model-level effects cover the group render in xLights",
+      "fix": "Skip props that are members of a tier-6 group with placements in assignment.group_effects for the current section",
+      "tags": [
+        "generator",
+        "drum-accents",
+        "tier-6",
+        "group-vs-model",
+        "snowflake"
+      ],
+      "related_bugs": [
+        "bug-183"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-12"
+    },
+    {
+      "id": "bug-185",
+      "timestamp": "2026-07-13",
+      "error_message": "ReferenceError: __GIT_COMMIT__ is not defined — 11 Chrome.test.tsx failures under vitest",
+      "file": "src/review/frontend/vitest.config.ts",
+      "root_cause": "vite.config.ts injects __GIT_COMMIT__/__BUILD_TIME__ via define at build time, but vitest uses a separate vitest.config.ts that never defined them, so rendering the header stamp crashes in jsdom",
+      "fix": "Added define block with test-stub values to vitest.config.ts",
+      "tags": [
+        "frontend",
+        "vitest",
+        "vite-define",
+        "build-stamp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
+    },
+    {
+      "id": "bug-186",
+      "timestamp": "2026-07-13",
+      "error_message": "backend_commit null in /api/v1/manifest inside devcontainer",
+      "file": "src/review/api/v1/manifest.py",
+      "root_cause": "git status --porcelain walks the whole working tree and exceeds 5s on the Windows bind mount inside the container; TimeoutExpired in the shared try block discarded the already-resolved commit hash",
+      "fix": "Split into two try blocks — the dirty check is best-effort and on failure only omits the -dirty suffix",
+      "tags": [
+        "review",
+        "manifest",
+        "devcontainer",
+        "bind-mount",
+        "subprocess-timeout"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
     }
   ]
 }

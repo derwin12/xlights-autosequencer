@@ -99,6 +99,15 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
 
         state.push({"stage": "placing_effects", "progress": 0.4})
 
+        def _placement_progress(detail: str, frac: float) -> None:
+            # frac is the placement pass's own 0-1 progress; map it into the
+            # 0.4-0.85 band this stage occupies in the overall export.
+            state.push({
+                "stage": "placing_effects",
+                "progress": round(0.4 + 0.45 * max(0.0, min(frac, 1.0)), 3),
+                "detail": detail,
+            })
+
         xsq_bytes = run_generator(
             song_id=song["song_id"],
             audio_path=audio_path,
@@ -108,6 +117,7 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             lyrics=lyrics or None,
             words=words or None,
             phonemes=phonemes or None,
+            progress_cb=_placement_progress,
         )
 
         state.push({"stage": "writing_xsq", "progress": 0.9})

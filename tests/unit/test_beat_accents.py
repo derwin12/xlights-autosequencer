@@ -161,6 +161,15 @@ def _make_props_by_name(
     return props
 
 
+# Base effects of the real drum-accent variants, mirrored so the stub library
+# returns realistic base_effect strings (the palette-trim logic keys on them).
+_VARIANT_BASE_EFFECTS = {
+    "Shockwave Full Fast": "Shockwave",
+    "On Bold": "On",
+    "Strobe Dual Fast": "Strobe",
+}
+
+
 def _make_variant_library(overrides: dict[str, dict] | None = None) -> Any:
     """Stub variant library that returns variants with parameter_overrides."""
     overrides = overrides or {}
@@ -168,6 +177,7 @@ def _make_variant_library(overrides: dict[str, dict] | None = None) -> Any:
     def _get(name: str):
         v = MagicMock()
         v.parameter_overrides = overrides.get(name, {})
+        v.base_effect = _VARIANT_BASE_EFFECTS.get(name, "Shockwave")
         return v
 
     lib = MagicMock()
@@ -669,6 +679,109 @@ class TestDrumAccentPalette:
         for p in all_placements:
             assert p.color_palette != ["#FFFFFF"]
             assert len(p.color_palette) > 0
+
+
+# ---------------------------------------------------------------------------
+# 042A: first-color-only effects get a single-color palette
+# ---------------------------------------------------------------------------
+
+class TestDrumAccentSingleColorPalette:
+    def test_on_and_shockwave_accents_get_one_color(self):
+        """On and Shockwave render only palette color 1 in xLights — accents
+        using them must carry exactly one color, the theme's first."""
+        # 10 kicks → >80% bias → alternating Shockwave Full Fast / On Bold
+        hits = [(i * 300, "kick") for i in range(10)]
+        hierarchy = _make_hierarchy(drum_hits=hits)
+        assignment = _make_assignment(energy_score=80)
+        group = _make_radial_group()
+        props_by_name = _make_props_by_name(group.members, pixel_count=50)
+
+        result = _place_drum_accents(
+            groups=[group], hierarchy=hierarchy, assignment=assignment,
+            variant_library=_make_variant_library(), props_by_name=props_by_name,
+        )
+        all_placements = [p for ps in result.values() for p in ps]
+        assert all_placements
+        assert {p.effect_name for p in all_placements} == {"Shockwave", "On"}
+        for p in all_placements:
+            assert p.color_palette == [assignment.theme.palette[0]]
+
+    def test_strobe_accents_keep_two_colors(self):
+        """Strobe uses all palette colors, so its accents keep two."""
+        # 2 hihats + 1 kick → 67% hihat, below bias → label routing applies
+        hits = [(0, "kick"), (500, "hihat"), (1000, "hihat")]
+        hierarchy = _make_hierarchy(drum_hits=hits)
+        assignment = _make_assignment(energy_score=80)
+        group = _make_radial_group()
+        props_by_name = _make_props_by_name(group.members, pixel_count=50)
+
+        result = _place_drum_accents(
+            groups=[group], hierarchy=hierarchy, assignment=assignment,
+            variant_library=_make_variant_library(), props_by_name=props_by_name,
+        )
+        strobe = [
+            p for ps in result.values() for p in ps if p.effect_name == "Strobe"
+        ]
+        assert strobe
+        for p in strobe:
+            assert p.color_palette == list(assignment.theme.palette[:2])
+
+
+# ---------------------------------------------------------------------------
+# 042A: props covered by a placed tier-6 group are skipped
+# ---------------------------------------------------------------------------
+
+class TestDrumAccentGroupCoverageSkip:
+    def test_props_in_placed_tier6_group_get_no_accents(self):
+        """A prop whose tier-6 group already received placements this section
+        is skipped — model-level accents would hide the group effect."""
+        hits = [(1000, "kick"), (2000, "snare")]
+        hierarchy = _make_hierarchy(drum_hits=hits)
+        assignment = _make_assignment(energy_score=80)
+        group = _make_radial_group(name="06_PROP_Snowflake")
+        assignment.group_effects[group.name] = [MagicMock()]
+        props_by_name = _make_props_by_name(group.members, pixel_count=50)
+
+        result = _place_drum_accents(
+            groups=[group], hierarchy=hierarchy, assignment=assignment,
+            variant_library=_make_variant_library(), props_by_name=props_by_name,
+        )
+        assert result == {}
+
+    def test_uncovered_prop_still_gets_accents(self):
+        """Only members of the placed group are skipped; a loose radial prop
+        outside any placed tier-6 group still receives accents."""
+        hits = [(1000, "kick")]
+        hierarchy = _make_hierarchy(drum_hits=hits)
+        assignment = _make_assignment(energy_score=80)
+        group = _make_radial_group(name="06_PROP_Snowflake", members=["Flake A"])
+        assignment.group_effects[group.name] = [MagicMock()]
+        props_by_name = _make_props_by_name(
+            ["Flake A", "Spinner Solo"], pixel_count=50, display_as="Custom"
+        )
+
+        result = _place_drum_accents(
+            groups=[group], hierarchy=hierarchy, assignment=assignment,
+            variant_library=_make_variant_library(), props_by_name=props_by_name,
+        )
+        assert "Flake A" not in result
+        assert "Spinner Solo" in result
+
+    def test_group_without_placements_does_not_block_accents(self):
+        """A tier-6 group that formed but received no placements this section
+        does not suppress the per-model fallback."""
+        hits = [(1000, "kick")]
+        hierarchy = _make_hierarchy(drum_hits=hits)
+        assignment = _make_assignment(energy_score=80)
+        group = _make_radial_group(name="06_PROP_Snowflake")
+        props_by_name = _make_props_by_name(group.members, pixel_count=50)
+
+        result = _place_drum_accents(
+            groups=[group], hierarchy=hierarchy, assignment=assignment,
+            variant_library=_make_variant_library(), props_by_name=props_by_name,
+        )
+        for model_name in group.members:
+            assert model_name in result
 
 
 # ---------------------------------------------------------------------------

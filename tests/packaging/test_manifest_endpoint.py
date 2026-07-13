@@ -23,6 +23,19 @@ def test_dev_mode_returns_stub(client_dev):
     assert body["is_bundled"] is False
 
 
+def test_dev_mode_reports_backend_commit_and_start_time(client_dev):
+    """The dev stub carries the running checkout's git commit and the
+    process start time so the UI can flag a stale backend server."""
+    import re
+    from datetime import datetime
+
+    body = client_dev.get("/api/v1/manifest").get_json()
+    # Tests run from a git checkout, so a commit must resolve.
+    assert re.fullmatch(r"[0-9a-f]{7,}(-dirty)?", body["backend_commit"])
+    # ISO-8601, parseable.
+    datetime.fromisoformat(body["backend_started_at"])
+
+
 def test_bundled_stub_when_manifest_file_absent(monkeypatch, tmp_path):
     # Simulate bundled mode but without the manifest file on disk — the
     # endpoint must fall back to the dev stub (shape-compatible) rather

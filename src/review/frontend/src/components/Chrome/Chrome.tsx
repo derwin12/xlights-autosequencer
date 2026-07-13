@@ -1,7 +1,8 @@
 import React from 'react';
 import type { Screen } from 'src/store/app';
 import type { Song, Folder } from 'src/store/library';
-import { About } from '../About/About';
+import { About, shortCommit } from '../About/About';
+import { useManifestStore } from '../../store/manifest';
 import styles from './Chrome.module.css';
 
 function fmtBuildTime(iso: string): string {
@@ -64,6 +65,12 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
 
   const [aboutOpen, setAboutOpen] = React.useState(false);
 
+  // Backend code stamp — the Vite build stamp only covers the JS bundle;
+  // this shows what commit the server process is actually running.
+  const manifest = useManifestStore((s) => s.manifest);
+  const loadManifest = useManifestStore((s) => s.load);
+  React.useEffect(() => { void loadManifest(); }, [loadManifest]);
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
@@ -86,7 +93,10 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
         <button
           data-testid="build-stamp"
           onClick={() => setAboutOpen(true)}
-          title="Frontend build — click for details"
+          title={
+            'ui = frontend bundle, api = running backend code — click for details'
+            + (manifest?.backend_started_at ? ` (backend up since ${fmtBuildTime(manifest.backend_started_at)})` : '')
+          }
           style={{
             marginLeft: 'auto',
             background: 'none',
@@ -99,7 +109,8 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
             padding: '0 12px',
           }}
         >
-          {__GIT_COMMIT__} · built {fmtBuildTime(__BUILD_TIME__)}
+          ui {__GIT_COMMIT__} · built {fmtBuildTime(__BUILD_TIME__)}
+          {manifest?.backend_commit ? ` · api ${shortCommit(manifest.backend_commit)}` : ''}
         </button>
       </header>
       <About open={aboutOpen} onClose={() => setAboutOpen(false)} />

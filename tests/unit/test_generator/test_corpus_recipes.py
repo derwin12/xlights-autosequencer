@@ -81,14 +81,15 @@ def _make_hierarchy(beat_times: list[int] | None, duration_ms: int = 8000) -> Hi
 
 
 def _make_assignment(section: SectionEnergy, layers: list[EffectLayer],
-                     variation_seed: int = 0) -> SectionAssignment:
+                     variation_seed: int = 0,
+                     active_tiers: frozenset[int] = frozenset({1, 6})) -> SectionAssignment:
     theme = Theme(
         name="Test Theme", mood="structural", occasion="general", genre="any",
         intent="test", layers=layers, palette=["#ff0000", "#00ff00"],
     )
     return SectionAssignment(
         section=section, theme=theme,
-        active_tiers=frozenset({1, 6}),
+        active_tiers=active_tiers,
         variation_seed=variation_seed,
     )
 
@@ -99,18 +100,26 @@ _SNOWFLAKE_GROUP = PowerGroup(
 _ARCH_GROUP = PowerGroup(
     name="06_PROP_Arch", tier=6, members=["Arch 1", "Arch 2"],
 )
+_MEGATREE_GROUP = PowerGroup(
+    name="06_PROP_Mega_Tree", tier=6, members=["Mega Tree 1", "Mega Tree 2"],
+)
 
 _BEATS = [0, 500, 1000, 1500, 2000, 2500, 3000, 3500]
+
+_DEFAULT_LIBRARY_NAMES = ("Color Wash", "Shockwave", "Ripple", "Single Strand", "Spirals")
 
 
 def _place(section: SectionEnergy, group: PowerGroup,
            variation_seed: int = 0,
            layers: list[EffectLayer] | None = None,
-           hierarchy: HierarchyResult | None = None):
+           hierarchy: HierarchyResult | None = None,
+           library_names: tuple[str, ...] = _DEFAULT_LIBRARY_NAMES,
+           active_tiers: frozenset[int] = frozenset({1, 6})):
     layers = layers or [EffectLayer(variant="Color Wash")]
-    library = _make_library("Color Wash", "Shockwave", "Ripple", "Single Strand")
-    variant_library = _make_variant_library("Color Wash", "Shockwave", "Ripple", "Single Strand")
-    assignment = _make_assignment(section, layers, variation_seed=variation_seed)
+    library = _make_library(*library_names)
+    variant_library = _make_variant_library(*library_names)
+    assignment = _make_assignment(section, layers, variation_seed=variation_seed,
+                                  active_tiers=active_tiers)
     return place_effects(
         assignment, [group], library,
         hierarchy if hierarchy is not None else _make_hierarchy(_BEATS),
@@ -154,6 +163,34 @@ class TestRecipeMatching:
 
     def test_non_tier6_excluded(self) -> None:
         g = PowerGroup(name="07_COMP_Arches", tier=7, members=["Arch 1", "Arch 2"])
+        assert recipe_for_group(g) is None
+
+    def test_megatree_group_name_matches(self) -> None:
+        assert recipe_for_group(_MEGATREE_GROUP).family == "megatree"
+
+    def test_megatree_member_majority_matches(self) -> None:
+        g = PowerGroup(name="06_PROP_Trees", tier=6,
+                       members=["Mega Tree 1", "Mega Tree 2", "Palm Tree"])
+        assert recipe_for_group(g).family == "megatree"
+
+    def test_mega_topper_does_not_match_megatree(self) -> None:
+        g = PowerGroup(name="06_PROP_Mega_Topper", tier=6,
+                       members=["Mega Topper 1", "Mega Topper 2"])
+        assert recipe_for_group(g) is None
+
+    def test_hero_megatree_group_matches(self) -> None:
+        # A solo mega tree never forms a tier-6 pair group — it is promoted
+        # to a tier-8 HERO group, which must still receive the recipe.
+        g = PowerGroup(name="08_HERO_Mega_Tree", tier=8, members=["Mega Tree"])
+        assert recipe_for_group(g).family == "megatree"
+
+    def test_hero_with_submodel_members_matches(self) -> None:
+        g = PowerGroup(name="08_HERO_Mega_Tree", tier=8,
+                       members=["Mega Tree/Ring 1", "Mega Tree/Ring 2"])
+        assert recipe_for_group(g).family == "megatree"
+
+    def test_non_recipe_tiers_still_excluded(self) -> None:
+        g = PowerGroup(name="07_COMP_Mega_Tree", tier=7, members=["Mega Tree"])
         assert recipe_for_group(g) is None
 
 
@@ -255,6 +292,207 @@ class TestCorpusRecipePlacement:
             hierarchy=_make_hierarchy(None),
         )
         assert result.get("06_PROP_Snowflake"), "group must still receive placements"
+
+    def test_megatree_without_on_falls_back_to_single_layer(self) -> None:
+        # The default test library has no "On" definition, so the
+        # color-over-mask composition degrades to the flat form.
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP)
+        placements = result["06_PROP_Mega_Tree"]
+        assert len(placements) == len(_BEATS)
+        assert all(p.effect_name == "Shockwave" for p in placements)
+        assert all(p.color_palette == ["#FFFFFF"] for p in placements)
+        assert all(p.layer == 0 for p in placements)
+
+    def test_megatree_alternate_is_spirals_with_mined_preset(self) -> None:
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP, variation_seed=3)
+        placements = result["06_PROP_Mega_Tree"]
+        assert placements
+        for p in placements:
+            assert p.effect_name == "Spirals"
+            assert p.parameters["E_SLIDER_Spirals_Count"] == "1"
+            assert p.parameters["E_CHECKBOX_Spirals_Grow"] == "0"
+            assert "E_SLIDER_Shockwave_End_Radius" not in p.parameters
+
+
+# ── megatree color-over-mask composition ─────────────────────────────────────
+
+
+_LIBRARY_WITH_ON = _DEFAULT_LIBRARY_NAMES + ("On",)
+
+
+class TestMegatreeColorOverMask:
+    def test_on_color_layer_over_mask_layer(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place(section, _MEGATREE_GROUP, library_names=_LIBRARY_WITH_ON)
+        placements = result["06_PROP_Mega_Tree"]
+
+        color_layers = [p for p in placements if p.effect_name == "On"]
+        masks = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(color_layers) == 1
+        assert len(masks) == len(_BEATS)
+
+        on = color_layers[0]
+        # On sits on the top layer, spans the section, and carries the mined
+        # Unmask blend so the mask below only contributes shape/brightness.
+        assert on.layer == 0
+        assert on.start_ms == section.start_ms
+        assert on.end_ms == section.end_ms
+        assert on.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
+        # Color comes from the section theme (one solid color), not white.
+        assert len(on.color_palette) == 1
+
+        # Masks move to layer 1, stay white (shape only).
+        assert all(p.layer == 1 for p in masks)
+        assert all(p.color_palette == ["#FFFFFF"] for p in masks)
+
+    def test_spirals_alternate_also_gets_color_layer(self) -> None:
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        variation_seed=3, library_names=_LIBRARY_WITH_ON)
+        placements = result["06_PROP_Mega_Tree"]
+        assert [p.effect_name for p in placements].count("On") == 1
+        masks = [p for p in placements if p.effect_name == "Spirals"]
+        assert masks
+        assert all(p.layer == 1 for p in masks)
+
+    def test_snowflake_recipe_not_affected_by_on_in_library(self) -> None:
+        # color_over_mask is megatree-only; snowflakes stay single-layer
+        # bursts (plus their Off backdrop when Off exists).
+        result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP,
+                        library_names=_LIBRARY_WITH_ON)
+        placements = result["06_PROP_Snowflake"]
+        assert all(p.effect_name != "On" for p in placements)
+        assert all(p.layer == 0 for p in placements)
+
+
+# ── placement progress callback ──────────────────────────────────────────────
+
+
+class TestPlacementProgressCallback:
+    def test_prop_groups_announced_once_with_human_names(self) -> None:
+        from src.generator.effect_placer import _humanize_group_name
+
+        assert _humanize_group_name("06_PROP_Mega_Tree") == "Mega Tree"
+        assert _humanize_group_name("08_HERO_Mega_Tree") == "Mega Tree"
+        assert _humanize_group_name("06_PROP_Snowflake") == "Snowflake"
+
+        messages: list[str] = []
+        layers = [EffectLayer(variant="Color Wash")]
+        library = _make_library(*_DEFAULT_LIBRARY_NAMES)
+        variant_library = _make_variant_library(*_DEFAULT_LIBRARY_NAMES)
+        assignment = _make_assignment(_make_section(label="chorus"), layers)
+        place_effects(
+            assignment, [_SNOWFLAKE_GROUP, _ARCH_GROUP], library,
+            _make_hierarchy(_BEATS),
+            variant_library=variant_library,
+            progress_cb=messages.append,
+        )
+        assert "placing Snowflake" in messages
+        assert "placing Arch" in messages
+        assert len(messages) == len(set(messages)), "groups must be announced once"
+
+    def test_no_callback_is_silent_default(self) -> None:
+        # Smoke: omitting progress_cb keeps the original behavior.
+        result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP)
+        assert result["06_PROP_Snowflake"]
+
+
+# ── tier-8 HERO wiring (solo mega tree) ──────────────────────────────────────
+
+
+_HERO_MEGATREE_GROUP = PowerGroup(
+    name="08_HERO_Mega_Tree", tier=8, members=["Mega Tree"],
+)
+
+
+class TestHeroRecipePlacement:
+    def test_hero_megatree_chorus_gets_white_shockwave_per_beat(self) -> None:
+        result = _place(_make_section(label="chorus"), _HERO_MEGATREE_GROUP,
+                        active_tiers=frozenset({8}))
+        placements = result["08_HERO_Mega_Tree"]
+        assert len(placements) == len(_BEATS)
+        assert all(p.effect_name == "Shockwave" for p in placements)
+        assert all(p.color_palette == ["#FFFFFF"] for p in placements)
+
+    def test_hero_megatree_alternate_is_spirals_with_preset(self) -> None:
+        result = _place(_make_section(label="chorus"), _HERO_MEGATREE_GROUP,
+                        variation_seed=3, active_tiers=frozenset({8}))
+        placements = result["08_HERO_Mega_Tree"]
+        assert placements
+        for p in placements:
+            assert p.effect_name == "Spirals"
+            assert p.parameters["E_SLIDER_Spirals_Count"] == "1"
+
+    def test_hero_megatree_low_energy_verse_keeps_normal_placement(self) -> None:
+        result = _place(_make_section(label="verse", energy=40),
+                        _HERO_MEGATREE_GROUP, active_tiers=frozenset({8}))
+        placements = result.get("08_HERO_Mega_Tree", [])
+        # The hero still gets its normal theme placement, not the recipe stack.
+        assert placements
+        assert not all(
+            p.effect_name == "Shockwave" and p.color_palette == ["#FFFFFF"]
+            for p in placements
+        )
+
+    def test_hero_non_megatree_unaffected(self) -> None:
+        hero = PowerGroup(name="08_HERO_Matrix", tier=8, members=["Matrix"])
+        result = _place(_make_section(label="chorus"), hero,
+                        active_tiers=frozenset({8}))
+        placements = result.get("08_HERO_Matrix", [])
+        assert placements
+        assert not all(p.color_palette == ["#FFFFFF"] for p in placements)
+
+
+# ── Off backdrop (layer beneath the bursts) ──────────────────────────────────
+
+
+_LIBRARY_WITH_OFF = _DEFAULT_LIBRARY_NAMES + ("Off",)
+
+
+class TestOffBackdrop:
+    def test_snowflake_recipe_adds_section_spanning_off_on_layer_1(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place(section, _SNOWFLAKE_GROUP, library_names=_LIBRARY_WITH_OFF)
+        placements = result["06_PROP_Snowflake"]
+        offs = [p for p in placements if p.effect_name == "Off"]
+        assert len(offs) == 1
+        assert offs[0].layer == 1
+        assert offs[0].start_ms == section.start_ms
+        assert offs[0].end_ms == section.end_ms
+        # The bursts stay on the top layer, one per beat, unchanged.
+        bursts = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(bursts) == len(_BEATS)
+        assert all(p.layer == 0 for p in bursts)
+
+    def test_arch_recipe_adds_off_backdrop(self) -> None:
+        result = _place(_make_section(label="chorus"), _ARCH_GROUP,
+                        library_names=_LIBRARY_WITH_OFF)
+        offs = [p for p in result["06_PROP_Arch"] if p.effect_name == "Off"]
+        assert len(offs) == 1
+        assert offs[0].layer == 1
+
+    def test_megatree_recipe_has_no_off_backdrop(self) -> None:
+        # Off backdrop is not part of the mined megatree idiom.
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=_LIBRARY_WITH_OFF)
+        offs = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "Off"]
+        assert offs == []
+
+    def test_off_missing_from_library_skips_backdrop(self) -> None:
+        # A catalog without "Off" must not break the recipe placement.
+        result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP)
+        placements = result["06_PROP_Snowflake"]
+        assert len(placements) == len(_BEATS)
+        assert all(p.effect_name == "Shockwave" for p in placements)
+
+    def test_multi_layer_theme_adds_single_off_backdrop(self) -> None:
+        layers = [
+            EffectLayer(variant="Color Wash"),
+            EffectLayer(variant="Ripple"),
+        ]
+        result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP,
+                        layers=layers, library_names=_LIBRARY_WITH_OFF)
+        offs = [p for p in result["06_PROP_Snowflake"] if p.effect_name == "Off"]
+        assert len(offs) == 1
 
     def test_multi_layer_theme_places_recipe_once(self) -> None:
         # 3-layer theme: layers 0 and 1 both map to tier 6 — the recipe must

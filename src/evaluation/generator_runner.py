@@ -5,7 +5,7 @@ import io
 import random
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -32,6 +32,7 @@ def run(
     lyrics: Optional[list[dict]] = None,
     words: Optional[list[dict]] = None,
     phonemes: Optional[list[dict]] = None,
+    progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Run the generator deterministically and return .xsq bytes.
 
@@ -85,7 +86,8 @@ def run(
 
     try:
         return _run_pipeline(audio_path, layout_path, seed, theme_overrides=theme_overrides,
-                              lyrics=lyrics, words=words, phonemes=phonemes)
+                              lyrics=lyrics, words=words, phonemes=phonemes,
+                              progress_cb=progress_cb)
     except GeneratorError:
         raise
     except Exception as exc:
@@ -100,6 +102,7 @@ def _run_pipeline(
     lyrics: Optional[list[dict]] = None,
     words: Optional[list[dict]] = None,
     phonemes: Optional[list[dict]] = None,
+    progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Execute the full generation pipeline and return .xsq bytes."""
     from src.analyzer.orchestrator import run_orchestrator
@@ -148,7 +151,8 @@ def _run_pipeline(
         np.random.seed(seed % (2**32))
 
         # Build plan
-        plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library)
+        plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library,
+                          progress_cb=progress_cb)
 
         # Write .xsq to a temp file, then read back as bytes
         output_path = Path(tmp_dir) / "output.xsq"

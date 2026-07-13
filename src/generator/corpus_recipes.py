@@ -1,4 +1,4 @@
-"""Corpus-derived prop-family placement recipes for tier-6 PROP groups.
+r"""Corpus-derived prop-family placement recipes for tier-6 PROP groups.
 
 Mined from the 12 professionally hand-built reference packages (.xsqz) in
 ``F:\ShowFolderAI`` — see ``docs/snowflake_sequencing_corpus/`` and
@@ -12,6 +12,15 @@ Mined from the 12 professionally hand-built reference packages (.xsqz) in
 - **Arches** — solid-white Single Strand chase, one segment per beat,
   chorus/outro-confined, optionally recolored by a mask layer (not replicated
   here in v1).
+- **Mega trees** — Shockwave bursts (36% of tree-proper placements, same
+  center-out preset as snowflakes) alternating with sustained single-spiral
+  Spirals spins (18%), solid white dominant. See
+  ``docs/megatree_sequencing_corpus/``.
+
+Snowflake and arch groups additionally carry a section-spanning **Off
+backdrop** on the xLights layer beneath the bursts (``off_backdrop``): the
+reference packages tile qualifying sections with 12-15s Off blocks on layer
+index 1-2 of the group element so the props stay black between bursts.
 
 A recipe only fires on qualifying sections (chorus-like label or high energy);
 everywhere else the normal rotation/pool placement applies, so verses keep
@@ -45,10 +54,25 @@ class PropFamilyRecipe:
     palette: tuple[str, ...] = ("#FFFFFF",)
     qualifying_labels: tuple[str, ...] = ("chorus", "drop", "hook", "climax", "build_peak")
     min_energy: int = 65
-    # xLights parameter preset mined from the corpus placements, applied to
-    # the primary effect only (the alternate keeps library defaults — its
-    # parameter space differs).
+    # xLights parameter presets mined from the corpus placements. The primary
+    # preset applies to effect_name; the alt preset applies to alt_effect_name
+    # (empty → the alternate keeps library defaults).
     parameter_overrides: tuple[tuple[str, str], ...] = ()
+    alt_parameter_overrides: tuple[tuple[str, str], ...] = ()
+    # The reference packages place a section-spanning Off effect on the layer
+    # beneath the beat bursts (xLights layer 2) on the group element, so the
+    # props render black between bursts instead of picking up whole-house
+    # bleed. Mined: snowflake Off placements are 43/58 on layer index 1;
+    # arch 69/75 on layer index 1-2, spans of 12-15s tiling the sections.
+    off_backdrop: bool = False
+    # Two-layer "color over mask" composition, the dominant mega-tree idiom:
+    # a section-spanning On on the upper layer with LayerMethod "2 is Unmask"
+    # (517 mined placements), colored from the section theme, over the
+    # recipe's motion effect on the layer directly below acting as the
+    # brightness mask. Mined pairs: On-over-Spirals 269 placements,
+    # On-over-Shockwave 214, On-over-Lightning 101, On-over-Pinwheel 52;
+    # 72% of the tree's lit time runs 2+ layers deep.
+    color_over_mask: bool = False
 
 
 # Mined presets — near-unanimous across all 12 reference packages:
@@ -82,6 +106,22 @@ _SHOCKWAVE_BURST: tuple[tuple[str, str], ...] = (
 )
 
 
+# Megatree Spirals preset — mined from 720 Spirals placements on Mega Tree
+# elements: single spiral (Count=1 at 96%), no grow/shrink (96-97%), blend
+# off (87%); rotation/movement/thickness vary per song, so representative
+# mid-corpus values are used.
+_SPIRALS_MEGATREE: tuple[tuple[str, str], ...] = (
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "140"),
+    ("E_SLIDER_Spirals_Thickness", "30"),
+    ("E_TEXTCTRL_Spirals_Movement", "4"),
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+)
+
+
 CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     PropFamilyRecipe(
         family="snowflake",
@@ -89,24 +129,51 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         effect_name="Shockwave",
         alt_effect_name="Ripple",
         parameter_overrides=_SHOCKWAVE_BURST,
+        off_backdrop=True,
     ),
     PropFamilyRecipe(
         family="arch",
         match_tokens=("arch",),
         effect_name="Single Strand",
         parameter_overrides=_CHASE_FROM_HEAD,
+        off_backdrop=True,
+    ),
+    # Mega tree — mined from the same 12 packages (docs/megatree_sequencing_
+    # corpus/). Time-weighted, the tree is a layered composition, not a
+    # single effect: Spirals 25% / On 23% / Shader 14% / Shockwave 13% of
+    # lit time, with 72% of that time 2+ layers deep. The dominant blend is
+    # an On color layer unmasked by the motion effect below it
+    # (color_over_mask). Shockwave/Spirals serve as the mask shapes; the
+    # Shockwave preset matches the snowflake burst (>96% field agreement).
+    # Off backdrop is NOT part of the megatree idiom (55/7.7k placements).
+    # Tokens match "06_PROP_Mega_Tree" / "08_HERO_Mega_Tree" and member
+    # names like "Mega Tree 2"; "Mega Topper" props deliberately do not
+    # match — different prop family.
+    PropFamilyRecipe(
+        family="megatree",
+        match_tokens=("megatree", "mega_tree", "mega tree"),
+        effect_name="Shockwave",
+        alt_effect_name="Spirals",
+        parameter_overrides=_SHOCKWAVE_BURST,
+        alt_parameter_overrides=_SPIRALS_MEGATREE,
+        color_over_mask=True,
     ),
 )
 
 
 def recipe_for_group(group: PowerGroup) -> PropFamilyRecipe | None:
-    """Return the corpus recipe for a tier-6 PROP group, or None.
+    """Return the corpus recipe for a tier-6 PROP or tier-8 HERO group, or None.
+
+    Tier 8 is included because a family's props don't always pair up into a
+    tier-6 group — a layout with a single mega tree promotes it to
+    ``08_HERO_Mega_Tree``, and the corpus effects were overwhelmingly placed
+    on such individual model elements.
 
     Radial sub-groups (``prop_type == "radial"``) are never matched — they
     already have a dedicated chase-across-members placer that the corpus
     recipe must not displace.
     """
-    if group.tier != 6 or group.prop_type == "radial":
+    if group.tier not in (6, 8) or group.prop_type == "radial":
         return None
     name = group.name.lower()
     for recipe in CORPUS_RECIPES:
