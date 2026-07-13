@@ -10,7 +10,7 @@ import { useManifestStore } from "../../store/manifest";
  * scenarios. Auto-update is explicitly out of scope for v1.
  */
 
-const DOWNLOAD_PAGE_URL = "https://xlight.example.com/download"; // TODO: set real URL at ship
+const DOWNLOAD_PAGE_URL = "https://github.com/derwin12/xlight-autosequencer/releases";
 
 /** Full 40-char hashes (bundled manifests) are trimmed; short dev hashes
  * keep their "-dirty" suffix intact. */

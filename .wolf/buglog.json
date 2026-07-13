@@ -3101,6 +3101,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-13"
+    },
+    {
+      "id": "bug-189",
+      "timestamp": "2026-07-13",
+      "error_message": "About dialog 'Check for updates' opens https://xlight.example.com/download which is dead",
+      "file": "src/review/frontend/src/components/About/About.tsx",
+      "root_cause": "DOWNLOAD_PAGE_URL is a ship-time placeholder from feature 052 (Tauri desktop packaging); no real download page exists yet",
+      "fix": "DOWNLOAD_PAGE_URL now points at https://github.com/derwin12/xlight-autosequencer/releases; bundle rebuilt. Optional follow-up: hide the button when app_version=='dev'",
+      "tags": [
+        "frontend",
+        "about-dialog",
+        "placeholder"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
     }
   ]
 }
