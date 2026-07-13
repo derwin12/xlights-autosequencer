@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import random
 import string
 import threading
 import time
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from flask import Response, jsonify, request, stream_with_context
 
@@ -63,9 +66,11 @@ def _default_overrides() -> dict:
     }
 
 
-# Default theme per section kind. Must reference real theme_ids from the
-# catalog (GET /api/v1/themes) — assignment PUTs validate against it, so a
-# stale id here produces defaults the user can never re-select (bug-176).
+# Static fallback: default theme per section kind. Must reference real
+# theme_ids from the catalog (GET /api/v1/themes) — assignment PUTs validate
+# against it, so a stale id here produces defaults the user can never
+# re-select (bug-176). Used only when the energy/key-aware selector below
+# cannot run (analysis stub, missing hierarchy, count mismatch).
 _KIND_TO_THEME: dict[str, str] = {
     "intro": "warm-glow",
     "verse": "aurora",
@@ -77,12 +82,91 @@ _KIND_TO_THEME: dict[str, str] = {
 }
 
 
-def _auto_assign_defaults(song_id: str, sections: list[dict]) -> list[dict]:
-    """Build default ThemeAssignment list from sections per FR-012a."""
+def _smart_default_theme_ids(
+    sections: list[dict], hierarchy: Any, story: dict | None,
+) -> list[str] | None:
+    """Per-section default theme_ids via the generator's real selector.
+
+    Uses the same machinery as CLI generation — section energies from the
+    story (or hierarchy energy curves), mood tiers, minor/major scale — so
+    dashboard defaults match what the generator would auto-pick. Returns
+    None when derivation isn't possible; the caller falls back to the
+    static kind map.
+    """
+    try:
+        from src.effects.library import load_effect_library
+        from src.generator.energy import derive_section_energies
+        from src.generator.plan import _section_energies_from_story
+        from src.generator.theme_selector import select_themes
+        from src.themes.library import load_theme_library
+        from src.variants.library import load_variant_library
+
+        from .themes import _load_themes, _slugify
+
+        if story is not None and story.get("sections"):
+            section_energies = _section_energies_from_story(story)
+            prefs = story.get("preferences", {}) or {}
+            genre = prefs.get("genre") or "any"
+            occasion = prefs.get("occasion") or "general"
+            scale = None  # story mood tiers already encode key character
+        else:
+            ef = getattr(hierarchy, "essentia_features", None) or {}
+            section_energies = derive_section_energies(
+                hierarchy.sections,
+                hierarchy.energy_curves,
+                hierarchy.energy_impacts,
+                dynamic_complexity=ef.get("dynamic_complexity"),
+                loudness_lufs=ef.get("loudness_lufs"),
+                song_duration_ms=hierarchy.duration_ms,
+            )
+            genre, occasion, scale = "any", "general", ef.get("scale")
+
+        if len(section_energies) != len(sections):
+            return None
+
+        effect_library = load_effect_library()
+        variant_library = load_variant_library(effect_library=effect_library)
+        theme_library = load_theme_library(
+            effect_library=effect_library, variant_library=variant_library,
+        )
+        selected = select_themes(
+            section_energies, theme_library, genre, occasion, scale=scale,
+        )
+
+        catalog_ids = {t["theme_id"] for t in _load_themes()}
+        theme_ids = [_slugify(a.theme.name) for a in selected]
+        if any(tid not in catalog_ids for tid in theme_ids):
+            return None
+        return theme_ids
+    except Exception:
+        # Defaults must never block the analyze flow — fall back to the
+        # static kind map and leave the trail in the server log.
+        logger.warning("smart theme defaults failed; using static kind map",
+                       exc_info=True)
+        return None
+
+
+def _auto_assign_defaults(
+    song_id: str, sections: list[dict],
+    hierarchy: Any = None, story: dict | None = None,
+) -> list[dict]:
+    """Build default ThemeAssignment list from sections per FR-012a.
+
+    When the analysis hierarchy is available, defaults come from the
+    generator's energy/key-aware theme selector; otherwise (stub analysis,
+    re-derivation without a hierarchy) the static kind map applies.
+    """
+    smart_ids = (
+        _smart_default_theme_ids(sections, hierarchy, story)
+        if hierarchy is not None else None
+    )
     assignments = []
-    for sec in sections:
-        kind = sec.get("kind", "unknown")
-        theme_id = _KIND_TO_THEME.get(kind, "neutral-glow")
+    for i, sec in enumerate(sections):
+        if smart_ids is not None:
+            theme_id = smart_ids[i]
+        else:
+            kind = sec.get("kind", "unknown")
+            theme_id = _KIND_TO_THEME.get(kind, "neutral-glow")
         assignments.append({
             "section_index": sec["index"],
             "theme_id": theme_id,
@@ -577,7 +661,8 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         }
 
         # ── Persist to session (unless force=True — wait for commit) ─────────
-        assignments = _auto_assign_defaults(song_id, sections)
+        assignments = _auto_assign_defaults(song_id, sections,
+                                            hierarchy=hierarchy, story=story)
         if not state.force:
             try:
                 save_full_session(song_id, {
