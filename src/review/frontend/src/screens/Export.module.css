@@ -105,12 +105,25 @@
 .progressGrid {
   display: grid;
   /* Stage labels are short and fixed; the stream log carries per-group
-     placement detail and needs the flexible width so lines don't wrap. */
-  grid-template-columns: 180px minmax(0, 1fr) 280px;
+     placement detail and must win the flexible space at any window width —
+     the render inspector shrinks (to a 190px floor) before the stream does. */
+  grid-template-columns: 170px minmax(0, 2.2fr) minmax(190px, 1fr);
   border: 1px solid var(--line, #222);
   margin: 4px 0 16px;
   max-width: 1100px;
   min-height: 240px;
+}
+
+/* Narrow windows: move the render inspector to its own full-width row so
+   the stream keeps enough columns for one placement line per log line. */
+@media (max-width: 760px) {
+  .progressGrid {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+  .inspector {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line, #222);
+  }
 }
 
 .stagePanel {
