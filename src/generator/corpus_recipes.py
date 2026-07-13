@@ -329,9 +329,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_SHOCKWAVE_BURST,
         off_backdrop=True,
     ),
+    # "star" keeps Arch Star props out — they are a star-family prop that
+    # happens to sit on an arch, and the star recipe (later in this tuple)
+    # claims them instead.
     PropFamilyRecipe(
         family="arch",
         match_tokens=("arch",),
+        exclude_tokens=("star",),
         effect_name="Single Strand",
         parameter_overrides=_CHASE_FROM_HEAD,
         off_backdrop=True,
@@ -444,6 +448,27 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
     ),
+    # Stars — mined from the same 12 packages (docs/star_sequencing_corpus/,
+    # 15.2k placements over 12 songs, the largest family). One idiom across
+    # every star sub-family (stars, tree-stars, pole-stars, arch-stars):
+    # sub-beat Shockwave pops (57%, 12/12 songs, medians 0.20-0.35s, preset
+    # field-identical to the snowflake burst) colored by an On "2 is Unmask"
+    # layer, with SingleStrand chases as the verse texture (12%; chorus
+    # placements split Shockwave 618 / chase 444, verses are almost all
+    # chase). Qualifying sections get the pops; elsewhere the radial
+    # chase-across-members placer keeps running, which matches the corpus's
+    # verse behavior. "burst" excludes Starburst spinner props.
+    PropFamilyRecipe(
+        family="star",
+        match_tokens=("star",),
+        exclude_tokens=("burst",),
+        effect_name="Shockwave",
+        alt_effect_name="Single Strand",
+        parameter_overrides=_SHOCKWAVE_BURST,
+        alt_parameter_overrides=_CHASE_FROM_HEAD,
+        color_over_mask=True,
+        color_cycle_bars=True,
+    ),
     # Mega toppers — mined from the same 12 packages (docs/topper_sequencing_
     # corpus/, 3.8k placements over 12 songs). The topper is the tree's
     # accent crown: co-active with the tree 85% of the time but not slaved
@@ -525,11 +550,21 @@ def recipe_for_group(group: PowerGroup) -> PropFamilyRecipe | None:
     canvas a single prop family's recipe (e.g. minitree on a tree-heavy
     layout) — never intended.
 
-    Radial sub-groups (``prop_type == "radial"``) are never matched — they
-    already have a dedicated chase-across-members placer that the corpus
-    recipe must not displace.
+    Radial subModel groups (``prop_type == "radial"`` with ``Parent/Sub``
+    member addresses, produced by ``_tier6_radial_subgroups``) are never
+    matched — they have a dedicated ring/spoke chase placer that the corpus
+    recipe must not displace. Whole-prop groups that merely *classify* as
+    radial (stars, tree-stars) do match: the reference packages give them
+    their own chorus idiom, and the member chase remains the fallback on
+    non-qualifying sections.
     """
-    if group.tier not in (1, 6, 8) or group.prop_type == "radial":
+    if group.tier not in (1, 6, 8):
+        return None
+    if (
+        group.prop_type == "radial"
+        and group.members
+        and all("/" in member for member in group.members)
+    ):
         return None
 
     def _matches(recipe: PropFamilyRecipe, text: str) -> bool:

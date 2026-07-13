@@ -1077,3 +1077,74 @@ class TestMegaTopperRecipe:
         placements = result["08_HERO_Mega_Topper"]
         bursts = [p for p in placements if p.effect_name == "Shockwave"]
         assert len(bursts) == len(_BEATS)
+
+
+# ── star recipe ───────────────────────────────────────────────────────────────
+
+
+_STAR_GROUP = PowerGroup(
+    name="06_PROP_Star", tier=6,
+    members=["Star 1", "Star 2", "Star 3", "Star 4"], prop_type="radial",
+)
+_LIBRARY_STAR = ("Color Wash", "Shockwave", "On", "Ripple",
+                 "Single Strand", "Spirals")
+
+
+class TestStarRecipe:
+    def test_star_group_matches_despite_radial_prop_type(self) -> None:
+        # Whole-prop star groups classify as radial but are not subModel
+        # chase groups — they must reach the star recipe.
+        assert recipe_for_group(_STAR_GROUP).family == "star"
+
+    def test_treestar_group_matches_star_not_minitree(self) -> None:
+        g = PowerGroup(name="06_PROP_TreeStar", tier=6,
+                       members=["TreeStar 1", "TreeStar 2"], prop_type="radial")
+        assert recipe_for_group(g).family == "star"
+
+    def test_arch_star_group_matches_star_not_arch(self) -> None:
+        g = PowerGroup(name="06_PROP_Arch_Star", tier=6,
+                       members=["Arch Star 1", "Arch Star 2"])
+        assert recipe_for_group(g).family == "star"
+
+    def test_starburst_excluded(self) -> None:
+        g = PowerGroup(name="06_PROP_Starburst", tier=6,
+                       members=["Starburst_6ft_8_Point A", "Starburst_6ft_8_Point B"])
+        assert recipe_for_group(g) is None
+
+    def test_ring_submodel_group_still_blocked(self) -> None:
+        g = PowerGroup(name="06_PROP_Star_Rings", tier=6,
+                       members=["Star 1/Ring 1", "Star 1/Ring 2"],
+                       prop_type="radial")
+        assert recipe_for_group(g) is None
+
+    def test_chorus_gets_simultaneous_pops_with_cycling_color(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place(section, _STAR_GROUP, library_names=_LIBRARY_STAR)
+        placements = result["06_PROP_Star"]
+        pops = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(pops) == len(_BEATS)
+        params = dict(pops[0].parameters)
+        assert params["E_SLIDER_Shockwave_End_Radius"] == "100"
+        ons = sorted((p for p in placements if p.effect_name == "On"),
+                     key=lambda p: p.start_ms)
+        assert len(ons) == 2
+        assert ons[0].color_palette != ons[1].color_palette
+
+    def test_repeated_section_alternates_to_chase(self) -> None:
+        result = _place(_make_section(label="chorus"), _STAR_GROUP,
+                        variation_seed=3, library_names=_LIBRARY_STAR)
+        placements = result["06_PROP_Star"]
+        chases = [p for p in placements if p.effect_name == "Single Strand"]
+        assert len(chases) == len(_BEATS)
+        assert dict(chases[0].parameters)["E_CHOICE_Fade_Type"] == "From Head"
+
+    def test_verse_falls_back_to_radial_chase(self) -> None:
+        # Non-qualifying sections keep the existing radial chase-across-
+        # members behavior (placements land on individual member models).
+        result = _place(_make_section(label="verse", energy=40), _STAR_GROUP,
+                        library_names=_LIBRARY_STAR)
+        assert "06_PROP_Star" not in result or not any(
+            p.effect_name == "Shockwave" and
+            dict(p.parameters).get("E_SLIDER_Shockwave_End_Radius") == "100"
+            for p in result.get("06_PROP_Star", [])
+        )
