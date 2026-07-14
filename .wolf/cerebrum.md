@@ -6,6 +6,8 @@
 
 ## User Preferences
 
+- **Discard openwolf's live auto-buglog noise, don't let it accumulate.** (2026-07-14) The registered hooks auto-write "auto-detected" entries to `.wolf/buglog.json` on every Edit/Read (often garbled — e.g. mangled unicode arrows, misfiring on plain variable renames as if they were bug fixes) and drastically rewrite `.wolf/anatomy.md`. Before committing anything in `.wolf/`, run `git checkout -- .wolf/anatomy.md .wolf/hooks/_session.json .wolf/buglog.json` to discard these unless a change to one of those files was actually intentional. Consequence: openwolf's own session/token stats stay at 0 — accepted tradeoff for keeping buglog.json curated.
+
 <!-- How the user likes things done. Code style, tools, patterns, communication. -->
 
 - **Adversarial review is expected.** Code review should be suspicious, not agreeable. Cite `file:line`, flag concrete findings, rank by severity (CRITICAL / HIGH / MEDIUM / LOW). No generic feedback.
