@@ -344,6 +344,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_SPIRALS_CANE,
         color_over_mask=True,
+        # Chase direction rotation mined across all 12 corpus songs (2150
+        # Single Strand-on-cane placements): Left-Right/Right-Left ping-pong
+        # dominates (59% combined), Bounce from Right the recurring
+        # per-occurrence alternate (20%) -- same per-occurrence idiom as arch.
+        direction_field="E_CHOICE_Chase_Type1",
+        direction_ping_pong_values=("Left-Right", "Right-Left"),
+        direction_alt_value="Bounce from Right",
     ),
     # Horizontal / vertical house lines — mined from the same 12 packages
     # (docs/horizontal_sequencing_corpus/ 1.6k placements over 10 songs,
@@ -362,6 +369,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_LIGHTNING_FLICKER,
         color_over_mask=True,
+        # Chase direction rotation mined across all 10 corpus songs (1213
+        # placements): Left-Right/Right-Left ping-pong dominates (73%
+        # combined), "From Middle" the recurring per-occurrence alternate
+        # (20%) -- same per-occurrence idiom as arch/cane.
+        direction_field="E_CHOICE_Chase_Type1",
+        direction_ping_pong_values=("Left-Right", "Right-Left"),
+        direction_alt_value="From Middle",
     ),
     PropFamilyRecipe(
         family="vertical",
@@ -371,6 +385,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_LIGHTNING_FLICKER,
         color_over_mask=True,
+        # Chase direction rotation mined across all 9 corpus songs (1276
+        # placements): Left-Right/Right-Left ping-pong dominates (74%
+        # combined), "From Middle" the recurring per-occurrence alternate
+        # (20%) -- same per-occurrence idiom as arch/cane/horizontal.
+        direction_field="E_CHOICE_Chase_Type1",
+        direction_ping_pong_values=("Left-Right", "Right-Left"),
+        direction_alt_value="From Middle",
     ),
     # Mini trees — mined from the same 12 packages (docs/minitree_
     # sequencing_corpus/, 7.2k placements over 12 songs). White SingleStrand
