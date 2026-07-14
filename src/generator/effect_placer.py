@@ -2790,6 +2790,13 @@ def _place_lyric_text(
     return result
 
 
+def _format_video_duration(duration_ms: int) -> str:
+    """Format milliseconds as xLights' Video Duration string: ``m:ss.mmm``."""
+    total_seconds, ms = divmod(duration_ms, 1000)
+    minutes, seconds = divmod(total_seconds, 60)
+    return f"{minutes}:{seconds:02d}.{ms:03d}"
+
+
 def _place_video_effect(
     props: list[Any],
     video_path: Any,
@@ -2817,7 +2824,8 @@ def _place_video_effect(
         start_ms=0,
         end_ms=duration_ms,
         parameters={
-            "E_FILEPICKER_Video_Filename": str(video_path),
+            "E_FILEPICKERCTRL_Video_Filename": str(video_path),
+            "E_TEXTCTRL_Duration": _format_video_duration(duration_ms),
         },
         color_palette=["#FFFFFF"],
     )

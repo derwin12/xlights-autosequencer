@@ -1,11 +1,14 @@
 """XSQ writer — serializes a SequencePlan to xLights .xsq XML format."""
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.generator.models import EffectPlacement, SequencePlan, XsqDocument, FRAME_INTERVAL_MS
+
+logger = logging.getLogger(__name__)
 
 # Complete xLights default parameters per effect.
 # Without these, xLights may not render effects correctly.
@@ -243,6 +246,26 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
     },
+    # Copied verbatim from a user-verified working effect (2026-07-14).
+    # Video_Filename and Duration are per-placement parameters set by
+    # effect_placer._place_video_effect.
+    "Video": {
+        "E_CHECKBOX_SynchroniseWithAudio": "0",
+        "E_CHECKBOX_Video_AspectRatio": "0",
+        "E_CHECKBOX_Video_TransparentBlack": "0",
+        "E_CHOICE_Video_DurationTreatment": "Normal",
+        "E_TEXTCTRL_SampleSpacing": "0",
+        "E_TEXTCTRL_Video_CropBottom": "0",
+        "E_TEXTCTRL_Video_CropLeft": "0",
+        "E_TEXTCTRL_Video_CropRight": "100",
+        "E_TEXTCTRL_Video_CropTop": "100",
+        "E_TEXTCTRL_Video_Starttime": "0.0",
+        "E_TEXTCTRL_Video_TransparentBlack": "0",
+        "T_CHECKBOX_Canvas": "0",
+        "T_CHECKBOX_LayerMorph": "0",
+        "T_CHOICE_LayerMethod": "Normal",
+        "T_SLIDER_EffectLayerMix": "0",
+    },
 }
 
 
@@ -311,12 +334,37 @@ def write_xsq(
         unordered.setdefault(group_name, []).extend(placements)
 
     # Song-scoped Video placement (imported video clip on a matrix). Its
-    # E_FILEPICKER_Video_Filename already holds the absolute path to the
-    # cached, 480p-downscaled copy next to the stored video — unlike
-    # mediaFile below, filepicker effect parameters are absolute paths by
-    # xLights convention, so there's nothing to copy alongside the XSQ.
+    # E_FILEPICKERCTRL_Video_Filename holds an absolute path into
+    # ~/.xlight/library/ — a devcontainer-only location with no host
+    # equivalent, so the raw path is unusable by xLights on the host.
+    # Copied next to output_path and rewritten to a bare filename, exactly
+    # like mediaFile — done here, before EffectDB strings are built below,
+    # so the serialized entry carries the rewritten path. The caller is
+    # responsible for delivering output_path's sibling files (e.g. zipping
+    # them together for download) when output_path is a throwaway temp dir.
     for group_name, placements in plan.video_effects.items():
         unordered.setdefault(group_name, []).extend(placements)
+        for placement in placements:
+            src = placement.parameters.get("E_FILEPICKERCTRL_Video_Filename")
+            if not src:
+                continue
+            src_path = Path(src)
+            dest = output_path.parent / src_path.name
+            if dest.exists():
+                logger.info(
+                    "video_effect: '%s' already present at '%s' — skipping copy",
+                    src_path.name, dest,
+                )
+            elif src_path.exists():
+                import shutil
+                shutil.copy2(src_path, dest)
+                logger.info("video_effect: copied '%s' -> '%s'", src_path, dest)
+            else:
+                logger.warning(
+                    "video_effect: source '%s' does not exist — xLights won't "
+                    "find '%s'", src_path, src_path.name,
+                )
+            placement.parameters["E_FILEPICKERCTRL_Video_Filename"] = src_path.name
 
     # Sort groups by tier prefix so BASE (01) renders behind HERO (08).
     # Groups without a 2-digit tier prefix sort last.

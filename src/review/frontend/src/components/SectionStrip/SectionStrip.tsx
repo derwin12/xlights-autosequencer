@@ -18,9 +18,15 @@ interface Assignment {
   user_confirmed: boolean;
 }
 
+interface ThemeSummary {
+  theme_id: string;
+  accent: string;
+}
+
 interface SectionStripProps {
   sections: RawSection[];
   assignments: Assignment[];
+  themes?: ThemeSummary[];
   durationMs: number;
   viewStartMs?: number;
   viewEndMs?: number;
@@ -31,18 +37,10 @@ interface SectionStripProps {
   detectedSections?: RawSection[];
 }
 
-// Accent colors per theme_id. The first block covers the current default
-// assignments (_KIND_TO_THEME in src/review/api/v1/analysis.py); the legacy
-// ids below it keep sessions saved before the defaults were fixed rendering
-// with their original accents.
-const THEME_ACCENTS: Record<string, string> = {
-  'warm-glow': '#f5a623',
-  'aurora': '#4ade80',
-  'festive-flash': '#facc15',
-  'scanning-beam': '#38bdf8',
-  'inferno': '#f97316',
-  'silent-night': '#a5b4fc',
-  // legacy ids from pre-fix sessions
+// Fallback accent for legacy assignment ids that predate the theme catalog's
+// `accent` field (kept so old saved sessions still render a color instead of
+// falling through to the '#555' default).
+const LEGACY_THEME_ACCENTS: Record<string, string> = {
   'shimmer-wash': '#4ade80',
   'driving-pulse': '#d97757',
   'peak-flash': '#facc15',
@@ -91,6 +89,7 @@ function persistSections(songId: string | undefined, sections: RawSection[]) {
 export function SectionStrip({
   sections: propSections,
   assignments,
+  themes,
   durationMs,
   viewStartMs,
   viewEndMs,
@@ -100,6 +99,9 @@ export function SectionStrip({
   songId,
   detectedSections,
 }: SectionStripProps) {
+  const themeAccentById = Object.fromEntries(
+    (themes ?? []).map((t) => [t.theme_id, t.accent])
+  );
   const {
     sections: storeSections,
     editMode,
@@ -269,7 +271,9 @@ export function SectionStrip({
         const widthPct = ((clampedEnd - clampedStart) / windowMs) * 100;
         const assignment = assignmentByIndex[sec.index];
         const accent = assignment?.theme_id
-          ? (THEME_ACCENTS[assignment.theme_id] ?? '#555')
+          ? (themeAccentById[assignment.theme_id]
+              ?? LEGACY_THEME_ACCENTS[assignment.theme_id]
+              ?? '#555')
           : '#555';
         const isSelected = selectedIndex === sec.index;
 

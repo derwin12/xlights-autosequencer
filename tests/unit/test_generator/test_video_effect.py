@@ -40,4 +40,5 @@ class TestPlaceVideoEffect:
         assert p.effect_name == "Video"
         assert p.start_ms == 0
         assert p.end_ms == 90000
-        assert p.parameters["E_FILEPICKER_Video_Filename"] == "/tmp/video.mp4"
+        assert p.parameters["E_FILEPICKERCTRL_Video_Filename"] == "/tmp/video.mp4"
+        assert p.parameters["E_TEXTCTRL_Duration"] == "1:30.000"

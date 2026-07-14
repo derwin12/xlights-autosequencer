@@ -264,6 +264,55 @@ class TestXsqWriter:
             )
 
 
+class TestVideoEffectPortability:
+    """Video effect filenames must be host/devcontainer-portable, like mediaFile."""
+
+    def test_video_filename_rewritten_to_basename_and_copied(self, tmp_path: Path) -> None:
+        """The source video is copied next to the .xsq and the effect param
+        is rewritten to a bare filename — a container-only absolute path
+        (e.g. /home/node/.xlight/library/...) is unusable by xLights on the
+        host, exactly like an unqualified audio mediaFile path would be."""
+        source_video = tmp_path / "source" / "clip_480p.mp4"
+        source_video.parent.mkdir()
+        source_video.write_bytes(b"fake video bytes")
+
+        plan = _make_plan()
+        plan.video_effects = {
+            "Matrix1": [
+                EffectPlacement(
+                    effect_name="Video",
+                    xlights_id="Video",
+                    model_or_group="Matrix1",
+                    start_ms=0,
+                    end_ms=10000,
+                    parameters={
+                        "E_FILEPICKERCTRL_Video_Filename": str(source_video),
+                        "E_TEXTCTRL_Duration": "0:10.000",
+                    },
+                    color_palette=["#FFFFFF"],
+                )
+            ]
+        }
+
+        out_dir = tmp_path / "output"
+        out_dir.mkdir()
+        out_path = out_dir / "test.xsq"
+        write_xsq(plan, out_path)
+
+        placement = plan.video_effects["Matrix1"][0]
+        assert placement.parameters["E_FILEPICKERCTRL_Video_Filename"] == "clip_480p.mp4"
+        assert (out_dir / "clip_480p.mp4").exists()
+
+        root = ET.parse(out_path).getroot()
+        effect_db = root.find("EffectDB")
+        assert effect_db is not None
+        found = any(
+            "E_FILEPICKERCTRL_Video_Filename=clip_480p.mp4" in (entry.get("settings") or entry.text or "")
+            for entry in effect_db
+        )
+        assert found, "Expected bare filename in the serialized Video EffectDB entry"
+
+
 class TestScopedPreviewParams:
     """Tests for spec 049 — scoped_duration_ms and audio_offset_ms kwargs."""
 

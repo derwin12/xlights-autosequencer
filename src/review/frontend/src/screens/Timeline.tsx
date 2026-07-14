@@ -56,10 +56,16 @@ interface Song {
   [key: string]: unknown;
 }
 
+interface ThemeSummary {
+  theme_id: string;
+  accent: string;
+}
+
 interface TimelineProps {
   song: Song;
   analysis: Analysis;
   assignments: Assignment[];
+  themes?: ThemeSummary[];
   onNavigateTheme?: () => void;
 }
 
@@ -156,7 +162,7 @@ const KIND_COLORS: Record<string, string> = {
 
 const ZOOM_LEVELS = [1, 2, 4, 8, 16];
 
-export function Timeline({ song, analysis, assignments, onNavigateTheme }: TimelineProps) {
+export function Timeline({ song, analysis, assignments, themes, onNavigateTheme }: TimelineProps) {
   const { playing, timeMs, play, pause, seekMs } = usePlaybackStore();
   const {
     sections: storeSections,
@@ -409,6 +415,7 @@ export function Timeline({ song, analysis, assignments, onNavigateTheme }: Timel
             <SectionStrip
               sections={liveSections}
               assignments={assignments}
+              themes={themes}
               durationMs={durationMs}
               viewStartMs={zoomLevel > 1 ? viewStartMs : undefined}
               viewEndMs={zoomLevel > 1 ? viewEndMs : undefined}

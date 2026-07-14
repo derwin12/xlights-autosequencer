@@ -585,6 +585,7 @@ export default function App() {
             song={song}
             analysis={analysis}
             assignments={assignments}
+            themes={themes}
             onNavigateTheme={handleNavigateTheme}
           />
         );

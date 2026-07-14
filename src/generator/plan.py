@@ -219,10 +219,28 @@ def build_plan(
     # read-only recipe.
     _populate_assignment_decisions(assignments, config, hierarchy, working_sets)
 
+    # 4b. When a video was imported, its target matrix (5c below) renders
+    # exclusively the full-song Video effect — strip that matrix out of every
+    # group's membership and out of the vocal-effect prop list so no other
+    # effect (section pool, drum/impact accents, faces, lyric text) also
+    # lands on it. `props` itself stays unfiltered so 5c can still find the
+    # matrix as its target.
+    effect_props = props
+    if config.video_path is not None:
+        video_matrix_props = [p for p in props if getattr(p, "display_as", "") == "Matrix"]
+        if video_matrix_props:
+            video_target_name = max(
+                video_matrix_props, key=lambda p: (getattr(p, "pixel_count", 0), p.name)
+            ).name
+            effect_props = [p for p in props if p.name != video_target_name]
+            for group in groups:
+                group.members = [m for m in group.members if m != video_target_name]
+            groups = [g for g in groups if g.members]
+
     # 5. Place effects for each section.  `place_effects` reads every per-section
     # decision off the assignment fields populated above.
     model_names = [p.name for p in props]
-    props_by_name = {p.name: p for p in props}
+    props_by_name = {p.name: p for p in effect_props}
     n_sections = max(len(assignments), 1)
     for si, assignment in enumerate(assignments):
         section_cb = None
@@ -269,18 +287,16 @@ def build_plan(
     # no assignments at all) still renders them.
     vocal_effects: dict[str, list] = {}
     if config.vocal_words:
-        vocal_effects = _place_singing_faces(props, config.vocal_words)
-        for gname, placements in _place_lyric_text(props, config.vocal_words).items():
+        vocal_effects = _place_singing_faces(effect_props, config.vocal_words)
+        for gname, placements in _place_lyric_text(effect_props, config.vocal_words).items():
             vocal_effects.setdefault(gname, []).extend(placements)
 
     # 5c. Imported video on a matrix (config.video_path). Song-scoped,
-    # same rationale as vocal_effects. Downscaled to 480p once and cached
-    # next to the source file before being referenced by the placement.
+    # same rationale as vocal_effects. Used as uploaded — no rescale/rename;
+    # that was built for a since-abandoned YouTube-pull-and-rescale flow.
     video_effects: dict[str, list] = {}
     if config.video_path is not None:
-        from src.generator.video_prep import ensure_scaled_video
-        scaled_video_path = ensure_scaled_video(config.video_path)
-        video_effects = _place_video_effect(props, scaled_video_path, hierarchy.duration_ms)
+        video_effects = _place_video_effect(props, config.video_path, hierarchy.duration_ms)
 
     # 5. Value curves — generate for each placement when curves are enabled
     if config.curves_mode != "none":

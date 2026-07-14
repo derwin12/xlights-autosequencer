@@ -5084,7 +5084,7 @@
       "parameters": [
         {
           "name": "Video_Filename",
-          "storage_name": "E_FILEPICKER_Video_Filename",
+          "storage_name": "E_FILEPICKERCTRL_Video_Filename",
           "widget_type": "filepicker",
           "value_type": "string",
           "default": "",
@@ -5108,17 +5108,138 @@
         },
         {
           "name": "Video_AspectRatio",
-          "storage_name": "E_CHOICE_Video_AspectRatio",
+          "storage_name": "E_CHECKBOX_Video_AspectRatio",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Preserve the video's original aspect ratio instead of stretching to fit",
+          "supports_value_curve": false
+        },
+        {
+          "name": "SynchroniseWithAudio",
+          "storage_name": "E_CHECKBOX_SynchroniseWithAudio",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Synchronise video playback position with the song's audio track",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Video_TransparentBlack",
+          "storage_name": "E_CHECKBOX_Video_TransparentBlack",
+          "widget_type": "checkbox",
+          "value_type": "bool",
+          "default": false,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Treat black pixels in the video as transparent",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Video_DurationTreatment",
+          "storage_name": "E_CHOICE_Video_DurationTreatment",
           "widget_type": "choice",
           "value_type": "choice",
-          "default": "Stretch to fit",
+          "default": "Normal",
           "min": null,
           "max": null,
           "choices": [
-            "Stretch to fit",
-            "Preserve aspect ratio"
+            "Normal",
+            "Slow down/Speed up video to match effect",
+            "Repeat video to fill effect"
           ],
-          "description": "How the video frame maps onto the model buffer",
+          "description": "How to reconcile the video's native length with the effect's duration",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Duration",
+          "storage_name": "E_TEXTCTRL_Duration",
+          "widget_type": "textctrl",
+          "value_type": "string",
+          "default": "0.0",
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Source video duration, as m:ss.mmm",
+          "supports_value_curve": false
+        },
+        {
+          "name": "SampleSpacing",
+          "storage_name": "E_TEXTCTRL_SampleSpacing",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 0,
+          "min": null,
+          "max": null,
+          "choices": null,
+          "description": "Frame sampling spacing",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Video_CropTop",
+          "storage_name": "E_TEXTCTRL_Video_CropTop",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Crop from the top of the video frame, percent",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Video_CropBottom",
+          "storage_name": "E_TEXTCTRL_Video_CropBottom",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Crop from the bottom of the video frame, percent",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Video_CropLeft",
+          "storage_name": "E_TEXTCTRL_Video_CropLeft",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Crop from the left of the video frame, percent",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Video_CropRight",
+          "storage_name": "E_TEXTCTRL_Video_CropRight",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "choices": null,
+          "description": "Crop from the right of the video frame, percent",
+          "supports_value_curve": false
+        },
+        {
+          "name": "Video_TransparentBlackLevel",
+          "storage_name": "E_TEXTCTRL_Video_TransparentBlack",
+          "widget_type": "textctrl",
+          "value_type": "int",
+          "default": 0,
+          "min": 0,
+          "max": 255,
+          "choices": null,
+          "description": "Threshold level for transparent-black detection",
           "supports_value_curve": false
         }
       ],

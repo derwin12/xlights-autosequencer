@@ -287,6 +287,7 @@ export function Theme({
       <SectionStrip
         sections={sections}
         assignments={localAssignments}
+        themes={themes}
         durationMs={song.duration_ms}
         selectedIndex={selectedSectionIdx}
         onSelect={(idx) => {
