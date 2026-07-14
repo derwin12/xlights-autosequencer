@@ -269,6 +269,45 @@ class TestCorpusRecipePlacement:
             assert p.parameters["E_CHOICE_Fade_Type"] == "From Head"
             assert p.parameters["E_CHOICE_SingleStrand_Colors"] == "Palette"
 
+    def test_arch_bridge_gets_spirals(self) -> None:
+        # "bridge" is not in the default qualifying_labels, but arch adds it
+        # specifically so its label-alt (mined: Spirals 56/76 bridge
+        # placements) can fire even at ordinary (non-chorus) energy.
+        result = _place(_make_section(label="bridge", energy=40), _ARCH_GROUP)
+        placements = result["06_PROP_Arch"]
+        assert placements
+        assert all(p.effect_name == "Spirals" for p in placements)
+        for p in placements:
+            assert p.parameters["E_SLIDER_Spirals_Rotation"] == "-100"
+            assert p.parameters["E_SLIDER_Spirals_Thickness"] == "20"
+            assert "E_CHOICE_Fade_Type" not in p.parameters
+
+    def test_arch_bridge_label_alt_overrides_seed_alternation(self) -> None:
+        # A bridge section must get Spirals regardless of variation_seed
+        # parity -- the label-alt takes priority over the chorus seed-based
+        # Single Strand/Shockwave alternation.
+        result = _place(_make_section(label="bridge", energy=40), _ARCH_GROUP, variation_seed=3)
+        placements = result["06_PROP_Arch"]
+        assert placements
+        assert all(p.effect_name == "Spirals" for p in placements)
+
+    def test_arch_repeated_section_alternates_to_shockwave(self) -> None:
+        # Mirrors test_repeated_section_alternates_to_ripple: seeds 0-1 keep
+        # Single Strand, seeds 2-3 alternate to Shockwave.
+        result = _place(_make_section(label="chorus"), _ARCH_GROUP, variation_seed=3)
+        placements = result["06_PROP_Arch"]
+        assert placements
+        assert all(p.effect_name == "Shockwave" for p in placements)
+
+    def test_arch_alternate_effect_does_not_inherit_chase_preset(self) -> None:
+        result = _place(_make_section(label="chorus"), _ARCH_GROUP, variation_seed=3)
+        placements = result["06_PROP_Arch"]
+        assert placements
+        for p in placements:
+            assert p.effect_name == "Shockwave"
+            assert "E_CHOICE_Fade_Type" not in p.parameters
+            assert p.parameters["E_SLIDER_Shockwave_End_Radius"] == "100"
+
     def test_alternate_effect_does_not_inherit_primary_preset(self) -> None:
         # Ripple must not receive Shockwave parameter overrides.
         result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP, variation_seed=3)

@@ -83,6 +83,17 @@ class PropFamilyRecipe:
     # (empty → the alternate keeps library defaults).
     parameter_overrides: tuple[tuple[str, str], ...] = ()
     alt_parameter_overrides: tuple[tuple[str, str], ...] = ()
+    # Optional secondary alternate keyed by section label rather than
+    # variation_seed parity -- some families have a section label whose mined
+    # idiom genuinely differs from both the primary and the seed-alternated
+    # effect (e.g. arch bridges favor Spirals while arch choruses alternate
+    # Single Strand/Shockwave -- see docs/arch_sequencing_corpus). Checked
+    # before the seed-based alt. The label must also appear in
+    # qualifying_labels, otherwise sections with that label never reach this
+    # recipe in the first place.
+    label_alt_labels: tuple[str, ...] = ()
+    label_alt_effect_name: str | None = None
+    label_alt_parameter_overrides: tuple[tuple[str, str], ...] = ()
     # The reference packages place a section-spanning Off effect on the layer
     # beneath the beat bursts (xLights layer 2) on the group element, so the
     # props render black between bursts instead of picking up whole-house
@@ -148,6 +159,22 @@ _SPIRALS_CANE: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Spirals_Thickness", "33"),
     ("E_TEXTCTRL_Spirals_Movement", "1"),
     ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+)
+
+
+# Arch bridge Spirals preset — mined from the 56 Spirals placements on arch
+# elements in the one reference package with section labels (David Guetta &
+# Sia - Beautiful People PRO): tight spiral (thickness 20, rotation -100,
+# movement 0.5, no grow/shrink/blend, all 100% unanimous). 3D and spiral
+# count split exactly 50/50 in the sample, so both are left at library
+# defaults rather than guessed.
+_SPIRALS_ARCH_BRIDGE: tuple[tuple[str, str], ...] = (
+    ("E_SLIDER_Spirals_Rotation", "-100"),
+    ("E_SLIDER_Spirals_Thickness", "20"),
+    ("E_TEXTCTRL_Spirals_Movement", ".5"),
     ("E_CHECKBOX_Spirals_Blend", "0"),
     ("E_CHECKBOX_Spirals_Grow", "0"),
     ("E_CHECKBOX_Spirals_Shrink", "0"),
@@ -241,7 +268,22 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         family="arch",
         match_tokens=("arch",),
         effect_name="Single Strand",
+        # Chorus alternate mined from docs/arch_sequencing_corpus/INDEX.md:
+        # chorus placements are SingleStrand 516 / Shockwave 122 (17%) — the
+        # only other effect with meaningful chorus presence, so it's the
+        # real secondary idiom rather than an invented one.
+        alt_effect_name="Shockwave",
+        # Bridges are a distinct idiom, not a seed-parity variant of chorus:
+        # mined bridge placements are Spirals 56/76 (74%), dwarfing
+        # SingleStrand/Shockwave there. "bridge" is added to qualifying_labels
+        # so bridge sections reach this recipe at all (the default label set
+        # excludes it), then label_alt_* overrides to Spirals.
+        qualifying_labels=("chorus", "drop", "hook", "climax", "build_peak", "bridge"),
+        label_alt_labels=("bridge",),
+        label_alt_effect_name="Spirals",
+        label_alt_parameter_overrides=_SPIRALS_ARCH_BRIDGE,
         parameter_overrides=_CHASE_FROM_HEAD,
+        alt_parameter_overrides=_SHOCKWAVE_BURST,
         off_backdrop=True,
     ),
     # Mega tree — mined from the same 12 packages (docs/megatree_sequencing_

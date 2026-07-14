@@ -1864,8 +1864,16 @@ def _place_corpus_recipe(
     # is the global section index; qualifying (chorus-like) sections typically
     # occupy every other slot, so raw parity would lock one effect in for the
     # whole song — halving first alternates per occurrence instead.
+    # A label-keyed alternate (e.g. arch bridges -> Spirals) takes priority
+    # over the seed-based alternate when the section's own label names a
+    # genuinely different mined idiom rather than just a repeat variation.
+    section_label = (section.label or "").lower()
     effect_name = recipe.effect_name
-    if recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
+    if recipe.label_alt_effect_name is not None and any(
+        keyword in section_label for keyword in recipe.label_alt_labels
+    ):
+        effect_name = recipe.label_alt_effect_name
+    elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
         effect_name = recipe.alt_effect_name
     effect_def = effect_library.effects.get(effect_name)
     if effect_def is None:
@@ -1881,11 +1889,12 @@ def _place_corpus_recipe(
     placements: list[EffectPlacement] = []
     palette = list(recipe.palette)
     # Each effect gets its own mined preset; their parameter spaces differ.
-    params: dict[str, Any] = dict(
-        recipe.parameter_overrides
-        if effect_name == recipe.effect_name
-        else recipe.alt_parameter_overrides
-    )
+    if effect_name == recipe.effect_name:
+        params: dict[str, Any] = dict(recipe.parameter_overrides)
+    elif effect_name == recipe.label_alt_effect_name:
+        params = dict(recipe.label_alt_parameter_overrides)
+    else:
+        params = dict(recipe.alt_parameter_overrides)
     # Two-layer "color over mask" (mega trees): a section-spanning On sits on
     # the top layer with LayerMethod "2 is Unmask", so the motion effect on
     # the layer below only contributes shape/brightness while the On supplies
