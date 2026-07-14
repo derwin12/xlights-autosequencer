@@ -137,6 +137,17 @@ class TestDetectHeroes:
         groups = detect_heroes(props)
         assert groups == []
 
+
+    def test_mega_topper_is_hero(self):
+        """The topper needs its own hero group so the megatopper corpus
+        recipe has a placement target (a solo topper never forms a tier-6
+        pair group)."""
+        props = [make_prop("Mega Topper", sub_models=[])]
+        groups = detect_heroes(props)
+        assert len(groups) == 1
+        assert groups[0].name == "08_HERO_Mega_Topper"
+        assert groups[0].members == ["Mega Topper"]
+
     def test_hero_with_no_submodels_contains_prop_itself(self):
         props = [make_prop("MegaTree01", sub_models=[])]
         groups = detect_heroes(props)

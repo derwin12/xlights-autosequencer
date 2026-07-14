@@ -354,9 +354,10 @@ def build_plan(
     )
 
 
-# Minimum trailing-silence length before the end-of-song fade fires. Shorter
-# tails are analysis rounding, not an actual silent outro.
-_TRAILING_SILENCE_MIN_MS = 1500
+# The end-of-song fade always fires and spans at least this long: when the
+# audio runs right to the end of the sequence, the fade covers the final
+# stretch of audio itself so the display never cuts to black abruptly.
+_FADE_MIN_MS = 2000
 
 # Energy (0-100) below which the full-mix curve counts as silence. The section
 # builder tiles the entire audio duration — the last section's end_ms extends
@@ -391,22 +392,24 @@ def _place_end_of_song_fade(
     effect_library: EffectLibrary,
     hierarchy: HierarchyResult,
 ) -> None:
-    """Fade the whole display to black over trailing silence.
+    """Fade the whole display to black at the end of every sequence.
 
-    When the sequence duration extends past the audible end of the song (see
-    ``_audible_end_ms``) by at least ``_TRAILING_SILENCE_MIN_MS``, place one
-    white On effect on the
-    ``01_BASE_All_FADES`` group spanning the tail: brightness ramps 100 -> 0
-    (``Eff_On_End=0``) and ``LayerMethod=Min`` clamps every layer rendered
-    beneath it, so the display is black by the end of the sequence no matter
-    what other tiers are doing.
+    One white On effect on the ``01_BASE_All_FADES`` group spans from the
+    audible end of the song (see ``_audible_end_ms``) to the end of the
+    sequence: brightness ramps 100 -> 0 (``Eff_On_End=0``) and
+    ``LayerMethod=Min`` clamps every layer rendered beneath it, so the
+    display is black by the end of the sequence no matter what other tiers
+    are doing. The fade always fires and covers at least ``_FADE_MIN_MS`` —
+    when the audio runs right to the end of the sequence, it overlaps the
+    final stretch of audio rather than letting the display cut hard.
     """
     if not assignments:
         return
     if not any(g.name == "01_BASE_All_FADES" for g in groups):
         return
     song_end = _audible_end_ms(assignments, hierarchy)
-    if hierarchy.duration_ms - song_end < _TRAILING_SILENCE_MIN_MS:
+    fade_start = max(0, min(song_end, hierarchy.duration_ms - _FADE_MIN_MS))
+    if fade_start >= hierarchy.duration_ms:
         return
     on_def = effect_library.effects.get("On")
     if on_def is None:
@@ -415,7 +418,7 @@ def _place_end_of_song_fade(
         effect_name="On",
         xlights_id=on_def.xlights_id,
         model_or_group="01_BASE_All_FADES",
-        start_ms=song_end,
+        start_ms=fade_start,
         end_ms=hierarchy.duration_ms,
         parameters={
             "E_TEXTCTRL_Eff_On_End": "0",

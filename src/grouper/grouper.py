@@ -98,6 +98,7 @@ def generate_groups(
     if 6 in active_tiers:
         groups.extend(_tier6_prop_type(props))
         groups.extend(_tier6_line_orientation(props))
+        groups.extend(_tier6_display_type_fallback(props))
         groups.extend(_tier6_radial_subgroups(props))
     if 7 in active_tiers:
         groups.extend(_tier7_compound(props))
@@ -277,6 +278,41 @@ def _tier6_line_orientation(props: list[Prop]) -> list[PowerGroup]:
             name="06_PROP_Vertical_Lines", tier=6, members=verticals,
         ))
     return groups
+
+
+# xLights DisplayAs values that ARE a prop family by themselves. Kept
+# narrow on purpose: broad types (Custom, Single Line, Poly Line) say
+# nothing about what the prop is, but a model displayed as "Icicles" is an
+# icicle string regardless of how it was named.
+_FAMILY_DISPLAY_TYPES = ("Icicles", "Arches", "Candy Canes")
+
+
+def _tier6_display_type_fallback(props: list[Prop]) -> list[PowerGroup]:
+    """Family leftover props by their xLights DisplayAs type.
+
+    Port-numbered prop names ("01 Icicles 1", "13 Icicles 2") defeat
+    ``_tier6_prop_type``'s name stemming — each stems to a distinct
+    singleton type ("01 Icicles" / "13 Icicles") and no family group forms,
+    so the props receive no tier-6 placements at all. Their DisplayAs still
+    identifies the family, so props left out of every name-based family
+    whose display type is family-semantic group here. Additive only: a prop
+    already in a name-based family never moves.
+    """
+    familied: set[str] = set()
+    for g in _tier6_prop_type(props):
+        familied.update(g.members)
+    by_type: dict[str, list[str]] = defaultdict(list)
+    for p in props:
+        if p.display_as in _FAMILY_DISPLAY_TYPES and p.name not in familied:
+            by_type[p.display_as].append(p.name)
+    return [
+        PowerGroup(
+            name=f"06_PROP_{_sanitize_label(display_type)}", tier=6,
+            members=members,
+        )
+        for display_type, members in sorted(by_type.items())
+        if len(members) >= 2
+    ]
 
 
 def _tier6_radial_subgroups(props: list[Prop]) -> list[PowerGroup]:

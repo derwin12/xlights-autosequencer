@@ -146,6 +146,7 @@ _CORPUS_MASK_PRIMARIES: tuple[str, ...] = (
 
 def _vivid_mask_color(
     palette: list[str] | None, variation_seed: int, group_name: str = "",
+    offset: int = 0,
 ) -> str:
     """Pick a vivid color for a corpus recipe's On unmask layer.
 
@@ -177,7 +178,7 @@ def _vivid_mask_color(
             c for c in _CORPUS_MASK_PRIMARIES if c not in candidates
         )
     spread = zlib.crc32(group_name.encode("utf-8")) if group_name else 0
-    return candidates[(variation_seed + spread) % len(candidates)]
+    return candidates[(variation_seed + spread + offset) % len(candidates)]
 
 
 def _saturated_colors(palette: list[str]) -> list[str]:
@@ -1336,8 +1337,17 @@ def _select_groups_for_layer(
             selected[tier] = available
 
         elif tier == 8:
-            # HERO: pick one
-            selected[tier] = [available[layer_idx % len(available)]]
+            # HERO: rotate the spotlight pick per layer — but corpus-paired
+            # heroes (those with a family recipe, e.g. mega tree + mega
+            # topper) always place together: the reference packages run the
+            # topper co-active with the tree 85% of the time, never solo'd
+            # away by a spotlight rotation.
+            spotlight = available[layer_idx % len(available)]
+            paired = [
+                g for g in available
+                if g is not spotlight and recipe_for_group(g) is not None
+            ]
+            selected[tier] = [spotlight] + paired
 
     return selected
 
@@ -1887,16 +1897,25 @@ def _place_corpus_recipe(
     # Alternate primary/alt effect between qualifying sections. variation_seed
     # is the global section index; qualifying (chorus-like) sections typically
     # occupy every other slot, so raw parity would lock one effect in for the
-    # whole song — halving first alternates per occurrence instead.
-    # A label-keyed alternate (e.g. arch bridges -> Spirals) takes priority
-    # over the seed-based alternate when the section's own label names a
-    # genuinely different mined idiom rather than just a repeat variation.
+    # whole song — halving first alternates per occurrence instead. Families
+    # with a motion_rotation walk its full cycle the same way; a rotation
+    # effect missing from the catalog falls back to the primary pair. A
+    # label-keyed alternate (e.g. arch bridges -> Spirals) takes priority over
+    # both when the section's own label names a genuinely different mined
+    # idiom rather than just a repeat variation.
     section_label = (section.label or "").lower()
+    rotation_params: tuple[tuple[str, str], ...] | None = None
     effect_name = recipe.effect_name
     if recipe.label_alt_effect_name is not None and any(
         keyword in section_label for keyword in recipe.label_alt_labels
     ):
         effect_name = recipe.label_alt_effect_name
+    elif recipe.motion_rotation:
+        idx = (variation_seed // 2) % len(recipe.motion_rotation)
+        rotated_name, rotated_params = recipe.motion_rotation[idx]
+        if effect_library.effects.get(rotated_name) is not None:
+            effect_name = rotated_name
+            rotation_params = rotated_params
     elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
         effect_name = recipe.alt_effect_name
     effect_def = effect_library.effects.get(effect_name)
@@ -1913,8 +1932,10 @@ def _place_corpus_recipe(
     placements: list[EffectPlacement] = []
     palette = list(recipe.palette)
     # Each effect gets its own mined preset; their parameter spaces differ.
-    if effect_name == recipe.effect_name:
-        params: dict[str, Any] = dict(recipe.parameter_overrides)
+    if rotation_params is not None:
+        params: dict[str, Any] = dict(rotation_params)
+    elif effect_name == recipe.effect_name:
+        params = dict(recipe.parameter_overrides)
     elif effect_name == recipe.label_alt_effect_name:
         params = dict(recipe.label_alt_parameter_overrides)
     else:
@@ -1958,12 +1979,18 @@ def _place_corpus_recipe(
     )
     mask_layer_idx = 1 if on_def is not None else 0
 
-    for i, mark in enumerate(marks):
-        start = mark.time_ms
-        if i + 1 < len(marks):
-            end = marks[i + 1].time_ms
+    # Primary-motion segment length in beats: 1 for the burst families,
+    # longer for calmer ones (icicles run 2-beat segments per the corpus).
+    beat_stride = max(1, recipe.beats_per_placement)
+    for i in range(0, len(marks), beat_stride):
+        start = marks[i].time_ms
+        if i + beat_stride < len(marks):
+            end = marks[i + beat_stride].time_ms
         else:
-            end = min(start + max(median_interval, FRAME_INTERVAL_MS), section.end_ms)
+            end = min(
+                start + max(beat_stride * median_interval, FRAME_INTERVAL_MS),
+                section.end_ms,
+            )
         if end <= start:
             continue
         direction_cycle = (
@@ -1973,7 +2000,8 @@ def _place_corpus_recipe(
         )
         p = _make_placement(
             effect_def, group.name, start, end,
-            params, palette, layer.blend_mode, "beat", instance_index=i,
+            params, palette, layer.blend_mode, "beat",
+            instance_index=i // beat_stride,
             direction_cycle=direction_cycle, preserve_directions=True,
         )
         p.layer = mask_layer_idx
@@ -1982,14 +2010,36 @@ def _place_corpus_recipe(
         return None
 
     if on_def is not None:
-        color = _vivid_mask_color(theme_palette, variation_seed, group.name)
-        color_layer = _make_placement(
-            on_def, group.name, section.start_ms, section.end_ms,
-            {"T_CHOICE_LayerMethod": "2 is Unmask"}, [color],
-            layer.blend_mode, "section",
-        )
-        color_layer.layer = 0
-        placements.append(color_layer)
+        on_params = {"T_CHOICE_LayerMethod": "2 is Unmask"}
+        if recipe.color_cycle_bars:
+            # One On block per four-beat bar, stepping through the palette's
+            # vivid colors (mined On medians are ~one bar in both reference
+            # poles: 2.0s and 2.6s, cycling hue bar over bar).
+            for bar_idx, j in enumerate(range(0, len(marks), 4)):
+                bar_start = section.start_ms if j == 0 else marks[j].time_ms
+                bar_end = (
+                    marks[j + 4].time_ms if j + 4 < len(marks) else section.end_ms
+                )
+                if bar_end <= bar_start:
+                    continue
+                color = _vivid_mask_color(
+                    theme_palette, variation_seed, group.name, offset=bar_idx,
+                )
+                color_layer = _make_placement(
+                    on_def, group.name, bar_start, bar_end,
+                    dict(on_params), [color], layer.blend_mode, "bar",
+                    instance_index=bar_idx,
+                )
+                color_layer.layer = 0
+                placements.append(color_layer)
+        else:
+            color = _vivid_mask_color(theme_palette, variation_seed, group.name)
+            color_layer = _make_placement(
+                on_def, group.name, section.start_ms, section.end_ms,
+                on_params, [color], layer.blend_mode, "section",
+            )
+            color_layer.layer = 0
+            placements.append(color_layer)
 
     # Optional sustained motion layer beneath the per-beat bursts (matrix
     # idiom — the reference matrices run 2-3 motion layers under the On

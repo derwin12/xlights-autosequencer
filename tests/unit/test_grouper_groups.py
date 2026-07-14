@@ -471,3 +471,51 @@ class TestLineOrientationGroups:
         names = {g.name for g in groups}
         assert "06_PROP_Horizontal_Lines" not in names
         assert "06_PROP_Vertical_Lines" not in names
+
+
+# ─── Tier 6: Display-type fallback ───────────────────────────────────────────
+
+class TestDisplayTypeFallback:
+    """Port-numbered prop names defeat name stemming; DisplayAs still
+    identifies the family (the reported no-icicles bug)."""
+
+    @staticmethod
+    def _icicle(name: str, x: float = 0.0) -> Prop:
+        return Prop(
+            name=name, display_as="Icicles",
+            world_x=x, world_y=0.0, world_z=0.0,
+            scale_x=1.0, scale_y=1.0, parm1=1, parm2=50, sub_models=[],
+        )
+
+    def test_numbered_icicles_form_family_group(self):
+        props = [self._icicle("01 Icicles 1"), self._icicle("13 Icicles 2", x=50.0)]
+        groups = generate_groups(props)
+        icicles = next((g for g in groups if g.name == "06_PROP_Icicles"), None)
+        assert icicles is not None
+        assert set(icicles.members) == {"01 Icicles 1", "13 Icicles 2"}
+        assert icicles.tier == 6
+
+    def test_name_familied_props_do_not_duplicate(self):
+        # Plain names family by name stemming; the fallback must not emit a
+        # second group for the same props.
+        props = [self._icicle("Icicles 1"), self._icicle("Icicles 2", x=50.0)]
+        groups = generate_groups(props)
+        icicle_groups = [g for g in groups if "icicle" in g.name.lower()]
+        assert len(icicle_groups) == 1
+        assert set(icicle_groups[0].members) == {"Icicles 1", "Icicles 2"}
+
+    def test_single_leftover_prop_gets_no_group(self):
+        props = [self._icicle("01 Icicles 1"), make_prop("Arch 1"), make_prop("Arch 2")]
+        groups = generate_groups(props)
+        assert not any(g.name == "06_PROP_Icicles" for g in groups)
+
+    def test_broad_display_types_not_familied(self):
+        # Custom props with stem-defeating names stay ungrouped — Custom
+        # says nothing about the prop family.
+        def custom(name, x=0.0):
+            return Prop(name=name, display_as="Custom",
+                        world_x=x, world_y=0.0, world_z=0.0,
+                        scale_x=1.0, scale_y=1.0, parm1=1, parm2=50, sub_models=[])
+        props = [custom("01 Warlock A"), custom("07 Forest B", x=50.0)]
+        groups = generate_groups(props)
+        assert not any(g.name == "06_PROP_Custom" for g in groups)

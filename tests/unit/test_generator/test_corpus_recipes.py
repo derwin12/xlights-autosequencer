@@ -182,10 +182,10 @@ class TestRecipeMatching:
                        members=["Mega Tree 1", "Mega Tree 2", "Palm Tree"])
         assert recipe_for_group(g).family == "megatree"
 
-    def test_mega_topper_does_not_match_megatree(self) -> None:
+    def test_mega_topper_matches_its_own_family_not_megatree(self) -> None:
         g = PowerGroup(name="06_PROP_Mega_Topper", tier=6,
                        members=["Mega Topper 1", "Mega Topper 2"])
-        assert recipe_for_group(g) is None
+        assert recipe_for_group(g).family == "megatopper"
 
     def test_hero_megatree_group_matches(self) -> None:
         # A solo mega tree never forms a tier-6 pair group — it is promoted
@@ -933,3 +933,286 @@ class TestOffBackdrop:
             if p.color_palette == ["#FFFFFF"]
         ]
         assert len(recipe_placements) == len(_BEATS)
+
+
+# ── icicle recipe ─────────────────────────────────────────────────────────────
+
+
+_ICICLE_GROUP = PowerGroup(
+    name="06_PROP_Icicles", tier=6, members=["Icicles 1", "Icicles 2"],
+)
+_LIBRARY_ICICLE = ("Color Wash", "Spirals", "Meteors", "On", "Shockwave",
+                   "Ripple", "Single Strand")
+
+
+class TestIcicleRecipe:
+    def test_icicle_group_name_matches(self) -> None:
+        assert recipe_for_group(_ICICLE_GROUP).family == "icicle"
+
+    def test_outline_combo_group_does_not_match(self) -> None:
+        g = PowerGroup(name="06_PROP_Outline_Icicles", tier=6,
+                       members=["House Outline + Icicles"])
+        assert recipe_for_group(g) is None
+
+    def test_member_majority_matches(self) -> None:
+        g = PowerGroup(name="06_PROP_Roof", tier=6,
+                       members=["Icicles 1", "Icicles 2", "Gutter"])
+        assert recipe_for_group(g).family == "icicle"
+
+    def test_chorus_gets_two_beat_spirals_segments(self) -> None:
+        # 8 beats at 500ms -> 4 two-beat segments of 1000ms each.
+        section = _make_section(label="chorus")
+        result = _place(section, _ICICLE_GROUP, library_names=_LIBRARY_ICICLE)
+        placements = result["06_PROP_Icicles"]
+        spirals = sorted(
+            (p for p in placements if p.effect_name == "Spirals"),
+            key=lambda p: p.start_ms,
+        )
+        assert len(spirals) == 4
+        assert [p.start_ms for p in spirals] == [0, 1000, 2000, 3000]
+        assert all(p.end_ms - p.start_ms == 1000 for p in spirals[:-1])
+        params = dict(spirals[0].parameters)
+        assert params["E_CHECKBOX_Spirals_3D"] == "1"
+        assert params["E_SLIDER_Spirals_Thickness"] == "33"
+        assert params["E_TEXTCTRL_Spirals_Movement"] == "1"
+
+    def test_on_layer_cycles_per_bar(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place(section, _ICICLE_GROUP, library_names=_LIBRARY_ICICLE)
+        ons = sorted(
+            (p for p in result["06_PROP_Icicles"] if p.effect_name == "On"),
+            key=lambda p: p.start_ms,
+        )
+        assert len(ons) == 2  # 8 beats = 2 bars
+        assert all(p.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask" for p in ons)
+        assert ons[0].color_palette != ons[1].color_palette
+
+    def test_repeated_section_alternates_to_meteors_down(self) -> None:
+        result = _place(_make_section(label="chorus"), _ICICLE_GROUP,
+                        variation_seed=3, library_names=_LIBRARY_ICICLE)
+        placements = result["06_PROP_Icicles"]
+        meteors = [p for p in placements if p.effect_name == "Meteors"]
+        assert len(meteors) == 4
+        params = dict(meteors[0].parameters)
+        assert params["E_CHOICE_Meteors_Effect"] == "Down"
+        assert params["E_SLIDER_Meteors_Count"] == "28"
+        assert params["E_CHECKBOX_Meteors_UseMusic"] == "0"
+
+    def test_low_energy_verse_keeps_normal_placement(self) -> None:
+        result = _place(_make_section(label="verse", energy=40), _ICICLE_GROUP,
+                        library_names=_LIBRARY_ICICLE)
+        placements = result.get("06_PROP_Icicles", [])
+        assert not any(p.effect_name == "Spirals" and
+                       dict(p.parameters).get("E_SLIDER_Spirals_Thickness") == "33"
+                       for p in placements)
+
+
+# ── mega-topper recipe ────────────────────────────────────────────────────────
+
+
+_TOPPER_GROUP = PowerGroup(
+    name="08_HERO_Mega_Topper", tier=8, members=["Mega Topper"],
+)
+_LIBRARY_TOPPER = ("Color Wash", "Shockwave", "On", "Off", "Ripple",
+                   "Single Strand", "Spirals")
+
+
+class TestMegaTopperRecipe:
+    def test_hero_topper_matches(self) -> None:
+        assert recipe_for_group(_TOPPER_GROUP).family == "megatopper"
+
+    def test_megatree_group_does_not_match_megatopper(self) -> None:
+        assert recipe_for_group(_MEGATREE_GROUP).family == "megatree"
+
+    def test_chorus_stack_bursts_on_color_and_off_backdrop(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place(section, _TOPPER_GROUP, library_names=_LIBRARY_TOPPER,
+                        active_tiers=frozenset({1, 8}))
+        placements = result["08_HERO_Mega_Topper"]
+        bursts = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(bursts) == len(_BEATS)  # no volley: per-beat like the corpus
+        assert all(p.layer == 1 for p in bursts)
+        params = dict(bursts[0].parameters)
+        assert params["E_SLIDER_Shockwave_End_Radius"] == "100"  # prop-scale burst
+        ons = sorted((p for p in placements if p.effect_name == "On"),
+                     key=lambda p: p.start_ms)
+        assert len(ons) == 2  # bar-cycling color
+        assert ons[0].color_palette != ons[1].color_palette
+        offs = [p for p in placements if p.effect_name == "Off"]
+        assert len(offs) == 1
+        assert offs[0].layer == 2
+        assert offs[0].start_ms == section.start_ms
+        assert offs[0].end_ms == section.end_ms
+
+    def test_no_alternate_on_repeated_sections(self) -> None:
+        # The topper deliberately has no alt effect: it stays on Shockwave
+        # while the megatree recipe alternates to Spirals, reproducing the
+        # corpus's dominant Shockwave-over-Spirals pairing.
+        result = _place(_make_section(label="chorus"), _TOPPER_GROUP,
+                        variation_seed=3, library_names=_LIBRARY_TOPPER,
+                        active_tiers=frozenset({1, 8}))
+        placements = result["08_HERO_Mega_Topper"]
+        bursts = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(bursts) == len(_BEATS)
+
+
+# ── star recipe ───────────────────────────────────────────────────────────────
+
+
+_STAR_GROUP = PowerGroup(
+    name="06_PROP_Star", tier=6,
+    members=["Star 1", "Star 2", "Star 3", "Star 4"], prop_type="radial",
+)
+_LIBRARY_STAR = ("Color Wash", "Shockwave", "On", "Ripple",
+                 "Single Strand", "Spirals")
+
+
+class TestStarRecipe:
+    def test_star_group_matches_despite_radial_prop_type(self) -> None:
+        # Whole-prop star groups classify as radial but are not subModel
+        # chase groups — they must reach the star recipe.
+        assert recipe_for_group(_STAR_GROUP).family == "star"
+
+    def test_treestar_group_matches_star_not_minitree(self) -> None:
+        g = PowerGroup(name="06_PROP_TreeStar", tier=6,
+                       members=["TreeStar 1", "TreeStar 2"], prop_type="radial")
+        assert recipe_for_group(g).family == "star"
+
+    def test_arch_star_group_matches_star_not_arch(self) -> None:
+        g = PowerGroup(name="06_PROP_Arch_Star", tier=6,
+                       members=["Arch Star 1", "Arch Star 2"])
+        assert recipe_for_group(g).family == "star"
+
+    def test_starburst_excluded(self) -> None:
+        g = PowerGroup(name="06_PROP_Starburst", tier=6,
+                       members=["Starburst_6ft_8_Point A", "Starburst_6ft_8_Point B"])
+        assert recipe_for_group(g) is None
+
+    def test_ring_submodel_group_still_blocked(self) -> None:
+        g = PowerGroup(name="06_PROP_Star_Rings", tier=6,
+                       members=["Star 1/Ring 1", "Star 1/Ring 2"],
+                       prop_type="radial")
+        assert recipe_for_group(g) is None
+
+    def test_chorus_gets_simultaneous_pops_with_cycling_color(self) -> None:
+        section = _make_section(label="chorus")
+        result = _place(section, _STAR_GROUP, library_names=_LIBRARY_STAR)
+        placements = result["06_PROP_Star"]
+        pops = [p for p in placements if p.effect_name == "Shockwave"]
+        assert len(pops) == len(_BEATS)
+        params = dict(pops[0].parameters)
+        assert params["E_SLIDER_Shockwave_End_Radius"] == "100"
+        ons = sorted((p for p in placements if p.effect_name == "On"),
+                     key=lambda p: p.start_ms)
+        assert len(ons) == 2
+        assert ons[0].color_palette != ons[1].color_palette
+
+    def test_repeated_section_alternates_to_chase(self) -> None:
+        result = _place(_make_section(label="chorus"), _STAR_GROUP,
+                        variation_seed=3, library_names=_LIBRARY_STAR)
+        placements = result["06_PROP_Star"]
+        chases = [p for p in placements if p.effect_name == "Single Strand"]
+        assert len(chases) == len(_BEATS)
+        assert dict(chases[0].parameters)["E_CHOICE_Fade_Type"] == "From Head"
+
+    def test_verse_falls_back_to_radial_chase(self) -> None:
+        # Non-qualifying sections keep the existing radial chase-across-
+        # members behavior (placements land on individual member models).
+        result = _place(_make_section(label="verse", energy=40), _STAR_GROUP,
+                        library_names=_LIBRARY_STAR)
+        assert "06_PROP_Star" not in result or not any(
+            p.effect_name == "Shockwave" and
+            dict(p.parameters).get("E_SLIDER_Shockwave_End_Radius") == "100"
+            for p in result.get("06_PROP_Star", [])
+        )
+
+    def test_tree_and_topper_heroes_place_together(self) -> None:
+        # The hero spotlight rotation must not solo one of a corpus-paired
+        # hero couple: the reference packages run the topper co-active with
+        # the tree.
+        tree = PowerGroup(name="08_HERO_Mega_Tree", tier=8, members=["Mega Tree"])
+        topper = PowerGroup(name="08_HERO_Mega_Topper", tier=8,
+                            members=["Mega Topper"])
+        library = _make_library(*_LIBRARY_TOPPER)
+        variant_library = _make_variant_library(*_LIBRARY_TOPPER)
+        assignment = _make_assignment(
+            _make_section(label="chorus"), [EffectLayer(variant="Color Wash")],
+            active_tiers=frozenset({8}),
+        )
+        result = place_effects(
+            assignment, [tree, topper], library, _make_hierarchy(_BEATS),
+            variant_library=variant_library,
+        )
+        assert "08_HERO_Mega_Tree" in result
+        assert "08_HERO_Mega_Topper" in result
+
+
+# ── matrix motion rotation ────────────────────────────────────────────────────
+
+
+_MATRIX_GROUP = PowerGroup(
+    name="06_PROP_Matrix", tier=6, members=["Matrix 1", "Matrix 2"],
+    prop_type="matrix",
+)
+_LIBRARY_MATRIX = ("Color Wash", "Shockwave", "Pinwheel", "Lightning",
+                   "Ripple", "Spirals", "On", "Single Strand")
+
+
+class TestMatrixMotionRotation:
+    def _motion_effects(self, seed: int, library=_LIBRARY_MATRIX) -> set[str]:
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        variation_seed=seed, library_names=library)
+        return {
+            p.effect_name for p in result.get("06_PROP_Matrix", [])
+            if p.effect_name not in ("On", "Spirals")
+        }
+
+    def test_rotation_walks_all_four_mined_looks(self) -> None:
+        assert self._motion_effects(0) == {"Shockwave"}
+        assert self._motion_effects(2) == {"Pinwheel"}
+        assert self._motion_effects(4) == {"Lightning"}
+        assert self._motion_effects(6) == {"Ripple"}
+        assert self._motion_effects(8) == {"Shockwave"}  # cycle repeats
+
+    def test_ripple_slot_carries_implode_preset(self) -> None:
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        variation_seed=6, library_names=_LIBRARY_MATRIX)
+        ripples = [p for p in result["06_PROP_Matrix"]
+                   if p.effect_name == "Ripple"]
+        assert ripples
+        params = dict(ripples[0].parameters)
+        assert params["E_CHOICE_Ripple_Movement"] == "Implode"
+        assert params["E_TEXTCTRL_Ripple_Cycles"] == "0.2"
+        assert params["E_SLIDER_Ripple_Thickness"] == "12"
+
+    def test_lightning_slot_carries_flicker_preset(self) -> None:
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        variation_seed=4, library_names=_LIBRARY_MATRIX)
+        bolts = [p for p in result["06_PROP_Matrix"]
+                 if p.effect_name == "Lightning"]
+        assert bolts
+        params = dict(bolts[0].parameters)
+        assert params["E_CHOICE_Lightning_Direction"] == "Up"
+        assert params["E_SLIDER_Number_Bolts"] == "10"
+
+    def test_missing_rotation_effect_falls_back_to_primary_pair(self) -> None:
+        # A catalog without Lightning must not break the Lightning slot —
+        # the primary/alt pair takes over (seed 4 -> halved parity 0 -> primary).
+        library = tuple(n for n in _LIBRARY_MATRIX if n != "Lightning")
+        assert self._motion_effects(4, library=library) == {"Shockwave"}
+
+    def test_sustained_spirals_layer_survives_rotation(self) -> None:
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        variation_seed=4, library_names=_LIBRARY_MATRIX)
+        spirals = [p for p in result["06_PROP_Matrix"]
+                   if p.effect_name == "Spirals"]
+        assert spirals
+        assert dict(spirals[0].parameters)["E_CHECKBOX_Spirals_3D"] == "1"
+
+    def test_families_without_rotation_unchanged(self) -> None:
+        # Snowflakes keep the two-effect alternation: seed 4 halves to
+        # parity 0 -> primary Shockwave (not a third look).
+        result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP,
+                        variation_seed=4)
+        placements = result["06_PROP_Snowflake"]
+        assert all(p.effect_name == "Shockwave" for p in placements)

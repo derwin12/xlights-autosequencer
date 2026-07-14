@@ -3193,6 +3193,43 @@
       "related_bugs": ["bug-192", "bug-193"],
       "occurrences": 1,
       "last_seen": "2026-07-14"
+    },
+    {
+      "id": "bug-195",
+      "timestamp": "2026-07-13",
+      "error_message": "No icicle effects in generated sequence - icicle props never form a tier-6 group",
+      "file": "src/grouper/grouper.py",
+      "root_cause": "Port-numbered prop names ('01 Icicles 1', '13 Icicles 2') defeat _tier6_prop_type's name stemming: each stems to a distinct singleton type ('01 Icicles' / '13 Icicles'), no >=2-member family forms, so the props get no tier-6 group and the icicle corpus recipe has nothing to match.",
+      "fix": "New _tier6_display_type_fallback: props left out of every name-based tier-6 family whose DisplayAs is family-semantic (Icicles/Arches/Candy Canes) group by display type into 06_PROP_<type>. Additive only - name-familied props never move; broad display types (Custom, Single Line) deliberately excluded.",
+      "tags": [
+        "grouper",
+        "tier6",
+        "icicles",
+        "numbered-props",
+        "display-as",
+        "corpus-recipe"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-07-13",
+      "error_message": "08_HERO_Mega_Topper never received placements even though the hero group forms and the megatopper recipe matches",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_select_groups_for_layer tier-8 branch picks exactly one hero per layer (available[layer_idx % len]); with two heroes (tree + topper) the spotlight always landed on the tree and the topper was never selected for placement.",
+      "fix": "Tier-8 selection keeps the rotating spotlight pick but additionally includes every hero with a corpus recipe (recipe_for_group not None), so corpus-paired heroes (mega tree + mega topper) always place together; verified via fresh dashboard export.",
+      "tags": [
+        "hero",
+        "tier8",
+        "megatopper",
+        "effect_placer",
+        "group-selection"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-13"
     }
   ]
 }
