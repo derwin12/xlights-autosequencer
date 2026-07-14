@@ -150,13 +150,6 @@ class PropFamilyRecipe:
     # beat (1); icicles run calmer 2-beat segments (mined medians 0.65-1.98s
     # against 0.44-0.65s beats — 1-4 beat segments, never per-beat bursts).
     beats_per_placement: int = 1
-    # Whole-house restraint (mined from the calmer reference package): the
-    # per-beat motion fires in bar-length volleys — (bars_on, bars_off) —
-    # instead of wall-to-wall coverage. That package averages ~0.9
-    # placements/s against 1.5 beats/s even in its densest chorus run, with
-    # phrase-length rests where only the color layer carries. None → every
-    # beat (the existing prop-family behavior).
-    burst_volley: tuple[int, int] | None = None
     # The On "2 is Unmask" color layer steps through the palette's vivid
     # colors one bar at a time instead of holding a single section-spanning
     # color. Both reference poles agree on this: On block medians are ~2.0s
@@ -307,45 +300,6 @@ _LIGHTNING_FLICKER: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Lightning_BOTX", "0"),
     ("E_SLIDER_Number_Bolts", "10"),
     ("E_SLIDER_Number_Segments", "5"),
-)
-
-
-# Whole-house Shockwave preset — mined from 597 Shockwave placements on
-# All-group elements across all 12 reference packages: same center-out burst
-# as the snowflake preset (Position 100%, Cycles 1 at 100%, Accel 0,
-# CenterX/Y 50, Start_Radius 1, Start_Width 5, Blend_Edges/Scale on) but at
-# whole-house scale — End_Radius 150 / End_Width 56 are the modal values on
-# the group canvas vs 100/35 on individual props.
-_SHOCKWAVE_ALL: tuple[tuple[str, str], ...] = (
-    ("E_NOTEBOOK_Shockwave", "Position"),
-    ("E_CHECKBOX_Shockwave_Blend_Edges", "1"),
-    ("E_CHECKBOX_Shockwave_Scale", "1"),
-    ("E_SLIDER_Shockwave_Accel", "0"),
-    ("E_SLIDER_Shockwave_CenterX", "50"),
-    ("E_SLIDER_Shockwave_CenterY", "50"),
-    ("E_SLIDER_Shockwave_Cycles", "1"),
-    ("E_SLIDER_Shockwave_Start_Radius", "1"),
-    ("E_SLIDER_Shockwave_Start_Width", "5"),
-    ("E_SLIDER_Shockwave_End_Radius", "150"),
-    ("E_SLIDER_Shockwave_End_Width", "56"),
-)
-
-
-# Whole-house Pinwheel preset — mined from 264 Pinwheel placements on
-# All-group elements (6/12 packages): New Render Method (100%), 10 thin
-# full-length arms (Thickness 2, ArmSize 100) centered at the bottom of the
-# display (YC -100), rotation on, no twist/3D — rays sweeping up from the
-# ground across the whole yard. Distinct from the matrix Pinwheel preset.
-_PINWHEEL_ALL: tuple[tuple[str, str], ...] = (
-    ("E_CHOICE_Pinwheel_Style", "New Render Method"),
-    ("E_CHECKBOX_Pinwheel_Rotation", "1"),
-    ("E_SLIDER_Pinwheel_Arms", "10"),
-    ("E_SLIDER_Pinwheel_ArmSize", "100"),
-    ("E_SLIDER_Pinwheel_Speed", "10"),
-    ("E_SLIDER_Pinwheel_Thickness", "2"),
-    ("E_SLIDER_Pinwheel_Twist", "0"),
-    ("E_SLIDER_PinwheelXC", "0"),
-    ("E_SLIDER_PinwheelYC", "-100"),
 )
 
 
@@ -662,45 +616,16 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         color_cycle_bars=True,
         beats_per_placement=2,
     ),
-    # Whole-house All group — mined from the same 12 packages
-    # (docs/all_sequencing_corpus/, 1.9k placements over 12 songs). The
-    # reference shows treat the All group as a rhythmic canvas, not a static
-    # wash: per-beat Shockwave bursts at whole-house scale (31%, 12/12 songs,
-    # median 0.47s) under an On "2 is Unmask" color layer (386/386), with a
-    # bottom-centered thin-armed Pinwheel as the recurring alternate (14%,
-    # 6/12 songs). Pacing follows the restrained pole of the corpus rather
-    # than the maximal one: the color layer cycles one vivid color per bar
-    # as the continuous backbone, while the bursts volley one bar on / two
-    # bars off. Matches the tier-1 canvas group 01_BASE_All by name;
-    # "fades" keeps it off 01_BASE_All_FADES (the end-of-song fade group).
-    PropFamilyRecipe(
-        family="all_group",
-        match_tokens=("base_all",),
-        exclude_tokens=("fades",),
-        effect_name="Shockwave",
-        alt_effect_name="Pinwheel",
-        parameter_overrides=_SHOCKWAVE_ALL,
-        alt_parameter_overrides=_PINWHEEL_ALL,
-        color_over_mask=True,
-        burst_volley=(1, 2),
-        color_cycle_bars=True,
-    ),
 )
 
 
 def recipe_for_group(group: PowerGroup) -> PropFamilyRecipe | None:
-    """Return the corpus recipe for a tier-1 BASE, tier-6 PROP, or tier-8 HERO group.
+    """Return the corpus recipe for a tier-6 PROP or tier-8 HERO group.
 
     Tier 8 is included because a family's props don't always pair up into a
     tier-6 group — a layout with a single mega tree promotes it to
     ``08_HERO_Mega_Tree``, and the corpus effects were overwhelmingly placed
     on such individual model elements.
-
-    Tier 1 is included for the whole-house ``all_group`` recipe only, and it
-    matches by group name alone: a BASE group's members are the entire
-    display, so the member-majority fallback below could hand the whole-house
-    canvas a single prop family's recipe (e.g. minitree on a tree-heavy
-    layout) — never intended.
 
     Radial subModel groups (``prop_type == "radial"`` with ``Parent/Sub``
     member addresses, produced by ``_tier6_radial_subgroups``) are never
@@ -710,7 +635,7 @@ def recipe_for_group(group: PowerGroup) -> PropFamilyRecipe | None:
     their own chorus idiom, and the member chase remains the fallback on
     non-qualifying sections.
     """
-    if group.tier not in (1, 6, 8):
+    if group.tier not in (6, 8):
         return None
     if (
         group.prop_type == "radial"
@@ -731,10 +656,8 @@ def recipe_for_group(group: PowerGroup) -> PropFamilyRecipe | None:
             # A generically named group ("06_PROP_Trees") can still hold a
             # different family's props ("Mega Tree 1/2") — when a majority of
             # members hit this recipe's exclude tokens, let the member-
-            # majority pass below pick the right family instead. The
-            # whole-house group is exempt: its members are the entire display
-            # by design, so member composition never disqualifies it.
-            if group.tier != 1 and group.members and recipe.exclude_tokens:
+            # majority pass below pick the right family instead.
+            if group.members and recipe.exclude_tokens:
                 excluded = sum(
                     1 for member in group.members
                     if any(t in member.lower() for t in recipe.exclude_tokens)
@@ -742,7 +665,7 @@ def recipe_for_group(group: PowerGroup) -> PropFamilyRecipe | None:
                 if excluded / len(group.members) > 0.5:
                     continue
             return recipe
-    if group.members and group.tier != 1:
+    if group.members:
         for recipe in CORPUS_RECIPES:
             hits = sum(
                 1 for member in group.members if _matches(recipe, member.lower())

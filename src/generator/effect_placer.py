@@ -1146,13 +1146,10 @@ def place_effects(
                 # Corpus-mined prop-family idiom for HERO props: a solo mega
                 # tree never forms a tier-6 pair group, so it reaches this
                 # default path as 08_HERO_Mega_Tree. Same override semantics
-                # as the tier-6 recipe sites above. Tier 1 included for the
-                # whole-house all_group recipe: on qualifying sections the
-                # BASE canvas carries the corpus's per-beat burst composition
-                # instead of the static section-spanning wash.
+                # as the tier-6 recipe sites above.
                 recipe = recipe_for_group(group)
                 if (
-                    tier in (1, 8)
+                    tier == 8
                     and recipe is not None
                     and group.name not in corpus_recipe_done
                     and section_qualifies(recipe, section)
@@ -1166,13 +1163,6 @@ def place_effects(
                         corpus_recipe_done.add(group.name)
                         result.setdefault(group.name, []).extend(recipe_placements)
                         continue
-
-                # Once the whole-house recipe has fired, later theme layers
-                # targeting tier 1 must not stack their wash on top of the
-                # burst composition (the recipe owns the group's layers for
-                # this section).
-                if tier == 1 and group.name in corpus_recipe_done:
-                    continue
 
                 # Matrix-prop guard for tier-8 HERO (peer of the rotation-pool
                 # filter inside _build_effect_pool, which only runs on tier-6/7).
@@ -1229,10 +1219,6 @@ def place_effects(
                     if accent_def is not None:
                         accent_params = dict(accent_variant.parameter_overrides)
                         for group in groups_for_tier:
-                            # The whole-house recipe owns the group's layers
-                            # on sections where it fired — no accent overlay.
-                            if group.name in corpus_recipe_done:
-                                continue
                             accent_p = _make_placement(
                                 accent_def, group.name,
                                 assignment.section.start_ms,
@@ -1264,10 +1250,6 @@ def place_effects(
     # already-audio-reactive effects to avoid double-coverage.
     for group_name, placements in result.items():
         if not group_name.startswith("01_BASE"):
-            continue
-        if group_name in corpus_recipe_done:
-            # Whole-house recipe sections: the per-beat bursts are already
-            # music-reactive; sparkles on 0.5s bursts read as noise.
             continue
         for p in placements:
             if p.music_sparkles > 0:
@@ -2001,15 +1983,6 @@ def _place_corpus_recipe(
     # longer for calmer ones (icicles run 2-beat segments per the corpus).
     beat_stride = max(1, recipe.beats_per_placement)
     for i in range(0, len(marks), beat_stride):
-        # Volleyed families (whole-house All group) rest for burst_volley's
-        # off-bars — the mined restrained package averages well under one
-        # placement per beat, with phrase-length gaps where only the color
-        # layer carries. Bars are fixed four-beat groups, matching the
-        # secondary-layer stride convention below.
-        if recipe.burst_volley is not None:
-            bars_on, bars_off = recipe.burst_volley
-            if ((i // 4) % (bars_on + bars_off)) >= bars_on:
-                continue
         start = marks[i].time_ms
         if i + beat_stride < len(marks):
             end = marks[i + beat_stride].time_ms
