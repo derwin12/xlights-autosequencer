@@ -94,6 +94,19 @@ class PropFamilyRecipe:
     label_alt_labels: tuple[str, ...] = ()
     label_alt_effect_name: str | None = None
     label_alt_parameter_overrides: tuple[tuple[str, str], ...] = ()
+    # Optional per-beat/per-occurrence direction rotation for the PRIMARY
+    # effect's own preset (distinct from alt_effect_name, which swaps the
+    # whole effect). Mined: genuine arch elements' Single Strand chase
+    # direction splits ~evenly between Left-Right/Right-Left (alternating
+    # per beat -- a "ping-pong" look) and a constant "Bounce from Right"
+    # held for a whole section occurrence (see docs/arch_sequencing_corpus,
+    # re-analyzed excluding the "Spinarchy" matrix/spinner false-positive
+    # matches). variation_seed parity picks which style a given occurrence
+    # gets. Empty direction_field -> no rotation; parameter_overrides' fixed
+    # value is used for every beat, as before.
+    direction_field: str | None = None
+    direction_ping_pong_values: tuple[str, str] = ()
+    direction_alt_value: str | None = None
     # The reference packages place a section-spanning Off effect on the layer
     # beneath the beat bursts (xLights layer 2) on the group element, so the
     # props render black between bursts instead of picking up whole-house
@@ -285,6 +298,14 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_SHOCKWAVE_BURST,
         off_backdrop=True,
+        # Chase direction rotation mined from genuine arch elements (see the
+        # direction_field docstring above): alternating occurrences either
+        # ping-pong Left-Right/Right-Left per beat or hold Bounce from Right
+        # for the whole section, instead of every Single Strand chase using
+        # the same fixed direction all song long.
+        direction_field="E_CHOICE_Chase_Type1",
+        direction_ping_pong_values=("Left-Right", "Right-Left"),
+        direction_alt_value="Bounce from Right",
     ),
     # Mega tree — mined from the same 12 packages (docs/megatree_sequencing_
     # corpus/). Time-weighted, the tree is a layered composition, not a

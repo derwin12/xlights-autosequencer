@@ -269,6 +269,24 @@ class TestCorpusRecipePlacement:
             assert p.parameters["E_CHOICE_Fade_Type"] == "From Head"
             assert p.parameters["E_CHOICE_SingleStrand_Colors"] == "Palette"
 
+    def test_arch_chorus_ping_pongs_chase_direction_per_beat(self) -> None:
+        # variation_seed=0: primary effect (0//2%2==0) and ping-pong style
+        # (0%2==0) -- direction alternates Left-Right/Right-Left per beat,
+        # mirroring the mined per-beat pattern on genuine arch elements.
+        result = _place(_make_section(label="chorus"), _ARCH_GROUP, variation_seed=0)
+        placements = result["06_PROP_Arch"]
+        directions = [p.parameters["E_CHOICE_Chase_Type1"] for p in placements]
+        assert directions == ["Left-Right", "Right-Left"] * (len(directions) // 2)
+
+    def test_arch_chorus_bounce_direction_constant_on_odd_seed(self) -> None:
+        # variation_seed=1: still the primary effect (1//2%2==0) but the
+        # odd seed parity (1%2==1) selects the constant "Bounce from Right"
+        # style instead of ping-ponging.
+        result = _place(_make_section(label="chorus"), _ARCH_GROUP, variation_seed=1)
+        placements = result["06_PROP_Arch"]
+        assert placements
+        assert all(p.parameters["E_CHOICE_Chase_Type1"] == "Bounce from Right" for p in placements)
+
     def test_arch_bridge_gets_spirals(self) -> None:
         # "bridge" is not in the default qualifying_labels, but arch adds it
         # specifically so its label-alt (mined: Spirals 56/76 bridge

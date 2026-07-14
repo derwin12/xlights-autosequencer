@@ -1895,6 +1895,24 @@ def _place_corpus_recipe(
         params = dict(recipe.label_alt_parameter_overrides)
     else:
         params = dict(recipe.alt_parameter_overrides)
+
+    # Direction rotation applies only to the primary effect's own preset (see
+    # PropFamilyRecipe.direction_field docstring). One section occurrence
+    # holds a constant alt direction; the other ping-pongs per beat below.
+    use_bounce_direction = (
+        effect_name == recipe.effect_name
+        and recipe.direction_field is not None
+        and recipe.direction_alt_value is not None
+        and variation_seed % 2 == 1
+    )
+    if use_bounce_direction:
+        params[recipe.direction_field] = recipe.direction_alt_value
+    use_ping_pong_direction = (
+        not use_bounce_direction
+        and effect_name == recipe.effect_name
+        and recipe.direction_field is not None
+        and len(recipe.direction_ping_pong_values) == 2
+    )
     # Two-layer "color over mask" (mega trees): a section-spanning On sits on
     # the top layer with LayerMethod "2 is Unmask", so the motion effect on
     # the layer below only contributes shape/brightness while the On supplies
@@ -1913,10 +1931,15 @@ def _place_corpus_recipe(
             end = min(start + max(median_interval, FRAME_INTERVAL_MS), section.end_ms)
         if end <= start:
             continue
+        direction_cycle = (
+            {"param": recipe.direction_field, "values": list(recipe.direction_ping_pong_values)}
+            if use_ping_pong_direction
+            else None
+        )
         p = _make_placement(
             effect_def, group.name, start, end,
             params, palette, layer.blend_mode, "beat", instance_index=i,
-            preserve_directions=True,
+            direction_cycle=direction_cycle, preserve_directions=True,
         )
         p.layer = mask_layer_idx
         placements.append(p)
