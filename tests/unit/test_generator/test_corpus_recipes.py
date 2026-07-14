@@ -497,6 +497,18 @@ class TestCaneRecipe:
                    "E_NOTEBOOK_SSEFFECT_TYPE" not in p.parameters
                    for p in placements)
 
+    def test_cane_ping_pongs_chase_direction_per_beat(self) -> None:
+        result = _place(_make_section(label="chorus"), _CANE_GROUP, variation_seed=0)
+        placements = result["06_PROP_Candy_Cane"]
+        directions = [p.parameters["E_CHOICE_Chase_Type1"] for p in placements]
+        assert directions == ["Left-Right", "Right-Left"] * (len(directions) // 2)
+
+    def test_cane_bounce_direction_constant_on_odd_seed(self) -> None:
+        result = _place(_make_section(label="chorus"), _CANE_GROUP, variation_seed=1)
+        placements = result["06_PROP_Candy_Cane"]
+        assert placements
+        assert all(p.parameters["E_CHOICE_Chase_Type1"] == "Bounce from Right" for p in placements)
+
 
 # ── horizontal / vertical house-line recipes ─────────────────────────────────
 
@@ -552,6 +564,20 @@ class TestHouseLineRecipes:
                         library_names=_DEFAULT_LIBRARY_NAMES + ("Off",))
         offs = [p for p in result["06_PROP_Horizontal"] if p.effect_name == "Off"]
         assert offs == []
+
+    def test_ping_pongs_chase_direction_per_beat(self) -> None:
+        for group in (_HORIZONTAL_GROUP, _VERTICAL_GROUP):
+            result = _place(_make_section(label="chorus"), group, variation_seed=0)
+            placements = result[group.name]
+            directions = [p.parameters["E_CHOICE_Chase_Type1"] for p in placements]
+            assert directions == ["Left-Right", "Right-Left"] * (len(directions) // 2)
+
+    def test_bounce_direction_constant_on_odd_seed(self) -> None:
+        for group in (_HORIZONTAL_GROUP, _VERTICAL_GROUP):
+            result = _place(_make_section(label="chorus"), group, variation_seed=1)
+            placements = result[group.name]
+            assert placements
+            assert all(p.parameters["E_CHOICE_Chase_Type1"] == "From Middle" for p in placements)
 
 
 # ── matrix recipe (three-layer stack) ────────────────────────────────────────
