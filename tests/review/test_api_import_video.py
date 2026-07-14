@@ -88,6 +88,22 @@ class TestImportVideoDedup:
         ).get_json()
         assert data["created"] is False
 
+    def test_repeat_import_updates_video_path_to_latest_drop(self, client, mp4_bytes):
+        # Same audio (dedups to the same song) but a different filename on
+        # the second drop -- video_path must reflect the most recent upload,
+        # not the first, so the export pipeline references the right file.
+        client.post(
+            "/api/v1/import-video",
+            data={"video": (io.BytesIO(mp4_bytes), "clip.mp4")},
+            content_type="multipart/form-data",
+        )
+        data = client.post(
+            "/api/v1/import-video",
+            data={"video": (io.BytesIO(mp4_bytes), "clip_again.mp4")},
+            content_type="multipart/form-data",
+        ).get_json()
+        assert data["song"]["video_path"].endswith("clip_again.mp4")
+
 
 class TestImportVideoErrors:
     def test_missing_file_returns_400(self, client):

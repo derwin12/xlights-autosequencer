@@ -134,8 +134,11 @@ def import_video():
         if existing is not None:
             if canonical_audio_path not in existing["source_paths"]:
                 existing["source_paths"].insert(0, canonical_audio_path)
-            if not existing.get("video_path"):
-                existing["video_path"] = video_path
+            # This route requires a video file (see the missing_file check
+            # above), so the just-stored video is always the freshest one --
+            # always adopt it, even on dedup, so the export pipeline never
+            # references a stale video from an earlier drop.
+            existing["video_path"] = video_path
             save_library(lib)
             return jsonify({"created": False, "source_path_added": True, "song": existing}), 200
 
