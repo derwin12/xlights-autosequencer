@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
+from src.generator.image_catalog import load_image_library
 from src.generator.models import EffectPlacement, SequencePlan, XsqDocument, FRAME_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
@@ -350,7 +351,19 @@ def write_xsq(
     # as plan.video_effects below. Multiple placements commonly reference
     # the same library file (e.g. every 20s segment of one prop's rotation
     # before it cycles to the next image), so each source is only copied once.
+    #
+    # The stored filename is `<id>_<original>` (id prefix added purely to
+    # avoid collisions inside the library folder, see image_catalog.py) — the
+    # exported name should be the original upload name so users recognize it
+    # in xLights, falling back to the id-prefixed name only if two different
+    # library entries in this song share the same original filename.
+    _original_filenames = {
+        e["stored_path"]: e["filename"]
+        for e in load_image_library()
+        if e.get("stored_path") and e.get("filename")
+    }
     _copied_pictures: dict[str, str] = {}
+    _used_dest_names: set[str] = set()
     for group_name, placements in plan.picture_effects.items():
         unordered.setdefault(group_name, []).extend(placements)
         for placement in placements:
@@ -361,11 +374,14 @@ def write_xsq(
                 placement.parameters["E_TEXTCTRL_Pictures_Filename"] = _copied_pictures[src]
                 continue
             src_path = Path(src)
-            dest = output_path.parent / src_path.name
+            dest_name = _original_filenames.get(src, src_path.name)
+            if dest_name in _used_dest_names:
+                dest_name = src_path.name
+            dest = output_path.parent / dest_name
             if dest.exists():
                 logger.info(
                     "picture_effect: '%s' already present at '%s' — skipping copy",
-                    src_path.name, dest,
+                    dest_name, dest,
                 )
             elif src_path.exists():
                 import shutil
@@ -374,10 +390,11 @@ def write_xsq(
             else:
                 logger.warning(
                     "picture_effect: source '%s' does not exist — xLights won't "
-                    "find '%s'", src_path, src_path.name,
+                    "find '%s'", src_path, dest_name,
                 )
-            _copied_pictures[src] = src_path.name
-            placement.parameters["E_TEXTCTRL_Pictures_Filename"] = src_path.name
+            _used_dest_names.add(dest_name)
+            _copied_pictures[src] = dest_name
+            placement.parameters["E_TEXTCTRL_Pictures_Filename"] = dest_name
 
     # Song-scoped Video placement (imported video clip on a matrix). Its
     # E_FILEPICKERCTRL_Video_Filename holds an absolute path into

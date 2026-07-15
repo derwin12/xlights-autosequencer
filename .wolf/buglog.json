@@ -3860,6 +3860,159 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-231",
+      "timestamp": "2026-07-15T16:16:14.431Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/image_catalog.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T16:16:14.431Z"
+    },
+    {
+      "id": "bug-232",
+      "timestamp": "2026-07-15T16:16:35.537Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 68→101 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T16:16:35.537Z"
+    },
+    {
+      "id": "bug-233",
+      "timestamp": "2026-07-15T12:17:00Z",
+      "error_message": "FEATURE (not a bug fix): user asked to wire lyric-matched images into Pictures generation, the explicit fast-follow deferred by bug-209/bug-214.",
+      "file": "src/generator/image_catalog.py, src/generator/effect_placer.py, src/generator/plan.py, tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "N/A (new feature). suggest_images_for_words() was advisory-only (bug-209) -- computed lyric/tag matches but never influenced which image a Pictures segment actually rendered.",
+      "fix": "Added stored_path to suggest_images_for_words() suggestions (additive key, existing analysis.py/Pictures.tsx consumers unaffected). _place_picture_effects() gained an optional word_image_matches param: for each per-prop segment, if any match [start_ms,end_ms) overlaps the segment window, that match stored_path is used instead of the seeded rotation pick (earliest-starting match wins on ties), falling back to rotation otherwise. plan.py computes suggest_images_for_words(config.vocal_words) once in the 5e block and passes it through. Added logger.info summary (N/M segments lyric-matched) plus per-override logger.debug lines so the behavior can be validated from logs. Went through the full Design-First Gate (touches src/generator/) before implementation; user approved the design before any file was edited. 8 new tests added, 406 generator-suite tests pass.",
+      "tags": [
+        "pictures-effect",
+        "image-catalog",
+        "lyric-matching",
+        "feature"
+      ],
+      "related_bugs": [
+        "bug-209",
+        "bug-213",
+        "bug-214"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T12:17:00Z"
+    },
+    {
+      "id": "bug-234",
+      "timestamp": "2026-07-15T18:23:48.341Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/xsq_writer.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 36→52 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T18:23:48.341Z"
+    },
+    {
+      "id": "bug-235",
+      "timestamp": "2026-07-15T18:40:30.459Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→8 lines (3 removed) | Also: \"\"\"Place Pictures effects on Matrix/Mega Tree prop; per-prop content. Each eligible prop gets its own ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-15T18:40:44.339Z"
+    },
+    {
+      "id": "bug-236",
+      "timestamp": "2026-07-15T18:41:23.431Z",
+      "error_message": "Significant refactor of ",
+      "file": "tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 33→40 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T18:41:23.431Z"
+    },
+    {
+      "id": "bug-237",
+      "timestamp": "2026-07-15T18:41:27.122Z",
+      "error_message": "Wrong reference: _PICTURE_SEGMENT_MS should be _PICTURE_BURST_MS",
+      "file": "tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "Used \"_PICTURE_SEGMENT_MS\" instead of \"_PICTURE_BURST_MS\"",
+      "fix": "Changed _PICTURE_SEGMENT_MS → _PICTURE_BURST_MS",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T18:41:27.122Z"
+    },
+    {
+      "id": "bug-238",
+      "timestamp": "2026-07-15T19:00:00.000Z",
+      "error_message": "Pictures effect deployed onto the dedicated Lyrics Matrix prop",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_place_picture_effects eligibility matched any prop with display_as == 'Matrix', which doesn't know a matrix named for lyric text display (see _place_lyric_text's 'lyric' name-token convention) is reserved for the Lyric Track text effect, not image rotation.",
+      "fix": "Added 'lyric' not in prop.name.lower() exclusion to the Pictures eligibility filter, matching the existing name-token convention used by _place_lyric_text.",
+      "tags": ["user-reported", "generator", "pictures", "py"],
+      "related_bugs": ["bug-239", "bug-240"],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T19:00:00.000Z"
+    },
+    {
+      "id": "bug-239",
+      "timestamp": "2026-07-15T19:15:00.000Z",
+      "error_message": "Exported Pictures filename shows the internal storage name (e.g. '772718e417de4b17_books.png') instead of the uploaded filename",
+      "file": "src/generator/xsq_writer.py",
+      "root_cause": "The image library stores uploads as '<id>_<original filename>' purely to avoid collisions inside ~/.xlight/library/images/files/; xsq_writer.py copied placements next to the .xsq using src_path.name (that same id-prefixed storage name) instead of looking up the original upload filename recorded in the library manifest.",
+      "fix": "xsq_writer.py now maps each stored_path to its original filename via image_catalog.load_image_library() and uses that as the exported name, falling back to the id-prefixed name only when two different library entries in the same song share an original filename (to avoid one image's export overwriting another's).",
+      "tags": ["user-reported", "generator", "pictures", "py"],
+      "related_bugs": ["bug-238", "bug-240"],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T19:15:00.000Z"
+    },
+    {
+      "id": "bug-240",
+      "timestamp": "2026-07-15T19:45:00.000Z",
+      "error_message": "Pictures effect replaced/monopolized the existing generated effects on Matrix/Mega Tree props instead of overlaying them",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_place_picture_effects placed Pictures on the default layer 0 in continuous _PICTURE_SEGMENT_MS (20s) segments spanning nearly the whole song, so it was the sole occupant of that prop's timeline for most of the song. Checking the reference .xsqz corpus (Cotton Eye Joe, Bluey, Its Raining Tacos, etc.) showed Pictures is placed as a short accent burst (~2-16s) on a non-zero layer stacked alongside other concurrent effects (82-100% overlap with other layers), covering only ~8-30% of the song per prop -- not a continuous full-song replacement.",
+      "fix": "Changed Pictures placements to layer=1 (the same accent-overlay convention used by _place_drum_accents/_place_impact_accent), replaced the continuous 20s-segment rotation with 8s bursts every 30s interval (_PICTURE_BURST_MS/_PICTURE_INTERVAL_MS), and defaulted E_CHECKBOX_Pictures_TransparentBlack=1 so the underlying layer-0 effect shows through the image's black background.",
+      "tags": ["user-reported", "generator", "pictures", "layering", "py"],
+      "related_bugs": ["bug-238", "bug-239"],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T19:45:00.000Z"
     }
   ]
 }

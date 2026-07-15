@@ -640,6 +640,94 @@ class TestVideoEffectPortability:
         assert found, "Expected bare filename in the serialized Video EffectDB entry"
 
 
+class TestPictureFilenamePortability:
+    """Pictures effect filenames must resolve to the user's original upload
+    name, not the id-prefixed name used internally to avoid collisions inside
+    the image library folder (bug reported 2026-07-15: exported filename
+    showed as '<id>_books.png' instead of 'books.png')."""
+
+    def _picture_plan(self, stored_path: str) -> SequencePlan:
+        plan = _make_plan()
+        plan.picture_effects = {
+            "Matrix1": [
+                EffectPlacement(
+                    effect_name="Pictures",
+                    xlights_id="Pictures",
+                    model_or_group="Matrix1",
+                    start_ms=0,
+                    end_ms=10000,
+                    parameters={"E_TEXTCTRL_Pictures_Filename": stored_path},
+                    color_palette=["#FFFFFF"],
+                )
+            ]
+        }
+        return plan
+
+    def test_filename_rewritten_to_original_upload_name(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path / "state"))
+        from src.generator.image_catalog import save_image_to_library
+
+        entry = save_image_to_library(
+            tag="books", filename="books.png", data=b"fake image bytes",
+            uploaded_at="2026-07-15T00:00:00Z",
+        )
+
+        plan = self._picture_plan(entry["stored_path"])
+        out_dir = tmp_path / "output"
+        out_dir.mkdir()
+        out_path = out_dir / "test.xsq"
+        write_xsq(plan, out_path)
+
+        placement = plan.picture_effects["Matrix1"][0]
+        assert placement.parameters["E_TEXTCTRL_Pictures_Filename"] == "books.png"
+        assert (out_dir / "books.png").exists()
+
+    def test_colliding_original_names_fall_back_to_stored_name(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path / "state"))
+        from src.generator.image_catalog import save_image_to_library
+
+        first = save_image_to_library(
+            tag="books-a", filename="books.png", data=b"image one",
+            uploaded_at="2026-07-15T00:00:00Z",
+        )
+        second = save_image_to_library(
+            tag="books-b", filename="books.png", data=b"image two",
+            uploaded_at="2026-07-15T00:01:00Z",
+        )
+
+        plan = _make_plan()
+        plan.picture_effects = {
+            "Matrix1": [
+                EffectPlacement(
+                    effect_name="Pictures", xlights_id="Pictures",
+                    model_or_group="Matrix1", start_ms=0, end_ms=5000,
+                    parameters={"E_TEXTCTRL_Pictures_Filename": first["stored_path"]},
+                    color_palette=["#FFFFFF"],
+                ),
+                EffectPlacement(
+                    effect_name="Pictures", xlights_id="Pictures",
+                    model_or_group="Matrix1", start_ms=5000, end_ms=10000,
+                    parameters={"E_TEXTCTRL_Pictures_Filename": second["stored_path"]},
+                    color_palette=["#FFFFFF"],
+                ),
+            ]
+        }
+
+        out_dir = tmp_path / "output"
+        out_dir.mkdir()
+        write_xsq(plan, out_dir / "test.xsq")
+
+        first_name = plan.picture_effects["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"]
+        second_name = plan.picture_effects["Matrix1"][1].parameters["E_TEXTCTRL_Pictures_Filename"]
+        assert first_name == "books.png"
+        assert second_name == Path(second["stored_path"]).name
+        assert first_name != second_name
+        assert (out_dir / first_name).read_bytes() == b"image one"
+        assert (out_dir / second_name).read_bytes() == b"image two"
+
+
 class TestScopedPreviewParams:
     """Tests for spec 049 — scoped_duration_ms and audio_offset_ms kwargs."""
 

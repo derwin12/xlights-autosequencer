@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T15:08:48.979Z",
-    "fileCount": 624,
+    "lastScanned": "2026-07-15T18:41:41.268Z",
+    "fileCount": 625,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "7cffbbc7644a98b9823c17dc430f2a906a96f1ebebcf7d378c17430709b571ec",
-    "storeUpdatedAt": "2026-07-15T15:08:48.995Z"
+    "renderedHash": "8158ccfdb61ae2c1b2cbc4ec0f968b30181ebb6fb32c8a1b07ceb53284e2bb1c",
+    "storeUpdatedAt": "2026-07-15T18:41:41.283Z"
   },
   "files": {
     ".DS_Store": {
@@ -3404,11 +3404,11 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 42182,
-      "hash": "1b6a4501ee11883a",
-      "size": 147845,
-      "mtimeMs": 1784125989366.704,
-      "updatedAt": "2026-07-15T14:33:09.510Z",
+      "tokens": 42903,
+      "hash": "b1b9ccc18e513d0e",
+      "size": 150375,
+      "mtimeMs": 1784140858130.8083,
+      "updatedAt": "2026-07-15T18:40:58.303Z",
       "source": "hook",
       "symbols": [
         {
@@ -3618,8 +3618,8 @@
           "name": "_place_per_trigger",
           "kind": "fn",
           "startLine": 2236,
-          "endLine": 3322,
-          "tokens": 12337
+          "endLine": 3377,
+          "tokens": 13043
         }
       ]
     },
@@ -4302,60 +4302,67 @@
     },
     "tests/unit/test_generator/test_picture_effects.py": {
       "description": "Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement.",
-      "tokens": 2953,
-      "hash": "57b3927eda64c5cb",
-      "size": 10333,
-      "mtimeMs": 1784127434087.264,
-      "updatedAt": "2026-07-15T14:57:14.880Z",
+      "tokens": 4380,
+      "hash": "d6716cf9e48fd3bf",
+      "size": 15330,
+      "mtimeMs": 1784140901124.9653,
+      "updatedAt": "2026-07-15T18:41:41.267Z",
       "source": "hook",
       "symbols": [
         {
           "name": "_prop",
           "kind": "fn",
-          "startLine": 18,
-          "endLine": 21,
+          "startLine": 22,
+          "endLine": 25,
           "tokens": 34
         },
         {
           "name": "_library_entry",
           "kind": "fn",
-          "startLine": 22,
-          "endLine": 25,
+          "startLine": 26,
+          "endLine": 29,
           "tokens": 55
         },
         {
           "name": "TestPlacePictureEffects",
           "kind": "class",
-          "startLine": 26,
-          "endLine": 139,
-          "tokens": 1356
+          "startLine": 30,
+          "endLine": 164,
+          "tokens": 1670
+        },
+        {
+          "name": "TestPlacePictureEffectsWordMatches",
+          "kind": "class",
+          "startLine": 165,
+          "endLine": 247,
+          "tokens": 983
         },
         {
           "name": "TestPictureEffectsConfigFlag",
           "kind": "class",
-          "startLine": 140,
-          "endLine": 156,
+          "startLine": 248,
+          "endLine": 264,
           "tokens": 153
         },
         {
           "name": "TestImageLibraryStorage",
           "kind": "class",
-          "startLine": 157,
-          "endLine": 185,
+          "startLine": 265,
+          "endLine": 293,
           "tokens": 356
         },
         {
           "name": "TestSuggestImagesForWords",
           "kind": "class",
-          "startLine": 186,
-          "endLine": 224,
-          "tokens": 494
+          "startLine": 294,
+          "endLine": 333,
+          "tokens": 510
         },
         {
           "name": "TestFindUnmatchedTopics",
           "kind": "class",
-          "startLine": 225,
-          "endLine": 256,
+          "startLine": 334,
+          "endLine": 365,
           "tokens": 361
         }
       ]
@@ -4558,116 +4565,116 @@
     },
     "src/generator/xsq_writer.py": {
       "description": "XSQ writer — serializes a SequencePlan to xLights .xsq XML format.",
-      "tokens": 12429,
-      "hash": "ab1e411a062b2e08",
-      "size": 43561,
-      "mtimeMs": 1784127289048.5076,
-      "updatedAt": "2026-07-15T14:54:49.215Z",
+      "tokens": 12665,
+      "hash": "e07d0f622c8c100c",
+      "size": 44388,
+      "mtimeMs": 1784139828174.0515,
+      "updatedAt": "2026-07-15T18:23:48.317Z",
       "source": "hook",
       "symbols": [
         {
           "name": "write_xsq",
           "kind": "fn",
-          "startLine": 276,
-          "endLine": 641,
-          "tokens": 5128
+          "startLine": 277,
+          "endLine": 658,
+          "tokens": 5347
         },
         {
           "name": "_serialize_palette",
           "kind": "fn",
-          "startLine": 642,
-          "endLine": 665,
+          "startLine": 659,
+          "endLine": 682,
           "tokens": 270
         },
         {
           "name": "_serialize_effect_params",
           "kind": "fn",
-          "startLine": 666,
-          "endLine": 723,
+          "startLine": 683,
+          "endLine": 740,
           "tokens": 792
         },
         {
           "name": "_strip_storage_prefix",
           "kind": "fn",
-          "startLine": 724,
-          "endLine": 735,
+          "startLine": 741,
+          "endLine": 752,
           "tokens": 136
         },
         {
           "name": "_encode_value_curve",
           "kind": "fn",
-          "startLine": 736,
-          "endLine": 761,
+          "startLine": 753,
+          "endLine": 778,
           "tokens": 284
         },
         {
           "name": "_ensure_palette",
           "kind": "fn",
-          "startLine": 762,
-          "endLine": 775,
+          "startLine": 779,
+          "endLine": 792,
           "tokens": 111
         },
         {
           "name": "_ensure_effect_entry",
           "kind": "fn",
-          "startLine": 776,
-          "endLine": 789,
+          "startLine": 793,
+          "endLine": 806,
           "tokens": 120
         },
         {
           "name": "parse_xsq",
           "kind": "fn",
-          "startLine": 790,
-          "endLine": 861,
+          "startLine": 807,
+          "endLine": 878,
           "tokens": 709
         },
         {
           "name": "remove_effects_in_range",
           "kind": "fn",
-          "startLine": 862,
-          "endLine": 872,
+          "startLine": 879,
+          "endLine": 889,
           "tokens": 141
         },
         {
           "name": "_remove_overlaps_per_layer",
           "kind": "fn",
-          "startLine": 873,
-          "endLine": 890,
+          "startLine": 890,
+          "endLine": 907,
           "tokens": 222
         },
         {
           "name": "_remove_overlaps",
           "kind": "fn",
-          "startLine": 891,
-          "endLine": 914,
+          "startLine": 908,
+          "endLine": 931,
           "tokens": 260
         },
         {
           "name": "_emit_timing_layer",
           "kind": "fn",
-          "startLine": 915,
-          "endLine": 945,
+          "startLine": 932,
+          "endLine": 962,
           "tokens": 335
         },
         {
           "name": "_build_lyric_layers",
           "kind": "fn",
-          "startLine": 946,
-          "endLine": 995,
+          "startLine": 963,
+          "endLine": 1012,
           "tokens": 580
         },
         {
           "name": "_collect_timing_tracks",
           "kind": "fn",
-          "startLine": 996,
-          "endLine": 1033,
+          "startLine": 1013,
+          "endLine": 1050,
           "tokens": 392
         },
         {
           "name": "fseq_guidance",
           "kind": "fn",
-          "startLine": 1034,
-          "endLine": 1040,
+          "startLine": 1051,
+          "endLine": 1057,
           "tokens": 71
         }
       ]
@@ -4843,6 +4850,185 @@
       "mtimeMs": 1784128128846.9673,
       "updatedAt": "2026-07-15T15:08:48.978Z",
       "source": "hook"
+    },
+    "tests/unit/test_generator/test_xsq_writer.py": {
+      "description": "Tests for XSQ writer — xLights .xsq XML serialization.",
+      "tokens": 15499,
+      "hash": "ddd8a9a14e98d24a",
+      "size": 54267,
+      "mtimeMs": 1784139867635.362,
+      "updatedAt": "2026-07-15T18:24:27.775Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "_make_theme",
+          "kind": "fn",
+          "startLine": 21,
+          "endLine": 32,
+          "tokens": 76
+        },
+        {
+          "name": "_make_plan",
+          "kind": "fn",
+          "startLine": 33,
+          "endLine": 102,
+          "tokens": 499
+        },
+        {
+          "name": "_write_and_parse",
+          "kind": "fn",
+          "startLine": 103,
+          "endLine": 110,
+          "tokens": 74
+        },
+        {
+          "name": "TestXsqWriter",
+          "kind": "class",
+          "startLine": 111,
+          "endLine": 388,
+          "tokens": 3598
+        },
+        {
+          "name": "TestSpiralsDefaultsMatchCatalogStorageNames",
+          "kind": "class",
+          "startLine": 389,
+          "endLine": 409,
+          "tokens": 294
+        },
+        {
+          "name": "_default_keys_match_catalog",
+          "kind": "fn",
+          "startLine": 410,
+          "endLine": 426,
+          "tokens": 236
+        },
+        {
+          "name": "TestMorphCoordinateKeysMatchCatalog",
+          "kind": "class",
+          "startLine": 427,
+          "endLine": 452,
+          "tokens": 370
+        },
+        {
+          "name": "TestMeteorsOffsetKeysMatchCatalog",
+          "kind": "class",
+          "startLine": 453,
+          "endLine": 468,
+          "tokens": 219
+        },
+        {
+          "name": "TestGarlandsCatalogAndDefaults",
+          "kind": "class",
+          "startLine": 469,
+          "endLine": 491,
+          "tokens": 283
+        },
+        {
+          "name": "TestCirclesValuesMatchXLightsRanges",
+          "kind": "class",
+          "startLine": 492,
+          "endLine": 516,
+          "tokens": 357
+        },
+        {
+          "name": "TestGalaxyCatalogAndDefaults",
+          "kind": "class",
+          "startLine": 517,
+          "endLine": 532,
+          "tokens": 209
+        },
+        {
+          "name": "TestTextCatalogKeysMatchXLights",
+          "kind": "class",
+          "startLine": 533,
+          "endLine": 556,
+          "tokens": 315
+        },
+        {
+          "name": "TestFacesCatalogAndDefaults",
+          "kind": "class",
+          "startLine": 557,
+          "endLine": 577,
+          "tokens": 246
+        },
+        {
+          "name": "TestPinwheel3DChoiceCasing",
+          "kind": "class",
+          "startLine": 578,
+          "endLine": 593,
+          "tokens": 211
+        },
+        {
+          "name": "TestVideoEffectPortability",
+          "kind": "class",
+          "startLine": 594,
+          "endLine": 642,
+          "tokens": 564
+        },
+        {
+          "name": "TestPictureFilenamePortability",
+          "kind": "class",
+          "startLine": 643,
+          "endLine": 730,
+          "tokens": 1052
+        },
+        {
+          "name": "TestScopedPreviewParams",
+          "kind": "class",
+          "startLine": 731,
+          "endLine": 875,
+          "tokens": 1604
+        },
+        {
+          "name": "TestXsqParser",
+          "kind": "class",
+          "startLine": 876,
+          "endLine": 944,
+          "tokens": 723
+        },
+        {
+          "name": "_make_hierarchy_with_stems",
+          "kind": "fn",
+          "startLine": 945,
+          "endLine": 969,
+          "tokens": 213
+        },
+        {
+          "name": "TestStemOnsetTimingTracks",
+          "kind": "class",
+          "startLine": 970,
+          "endLine": 1012,
+          "tokens": 495
+        },
+        {
+          "name": "TestLyricsTimingTrack",
+          "kind": "class",
+          "startLine": 1013,
+          "endLine": 1072,
+          "tokens": 761
+        },
+        {
+          "name": "TestLyricLayeredTimingTrack",
+          "kind": "class",
+          "startLine": 1073,
+          "endLine": 1145,
+          "tokens": 1077
+        },
+        {
+          "name": "TestFacesAndTextEffectSerialization",
+          "kind": "class",
+          "startLine": 1146,
+          "endLine": 1255,
+          "tokens": 1164
+        },
+        {
+          "name": "TestMigratedSliderKeysAbsent",
+          "kind": "class",
+          "startLine": 1256,
+          "endLine": 1283,
+          "tokens": 356
+        }
+      ]
     }
   }
 }
