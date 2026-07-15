@@ -2018,13 +2018,25 @@ def _place_corpus_recipe(
     if on_def is not None:
         on_params = {"T_CHOICE_LayerMethod": "2 is Unmask"}
         if recipe.color_cycle_bars:
-            # One On block per four-beat bar, stepping through the palette's
-            # vivid colors (mined On medians are ~one bar in both reference
-            # poles: 2.0s and 2.6s, cycling hue bar over bar).
-            for bar_idx, j in enumerate(range(0, len(marks), 4)):
+            # One On block per color_cycle_beats, stepping through the
+            # palette's vivid colors. The alt-style occurrence (same
+            # variation_seed parity bit as direction/size/pacing) swaps in
+            # color_cycle_beats_alt when set -- confirmed NOT BPM-derived
+            # (see color_cycle_beats_alt docstring), so this is a
+            # deterministic per-occurrence style pick, not a tempo rule:
+            # re-rendering the same song with the same variation_seed always
+            # reproduces the same cycle length.
+            cycle_beats = (
+                recipe.color_cycle_beats_alt
+                if use_alt_style and recipe.color_cycle_beats_alt is not None
+                else recipe.color_cycle_beats
+            )
+            for bar_idx, j in enumerate(range(0, len(marks), cycle_beats)):
                 bar_start = section.start_ms if j == 0 else marks[j].time_ms
                 bar_end = (
-                    marks[j + 4].time_ms if j + 4 < len(marks) else section.end_ms
+                    marks[j + cycle_beats].time_ms
+                    if j + cycle_beats < len(marks)
+                    else section.end_ms
                 )
                 if bar_end <= bar_start:
                     continue

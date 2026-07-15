@@ -3365,6 +3365,27 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-203",
+      "timestamp": "2026-07-15",
+      "error_message": "User: masking layer on canes/trees held the same color for an entire section -- asked whether that matches the corpus or should cycle every 4/8 beats.",
+      "file": "src/generator/corpus_recipes.py, src/generator/effect_placer.py",
+      "root_cause": "corpus_recipes.py claimed the cane/megatree/horizontal/vertical On '2 is Unmask' color layer was section-spanning (color_cycle_bars left False/default on those 4 recipes). Direct block-duration measurement against 12 real .xsqz files, cross-checked against each song's own Beats track, showed this was wrong: the color layer bar-cycles (commonly every 4 beats, sometimes every 8) exactly like the already-correct star/megatopper/icicle recipes -- the prior mining pass counted something other than block duration when it produced the section-spanning claim.",
+      "fix": "Enabled color_cycle_bars=True on cane/megatree/horizontal/vertical. Generalized effect_placer.py's previously-hardcoded 4-beat stride into new PropFamilyRecipe fields color_cycle_beats (default 4) and color_cycle_beats_alt (8 on these four recipes), bundled into the same variation_seed-driven use_alt_style bit that already governs direction/chase-size/pacing bundling on these families -- deterministic per song/section, not derived from BPM (explicitly ruled out: two songs at ~identical 141 BPM use 2 and 8 beats/cycle, and within one song cane vs horizontal/vertical differ at the same tempo).",
+      "tags": [
+        "generator",
+        "corpus_recipes",
+        "color-cycle",
+        "megatree",
+        "cane",
+        "horizontal",
+        "vertical",
+        "corpus-mining-correction"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

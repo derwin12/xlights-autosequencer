@@ -409,24 +409,34 @@ _LIBRARY_WITH_ON = _DEFAULT_LIBRARY_NAMES + ("On",)
 
 class TestMegatreeColorOverMask:
     def test_on_color_layer_over_mask_layer(self) -> None:
+        # 8 beats at the default color_cycle_beats=4 -> 2 bar-cycled blocks,
+        # not one section-spanning block (direct corpus block-duration
+        # measurement, 2026-07-15, corrected the section-spanning claim).
         section = _make_section(label="chorus")
         result = _place(section, _MEGATREE_GROUP, library_names=_LIBRARY_WITH_ON)
         placements = result["06_PROP_Mega_Tree"]
 
-        color_layers = [p for p in placements if p.effect_name == "On"]
+        color_layers = sorted(
+            (p for p in placements if p.effect_name == "On"), key=lambda p: p.start_ms,
+        )
         masks = [p for p in placements if p.effect_name == "Shockwave"]
-        assert len(color_layers) == 1
+        assert len(color_layers) == 2
         assert len(masks) == len(_BEATS)
 
-        on = color_layers[0]
-        # On sits on the top layer, spans the section, and carries the mined
-        # Unmask blend so the mask below only contributes shape/brightness.
-        assert on.layer == 0
-        assert on.start_ms == section.start_ms
-        assert on.end_ms == section.end_ms
-        assert on.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
-        # Color comes from the section theme (one solid color), not white.
-        assert len(on.color_palette) == 1
+        first, second = color_layers
+        # On sits on the top layer and carries the mined Unmask blend so the
+        # mask below only contributes shape/brightness.
+        assert first.layer == 0 and second.layer == 0
+        assert first.start_ms == section.start_ms
+        assert first.end_ms == _BEATS[4]
+        assert second.start_ms == _BEATS[4]
+        assert second.end_ms == section.end_ms
+        assert first.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
+        assert second.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
+        # Color comes from the section theme (one solid color per block),
+        # cycling to a different color for the second bar.
+        assert len(first.color_palette) == 1
+        assert first.color_palette != second.color_palette
 
         # Masks move to layer 1, stay white (shape only).
         assert all(p.layer == 1 for p in masks)
@@ -436,10 +446,24 @@ class TestMegatreeColorOverMask:
         result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                         variation_seed=3, library_names=_LIBRARY_WITH_ON)
         placements = result["06_PROP_Mega_Tree"]
-        assert [p.effect_name for p in placements].count("On") == 1
+        assert [p.effect_name for p in placements].count("On") == 2
         masks = [p for p in placements if p.effect_name == "Spirals"]
         assert masks
         assert all(p.layer == 1 for p in masks)
+
+    def test_color_cycle_length_bundles_with_occurrence_style(self) -> None:
+        # variation_seed=1 keeps the primary effect (Shockwave stays --
+        # effect alternation only flips at (seed//2)%2==1) but is odd, so
+        # the alt-style bit (same one bundling direction/size on other
+        # families) applies: 8-beat cycle instead of the default 4-beat.
+        even = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                      variation_seed=0, library_names=_LIBRARY_WITH_ON)
+        odd = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                     variation_seed=1, library_names=_LIBRARY_WITH_ON)
+        even_ons = [p for p in even["06_PROP_Mega_Tree"] if p.effect_name == "On"]
+        odd_ons = [p for p in odd["06_PROP_Mega_Tree"] if p.effect_name == "On"]
+        assert len(even_ons) == 2
+        assert len(odd_ons) == 1
 
     def test_snowflake_recipe_not_affected_by_on_in_library(self) -> None:
         # color_over_mask is megatree-only; snowflakes stay single-layer
@@ -489,17 +513,20 @@ class TestCaneRecipe:
             assert "E_CHOICE_Fade_Type" not in p.parameters
 
     def test_cane_on_color_layer_over_chase_mask(self) -> None:
+        # Bar-cycled, not section-spanning (see megatree test for the same
+        # correction and its rationale).
         section = _make_section(label="chorus")
         result = _place(section, _CANE_GROUP, library_names=_LIBRARY_WITH_ON)
         placements = result["06_PROP_Candy_Cane"]
-        color_layers = [p for p in placements if p.effect_name == "On"]
+        color_layers = sorted(
+            (p for p in placements if p.effect_name == "On"), key=lambda p: p.start_ms,
+        )
         masks = [p for p in placements if p.effect_name == "Single Strand"]
-        assert len(color_layers) == 1
-        on = color_layers[0]
-        assert on.layer == 0
-        assert on.start_ms == section.start_ms
-        assert on.end_ms == section.end_ms
-        assert on.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
+        assert len(color_layers) == 2
+        assert all(p.layer == 0 for p in color_layers)
+        assert color_layers[0].start_ms == section.start_ms
+        assert color_layers[-1].end_ms == section.end_ms
+        assert all(p.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask" for p in color_layers)
         assert len(masks) == len(_BEATS)
         assert all(p.layer == 1 for p in masks)
         assert all(p.color_palette == ["#FFFFFF"] for p in masks)
@@ -545,6 +572,30 @@ class TestCaneRecipe:
         assert len(even["06_PROP_Candy_Cane"]) == len(_BEATS)
         assert len(odd["06_PROP_Candy_Cane"]) == 2
 
+    def test_cane_color_cycle_length_bundles_with_occurrence_style(self) -> None:
+        # Same bundled parity bit as direction/size/pacing (variation_seed %
+        # 2), and deterministic: re-placing with the same seed reproduces
+        # the same cycle length every time, matching "re-rendering the same
+        # song stays at whichever cycle was picked" (2026-07-15 user
+        # requirement). Even seed -> default 4-beat cycle (2 blocks across
+        # 8 marks); odd seed -> 8-beat alt cycle (1 block, since 8 marks
+        # exactly fill one 8-beat cycle).
+        even = _place(_make_section(label="chorus"), _CANE_GROUP,
+                      variation_seed=0, library_names=_LIBRARY_WITH_ON)
+        odd = _place(_make_section(label="chorus"), _CANE_GROUP,
+                     variation_seed=1, library_names=_LIBRARY_WITH_ON)
+        even_again = _place(_make_section(label="chorus"), _CANE_GROUP,
+                            variation_seed=0, library_names=_LIBRARY_WITH_ON)
+
+        even_ons = [p for p in even["06_PROP_Candy_Cane"] if p.effect_name == "On"]
+        odd_ons = [p for p in odd["06_PROP_Candy_Cane"] if p.effect_name == "On"]
+        even_again_ons = [p for p in even_again["06_PROP_Candy_Cane"] if p.effect_name == "On"]
+
+        assert len(even_ons) == 2
+        assert len(odd_ons) == 1
+        assert len(even_again_ons) == len(even_ons)
+        assert [p.start_ms for p in even_again_ons] == [p.start_ms for p in even_ons]
+
 
 # ── horizontal / vertical house-line recipes ─────────────────────────────────
 
@@ -585,13 +636,15 @@ class TestHouseLineRecipes:
             assert "E_CHOICE_Fade_Type" not in p.parameters
 
     def test_on_color_layer_over_chase_mask(self) -> None:
+        # Bar-cycled, not section-spanning (see megatree test for the same
+        # correction and its rationale).
         section = _make_section(label="chorus")
         result = _place(section, _HORIZONTAL_GROUP, library_names=_LIBRARY_WITH_ON)
         placements = result["06_PROP_Horizontal"]
         color_layers = [p for p in placements if p.effect_name == "On"]
         masks = [p for p in placements if p.effect_name == "Single Strand"]
-        assert len(color_layers) == 1
-        assert color_layers[0].parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
+        assert len(color_layers) == 2
+        assert all(p.parameters["T_CHOICE_LayerMethod"] == "2 is Unmask" for p in color_layers)
         assert len(masks) == len(_BEATS)
         assert all(p.layer == 1 for p in masks)
 

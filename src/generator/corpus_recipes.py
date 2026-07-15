@@ -164,13 +164,34 @@ class PropFamilyRecipe:
     # and ~2.6s (= one bar), cycling blue→green→orange→... False → the
     # existing single section-spanning On.
     color_cycle_bars: bool = False
+    # Beats per On-color block when color_cycle_bars is set. Direct
+    # measurement against the reference corpus (2026-07-15, block duration
+    # cross-checked against each song's own Beats timing track) confirms 4
+    # beats (one bar) as the common case across cane/megatree/horizontal/
+    # vertical/star/megatopper/icicle.
+    color_cycle_beats: int = 4
+    # Occurrence-style alternate for color_cycle_beats, paired with the same
+    # use_alt_style parity bit as direction_field/size_field/
+    # beats_per_placement_alt. Several corpus songs commit their whole
+    # cane/megatree/horizontal/vertical treatment to an 8-beat (two-bar)
+    # cycle instead of 4 -- confirmed NOT BPM-derived: Wizzard and
+    # "When We Were Young" measure the same ~141 BPM but use 2 and 8
+    # beats/cycle respectively, and *within the same song* (Wizzard) cane
+    # cycles every 2 beats while horizontal/vertical cycles every 8 at that
+    # same tempo. Treated as a per-occurrence style choice, not a tempo rule.
+    # None -> color_cycle_beats always applies.
+    color_cycle_beats_alt: int | None = None
     # Two-layer "color over mask" composition, the dominant mega-tree idiom:
-    # a section-spanning On on the upper layer with LayerMethod "2 is Unmask"
-    # (517 mined placements), colored from the section theme, over the
-    # recipe's motion effect on the layer directly below acting as the
-    # brightness mask. Mined pairs: On-over-Spirals 269 placements,
-    # On-over-Shockwave 214, On-over-Lightning 101, On-over-Pinwheel 52;
-    # 72% of the tree's lit time runs 2+ layers deep.
+    # an On on the upper layer with LayerMethod "2 is Unmask", colored from
+    # the section theme, over the recipe's motion effect on the layer
+    # directly below acting as the brightness mask. Mined pairs:
+    # On-over-Spirals 269 placements, On-over-Shockwave 214,
+    # On-over-Lightning 101, On-over-Pinwheel 52; 72% of the tree's lit time
+    # runs 2+ layers deep. Direct block-duration measurement (2026-07-15)
+    # corrected an earlier claim that this On layer spans the whole section;
+    # it actually bar-cycles like the rest of the color_cycle_bars families
+    # (see color_cycle_bars/color_cycle_beats on the megatree/cane/
+    # horizontal/vertical recipes below).
     color_over_mask: bool = False
 
 
@@ -447,7 +468,11 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     # Off backdrop is NOT part of the megatree idiom (55/7.7k placements).
     # Tokens match "06_PROP_Mega_Tree" / "08_HERO_Mega_Tree" and member
     # names like "Mega Tree 2"; "Mega Topper" props deliberately do not
-    # match — different prop family.
+    # match — different prop family. The On color layer bar-cycles rather
+    # than spanning the section (direct block-duration measurement,
+    # 2026-07-15: e.g. Darlene Love ~1950-1975ms blocks against a ~487ms
+    # beat = 4 beats/bar; Bad Habits ~3800ms blocks against ~475ms beat =
+    # 8 beats/2 bars) -- see color_cycle_bars/color_cycle_beats_alt below.
     PropFamilyRecipe(
         family="megatree",
         match_tokens=("megatree", "mega_tree", "mega tree"),
@@ -456,16 +481,21 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_SHOCKWAVE_BURST,
         alt_parameter_overrides=_SPIRALS_MEGATREE,
         color_over_mask=True,
+        color_cycle_bars=True,
+        color_cycle_beats_alt=8,
     ),
     # Candy canes — mined from the same 12 packages (docs/cane_sequencing_
     # corpus/, 3.0k placements on 13-16 cane elements per layout).
     # SingleStrand chase dominates (45%, median 0.55 beats, white), with
     # Spirals as the recurring alternate (24%, median 1.03 beats). Like the
-    # mega tree — and unlike snowflakes/arches — the color comes from a
-    # section-spanning On layer with "2 is Unmask" (459/467 On placements)
-    # sitting over the motion effect: On-over-SingleStrand 217 pairs,
-    # On-over-Spirals 180. Off backdrop is NOT part of the idiom
-    # (29/3.0k placements, scattered).
+    # mega tree — and unlike snowflakes/arches — the color comes from an On
+    # layer with "2 is Unmask" (459/467 On placements) sitting over the
+    # motion effect: On-over-SingleStrand 217 pairs, On-over-Spirals 180.
+    # Off backdrop is NOT part of the idiom (29/3.0k placements, scattered).
+    # The On layer bar-cycles rather than spanning the section -- direct
+    # block-duration measurement (2026-07-15) corrected an earlier claim
+    # that these 459/467 placements were section-spanning; e.g. Wizzard
+    # measures ~850ms cane blocks against a ~425ms beat = 2 beats/cycle.
     PropFamilyRecipe(
         family="cane",
         match_tokens=("cane", "candy"),
@@ -474,6 +504,8 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_SPIRALS_CANE,
         color_over_mask=True,
+        color_cycle_bars=True,
+        color_cycle_beats_alt=8,
         # Chase direction rotation mined across all 12 corpus songs (2150
         # Single Strand-on-cane placements): Left-Right/Right-Left ping-pong
         # dominates (59% combined), Bounce from Right the recurring
@@ -496,11 +528,14 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     # (docs/horizontal_sequencing_corpus/ 1.6k placements over 10 songs,
     # docs/vertical_sequencing_corpus/ 1.8k over 9). Both families share one
     # idiom: white per-beat SingleStrand chase (70%/66%, From Head 85-89%,
-    # Number_Chases 1) colored by a section-spanning On layer with
-    # "2 is Unmask" (100% of 243/159 On placements), alternating with white
-    # Lightning flickers (11%/18%, unanimous preset). Off placements are too
-    # few/short to be the tiling-backdrop idiom (52 @ 3.3s median / 24), so
-    # off_backdrop stays False.
+    # Number_Chases 1) colored by an On layer with "2 is Unmask" (100% of
+    # 243/159 On placements), alternating with white Lightning flickers
+    # (11%/18%, unanimous preset). Off placements are too few/short to be
+    # the tiling-backdrop idiom (52 @ 3.3s median / 24), so off_backdrop
+    # stays False. The On layer bar-cycles rather than spanning the section
+    # -- direct block-duration measurement (2026-07-15) corrected an
+    # earlier claim that these placements were section-spanning; e.g. Bad
+    # Habits measures ~3800ms blocks against a ~475ms beat = 8 beats/cycle.
     PropFamilyRecipe(
         family="horizontal",
         match_tokens=("horizontal", "horiz"),
@@ -509,6 +544,8 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_LIGHTNING_FLICKER,
         color_over_mask=True,
+        color_cycle_bars=True,
+        color_cycle_beats_alt=8,
         # Chase direction rotation mined across all 10 corpus songs (1213
         # placements): Left-Right/Right-Left ping-pong dominates (73%
         # combined), "From Middle" the recurring per-occurrence alternate
@@ -534,6 +571,8 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_LIGHTNING_FLICKER,
         color_over_mask=True,
+        color_cycle_bars=True,
+        color_cycle_beats_alt=8,
         # Chase direction rotation mined across all 9 corpus songs (1276
         # placements): Left-Right/Right-Left ping-pong dominates (74%
         # combined), "From Middle" the recurring per-occurrence alternate
