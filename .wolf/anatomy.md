@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T22:07:32.549Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T22:34:16.290Z
 > Files: 554 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -2176,7 +2176,7 @@
 
 ## src/generator/
 
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~43975 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~44287 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -2206,17 +2206,17 @@
   - fn `_humanize_group_name` L1936-1943 (~87 tok)
   - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
   - fn `_place_per_beat` L2176-2235 (~743 tok)
-  - fn `_place_per_trigger` L2236-3442 (~14096 tok)
+  - fn `_place_per_trigger` L2236-3457 (~14403 tok)
 
 ## tests/unit/test_generator/
 
-- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~6215 tok)
+- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~6874 tok)
   - fn `_prop` L28-31 (~34 tok)
   - fn `_group` L32-35 (~39 tok)
   - fn `_match` L36-39 (~62 tok)
   - fn `_library_entry` L40-43 (~55 tok)
-  - class `TestPlacePictureEffects` L44-383 (~4302 tok)
-  - class `TestPictureEffectsConfigFlag` L384-400 (~153 tok)
-  - class `TestImageLibraryStorage` L401-429 (~356 tok)
-  - class `TestSuggestImagesForWords` L430-469 (~510 tok)
-  - class `TestFindUnmatchedTopics` L470-501 (~361 tok)
+  - class `TestPlacePictureEffects` L44-429 (~4948 tok)
+  - class `TestPictureEffectsConfigFlag` L430-446 (~153 tok)
+  - class `TestImageLibraryStorage` L447-475 (~356 tok)
+  - class `TestSuggestImagesForWords` L476-515 (~510 tok)
+  - class `TestFindUnmatchedTopics` L516-547 (~361 tok)

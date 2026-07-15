@@ -313,9 +313,10 @@ class TestPlacePictureEffects:
 
     def test_close_matches_deduped_by_min_gap(self):
         library = load_effect_library()
-        # Second match starts well within _PICTURE_MIN_GAP_MS of the first
-        # burst's end -- must be dropped rather than firing a rapid second
-        # burst on the same target.
+        # Second match's burst window (starts 2000-1000=1000, per the lead-in)
+        # would literally overlap the first burst's window (0-6000) -- two
+        # different pictures can't be on screen at once regardless of image,
+        # so this must be dropped no matter which files are involved.
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
             _match("fool", 2_000, stored_path="/lib/fool.gif"),
@@ -330,6 +331,51 @@ class TestPlacePictureEffects:
         )
         assert len(result["Matrix1"]) == 1
         assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/love.gif"
+
+    def test_different_image_fires_soon_after_without_waiting_for_min_gap(self):
+        library = load_effect_library()
+        # bug (2026-07-15): a word that recurs often in the lyrics (e.g. a
+        # repeated chorus line) used to crowd out a rarer, differently-imaged
+        # match that fell within _PICTURE_MIN_GAP_MS of it, even though a
+        # DIFFERENT picture right after the first doesn't read as flicker.
+        # First burst: word_start=1_000 -> placed 0-6_000. Second word_start
+        # chosen so its placed start (500ms after the first burst ends) is
+        # well inside the old min-gap window but doesn't overlap in time.
+        second_word_start = 6_000 + 500 + _PICTURE_LEAD_MS
+        matches = [
+            _match("love", 1_000, stored_path="/lib/love.gif"),
+            _match("fool", second_word_start, stored_path="/lib/fool.gif"),
+        ]
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=matches,
+        )
+        files = [p.parameters["E_TEXTCTRL_Pictures_Filename"] for p in result["Matrix1"]]
+        assert files == ["/lib/love.gif", "/lib/fool.gif"]
+
+    def test_same_image_repeat_still_waits_out_the_min_gap(self):
+        library = load_effect_library()
+        # Same setup as the different-image test above, but both matches
+        # point at the same file -- the cooldown must still apply so the
+        # identical picture doesn't flicker back on right after it left.
+        second_word_start = 6_000 + 500 + _PICTURE_LEAD_MS
+        matches = [
+            _match("love", 1_000, stored_path="/lib/love.gif"),
+            _match("loved", second_word_start, stored_path="/lib/love.gif"),
+        ]
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=matches,
+        )
+        assert len(result["Matrix1"]) == 1
 
     def test_far_apart_matches_both_fire(self):
         library = load_effect_library()

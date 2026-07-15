@@ -4300,6 +4300,63 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-255",
+      "timestamp": "2026-07-15T22:33:37.551Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7\u21929 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T22:33:37.551Z"
+    },
+    {
+      "id": "bug-256",
+      "timestamp": "2026-07-15T22:34:16.354Z",
+      "error_message": "Significant refactor of ",
+      "file": "tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 21\u219267 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T22:34:16.354Z"
+    },
+    {
+      "id": "bug-251",
+      "timestamp": "2026-07-15",
+      "error_message": "User: 'the picture effect only used single image .. can we avoid using the same image over and over if we have other options nearby' -- Dream On generated 4 bursts, 3 of them sing.png and only 1 books.png, despite a library with 4 distinct tagged images",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_PICTURE_MIN_GAP_MS (5000ms) was enforced as a single per-target cooldown regardless of which image a match used. 'sing' recurs often in Dream On's chorus and matched sing.png every time; whenever a rarer match (love/fools/books) landed within 5s of a recent sing.png burst, it was silently dropped by the same per-target gap check even though showing a DIFFERENT picture right after doesn't read as flicker the way repeating one does -- only true time-overlap should ever be rejected regardless of image.",
+      "fix": "Split the check: bursts on the same target may never literally overlap in time regardless of image (unconditional), but the _PICTURE_MIN_GAP_MS cooldown now only applies to repeating the SAME stored_path on that target. Added last_end_by_target_and_file tracking alongside the existing scheduled_end_by_target. Tests: test_different_image_fires_soon_after_without_waiting_for_min_gap, test_same_image_repeat_still_waits_out_the_min_gap.",
+      "tags": [
+        "generator",
+        "pictures-effect",
+        "variety",
+        "py"
+      ],
+      "related_bugs": [
+        "bug-184",
+        "bug-243",
+        "bug-246",
+        "bug-247",
+        "bug-248",
+        "bug-249",
+        "bug-250"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

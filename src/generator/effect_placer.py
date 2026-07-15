@@ -3145,10 +3145,12 @@ def _place_video_effect(
 
 
 # How long a lyric-matched image stays on screen per burst, and the minimum
-# gap enforced between one burst ending and the next starting on the same
-# target — matched words often cluster within a second or two of each other
-# (e.g. two lines in a row both hitting a library tag), and firing a new
-# burst for each would just flicker.
+# cooldown before the *same* image can repeat on a target (distinct images
+# only need to not overlap in time -- see the placement loop below). Matched
+# words often cluster within a second or two of each other, and a word that
+# recurs often across the song (e.g. a repeated chorus line) would otherwise
+# flicker the same picture over and over instead of leaving room for rarer,
+# differently-imaged matches nearby.
 _PICTURE_BURST_MS = 6_000
 _PICTURE_MIN_GAP_MS = 5_000
 _PICTURE_FADE_MS = 800
@@ -3294,6 +3296,7 @@ def _place_picture_effects(
 
     result: dict[str, list[EffectPlacement]] = {}
     scheduled_end_by_target: dict[str, int] = {}
+    last_end_by_target_and_file: dict[tuple[str, str], int] = {}
     for match in matches:
         word_start = int(match["start_ms"])
         start = max(0, word_start - _PICTURE_LEAD_MS)
@@ -3308,10 +3311,22 @@ def _place_picture_effects(
             .randrange(len(_PICTURE_DIRECTIONS))
         ]
         for target_name in set(targets.values()):
+            # Bursts on the same target may never overlap in time regardless
+            # of image, but the _PICTURE_MIN_GAP_MS cooldown only applies to
+            # *repeating the same image* (bug, 2026-07-15): a word that
+            # recurs often in the lyrics (e.g. a repeated chorus line) used
+            # to monopolize every nearby slot and silently crowd out a rarer,
+            # differently-imaged match that fell within the same gap window,
+            # even though showing a different picture back-to-back doesn't
+            # read as flicker the way repeating one does.
             last_end = scheduled_end_by_target.get(target_name)
-            if last_end is not None and start - last_end < _PICTURE_MIN_GAP_MS:
+            if last_end is not None and start < last_end:
+                continue
+            last_same_file_end = last_end_by_target_and_file.get((target_name, filename))
+            if last_same_file_end is not None and start - last_same_file_end < _PICTURE_MIN_GAP_MS:
                 continue
             scheduled_end_by_target[target_name] = end
+            last_end_by_target_and_file[(target_name, filename)] = end
             result.setdefault(target_name, []).append(EffectPlacement(
                 effect_name="Pictures",
                 xlights_id="Pictures",
