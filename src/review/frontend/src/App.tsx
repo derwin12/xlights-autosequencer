@@ -44,6 +44,14 @@ interface Section {
 // Use the store's canonical Assignment type.
 type Assignment = StoreAssignment;
 
+interface ImageSuggestion {
+  word: string;
+  start_ms: number;
+  end_ms: number;
+  matched_file: string;
+  score: number;
+}
+
 interface Analysis {
   song_id: string;
   detected_sections: Section[];
@@ -51,6 +59,7 @@ interface Analysis {
   beats: { t_ms: number; bar: number; beat: number }[];
   detectors: { name: string; library: string; status: string; confidence: number | null; error: string | null }[];
   completed_at: string;
+  image_suggestions?: ImageSuggestion[];
   [key: string]: unknown;
 }
 
@@ -604,6 +613,7 @@ export default function App() {
             themes={themes}
             sections={analysis.detected_sections}
             assignments={assignments}
+            imageSuggestions={analysis.image_suggestions}
             onThemed={handleThemed}
             onAssignmentChange={handleAssignmentChange}
           />

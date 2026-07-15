@@ -580,6 +580,14 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             state.push({"detector": "phonemes (whisperx)", "library": "story",
                         "status": "failed", "error": str(exc)})
 
+        # ── Image suggestions (advisory only, see image_catalog.py) ──────────
+        # Fuzzy-matches lyric words against show_dir/Images filenames so the
+        # review UI can hint "you have an image for this word". Does not
+        # influence generation — Pictures placement (generator/effect_placer.py)
+        # rotates through the catalog independently of these matches.
+        from src.generator.image_catalog import catalog_images, suggest_images_for_words
+        image_suggestions = suggest_images_for_words(words_list, catalog_images())
+
         # ── Value curves (BBC energy per stem + spectral flux) ───────────────
         # Downsample to ≤2000 points each to keep the response size manageable.
         # Adjust fps proportionally so (len(values) / fps) still equals the
@@ -672,6 +680,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             "lyrics": lyrics_list,
             "words": words_list,
             "phonemes": phonemes_list,
+            "image_suggestions": image_suggestions,
             "value_curves": curves_out,
             "peaks": peaks,
             "detectors": detectors,
@@ -696,6 +705,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                     "lyrics": lyrics_list,
                     "words": words_list,
                     "phonemes": phonemes_list,
+                    "image_suggestions": image_suggestions,
                 })
             except Exception:
                 pass
