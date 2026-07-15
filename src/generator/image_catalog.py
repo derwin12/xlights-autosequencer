@@ -119,14 +119,18 @@ def suggest_images_for_words(
 ) -> list[dict]:
     """Fuzzy-match lyric words against the image library's tags.
 
-    Advisory only — used by the analyze phase to surface "you have an image
-    for this word" hints; does not influence generation. Matches each word
+    Used both by the analyze phase to surface "you have an image for this
+    word" hints, and by ``effect_placer._place_picture_effects`` (via
+    ``plan.py``) to prefer a lyric-matched image over the random rotation
+    when a placement's time window overlaps the match. Matches each word
     (``{"label"/"word", "start_ms", "end_ms"}``) against every library
     entry's ``tag`` using :class:`difflib.SequenceMatcher`, keeping the best
     match per word when its ratio clears ``_MIN_MATCH_RATIO``. Words shorter
     than ``_MIN_WORD_LEN`` are skipped as too generic. ``library`` defaults
     to :func:`load_image_library` when not supplied (tests pass a fixed list
-    for determinism). Returns ``[]`` for no words or an empty library.
+    for determinism). Returns ``[]`` for no words or an empty library. Each
+    suggestion includes ``stored_path`` (the matched entry's absolute file
+    path) so callers can resolve straight to the image file.
     """
     if library is None:
         library = load_image_library()
@@ -157,6 +161,7 @@ def suggest_images_for_words(
                 "end_ms": word.get("end_ms"),
                 "matched_file": best_entry["filename"],
                 "matched_tag": best_entry["tag"],
+                "stored_path": best_entry.get("stored_path"),
                 "score": round(best_ratio, 3),
             })
 

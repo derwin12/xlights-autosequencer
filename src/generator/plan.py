@@ -27,7 +27,7 @@ from src.generator.effect_placer import (
     place_effects,
     restrain_palette,
 )
-from src.generator.image_catalog import catalog_images
+from src.generator.image_catalog import catalog_images, suggest_images_for_words
 from src.generator.energy import derive_section_energies
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
@@ -334,12 +334,16 @@ def build_plan(
     if config.picture_effects:
         image_catalog = catalog_images()
         if image_catalog:
+            word_image_matches = (
+                suggest_images_for_words(config.vocal_words) if config.vocal_words else []
+            )
             picture_effects = _place_picture_effects(
                 props=effect_props,
                 image_catalog=image_catalog,
                 effect_library=effect_library,
                 duration_ms=hierarchy.duration_ms,
                 variation_seed=config.variation_seed,
+                word_image_matches=word_image_matches,
             )
 
     # 5. Value curves — generate for each placement when curves are enabled

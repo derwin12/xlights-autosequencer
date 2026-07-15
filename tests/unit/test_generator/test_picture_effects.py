@@ -137,6 +137,89 @@ class TestPlacePictureEffects:
         assert first_files == second_files
 
 
+class TestPlacePictureEffectsWordMatches:
+    def test_no_matches_falls_back_to_rotation(self):
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            image_catalog=["/lib/a.gif", "/lib/b.gif"],
+            effect_library=library,
+            duration_ms=_PICTURE_SEGMENT_MS,
+            variation_seed=0,
+            word_image_matches=[],
+        )
+        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] in {
+            "/lib/a.gif", "/lib/b.gif",
+        }
+
+    def test_overlapping_word_match_overrides_segment_image(self):
+        library = load_effect_library()
+        # A word matched mid-way through the (only) segment overrides the
+        # rotation pick for that segment.
+        matches = [{
+            "word": "snowman", "start_ms": 5_000, "end_ms": 5_500,
+            "stored_path": "/lib/snowman.gif",
+        }]
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            image_catalog=["/lib/a.gif", "/lib/b.gif"],
+            effect_library=library,
+            duration_ms=_PICTURE_SEGMENT_MS,
+            variation_seed=0,
+            word_image_matches=matches,
+        )
+        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/snowman.gif"
+
+    def test_non_overlapping_word_match_does_not_override(self):
+        library = load_effect_library()
+        # Word match falls entirely after the single (short) segment ends.
+        matches = [{
+            "word": "snowman", "start_ms": _PICTURE_SEGMENT_MS + 1_000,
+            "end_ms": _PICTURE_SEGMENT_MS + 1_500,
+            "stored_path": "/lib/snowman.gif",
+        }]
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            image_catalog=["/lib/a.gif", "/lib/b.gif"],
+            effect_library=library,
+            duration_ms=_PICTURE_SEGMENT_MS,
+            variation_seed=0,
+            word_image_matches=matches,
+        )
+        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] in {
+            "/lib/a.gif", "/lib/b.gif",
+        }
+
+    def test_earliest_of_overlapping_matches_wins(self):
+        library = load_effect_library()
+        matches = [
+            {"word": "later", "start_ms": 10_000, "end_ms": 10_500, "stored_path": "/lib/later.gif"},
+            {"word": "first", "start_ms": 2_000, "end_ms": 2_500, "stored_path": "/lib/first.gif"},
+        ]
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            image_catalog=["/lib/a.gif"],
+            effect_library=library,
+            duration_ms=_PICTURE_SEGMENT_MS,
+            variation_seed=0,
+            word_image_matches=matches,
+        )
+        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/first.gif"
+
+    def test_match_missing_stored_path_is_ignored(self):
+        library = load_effect_library()
+        matches = [{"word": "snowman", "start_ms": 5_000, "end_ms": 5_500}]
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            image_catalog=["/lib/a.gif"],
+            effect_library=library,
+            duration_ms=_PICTURE_SEGMENT_MS,
+            variation_seed=0,
+            word_image_matches=matches,
+        )
+        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/a.gif"
+
+
 class TestPictureEffectsConfigFlag:
     def test_flag_defaults_to_true(self):
         config = GenerationConfig(
@@ -203,6 +286,7 @@ class TestSuggestImagesForWords:
         assert result[0]["word"] == "Snowman"
         assert result[0]["start_ms"] == 1000
         assert result[0]["score"] == 1.0
+        assert result[0]["stored_path"] == "/lib/img.gif"
 
     def test_short_word_skipped(self):
         words = [{"label": "the", "start_ms": 0, "end_ms": 200}]

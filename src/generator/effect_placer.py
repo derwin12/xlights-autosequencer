@@ -3160,6 +3160,7 @@ def _place_picture_effects(
     effect_library: EffectLibrary,
     duration_ms: int,
     variation_seed: int,
+    word_image_matches: list[dict] | None = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place Pictures effects on Matrix/Mega Tree props, rotating through ``image_catalog``.
 
@@ -3176,6 +3177,13 @@ def _place_picture_effects(
     the whole song, with a per-prop rotation offset (seeded by
     ``variation_seed`` + prop name) so multiple props don't all show the same
     image at the same time.
+
+    ``word_image_matches`` (from ``image_catalog.suggest_images_for_words``,
+    each entry ``{"word", "start_ms", "end_ms", "stored_path", ...}``) lets a
+    segment whose time window overlaps a lyric-matched word show that matched
+    image instead of the rotation pick for that segment — the rotation
+    resumes unaffected on the following segment. When several matches overlap
+    the same segment, the one starting earliest wins.
     """
     if not image_catalog or duration_ms <= 0:
         return {}
@@ -3193,7 +3201,19 @@ def _place_picture_effects(
 
     n_segments = max(1, -(-duration_ms // _PICTURE_SEGMENT_MS))  # ceil div
 
+    matches = sorted(
+        (
+            m for m in (word_image_matches or [])
+            if m.get("stored_path") is not None
+            and m.get("start_ms") is not None
+            and m.get("end_ms") is not None
+        ),
+        key=lambda m: m["start_ms"],
+    )
+
     result: dict[str, list[EffectPlacement]] = {}
+    override_count = 0
+    total_count = 0
     for prop in eligible:
         offset = random.Random(f"{variation_seed}:{prop.name}").randrange(len(image_catalog))
         placements: list[EffectPlacement] = []
@@ -3202,7 +3222,19 @@ def _place_picture_effects(
             end = min(start + _PICTURE_SEGMENT_MS, duration_ms)
             if end <= start:
                 continue
-            filename = image_catalog[(offset + i) % len(image_catalog)]
+            total_count += 1
+            match = next(
+                (m for m in matches if m["start_ms"] < end and m["end_ms"] > start), None
+            )
+            if match is not None:
+                filename = match["stored_path"]
+                override_count += 1
+                logger.debug(
+                    "picture_effects: %s segment %d-%d -> lyric match %r (%s)",
+                    prop.name, start, end, match.get("word"), filename,
+                )
+            else:
+                filename = image_catalog[(offset + i) % len(image_catalog)]
             placements.append(EffectPlacement(
                 effect_name="Pictures",
                 xlights_id="Pictures",
@@ -3218,8 +3250,9 @@ def _place_picture_effects(
             result[prop.name] = placements
 
     logger.info(
-        "picture_effects: %d prop(s) x %d catalog image(s), %d segment(s) each",
-        len(result), len(image_catalog), n_segments,
+        "picture_effects: %d prop(s) x %d catalog image(s), %d segment(s) each "
+        "(%d/%d segments lyric-matched)",
+        len(result), len(image_catalog), n_segments, override_count, total_count,
     )
     return result
 

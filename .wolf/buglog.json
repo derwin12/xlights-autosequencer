@@ -3860,6 +3860,59 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-231",
+      "timestamp": "2026-07-15T16:16:14.431Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/image_catalog.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T16:16:14.431Z"
+    },
+    {
+      "id": "bug-232",
+      "timestamp": "2026-07-15T16:16:35.537Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 68→101 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T16:16:35.537Z"
+    },
+    {
+      "id": "bug-233",
+      "timestamp": "2026-07-15T12:17:00Z",
+      "error_message": "FEATURE (not a bug fix): user asked to wire lyric-matched images into Pictures generation, the explicit fast-follow deferred by bug-209/bug-214.",
+      "file": "src/generator/image_catalog.py, src/generator/effect_placer.py, src/generator/plan.py, tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "N/A (new feature). suggest_images_for_words() was advisory-only (bug-209) -- computed lyric/tag matches but never influenced which image a Pictures segment actually rendered.",
+      "fix": "Added stored_path to suggest_images_for_words() suggestions (additive key, existing analysis.py/Pictures.tsx consumers unaffected). _place_picture_effects() gained an optional word_image_matches param: for each per-prop segment, if any match [start_ms,end_ms) overlaps the segment window, that match stored_path is used instead of the seeded rotation pick (earliest-starting match wins on ties), falling back to rotation otherwise. plan.py computes suggest_images_for_words(config.vocal_words) once in the 5e block and passes it through. Added logger.info summary (N/M segments lyric-matched) plus per-override logger.debug lines so the behavior can be validated from logs. Went through the full Design-First Gate (touches src/generator/) before implementation; user approved the design before any file was edited. 8 new tests added, 406 generator-suite tests pass.",
+      "tags": [
+        "pictures-effect",
+        "image-catalog",
+        "lyric-matching",
+        "feature"
+      ],
+      "related_bugs": [
+        "bug-209",
+        "bug-213",
+        "bug-214"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T12:17:00Z"
     }
   ]
 }
