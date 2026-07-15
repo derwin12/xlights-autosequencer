@@ -6,8 +6,8 @@ library — not scanned from a host-mounted directory, since the devcontainer
 running generation has no reliable access to the user's real show folder
 (see cerebrum.md 2026-07-15). The library is global, not per-song: an image
 tagged "snowman" uploaded once is suggested for every future song whose
-lyrics mention "snowman" (``suggest_images_for_words``), and is available to
-every song's Pictures rotation (``catalog_images``).
+lyrics mention "snowman" (``suggest_images_for_words``), driving
+``effect_placer._place_picture_effects``'s lyric-matched Pictures bursts.
 """
 from __future__ import annotations
 
@@ -100,14 +100,7 @@ def save_image_to_library(tag: str, filename: str, data: bytes, uploaded_at: str
 
 
 def catalog_images() -> list[str]:
-    """Return the stored absolute path of every uploaded library image.
-
-    Used by ``effect_placer._place_picture_effects`` to rotate through
-    available images. ``xsq_writer.py`` copies the referenced files next to
-    the exported ``.xsq`` and rewrites paths to bare filenames at export
-    time, mirroring the existing Video-effect treatment — these absolute
-    container paths are never written into the final sequence as-is.
-    """
+    """Return the stored absolute path of every uploaded library image."""
     return [e["stored_path"] for e in load_image_library() if e.get("stored_path")]
 
 

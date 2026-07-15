@@ -6,7 +6,11 @@ from pathlib import Path
 from src.effects.library import load_effect_library
 from src.generator.effect_placer import (
     _PICTURE_BURST_MS,
-    _PICTURE_INTERVAL_MS,
+    _PICTURE_DIRECTIONS,
+    _PICTURE_FADE_MS,
+    _PICTURE_MIN_GAP_MS,
+    _PICTURE_SCALE_PERCENT,
+    _PICTURE_SPEED,
     _place_picture_effects,
 )
 from src.generator.models import GenerationConfig
@@ -17,10 +21,19 @@ from src.generator.image_catalog import (
     save_image_to_library,
     suggest_images_for_words,
 )
+from src.grouper.grouper import PowerGroup
 
 
 def _prop(name: str, display_as: str):
     return type("FakeProp", (), {"name": name, "display_as": display_as})()
+
+
+def _group(name: str, members: list[str], tier: int = 6) -> PowerGroup:
+    return PowerGroup(name=name, tier=tier, members=members)
+
+
+def _match(word: str, start_ms: int, stored_path: str = "/lib/img.gif", duration_ms: int = 500) -> dict:
+    return {"word": word, "start_ms": start_ms, "end_ms": start_ms + duration_ms, "stored_path": stored_path}
 
 
 def _library_entry(tag: str, filename: str = "img.gif", stored_path: str = "/lib/img.gif") -> dict:
@@ -28,24 +41,37 @@ def _library_entry(tag: str, filename: str = "img.gif", stored_path: str = "/lib
 
 
 class TestPlacePictureEffects:
-    def test_empty_catalog_returns_empty(self):
-        library = load_effect_library()
-        result = _place_picture_effects(
-            props=[_prop("Matrix1", "Matrix")],
-            image_catalog=[],
-            effect_library=library,
-            duration_ms=60_000,
-            variation_seed=0,
-        )
-        assert result == {}
-
     def test_zero_duration_returns_empty(self):
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif"],
+            groups=[],
             effect_library=library,
             duration_ms=0,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 0)],
+        )
+        assert result == {}
+
+    def test_no_matches_returns_empty(self):
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[],
+        )
+        assert result == {}
+
+    def test_no_matches_argument_omitted_returns_empty(self):
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
             variation_seed=0,
         )
         assert result == {}
@@ -58,10 +84,11 @@ class TestPlacePictureEffects:
         # all just repeated one shared decorative image, not real content.
         result = _place_picture_effects(
             props=[_prop("Arch1", "Arches"), _prop("Snowflake1", "Star"), _prop("Tree1", "Tree")],
-            image_catalog=["/lib/a.gif"],
+            groups=[],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
         )
         assert result == {}
 
@@ -69,10 +96,11 @@ class TestPlacePictureEffects:
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Mega Tree", "Custom"), _prop("MegaTree2", "Custom")],
-            image_catalog=["/lib/a.gif"],
+            groups=[],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
         )
         assert set(result) == {"Mega Tree", "MegaTree2"}
 
@@ -83,10 +111,11 @@ class TestPlacePictureEffects:
         # distinction preserved in corpus_recipes.py).
         result = _place_picture_effects(
             props=[_prop("Mega Topper", "Custom")],
-            image_catalog=["/lib/a.gif"],
+            groups=[],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
         )
         assert result == {}
 
@@ -94,155 +123,178 @@ class TestPlacePictureEffects:
         library = load_effect_library()
         # A matrix named for lyric text display (see _place_lyric_text) must
         # not also receive Pictures placements -- it's reserved for the
-        # Lyric Track text effect, not image rotation.
+        # Lyric Track text effect, not image placement.
         result = _place_picture_effects(
             props=[_prop("Lyrics Matrix", "Matrix"), _prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif"],
+            groups=[],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
         )
         assert set(result) == {"Matrix1"}
 
-    def test_matrix_prop_gets_placements(self):
+    def test_burst_redirected_to_enclosing_group_not_raw_model(self):
         library = load_effect_library()
+        # bug-184 (2026-07-12): a model's own direct effect covers/overrides
+        # whatever its parent Model Group renders onto it in xLights -- group
+        # and direct-model content do not blend. Confirmed again 2026-07-15
+        # against a real generated .xsq: Pictures placed directly on the raw
+        # "Matrix" model blanked out all the "06_PROP_Matrix" group's theme
+        # content for that same model. The burst must land on the group.
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif", "/lib/b.gif"],
+            groups=[_group("06_PROP_Matrix", members=["Matrix1"])],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
+        )
+        assert set(result) == {"06_PROP_Matrix"}
+        assert result["06_PROP_Matrix"][0].model_or_group == "06_PROP_Matrix"
+
+    def test_prop_with_no_enclosing_group_falls_back_to_own_row(self):
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[_group("06_PROP_Matrix", members=["SomeOtherModel"])],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
         )
         assert set(result) == {"Matrix1"}
-        placements = result["Matrix1"]
-        assert all(p.effect_name == "Pictures" for p in placements)
-        assert all(p.model_or_group == "Matrix1" for p in placements)
-        # 60s duration / 30s interval = bursts at 0s and 30s; 60s itself is
-        # the start of a third burst that would begin exactly at the end of
-        # the song, so only 2 bursts actually fire.
-        assert len(placements) == 2
-        assert placements[0].start_ms == 0
-        assert placements[0].end_ms == _PICTURE_BURST_MS
-        assert placements[1].start_ms == _PICTURE_INTERVAL_MS
-        # Bursts are a layer-1 accent overlay, not a layer-0 replacement, and
-        # let the underlying layer show through the image's black background.
-        for p in placements:
-            assert p.layer == 1
-            assert p.parameters["E_CHECKBOX_Pictures_TransparentBlack"] == "1"
-            assert p.parameters["E_TEXTCTRL_Pictures_Filename"] in {"/lib/a.gif", "/lib/b.gif"}
 
-    def test_multiple_props_can_get_different_offsets(self):
-        library = load_effect_library()
-        result = _place_picture_effects(
-            props=[_prop("Matrix1", "Matrix"), _prop("Mega Tree", "Custom")],
-            image_catalog=["/lib/a.gif", "/lib/b.gif", "/lib/c.gif"],
-            effect_library=library,
-            duration_ms=_PICTURE_BURST_MS,
-            variation_seed=0,
-        )
-        assert set(result) == {"Matrix1", "Mega Tree"}
-        # Each prop gets exactly one burst spanning the whole (short) duration.
-        assert len(result["Matrix1"]) == 1
-        assert len(result["Mega Tree"]) == 1
-
-    def test_deterministic_for_same_seed(self):
-        library = load_effect_library()
-        props = [_prop("Matrix1", "Matrix")]
-        catalog = ["/lib/a.gif", "/lib/b.gif", "/lib/c.gif"]
-        first = _place_picture_effects(
-            props=props, image_catalog=catalog, effect_library=library,
-            duration_ms=60_000, variation_seed=42,
-        )
-        second = _place_picture_effects(
-            props=props, image_catalog=catalog, effect_library=library,
-            duration_ms=60_000, variation_seed=42,
-        )
-        first_files = [p.parameters["E_TEXTCTRL_Pictures_Filename"] for p in first["Matrix1"]]
-        second_files = [p.parameters["E_TEXTCTRL_Pictures_Filename"] for p in second["Matrix1"]]
-        assert first_files == second_files
-
-
-class TestPlacePictureEffectsWordMatches:
-    def test_no_matches_falls_back_to_rotation(self):
+    def test_burst_parameters_scale_fade_and_layer(self):
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif", "/lib/b.gif"],
+            groups=[],
             effect_library=library,
-            duration_ms=_PICTURE_BURST_MS,
+            duration_ms=60_000,
             variation_seed=0,
-            word_image_matches=[],
+            word_image_matches=[_match("snowman", 1000, stored_path="/lib/snowman.gif")],
         )
-        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] in {
-            "/lib/a.gif", "/lib/b.gif",
-        }
+        placement = result["Matrix1"][0]
+        assert placement.effect_name == "Pictures"
+        assert placement.layer == 1
+        assert placement.fade_in_ms == _PICTURE_FADE_MS
+        assert placement.fade_out_ms == _PICTURE_FADE_MS
+        assert placement.parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/snowman.gif"
+        assert placement.parameters["E_CHECKBOX_Pictures_TransparentBlack"] == "1"
+        assert placement.parameters["E_CHOICE_Pictures_Direction"] in _PICTURE_DIRECTIONS
+        assert placement.parameters["E_TEXTCTRL_Pictures_Speed"] == _PICTURE_SPEED
+        assert placement.parameters["E_SLIDER_Pictures_StartScale"] == _PICTURE_SCALE_PERCENT
+        assert placement.parameters["E_SLIDER_Pictures_EndScale"] == _PICTURE_SCALE_PERCENT
 
-    def test_overlapping_word_match_overrides_segment_image(self):
+    def test_burst_starts_at_match_start_and_lasts_burst_duration(self):
         library = load_effect_library()
-        # A word matched mid-way through the (only) segment overrides the
-        # rotation pick for that segment.
-        matches = [{
-            "word": "snowman", "start_ms": 5_000, "end_ms": 5_500,
-            "stored_path": "/lib/snowman.gif",
-        }]
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif", "/lib/b.gif"],
+            groups=[],
             effect_library=library,
-            duration_ms=_PICTURE_BURST_MS,
+            duration_ms=60_000,
             variation_seed=0,
-            word_image_matches=matches,
+            word_image_matches=[_match("snowman", 1000)],
         )
-        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/snowman.gif"
+        placement = result["Matrix1"][0]
+        assert placement.start_ms == 1000
+        assert placement.end_ms == 1000 + _PICTURE_BURST_MS
 
-    def test_non_overlapping_word_match_does_not_override(self):
+    def test_burst_clipped_to_song_duration(self):
         library = load_effect_library()
-        # Word match falls entirely after the single (short) segment ends.
-        matches = [{
-            "word": "snowman", "start_ms": _PICTURE_BURST_MS + 1_000,
-            "end_ms": _PICTURE_BURST_MS + 1_500,
-            "stored_path": "/lib/snowman.gif",
-        }]
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif", "/lib/b.gif"],
+            groups=[],
             effect_library=library,
-            duration_ms=_PICTURE_BURST_MS,
+            duration_ms=3_000,
             variation_seed=0,
-            word_image_matches=matches,
+            word_image_matches=[_match("snowman", 1000)],
         )
-        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] in {
-            "/lib/a.gif", "/lib/b.gif",
-        }
+        placement = result["Matrix1"][0]
+        assert placement.start_ms == 1000
+        assert placement.end_ms == 3_000
 
-    def test_earliest_of_overlapping_matches_wins(self):
+    def test_match_at_or_past_song_end_is_skipped(self):
         library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=3_000,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 3_000)],
+        )
+        assert result == {}
+
+    def test_close_matches_deduped_by_min_gap(self):
+        library = load_effect_library()
+        # Second match starts well within _PICTURE_MIN_GAP_MS of the first
+        # burst's end -- must be dropped rather than firing a rapid second
+        # burst on the same target.
         matches = [
-            {"word": "later", "start_ms": 6_000, "end_ms": 6_500, "stored_path": "/lib/later.gif"},
-            {"word": "first", "start_ms": 2_000, "end_ms": 2_500, "stored_path": "/lib/first.gif"},
+            _match("love", 1_000, stored_path="/lib/love.gif"),
+            _match("fool", 2_000, stored_path="/lib/fool.gif"),
         ]
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif"],
+            groups=[],
             effect_library=library,
-            duration_ms=_PICTURE_BURST_MS,
+            duration_ms=60_000,
             variation_seed=0,
             word_image_matches=matches,
         )
-        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/first.gif"
+        assert len(result["Matrix1"]) == 1
+        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/love.gif"
+
+    def test_far_apart_matches_both_fire(self):
+        library = load_effect_library()
+        first_end = 1_000 + _PICTURE_BURST_MS
+        second_start = first_end + _PICTURE_MIN_GAP_MS + 1_000
+        matches = [
+            _match("love", 1_000, stored_path="/lib/love.gif"),
+            _match("fool", second_start, stored_path="/lib/fool.gif"),
+        ]
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=second_start + 10_000,
+            variation_seed=0,
+            word_image_matches=matches,
+        )
+        assert len(result["Matrix1"]) == 2
+        files = [p.parameters["E_TEXTCTRL_Pictures_Filename"] for p in result["Matrix1"]]
+        assert files == ["/lib/love.gif", "/lib/fool.gif"]
 
     def test_match_missing_stored_path_is_ignored(self):
         library = load_effect_library()
         matches = [{"word": "snowman", "start_ms": 5_000, "end_ms": 5_500}]
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["/lib/a.gif"],
+            groups=[],
             effect_library=library,
-            duration_ms=_PICTURE_BURST_MS,
+            duration_ms=60_000,
             variation_seed=0,
             word_image_matches=matches,
         )
-        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/a.gif"
+        assert result == {}
+
+    def test_deterministic_for_same_seed(self):
+        library = load_effect_library()
+        props = [_prop("Matrix1", "Matrix")]
+        matches = [_match("snowman", 1_000, stored_path="/lib/a.gif")]
+        first = _place_picture_effects(
+            props=props, groups=[], effect_library=library,
+            duration_ms=60_000, variation_seed=42, word_image_matches=matches,
+        )
+        second = _place_picture_effects(
+            props=props, groups=[], effect_library=library,
+            duration_ms=60_000, variation_seed=42, word_image_matches=matches,
+        )
+        first_dir = first["Matrix1"][0].parameters["E_CHOICE_Pictures_Direction"]
+        second_dir = second["Matrix1"][0].parameters["E_CHOICE_Pictures_Direction"]
+        assert first_dir == second_dir
 
 
 class TestPictureEffectsConfigFlag:

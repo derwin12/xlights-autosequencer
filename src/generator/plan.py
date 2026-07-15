@@ -27,7 +27,7 @@ from src.generator.effect_placer import (
     place_effects,
     restrain_palette,
 )
-from src.generator.image_catalog import catalog_images, suggest_images_for_words
+from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
@@ -328,18 +328,17 @@ def build_plan(
             fade_exclusion_start_ms=fade_exclusion_start_ms,
         )
 
-    # 5e. Library images cycling on Matrix/Mega Tree props (config.picture_effects).
-    # Song-scoped, same rationale as vocal_effects/video_effects/crash_effects.
+    # 5e. Library images on Matrix/Mega Tree props, timed to lyric matches
+    # (config.picture_effects). Song-scoped, same rationale as
+    # vocal_effects/video_effects/crash_effects. No generic filler rotation —
+    # only fires where a lyric word actually matches a library image.
     picture_effects: dict[str, list] = {}
-    if config.picture_effects:
-        image_catalog = catalog_images()
-        if image_catalog:
-            word_image_matches = (
-                suggest_images_for_words(config.vocal_words) if config.vocal_words else []
-            )
+    if config.picture_effects and config.vocal_words:
+        word_image_matches = suggest_images_for_words(config.vocal_words)
+        if word_image_matches:
             picture_effects = _place_picture_effects(
                 props=effect_props,
-                image_catalog=image_catalog,
+                groups=groups,
                 effect_library=effect_library,
                 duration_ms=hierarchy.duration_ms,
                 variation_seed=config.variation_seed,

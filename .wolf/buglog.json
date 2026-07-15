@@ -4013,6 +4013,18 @@
       "related_bugs": ["bug-238", "bug-239"],
       "occurrences": 1,
       "last_seen": "2026-07-15T19:45:00.000Z"
+    },
+    {
+      "id": "bug-241",
+      "timestamp": "2026-07-15T20:15:00.000Z",
+      "error_message": "Generated .xsq's Matrix/Mega Tree models only contain the Pictures effect -- prior theme effects disappeared",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "_place_picture_effects placed Pictures directly on the raw model's own row ('Matrix', 'Mega Tree'), but those props' real theme content lives on their enclosing tier group ('06_PROP_Matrix', '08_HERO_Mega_Tree'). This is the same class of failure as bug-184: in xLights, a model's own direct-row effect covers/overrides whatever its parent Model Group renders onto it for that model -- group and direct-model content do not blend. Confirmed by inspecting a real exported .xsq: the raw 'Matrix' model had only Pictures bursts while '06_PROP_Matrix' carried 22/470/118-effect theme layers for the same time range.",
+      "fix": "_place_picture_effects now looks up each eligible prop's enclosing PowerGroup (by membership) and redirects the placement there instead of the raw model, so it composites as an ordinary extra layer alongside the group's existing content. Also switched burst timing from a fixed clock to firing only at lyric-image match timestamps (word_image_matches; no more generic filler rotation, image_catalog param removed), added a min-gap dedup for closely-clustered matches, and added fade-in/out + gentle pan + reduced StartScale/EndScale so the image reads as a small accent rather than filling the buffer (user request 2026-07-15).",
+      "tags": ["user-reported", "generator", "pictures", "layering", "group-vs-model", "py"],
+      "related_bugs": ["bug-184", "bug-240"],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T20:15:00.000Z"
     }
   ]
 }

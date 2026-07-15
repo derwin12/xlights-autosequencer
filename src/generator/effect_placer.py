@@ -3144,14 +3144,20 @@ def _place_video_effect(
     return {target.name: [placement]}
 
 
-# Each eligible prop shows one catalog image as a short accent burst, repeated
-# at a fixed interval, rather than continuous coverage of the whole song.
-# Mined from the reference corpus (2026-07-15): Pictures placements there are
-# short (~2-16s) bursts covering roughly 8-30% of the song per prop, layered
-# as an accent over whatever else is already running on that model — not a
-# sole, wall-to-wall occupant. 8s/30s lands mid-range of both observed spans.
-_PICTURE_BURST_MS = 8_000
-_PICTURE_INTERVAL_MS = 30_000
+# How long a lyric-matched image stays on screen per burst, and the minimum
+# gap enforced between one burst ending and the next starting on the same
+# target — matched words often cluster within a second or two of each other
+# (e.g. two lines in a row both hitting a library tag), and firing a new
+# burst for each would just flicker.
+_PICTURE_BURST_MS = 6_000
+_PICTURE_MIN_GAP_MS = 5_000
+_PICTURE_FADE_MS = 800
+# Keep the image a modest accent rather than filling the whole buffer, per
+# user request (2026-07-15): the picture should feel like a small addition
+# to the sequence, not overwhelm it.
+_PICTURE_SCALE_PERCENT = 55
+_PICTURE_SPEED = 3
+_PICTURE_DIRECTIONS = ("left", "right", "up", "down")
 
 # Name tokens identifying mega tree props — matches corpus_recipes.py's
 # megatree PropFamilyRecipe.match_tokens so eligibility stays consistent
@@ -3161,46 +3167,46 @@ _MEGATREE_NAME_TOKENS = ("megatree", "mega_tree", "mega tree")
 
 def _place_picture_effects(
     props: list[Any],
-    image_catalog: list[str],
+    groups: list[PowerGroup],
     effect_library: EffectLibrary,
     duration_ms: int,
     variation_seed: int,
     word_image_matches: list[dict] | None = None,
 ) -> dict[str, list[EffectPlacement]]:
-    """Place Pictures effects as a layer-1 accent overlay on Matrix/Mega Tree props,
-    rotating through ``image_catalog``.
+    """Place Pictures effects as a layer-1 accent overlay on Matrix/Mega Tree
+    props, timed to lyric-image matches (``word_image_matches``, from
+    ``image_catalog.suggest_images_for_words``) rather than a fixed clock —
+    every burst corresponds to a specific matched lyric word. Returns ``{}``
+    when there are no matches; there is no generic filler/rotation content.
 
     Song-scoped, same rationale as ``_place_video_effect``/``_place_singing_faces``:
     fires once per generation, not part of the per-section theme/pool rotation.
     Eligibility is deliberately narrow (Matrix display type or a Mega Tree name
     match) rather than the ``Pictures`` effect's broader ``prop_suitability``
     rating: reviewing the reference corpus (2026-07-15) showed only Matrix/Mega
-    Tree props carry real varied Pictures content — every other prop family
-    (stars, canes, snowflakes, mini trees) that had any Pictures placement at
-    all just repeated the exact same single decorative image, not meaningful
-    per-prop content.
+    Tree props carry real varied Pictures content.
 
-    Placed on ``layer=1`` (the same accent-overlay convention used by
-    ``_place_drum_accents``/``_place_impact_accent``) with
-    ``E_CHECKBOX_Pictures_TransparentBlack`` on, so the image's black
-    background lets whatever effect is already running on layer 0 show
-    through — the corpus never uses Pictures to fully replace a prop's base
-    effect (confirmed 2026-07-15: on Mega Tree/hero props it shares the
-    timeline with other concurrent layers 82-100% of the time). Each eligible
-    prop gets its own ``_PICTURE_BURST_MS``-long burst every
-    ``_PICTURE_INTERVAL_MS``, cycling through the full catalog one image per
-    burst, with a per-prop rotation offset (seeded by ``variation_seed`` +
-    prop name) so multiple props don't all show the same image at the same
-    time.
+    Each eligible prop is redirected to its enclosing tier group (looked up
+    in ``groups`` by membership) rather than placed on its own raw model row.
+    This matters because of a previously-hit xLights rendering quirk
+    (bug-184, 2026-07-12): when a model has its own direct effect on its own
+    row, that row's effect covers/overrides whatever the model's parent
+    group renders onto it — group and direct-model content do not blend.
+    Placing the picture burst on the group instead lets it stack as an
+    ordinary extra layer alongside the group's existing theme content
+    (confirmed 2026-07-15 against a real generated .xsq: Pictures placed
+    directly on the raw "Matrix"/"Mega Tree" model blanked out all the
+    theme content the "06_PROP_Matrix"/"08_HERO_Mega_Tree" groups carry for
+    those same props). A prop with no enclosing group falls back to its own
+    row directly, same as before.
 
-    ``word_image_matches`` (from ``image_catalog.suggest_images_for_words``,
-    each entry ``{"word", "start_ms", "end_ms", "stored_path", ...}``) lets a
-    burst whose time window overlaps a lyric-matched word show that matched
-    image instead of the rotation pick for that burst — the rotation resumes
-    unaffected on the following burst. When several matches overlap the same
-    burst, the one starting earliest wins.
+    Each burst uses a modest fixed scale (``_PICTURE_SCALE_PERCENT``) so the
+    image reads as an accent rather than filling the whole buffer, a short
+    fade in/out (``_PICTURE_FADE_MS``), and a gentle pan (seeded per burst so
+    it isn't always the same direction) — user request (2026-07-15): overlay
+    the picture with movement, don't just cut it in statically.
     """
-    if not image_catalog or duration_ms <= 0:
+    if duration_ms <= 0:
         return {}
     pictures_def = effect_library.get("Pictures")
     if pictures_def is None:
@@ -3217,7 +3223,11 @@ def _place_picture_effects(
     if not eligible:
         return {}
 
-    n_bursts = max(1, -(-duration_ms // _PICTURE_INTERVAL_MS))  # ceil div
+    targets: dict[str, str] = {}
+    for prop in eligible:
+        name = getattr(prop, "name", "")
+        group = next((g for g in groups if name in g.members), None)
+        targets[name] = group.name if group is not None else name
 
     matches = sorted(
         (
@@ -3228,53 +3238,55 @@ def _place_picture_effects(
         ),
         key=lambda m: m["start_ms"],
     )
+    if not matches:
+        return {}
 
     result: dict[str, list[EffectPlacement]] = {}
-    override_count = 0
-    total_count = 0
-    for prop in eligible:
-        offset = random.Random(f"{variation_seed}:{prop.name}").randrange(len(image_catalog))
-        placements: list[EffectPlacement] = []
-        for i in range(n_bursts):
-            start = i * _PICTURE_INTERVAL_MS
-            if start >= duration_ms:
-                break
-            end = min(start + _PICTURE_BURST_MS, duration_ms)
-            if end <= start:
+    scheduled_end_by_target: dict[str, int] = {}
+    for match in matches:
+        start = max(0, int(match["start_ms"]))
+        if start >= duration_ms:
+            continue
+        end = min(start + _PICTURE_BURST_MS, duration_ms)
+        if end <= start:
+            continue
+        filename = match["stored_path"]
+        direction = _PICTURE_DIRECTIONS[
+            random.Random(f"{variation_seed}:{match.get('word')}:{start}")
+            .randrange(len(_PICTURE_DIRECTIONS))
+        ]
+        for target_name in set(targets.values()):
+            last_end = scheduled_end_by_target.get(target_name)
+            if last_end is not None and start - last_end < _PICTURE_MIN_GAP_MS:
                 continue
-            total_count += 1
-            match = next(
-                (m for m in matches if m["start_ms"] < end and m["end_ms"] > start), None
-            )
-            if match is not None:
-                filename = match["stored_path"]
-                override_count += 1
-                logger.debug(
-                    "picture_effects: %s burst %d-%d -> lyric match %r (%s)",
-                    prop.name, start, end, match.get("word"), filename,
-                )
-            else:
-                filename = image_catalog[(offset + i) % len(image_catalog)]
-            placements.append(EffectPlacement(
+            scheduled_end_by_target[target_name] = end
+            result.setdefault(target_name, []).append(EffectPlacement(
                 effect_name="Pictures",
                 xlights_id="Pictures",
-                model_or_group=prop.name,
+                model_or_group=target_name,
                 start_ms=start,
                 end_ms=end,
                 parameters={
                     "E_TEXTCTRL_Pictures_Filename": filename,
                     "E_CHECKBOX_Pictures_TransparentBlack": "1",
+                    "E_CHOICE_Pictures_Direction": direction,
+                    "E_TEXTCTRL_Pictures_Speed": _PICTURE_SPEED,
+                    "E_SLIDER_Pictures_StartScale": _PICTURE_SCALE_PERCENT,
+                    "E_SLIDER_Pictures_EndScale": _PICTURE_SCALE_PERCENT,
                 },
                 color_palette=["#FFFFFF"],
                 layer=1,
+                fade_in_ms=_PICTURE_FADE_MS,
+                fade_out_ms=_PICTURE_FADE_MS,
             ))
-        if placements:
-            result[prop.name] = placements
+            logger.debug(
+                "picture_effects: %s burst %d-%d -> lyric match %r (%s)",
+                target_name, start, end, match.get("word"), filename,
+            )
 
     logger.info(
-        "picture_effects: %d prop(s) x %d catalog image(s), %d burst(s) each "
-        "(%d/%d bursts lyric-matched)",
-        len(result), len(image_catalog), n_bursts, override_count, total_count,
+        "picture_effects: %d target(s), %d lyric-matched burst(s) scheduled",
+        len(result), sum(len(v) for v in result.values()),
     )
     return result
 
