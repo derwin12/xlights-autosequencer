@@ -685,14 +685,22 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         color_cycle_bars=True,
         off_backdrop=True,
     ),
-    # Icicles — mined from the same 12 packages (docs/icicle_sequencing_
-    # corpus/, 1.6k placements over 9 songs). Per-song effect choice varies,
-    # but the structure is one idiom: white motion in 1-4 beat segments
-    # (medians 0.65-1.98s) colored by an On "2 is Unmask" layer cycling one
-    # color per bar (6/9 songs, ~2s blocks) — the same backbone as the All
-    # group. Spirals is the most representative motion (unanimous icicle
-    # preset); Meteors falling Down is the recurring alternate. "outline"
-    # keeps combined house-outline groups out.
+    # Icicles — mined from the same 13 packages (docs/icicle_sequencing_
+    # corpus/, 13 songs after the 2026-07-15 rescan). Per-song effect choice
+    # varies, but the structure is one idiom: white motion in 1-4 beat
+    # segments (medians 0.65-1.98s) colored by an On "2 is Unmask" layer
+    # cycling one color per bar (6/9 songs, ~2s blocks) — the same backbone
+    # as the All group. Spirals is the most representative motion (unanimous
+    # icicle preset); Meteors falling Down is the recurring alternate.
+    # "outline" keeps combined house-outline groups out.
+    #
+    # off_backdrop is a deliberate USER OVERRIDE (2026-07-15), not a
+    # corpus-mined idiom: measured Off usage on icicle elements is only
+    # 0.2% (5/2487 placements, 3/13 songs) vs. 1.0-1.3% for snowflake/arch/
+    # topper (10-12/13 songs each), and the 5 icicle Off placements are long
+    # (21-45s) rather than the ~12-15s repeating tiles that define the real
+    # off_backdrop idiom elsewhere — see docs/icicle_sequencing_corpus/ data.
+    # Left on by explicit user request despite the corpus not supporting it.
     PropFamilyRecipe(
         family="icicle",
         match_tokens=("icicle",),
@@ -704,6 +712,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         color_over_mask=True,
         color_cycle_bars=True,
         beats_per_placement=2,
+        off_backdrop=True,
     ),
 )
 
