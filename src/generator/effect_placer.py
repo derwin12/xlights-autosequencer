@@ -1539,6 +1539,17 @@ def _place_effect_on_group(
     )]
 
 
+# Beats averaged on each side of the rising/falling comparison in
+# _place_chase_across_groups -- smooths ordinary beat-to-beat energy jitter
+# so direction doesn't flicker on noise (mirrors the windowed-average style
+# already used by derive_energy_impacts).
+_CHASE_TREND_WINDOW_BEATS = 2
+# Ignore energy differences smaller than this (curve values are 0-100)
+# when comparing windows -- a near-flat trend keeps the current direction
+# instead of picking one arbitrarily.
+_CHASE_TREND_EPSILON = 2
+
+
 def _place_chase_across_groups(
     effect_def: EffectDefinition,
     layer: EffectLayer,
@@ -1548,10 +1559,15 @@ def _place_chase_across_groups(
     palette: list[str],
     variant_library=None,
 ) -> dict[str, list[EffectPlacement]]:
-    """Chase pattern: assign each beat to one group in round-robin order.
+    """Chase pattern: assign each beat to one group.
 
-    Beat 1 -> group 0, beat 2 -> group 1, ..., beat N -> group N % len(groups).
-    Each group only lights up on "its" beats, creating a chase effect.
+    When a full_mix energy curve is available, the chase direction follows
+    the music: it steps forward through the groups while energy is rising
+    and backward while it's falling (trend measured over a short trailing
+    window, not beat-to-beat, to avoid flickering on ordinary jitter), so a
+    build feels like it's climbing (1->2->3->4) and a come-down feels like
+    it's receding (4->3->2->1). Falls back to the previous fixed forward
+    round-robin when no energy curve is available (e.g. --profile quick).
     """
     beats_track = hierarchy.beats
     if beats_track is None:
@@ -1568,8 +1584,33 @@ def _place_chase_across_groups(
     result: dict[str, list[EffectPlacement]] = {}
     num_groups = len(groups)
 
+    curve = (getattr(hierarchy, "energy_curves", None) or {}).get("full_mix")
+    # -1 so the first step (position + direction, direction starts at 1)
+    # lands on index 0 rather than skipping straight to index 1.
+    position = -1
+    direction = 1
+    w = _CHASE_TREND_WINDOW_BEATS
+
     for i, mark in enumerate(marks):
-        group = groups[i % num_groups]
+        if curve is None:
+            group = groups[i % num_groups]
+        else:
+            if i >= 2 * w:
+                cur_avg = sum(
+                    _sample_energy_curve(curve, marks[j].time_ms) for j in range(i - w, i)
+                ) / w
+                prev_avg = sum(
+                    _sample_energy_curve(curve, marks[j].time_ms)
+                    for j in range(i - 2 * w, i - w)
+                ) / w
+                if cur_avg > prev_avg + _CHASE_TREND_EPSILON:
+                    direction = 1
+                elif cur_avg < prev_avg - _CHASE_TREND_EPSILON:
+                    direction = -1
+                # else: trend is flat -- keep the current direction.
+            position = (position + direction) % num_groups
+            group = groups[position]
+
         beat_start = mark.time_ms
         beat_end = marks[i + 1].time_ms if i + 1 < len(marks) else min(
             beat_start + 500, section.end_ms

@@ -3386,6 +3386,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-204",
+      "timestamp": "2026-07-15",
+      "error_message": "FEATURE (not a bug fix): user reported 04_BEAT_1..4 chase 'just cycles through them' with no relation to the music -- asked whether it could climb forward (1->2->3->4) when the music rises and recede backward (4->3->2->1) when it falls.",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "N/A (new feature). _place_chase_across_groups previously used a fixed i % num_groups round-robin with no awareness of song energy.",
+      "fix": "Added a position/direction state machine: direction flips to +1/-1 based on a trailing 2-beat-window comparison of the full_mix energy curve (epsilon=2 to avoid flip-flopping on flat/noisy trends, persists current direction when the trend is ambiguous). Falls back to the old fixed forward round-robin when no energy curve is available (e.g. --profile quick). Caught and fixed an off-by-one during implementation: incrementing position before use on beat 0 skipped straight to group index 1 -- fixed by initializing position=-1 so the first step lands on 0.",
+      "tags": [
+        "generator",
+        "effect_placer",
+        "beat-chase",
+        "energy-trend",
+        "new-feature"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }
