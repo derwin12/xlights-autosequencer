@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T14:33:50.331Z",
-    "fileCount": 613,
+    "lastScanned": "2026-07-15T15:08:48.979Z",
+    "fileCount": 624,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "ecef60e5e15574641a29c17ae7c6a241a58fdef65dcc2f0631222244c1a0fb84",
-    "storeUpdatedAt": "2026-07-15T14:33:50.346Z"
+    "renderedHash": "7cffbbc7644a98b9823c17dc430f2a906a96f1ebebcf7d378c17430709b571ec",
+    "storeUpdatedAt": "2026-07-15T15:08:48.995Z"
   },
   "files": {
     ".DS_Store": {
@@ -3655,9 +3655,133 @@
     },
     "src/review/api/v1/analysis.py": {
       "description": "Analysis endpoints — T047.",
-      "tokens": 13834,
-      "updatedAt": "2026-07-14T22:54:57.395Z",
-      "source": "md-import"
+      "tokens": 17851,
+      "hash": "264ae67da3a62523",
+      "size": 63571,
+      "mtimeMs": 1784127385185.8938,
+      "updatedAt": "2026-07-15T14:56:26.252Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "_RunState",
+          "kind": "class",
+          "startLine": 33,
+          "endLine": 51,
+          "tokens": 211
+        },
+        {
+          "name": "_now_iso",
+          "kind": "fn",
+          "startLine": 52,
+          "endLine": 55,
+          "tokens": 32
+        },
+        {
+          "name": "_run_id",
+          "kind": "fn",
+          "startLine": 56,
+          "endLine": 59,
+          "tokens": 32
+        },
+        {
+          "name": "_default_overrides",
+          "kind": "fn",
+          "startLine": 60,
+          "endLine": 84,
+          "tokens": 215
+        },
+        {
+          "name": "_song_seed",
+          "kind": "fn",
+          "startLine": 85,
+          "endLine": 100,
+          "tokens": 161
+        },
+        {
+          "name": "_smart_default_theme_ids",
+          "kind": "fn",
+          "startLine": 101,
+          "endLine": 171,
+          "tokens": 905
+        },
+        {
+          "name": "_auto_assign_defaults",
+          "kind": "fn",
+          "startLine": 172,
+          "endLine": 201,
+          "tokens": 301
+        },
+        {
+          "name": "_analyze_stub",
+          "kind": "fn",
+          "startLine": 202,
+          "endLine": 289,
+          "tokens": 1170
+        },
+        {
+          "name": "_analyze_in_background",
+          "kind": "fn",
+          "startLine": 290,
+          "endLine": 751,
+          "tokens": 6747
+        },
+        {
+          "name": "start_analyze",
+          "kind": "fn",
+          "startLine": 752,
+          "endLine": 791,
+          "tokens": 455
+        },
+        {
+          "name": "commit_analyze",
+          "kind": "fn",
+          "startLine": 792,
+          "endLine": 907,
+          "tokens": 1308
+        },
+        {
+          "name": "analyze_status",
+          "kind": "fn",
+          "startLine": 908,
+          "endLine": 938,
+          "tokens": 245
+        },
+        {
+          "name": "get_analysis",
+          "kind": "fn",
+          "startLine": 939,
+          "endLine": 982,
+          "tokens": 519
+        },
+        {
+          "name": "_extrapolate_grid",
+          "kind": "fn",
+          "startLine": 983,
+          "endLine": 1050,
+          "tokens": 753
+        },
+        {
+          "name": "_rebuild_analysis_from_cache",
+          "kind": "fn",
+          "startLine": 1051,
+          "endLine": 1242,
+          "tokens": 2579
+        },
+        {
+          "name": "get_stem_peaks",
+          "kind": "fn",
+          "startLine": 1243,
+          "endLine": 1300,
+          "tokens": 668
+        },
+        {
+          "name": "get_peaks_window",
+          "kind": "fn",
+          "startLine": 1301,
+          "endLine": 1375,
+          "tokens": 920
+        }
+      ]
     },
     "src/review/api/v1/library.py": {
       "description": "Library endpoints — GET /library, folder CRUD, song delete + purge (T045, T090, T092, T094).",
@@ -3667,109 +3791,116 @@
     },
     "src/review/frontend/src/App.tsx": {
       "description": "SCREENS",
-      "tokens": 7538,
-      "hash": "b4207ff45b155e86",
-      "size": 27353,
-      "mtimeMs": 1784124526702.2173,
-      "updatedAt": "2026-07-15T14:08:46.836Z",
+      "tokens": 7826,
+      "hash": "dd8d58332fa83e2d",
+      "size": 28365,
+      "mtimeMs": 1784127980316.4055,
+      "updatedAt": "2026-07-15T15:06:20.458Z",
       "source": "hook",
       "symbols": [
         {
           "name": "ThemeDef",
           "kind": "section",
-          "startLine": 23,
-          "endLine": 35,
+          "startLine": 24,
+          "endLine": 36,
           "tokens": 66
         },
         {
           "name": "Section",
           "kind": "section",
-          "startLine": 36,
-          "endLine": 46,
+          "startLine": 37,
+          "endLine": 47,
           "tokens": 55
         },
         {
           "name": "ImageSuggestion",
           "kind": "section",
-          "startLine": 47,
-          "endLine": 54,
-          "tokens": 36
+          "startLine": 48,
+          "endLine": 56,
+          "tokens": 43
+        },
+        {
+          "name": "ImageTopic",
+          "kind": "section",
+          "startLine": 57,
+          "endLine": 62,
+          "tokens": 23
         },
         {
           "name": "Analysis",
           "kind": "section",
-          "startLine": 55,
-          "endLine": 67,
-          "tokens": 126
+          "startLine": 63,
+          "endLine": 76,
+          "tokens": 134
         },
         {
           "name": "AppData",
           "kind": "section",
-          "startLine": 68,
-          "endLine": 80,
-          "tokens": 102
+          "startLine": 77,
+          "endLine": 89,
+          "tokens": 105
         },
         {
           "name": "PurgeDialogState",
           "kind": "section",
-          "startLine": 81,
-          "endLine": 87,
+          "startLine": 90,
+          "endLine": 96,
           "tokens": 46
         },
         {
           "name": "useGlobalShortcuts",
           "kind": "fn",
-          "startLine": 88,
-          "endLine": 167,
+          "startLine": 97,
+          "endLine": 176,
           "tokens": 515
         },
         {
           "name": "GlobalKeyboardListener",
           "kind": "fn",
-          "startLine": 168,
-          "endLine": 175,
+          "startLine": 177,
+          "endLine": 184,
           "tokens": 73
         },
         {
           "name": "GlobalAudioPlayer",
           "kind": "fn",
-          "startLine": 176,
-          "endLine": 255,
+          "startLine": 185,
+          "endLine": 264,
           "tokens": 818
         },
         {
           "name": "GlobalDragBlock",
           "kind": "fn",
-          "startLine": 256,
-          "endLine": 270,
+          "startLine": 265,
+          "endLine": 279,
           "tokens": 127
         },
         {
           "name": "saveAssignments",
           "kind": "fn",
-          "startLine": 271,
-          "endLine": 280,
+          "startLine": 280,
+          "endLine": 289,
           "tokens": 97
         },
         {
           "name": "App",
           "kind": "fn",
-          "startLine": 281,
-          "endLine": 676,
-          "tokens": 4043
+          "startLine": 290,
+          "endLine": 706,
+          "tokens": 4267
         },
         {
           "name": "PurgeDialog",
           "kind": "fn",
-          "startLine": 677,
-          "endLine": 757,
+          "startLine": 707,
+          "endLine": 787,
           "tokens": 644
         },
         {
           "name": "PlaceholderScreen",
           "kind": "fn",
-          "startLine": 758,
-          "endLine": 795,
+          "startLine": 788,
+          "endLine": 825,
           "tokens": 263
         }
       ]
@@ -3979,12 +4110,12 @@
       "source": "hook"
     },
     "src/review/frontend/src/screens/Theme.tsx": {
-      "description": "formatTimestamp",
-      "tokens": 3839,
-      "hash": "ec3f1c3c6732745b",
-      "size": 13444,
-      "mtimeMs": 1784124496653.8003,
-      "updatedAt": "2026-07-15T14:08:16.917Z",
+      "description": "DEFAULT_OVERRIDES",
+      "tokens": 3340,
+      "hash": "1032ddf13989dbb4",
+      "size": 11696,
+      "mtimeMs": 1784127858288.7944,
+      "updatedAt": "2026-07-15T15:04:18.423Z",
       "source": "hook",
       "symbols": [
         {
@@ -4009,56 +4140,42 @@
           "tokens": 28
         },
         {
-          "name": "ImageSuggestion",
-          "kind": "section",
-          "startLine": 38,
-          "endLine": 45,
-          "tokens": 36
-        },
-        {
           "name": "ThemeScreenProps",
           "kind": "section",
-          "startLine": 46,
-          "endLine": 55,
-          "tokens": 68
-        },
-        {
-          "name": "formatTimestamp",
-          "kind": "fn",
-          "startLine": 56,
-          "endLine": 69,
-          "tokens": 106
+          "startLine": 38,
+          "endLine": 53,
+          "tokens": 94
         },
         {
           "name": "EditState",
           "kind": "section",
-          "startLine": 70,
-          "endLine": 82,
+          "startLine": 54,
+          "endLine": 66,
           "tokens": 64
         },
         {
           "name": "EditDialog",
           "kind": "fn",
-          "startLine": 83,
-          "endLine": 184,
+          "startLine": 67,
+          "endLine": 168,
           "tokens": 991
         },
         {
           "name": "Theme",
           "kind": "fn",
-          "startLine": 185,
-          "endLine": 406,
-          "tokens": 2186
+          "startLine": 169,
+          "endLine": 367,
+          "tokens": 1814
         }
       ]
     },
     "src/review/frontend/src/screens/Theme.module.css": {
-      "description": "Styles: 37 rules",
-      "tokens": 1288,
-      "hash": "2d18beeaa851d4ca",
-      "size": 4506,
-      "mtimeMs": 1784124512816.16,
-      "updatedAt": "2026-07-15T14:08:33.163Z",
+      "description": "Styles: 28 rules",
+      "tokens": 978,
+      "hash": "e9d1c10af256bfd2",
+      "size": 3423,
+      "mtimeMs": 1784127878614.6997,
+      "updatedAt": "2026-07-15T15:04:38.756Z",
       "source": "hook"
     },
     ".wolf/hooks/post-write.js": {
@@ -4184,50 +4301,548 @@
       "source": "hook"
     },
     "tests/unit/test_generator/test_picture_effects.py": {
-      "description": "Tests for effect_placer._place_picture_effects (catalog images on Matrix/Mega Tree props).",
-      "tokens": 2321,
-      "hash": "4733cb2eb7daf420",
-      "size": 8123,
-      "mtimeMs": 1784126030184.408,
-      "updatedAt": "2026-07-15T14:33:50.330Z",
+      "description": "Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement.",
+      "tokens": 2953,
+      "hash": "57b3927eda64c5cb",
+      "size": 10333,
+      "mtimeMs": 1784127434087.264,
+      "updatedAt": "2026-07-15T14:57:14.880Z",
       "source": "hook",
       "symbols": [
         {
           "name": "_prop",
           "kind": "fn",
-          "startLine": 12,
-          "endLine": 15,
+          "startLine": 18,
+          "endLine": 21,
           "tokens": 34
+        },
+        {
+          "name": "_library_entry",
+          "kind": "fn",
+          "startLine": 22,
+          "endLine": 25,
+          "tokens": 55
         },
         {
           "name": "TestPlacePictureEffects",
           "kind": "class",
-          "startLine": 16,
-          "endLine": 131,
-          "tokens": 1372
+          "startLine": 26,
+          "endLine": 139,
+          "tokens": 1356
         },
         {
           "name": "TestPictureEffectsConfigFlag",
           "kind": "class",
-          "startLine": 132,
-          "endLine": 148,
+          "startLine": 140,
+          "endLine": 156,
           "tokens": 153
         },
         {
-          "name": "TestCatalogImages",
+          "name": "TestImageLibraryStorage",
           "kind": "class",
-          "startLine": 149,
-          "endLine": 166,
-          "tokens": 198
+          "startLine": 157,
+          "endLine": 185,
+          "tokens": 356
         },
         {
           "name": "TestSuggestImagesForWords",
           "kind": "class",
-          "startLine": 167,
-          "endLine": 200,
-          "tokens": 442
+          "startLine": 186,
+          "endLine": 224,
+          "tokens": 494
+        },
+        {
+          "name": "TestFindUnmatchedTopics",
+          "kind": "class",
+          "startLine": 225,
+          "endLine": 256,
+          "tokens": 361
         }
       ]
+    },
+    "src/generator/image_catalog.py": {
+      "description": "Global image library for xLights Pictures effects.",
+      "tokens": 2192,
+      "hash": "043592f8e6631835",
+      "size": 7678,
+      "mtimeMs": 1784127344259.0303,
+      "updatedAt": "2026-07-15T14:55:44.407Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "_state_home",
+          "kind": "fn",
+          "startLine": 27,
+          "endLine": 33,
+          "tokens": 46
+        },
+        {
+          "name": "_images_root",
+          "kind": "fn",
+          "startLine": 34,
+          "endLine": 37,
+          "tokens": 22
+        },
+        {
+          "name": "_manifest_path",
+          "kind": "fn",
+          "startLine": 38,
+          "endLine": 41,
+          "tokens": 22
+        },
+        {
+          "name": "load_image_library",
+          "kind": "fn",
+          "startLine": 42,
+          "endLine": 57,
+          "tokens": 131
+        },
+        {
+          "name": "_save_manifest",
+          "kind": "fn",
+          "startLine": 58,
+          "endLine": 74,
+          "tokens": 147
+        },
+        {
+          "name": "save_image_to_library",
+          "kind": "fn",
+          "startLine": 75,
+          "endLine": 101,
+          "tokens": 250
+        },
+        {
+          "name": "catalog_images",
+          "kind": "fn",
+          "startLine": 102,
+          "endLine": 116,
+          "tokens": 172
+        },
+        {
+          "name": "suggest_images_for_words",
+          "kind": "fn",
+          "startLine": 117,
+          "endLine": 179,
+          "tokens": 781
+        },
+        {
+          "name": "find_unmatched_topics",
+          "kind": "fn",
+          "startLine": 180,
+          "endLine": 213,
+          "tokens": 373
+        }
+      ]
+    },
+    "src/review/api/v1/images.py": {
+      "description": "GET/POST /api/v1/images — global image library for Pictures effects.",
+      "tokens": 553,
+      "hash": "ee4f38577e223b82",
+      "size": 1935,
+      "mtimeMs": 1784127242326.2727,
+      "updatedAt": "2026-07-15T14:54:02.469Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "list_images",
+          "kind": "fn",
+          "startLine": 23,
+          "endLine": 27,
+          "tokens": 35
+        },
+        {
+          "name": "upload_image",
+          "kind": "fn",
+          "startLine": 28,
+          "endLine": 55,
+          "tokens": 304
+        }
+      ]
+    },
+    "src/review/api/v1/__init__.py": {
+      "description": "not_found, method_not_allowed, internal_error",
+      "tokens": 321,
+      "hash": "bd48e6414e0b5d58",
+      "size": 1123,
+      "mtimeMs": 1784127251897.1025,
+      "updatedAt": "2026-07-15T14:54:12.029Z",
+      "source": "hook"
+    },
+    "src/generator/plan.py": {
+      "description": "Plan builder — orchestrates the full sequence generation pipeline.",
+      "tokens": 9981,
+      "hash": "b3adb9330446f1c4",
+      "size": 34984,
+      "mtimeMs": 1784127266868.52,
+      "updatedAt": "2026-07-15T14:54:27.002Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "read_song_metadata",
+          "kind": "fn",
+          "startLine": 53,
+          "endLine": 88,
+          "tokens": 292
+        },
+        {
+          "name": "_first_tag",
+          "kind": "fn",
+          "startLine": 89,
+          "endLine": 96,
+          "tokens": 64
+        },
+        {
+          "name": "build_plan",
+          "kind": "fn",
+          "startLine": 97,
+          "endLine": 404,
+          "tokens": 4070
+        },
+        {
+          "name": "_audible_end_ms",
+          "kind": "fn",
+          "startLine": 405,
+          "endLine": 424,
+          "tokens": 219
+        },
+        {
+          "name": "_place_end_of_song_fade",
+          "kind": "fn",
+          "startLine": 425,
+          "endLine": 468,
+          "tokens": 490
+        },
+        {
+          "name": "_populate_assignment_decisions",
+          "kind": "fn",
+          "startLine": 469,
+          "endLine": 567,
+          "tokens": 1263
+        },
+        {
+          "name": "_derive_anchor_palette",
+          "kind": "fn",
+          "startLine": 568,
+          "endLine": 588,
+          "tokens": 260
+        },
+        {
+          "name": "_section_energies_from_story",
+          "kind": "fn",
+          "startLine": 589,
+          "endLine": 630,
+          "tokens": 446
+        },
+        {
+          "name": "_write_plan_json",
+          "kind": "fn",
+          "startLine": 631,
+          "endLine": 650,
+          "tokens": 223
+        },
+        {
+          "name": "generate_sequence",
+          "kind": "fn",
+          "startLine": 651,
+          "endLine": 694,
+          "tokens": 426
+        },
+        {
+          "name": "regenerate_sections",
+          "kind": "fn",
+          "startLine": 695,
+          "endLine": 824,
+          "tokens": 1518
+        }
+      ]
+    },
+    "src/generator/xsq_writer.py": {
+      "description": "XSQ writer — serializes a SequencePlan to xLights .xsq XML format.",
+      "tokens": 12429,
+      "hash": "ab1e411a062b2e08",
+      "size": 43561,
+      "mtimeMs": 1784127289048.5076,
+      "updatedAt": "2026-07-15T14:54:49.215Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "write_xsq",
+          "kind": "fn",
+          "startLine": 276,
+          "endLine": 641,
+          "tokens": 5128
+        },
+        {
+          "name": "_serialize_palette",
+          "kind": "fn",
+          "startLine": 642,
+          "endLine": 665,
+          "tokens": 270
+        },
+        {
+          "name": "_serialize_effect_params",
+          "kind": "fn",
+          "startLine": 666,
+          "endLine": 723,
+          "tokens": 792
+        },
+        {
+          "name": "_strip_storage_prefix",
+          "kind": "fn",
+          "startLine": 724,
+          "endLine": 735,
+          "tokens": 136
+        },
+        {
+          "name": "_encode_value_curve",
+          "kind": "fn",
+          "startLine": 736,
+          "endLine": 761,
+          "tokens": 284
+        },
+        {
+          "name": "_ensure_palette",
+          "kind": "fn",
+          "startLine": 762,
+          "endLine": 775,
+          "tokens": 111
+        },
+        {
+          "name": "_ensure_effect_entry",
+          "kind": "fn",
+          "startLine": 776,
+          "endLine": 789,
+          "tokens": 120
+        },
+        {
+          "name": "parse_xsq",
+          "kind": "fn",
+          "startLine": 790,
+          "endLine": 861,
+          "tokens": 709
+        },
+        {
+          "name": "remove_effects_in_range",
+          "kind": "fn",
+          "startLine": 862,
+          "endLine": 872,
+          "tokens": 141
+        },
+        {
+          "name": "_remove_overlaps_per_layer",
+          "kind": "fn",
+          "startLine": 873,
+          "endLine": 890,
+          "tokens": 222
+        },
+        {
+          "name": "_remove_overlaps",
+          "kind": "fn",
+          "startLine": 891,
+          "endLine": 914,
+          "tokens": 260
+        },
+        {
+          "name": "_emit_timing_layer",
+          "kind": "fn",
+          "startLine": 915,
+          "endLine": 945,
+          "tokens": 335
+        },
+        {
+          "name": "_build_lyric_layers",
+          "kind": "fn",
+          "startLine": 946,
+          "endLine": 995,
+          "tokens": 580
+        },
+        {
+          "name": "_collect_timing_tracks",
+          "kind": "fn",
+          "startLine": 996,
+          "endLine": 1033,
+          "tokens": 392
+        },
+        {
+          "name": "fseq_guidance",
+          "kind": "fn",
+          "startLine": 1034,
+          "endLine": 1040,
+          "tokens": 71
+        }
+      ]
+    },
+    "tests/review/test_api_images.py": {
+      "description": "Tests for GET/POST /api/v1/images (global image library for Pictures effects).",
+      "tokens": 761,
+      "hash": "8ae526c4187670bc",
+      "size": 2662,
+      "mtimeMs": 1784127497170.2722,
+      "updatedAt": "2026-07-15T14:58:18.252Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "TestUploadImage",
+          "kind": "class",
+          "startLine": 7,
+          "endLine": 52,
+          "tokens": 496
+        },
+        {
+          "name": "TestListImages",
+          "kind": "class",
+          "startLine": 53,
+          "endLine": 73,
+          "tokens": 227
+        }
+      ]
+    },
+    "src/review/frontend/src/store/app.ts": {
+      "description": "Exports Screen, useAppStore",
+      "tokens": 238,
+      "hash": "9bccab6f6872a1ad",
+      "size": 830,
+      "mtimeMs": 1784127778601.3745,
+      "updatedAt": "2026-07-15T15:03:00.353Z",
+      "source": "hook"
+    },
+    "src/review/frontend/src/components/Chrome/Chrome.tsx": {
+      "description": "fmtBuildTime",
+      "tokens": 3313,
+      "hash": "ee646a2392ed577d",
+      "size": 11740,
+      "mtimeMs": 1784127787431.685,
+      "updatedAt": "2026-07-15T15:03:08.788Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "fmtBuildTime",
+          "kind": "fn",
+          "startLine": 8,
+          "endLine": 26,
+          "tokens": 195
+        },
+        {
+          "name": "targetScreenForStatus",
+          "kind": "fn",
+          "startLine": 27,
+          "endLine": 38,
+          "tokens": 67
+        },
+        {
+          "name": "Props",
+          "kind": "section",
+          "startLine": 39,
+          "endLine": 51,
+          "tokens": 111
+        },
+        {
+          "name": "Chrome",
+          "kind": "fn",
+          "startLine": 52,
+          "endLine": 155,
+          "tokens": 1069
+        },
+        {
+          "name": "RailProps",
+          "kind": "section",
+          "startLine": 156,
+          "endLine": 164,
+          "tokens": 73
+        },
+        {
+          "name": "LibraryRail",
+          "kind": "fn",
+          "startLine": 165,
+          "endLine": 274,
+          "tokens": 1027
+        },
+        {
+          "name": "RailSongItemProps",
+          "kind": "section",
+          "startLine": 275,
+          "endLine": 282,
+          "tokens": 41
+        },
+        {
+          "name": "RailSongItem",
+          "kind": "fn",
+          "startLine": 283,
+          "endLine": 353,
+          "tokens": 551
+        }
+      ]
+    },
+    "src/review/frontend/src/screens/Pictures.tsx": {
+      "description": "formatTimestamp",
+      "tokens": 1494,
+      "hash": "4b5e6d325869de56",
+      "size": 5234,
+      "mtimeMs": 1784127896064.2666,
+      "updatedAt": "2026-07-15T15:04:56.199Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "ImageSuggestion",
+          "kind": "section",
+          "startLine": 4,
+          "endLine": 12,
+          "tokens": 43
+        },
+        {
+          "name": "ImageTopic",
+          "kind": "section",
+          "startLine": 13,
+          "endLine": 18,
+          "tokens": 23
+        },
+        {
+          "name": "Song",
+          "kind": "section",
+          "startLine": 19,
+          "endLine": 23,
+          "tokens": 16
+        },
+        {
+          "name": "PicturesScreenProps",
+          "kind": "section",
+          "startLine": 24,
+          "endLine": 30,
+          "tokens": 41
+        },
+        {
+          "name": "formatTimestamp",
+          "kind": "fn",
+          "startLine": 31,
+          "endLine": 37,
+          "tokens": 69
+        },
+        {
+          "name": "Pictures",
+          "kind": "fn",
+          "startLine": 38,
+          "endLine": 143,
+          "tokens": 1278
+        }
+      ]
+    },
+    "src/review/frontend/src/screens/Pictures.module.css": {
+      "description": "Styles: 19 rules",
+      "tokens": 570,
+      "hash": "d495a46fc539e381",
+      "size": 1994,
+      "mtimeMs": 1784127906341.3547,
+      "updatedAt": "2026-07-15T15:05:06.480Z",
+      "source": "hook"
+    },
+    "docs/xlights-effect-params.md": {
+      "description": "xLights Effect Parameters Reference",
+      "tokens": 17091,
+      "hash": "f63fa5e6b3ed23c5",
+      "size": 69620,
+      "mtimeMs": 1784128128846.9673,
+      "updatedAt": "2026-07-15T15:08:48.978Z",
+      "source": "hook"
     }
   }
 }

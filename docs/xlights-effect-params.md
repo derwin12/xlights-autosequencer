@@ -411,6 +411,18 @@ Control type prefixes:
 
 ## Pictures
 
+**Filename attribute correction (2026-07-15):** this table's scraped metadata says
+`E_CUSTOM_Pictures_FilenameBlock` (the *UI widget* — a combo Select/AI Generate/Clear
+control), but that is **not** what real xLights writes into the `.xsq` `<EffectDB>`
+settings string. Extracted from 5 of 13 hand-built reference `.xsqz` packages (87 real
+Pictures placements, all consistent): the actual serialized attribute is
+**`E_TEXTCTRL_Pictures_Filename`**. Use that name in `parameter_overrides` — see
+`src/effects/builtin_effects.json`'s `Pictures` entry and `.wolf/cerebrum.md`'s bug-213
+entry for the full story. This is the same divergence pattern already seen for
+Single Strand/Ripple/ColorWash/Shimmer/Wave/Liquid (slider→textctrl migrations,
+bug-192/193/194) — this doc's scraped metadata reflects the xLights UI's declared
+control type, not always the attribute name it actually serializes.
+
 | Storage Name | Label | Type | Default | Range | Value Curve | Notes |
 |---|---|---|---|---|---|---|
 | `E_CUSTOM_Pictures_FilenameBlock` |  | custom |  | — |  | Image file selection: Select / AI Generate / Clear button... |

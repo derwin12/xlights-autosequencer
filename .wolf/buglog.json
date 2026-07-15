@@ -3709,6 +3709,157 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-222",
+      "timestamp": "2026-07-15T14:54:49.240Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/xsq_writer.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 6→36 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:54:49.240Z"
+    },
+    {
+      "id": "bug-223",
+      "timestamp": "2026-07-15T14:55:53.373Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/review/api/v1/analysis.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:55:53.373Z"
+    },
+    {
+      "id": "bug-224",
+      "timestamp": "2026-07-15T14:56:10.815Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/review/api/v1/analysis.py",
+      "root_cause": "Had \"value_curves\"",
+      "fix": "Changed to \"image_topics\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:56:10.815Z"
+    },
+    {
+      "id": "bug-225",
+      "timestamp": "2026-07-15T15:03:00.413Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/review/frontend/src/store/app.ts",
+      "root_cause": "Had 'export'",
+      "fix": "Changed to 'pictures'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T15:03:00.413Z"
+    },
+    {
+      "id": "bug-226",
+      "timestamp": "2026-07-15T15:03:08.832Z",
+      "error_message": "CSS fix: id",
+      "file": "src/review/frontend/src/components/Chrome/Chrome.tsx",
+      "root_cause": "id: 'export', label: 'Export', key: '6' → 'export', label: 'Export', key: '7'",
+      "fix": "Changed id: 'export', label: 'Export', key: '6' → 'export', label: 'Export', key: '7'",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T15:03:08.832Z"
+    },
+    {
+      "id": "bug-227",
+      "timestamp": "2026-07-15T15:03:35.923Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/review/frontend/src/screens/Theme.tsx",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 26→10 lines (12 removed) | Also: {imageSuggestions && imageSuggestions.length > 0 &; <div className={styles.pictureSuggestions}>",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-15T15:04:18.447Z"
+    },
+    {
+      "id": "bug-228",
+      "timestamp": "2026-07-15T15:05:33.256Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/review/frontend/src/App.tsx",
+      "root_cause": "Had 'src/screens/Export'",
+      "fix": "Changed to 'src/screens/Pictures'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-15T15:06:20.482Z"
+    },
+    {
+      "id": "bug-229",
+      "timestamp": "2026-07-15T15:05:48.251Z",
+      "error_message": "Null/undefined access in ",
+      "file": "src/review/frontend/src/App.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T15:05:48.251Z"
+    },
+    {
+      "id": "bug-214",
+      "timestamp": "2026-07-15",
+      "error_message": "FEATURE (not a bug fix): Pictures/image_suggestions produced zero results when generating a real sequence through the review UI, even with a populated Images folder on the host.",
+      "file": "src/generator/image_catalog.py (rewritten), src/review/api/v1/images.py (new), src/review/api/v1/analysis.py, src/generator/xsq_writer.py, src/review/frontend/src/screens/Pictures.tsx (new), Pictures.module.css (new), Theme.tsx, App.tsx, Chrome.tsx, store/app.ts, tests",
+      "root_cause": "The xlight-dev container that actually runs generation/analysis has NO mount to the user's real show folder at all (docker inspect confirmed only the repo workspace mount) -- the Images subdirectory was fundamentally unreachable from inside the container, not just resolved to the wrong path. A secondary bug existed too: get_show_dir() treats the review UI's internal per-song layout-copy directory (~/.xlight/layouts/) as 'the show dir', which has no Images sibling even when a mount exists -- export.py already had a comment warning about this exact class of problem for a different case.",
+      "fix": "Replaced the host-directory-scan approach entirely with an upload-based global image library, mirroring import_video.py: new src/review/api/v1/images.py (POST/GET /api/v1/images) stores files + a tag under ~/.xlight/library/images/ (container-local, no mount dependency). image_catalog.py rewritten: catalog_images() reads the library instead of scanning a directory; suggest_images_for_words() matches against library tags; new find_unmatched_topics() surfaces lyric words with no library match yet. New dedicated Pictures.tsx screen (wizard step between Theme and Export) shows unmatched topics with an upload control plus already-matched suggestions. xsq_writer.py extended with the same copy-and-rewrite-to-bare-filename treatment already used for the Video effect, since library paths are container-internal and meaningless on the host. 32 backend tests updated/added (test_picture_effects.py, test_api_images.py), 595 total tests pass, frontend build clean.",
+      "tags": [
+        "generator",
+        "review",
+        "pictures-effect",
+        "image-library",
+        "devcontainer-mount",
+        "new-feature",
+        "architecture-change"
+      ],
+      "related_bugs": [
+        "bug-209",
+        "bug-213"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

@@ -33,7 +33,7 @@
       "first_read": "2026-07-15T13:12:16.924Z"
     },
     "H:/Github/xlight-autosequencer/src/review/api/v1/import_video.py": {
-      "count": 2,
+      "count": 3,
       "tokens": 0,
       "first_read": "2026-07-15T13:12:27.328Z"
     },
@@ -48,7 +48,7 @@
       "first_read": "2026-07-15T13:16:09.059Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/plan.py": {
-      "count": 5,
+      "count": 6,
       "tokens": 0,
       "first_read": "2026-07-15T13:16:14.701Z"
     },
@@ -93,8 +93,8 @@
       "first_read": "2026-07-15T13:24:47.358Z"
     },
     "H:/Github/xlight-autosequencer/src/review/api/v1/analysis.py": {
-      "count": 3,
-      "tokens": 13834,
+      "count": 7,
+      "tokens": 17836,
       "first_read": "2026-07-15T13:24:54.384Z"
     },
     "H:/Github/xlight-autosequencer/src/grouper/layout.py": {
@@ -118,7 +118,7 @@
       "first_read": "2026-07-15T13:25:37.176Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/xsq_writer.py": {
-      "count": 1,
+      "count": 3,
       "tokens": 0,
       "first_read": "2026-07-15T13:26:25.340Z"
     },
@@ -128,8 +128,8 @@
       "first_read": "2026-07-15T13:28:20.950Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/image_catalog.py": {
-      "count": 1,
-      "tokens": 0,
+      "count": 3,
+      "tokens": 1602,
       "first_read": "2026-07-15T13:30:05.496Z"
     },
     "H:/Github/xlight-autosequencer/scripts/mine_prop_corpus.py": {
@@ -208,18 +208,18 @@
       "first_read": "2026-07-15T13:59:23.043Z"
     },
     "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx": {
-      "count": 3,
-      "tokens": 0,
+      "count": 6,
+      "tokens": 3712,
       "first_read": "2026-07-15T14:07:03.163Z"
     },
     "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx": {
-      "count": 2,
-      "tokens": 6875,
+      "count": 7,
+      "tokens": 7782,
       "first_read": "2026-07-15T14:07:08.665Z"
     },
     "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.module.css": {
-      "count": 1,
-      "tokens": 0,
+      "count": 2,
+      "tokens": 1288,
       "first_read": "2026-07-15T14:08:21.467Z"
     },
     "H:/Github/xlight-autosequencer/.gitignore": {
@@ -228,9 +228,44 @@
       "first_read": "2026-07-15T14:23:32.297Z"
     },
     "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_picture_effects.py": {
+      "count": 2,
+      "tokens": 2321,
+      "first_read": "2026-07-15T14:33:21.576Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/storage/paths.py": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-07-15T14:33:21.576Z"
+      "first_read": "2026-07-15T14:52:27.492Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/storage/library.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T14:53:03.755Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/api/v1/__init__.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T14:54:06.280Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/review/test_api_import_video.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T14:58:01.570Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/review/test_api_sections_edit.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T15:01:26.516Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/frontend/src/components/Chrome/Chrome.tsx": {
+      "count": 2,
+      "tokens": 3313,
+      "first_read": "2026-07-15T15:02:37.830Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/xlights-effect-params.md": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-07-15T15:08:26.423Z"
     }
   },
   "files_written": [
@@ -383,26 +418,213 @@
       "action": "edit",
       "tokens": 685,
       "at": "2026-07-15T14:35:37.606Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/image_catalog.py",
+      "action": "create",
+      "tokens": 1602,
+      "at": "2026-07-15T14:53:52.381Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/api/v1/images.py",
+      "action": "create",
+      "tokens": 553,
+      "at": "2026-07-15T14:54:02.489Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/api/v1/__init__.py",
+      "action": "edit",
+      "tokens": 44,
+      "at": "2026-07-15T14:54:12.048Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/plan.py",
+      "action": "edit",
+      "tokens": 47,
+      "at": "2026-07-15T14:54:27.021Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/xsq_writer.py",
+      "action": "edit",
+      "tokens": 544,
+      "at": "2026-07-15T14:54:49.236Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/api/v1/analysis.py",
+      "action": "edit",
+      "tokens": 168,
+      "at": "2026-07-15T14:55:09.341Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/image_catalog.py",
+      "action": "edit",
+      "tokens": 645,
+      "at": "2026-07-15T14:55:44.429Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/api/v1/analysis.py",
+      "action": "edit",
+      "tokens": 219,
+      "at": "2026-07-15T14:55:53.369Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/api/v1/analysis.py",
+      "action": "edit",
+      "tokens": 38,
+      "at": "2026-07-15T14:56:10.810Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/api/v1/analysis.py",
+      "action": "edit",
+      "tokens": 62,
+      "at": "2026-07-15T14:56:26.288Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_picture_effects.py",
+      "action": "create",
+      "tokens": 2953,
+      "at": "2026-07-15T14:57:14.915Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/review/test_api_images.py",
+      "action": "create",
+      "tokens": 761,
+      "at": "2026-07-15T14:58:18.295Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/store/app.ts",
+      "action": "edit",
+      "tokens": 29,
+      "at": "2026-07-15T15:03:00.407Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/components/Chrome/Chrome.tsx",
+      "action": "edit",
+      "tokens": 42,
+      "at": "2026-07-15T15:03:08.826Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx",
+      "action": "edit",
+      "tokens": 70,
+      "at": "2026-07-15T15:03:35.914Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx",
+      "action": "edit",
+      "tokens": 36,
+      "at": "2026-07-15T15:04:05.024Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx",
+      "action": "edit",
+      "tokens": 10,
+      "at": "2026-07-15T15:04:18.443Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.module.css",
+      "action": "edit",
+      "tokens": 4,
+      "at": "2026-07-15T15:04:38.777Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Pictures.tsx",
+      "action": "create",
+      "tokens": 1494,
+      "at": "2026-07-15T15:04:56.219Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Pictures.module.css",
+      "action": "create",
+      "tokens": 570,
+      "at": "2026-07-15T15:05:06.501Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx",
+      "action": "edit",
+      "tokens": 125,
+      "at": "2026-07-15T15:05:19.290Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx",
+      "action": "edit",
+      "tokens": 39,
+      "at": "2026-07-15T15:05:33.251Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx",
+      "action": "edit",
+      "tokens": 294,
+      "at": "2026-07-15T15:05:48.247Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx",
+      "action": "edit",
+      "tokens": 176,
+      "at": "2026-07-15T15:06:05.913Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx",
+      "action": "edit",
+      "tokens": 29,
+      "at": "2026-07-15T15:06:20.478Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/cerebrum.md",
+      "action": "edit",
+      "tokens": 879,
+      "at": "2026-07-15T15:08:13.440Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/docs/xlights-effect-params.md",
+      "action": "edit",
+      "tokens": 323,
+      "at": "2026-07-15T15:08:48.998Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/STATUS.md",
+      "action": "edit",
+      "tokens": 606,
+      "at": "2026-07-15T15:09:15.794Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/STATUS.md",
+      "action": "edit",
+      "tokens": 335,
+      "at": "2026-07-15T15:09:28.462Z"
     }
   ],
   "edit_counts": {
     "C:/Users/daryl/AppData/Local/Temp/claude/H--Github-xlight-autosequencer/99daea5b-98e1-4e63-8e83-b1a35c7b3cae/scratchpad/rescan_corpus.sh": 1,
     "scripts/startapp.sh": 2,
-    "src/review/frontend/src/screens/Theme.tsx": 3,
-    "src/review/frontend/src/screens/Theme.module.css": 1,
-    "src/review/frontend/src/App.tsx": 2,
+    "src/review/frontend/src/screens/Theme.tsx": 6,
+    "src/review/frontend/src/screens/Theme.module.css": 2,
+    "src/review/frontend/src/App.tsx": 7,
     ".wolf/hooks/post-write.js": 4,
     ".wolf/buglog.json": 1,
-    ".wolf/cerebrum.md": 2,
+    ".wolf/cerebrum.md": 3,
     "src/generator/corpus_recipes.py": 1,
     ".gitignore": 1,
     "src/effects/builtin_effects.json": 1,
     "src/generator/effect_placer.py": 2,
-    "tests/unit/test_generator/test_picture_effects.py": 4
+    "tests/unit/test_generator/test_picture_effects.py": 5,
+    "src/generator/image_catalog.py": 2,
+    "src/review/api/v1/images.py": 1,
+    "src/review/api/v1/__init__.py": 1,
+    "src/generator/plan.py": 1,
+    "src/generator/xsq_writer.py": 1,
+    "src/review/api/v1/analysis.py": 4,
+    "tests/review/test_api_images.py": 1,
+    "src/review/frontend/src/store/app.ts": 1,
+    "src/review/frontend/src/components/Chrome/Chrome.tsx": 1,
+    "src/review/frontend/src/screens/Pictures.tsx": 1,
+    "src/review/frontend/src/screens/Pictures.module.css": 1,
+    "docs/xlights-effect-params.md": 1,
+    ".wolf/STATUS.md": 2
   },
   "anatomy_hits": 5,
-  "anatomy_misses": 41,
-  "repeated_reads_warned": 30,
+  "anatomy_misses": 48,
+  "repeated_reads_warned": 52,
   "cerebrum_warnings": 0,
-  "stop_count": 23
+  "stop_count": 25
 }

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T14:33:50.331Z
-> Files: 613 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T15:08:48.979Z
+> Files: 624 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -1005,6 +1005,7 @@
 ## docs/
 
 - `microscope-tier-effectiveness.md` — Tier and Layout Effectiveness — 2026-05-02 Diagnostic (~1637 tok)
+- `xlights-effect-params.md` — xLights Effect Parameters Reference (~17091 tok)
 
 ## openspec/changes/acceptance-gate/
 
@@ -1114,6 +1115,44 @@
   - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
   - fn `_place_per_beat` L2176-2235 (~743 tok)
   - fn `_place_per_trigger` L2236-3322 (~12337 tok)
+- `image_catalog.py` — Global image library for xLights Pictures effects. (~2192 tok)
+  - fn `_state_home` L27-33 (~46 tok)
+  - fn `_images_root` L34-37 (~22 tok)
+  - fn `_manifest_path` L38-41 (~22 tok)
+  - fn `load_image_library` L42-57 (~131 tok)
+  - fn `_save_manifest` L58-74 (~147 tok)
+  - fn `save_image_to_library` L75-101 (~250 tok)
+  - fn `catalog_images` L102-116 (~172 tok)
+  - fn `suggest_images_for_words` L117-179 (~781 tok)
+  - fn `find_unmatched_topics` L180-213 (~373 tok)
+- `plan.py` — Plan builder — orchestrates the full sequence generation pipeline. (~9981 tok)
+  - fn `read_song_metadata` L53-88 (~292 tok)
+  - fn `_first_tag` L89-96 (~64 tok)
+  - fn `build_plan` L97-404 (~4070 tok)
+  - fn `_audible_end_ms` L405-424 (~219 tok)
+  - fn `_place_end_of_song_fade` L425-468 (~490 tok)
+  - fn `_populate_assignment_decisions` L469-567 (~1263 tok)
+  - fn `_derive_anchor_palette` L568-588 (~260 tok)
+  - fn `_section_energies_from_story` L589-630 (~446 tok)
+  - fn `_write_plan_json` L631-650 (~223 tok)
+  - fn `generate_sequence` L651-694 (~426 tok)
+  - fn `regenerate_sections` L695-824 (~1518 tok)
+- `xsq_writer.py` — XSQ writer — serializes a SequencePlan to xLights .xsq XML format. (~12429 tok)
+  - fn `write_xsq` L276-641 (~5128 tok)
+  - fn `_serialize_palette` L642-665 (~270 tok)
+  - fn `_serialize_effect_params` L666-723 (~792 tok)
+  - fn `_strip_storage_prefix` L724-735 (~136 tok)
+  - fn `_encode_value_curve` L736-761 (~284 tok)
+  - fn `_ensure_palette` L762-775 (~111 tok)
+  - fn `_ensure_effect_entry` L776-789 (~120 tok)
+  - fn `parse_xsq` L790-861 (~709 tok)
+  - fn `remove_effects_in_range` L862-872 (~141 tok)
+  - fn `_remove_overlaps_per_layer` L873-890 (~222 tok)
+  - fn `_remove_overlaps` L891-914 (~260 tok)
+  - fn `_emit_timing_layer` L915-945 (~335 tok)
+  - fn `_build_lyric_layers` L946-995 (~580 tok)
+  - fn `_collect_timing_tracks` L996-1033 (~392 tok)
+  - fn `fseq_guidance` L1034-1040 (~71 tok)
 
 ## src/microscope/
 
@@ -1128,44 +1167,88 @@
 
 ## src/review/api/v1/
 
-- `analysis.py` — Analysis endpoints — T047. (~13834 tok)
+- `__init__.py` — not_found, method_not_allowed, internal_error (~321 tok)
+- `analysis.py` — Analysis endpoints — T047. (~17851 tok)
+  - class `_RunState` L33-51 (~211 tok)
+  - fn `_now_iso` L52-55 (~32 tok)
+  - fn `_run_id` L56-59 (~32 tok)
+  - fn `_default_overrides` L60-84 (~215 tok)
+  - fn `_song_seed` L85-100 (~161 tok)
+  - fn `_smart_default_theme_ids` L101-171 (~905 tok)
+  - fn `_auto_assign_defaults` L172-201 (~301 tok)
+  - fn `_analyze_stub` L202-289 (~1170 tok)
+  - fn `_analyze_in_background` L290-751 (~6747 tok)
+  - fn `start_analyze` L752-791 (~455 tok)
+  - fn `commit_analyze` L792-907 (~1308 tok)
+  - fn `analyze_status` L908-938 (~245 tok)
+  - fn `get_analysis` L939-982 (~519 tok)
+  - fn `_extrapolate_grid` L983-1050 (~753 tok)
+  - fn `_rebuild_analysis_from_cache` L1051-1242 (~2579 tok)
+  - fn `get_stem_peaks` L1243-1300 (~668 tok)
+  - fn `get_peaks_window` L1301-1375 (~920 tok)
+- `images.py` — GET/POST /api/v1/images — global image library for Pictures effects. (~553 tok)
+  - fn `list_images` L23-27 (~35 tok)
+  - fn `upload_image` L28-55 (~304 tok)
 - `library.py` — Library endpoints — GET /library, folder CRUD, song delete + purge (T045, T090, T092, T094). (~4808 tok)
 
 ## src/review/frontend/src/
 
-- `App.tsx` — SCREENS (~7538 tok)
-  - section `ThemeDef` L23-35 (~66 tok)
-  - section `Section` L36-46 (~55 tok)
-  - section `ImageSuggestion` L47-54 (~36 tok)
-  - section `Analysis` L55-67 (~126 tok)
-  - section `AppData` L68-80 (~102 tok)
-  - section `PurgeDialogState` L81-87 (~46 tok)
-  - fn `useGlobalShortcuts` L88-167 (~515 tok)
-  - fn `GlobalKeyboardListener` L168-175 (~73 tok)
-  - fn `GlobalAudioPlayer` L176-255 (~818 tok)
-  - fn `GlobalDragBlock` L256-270 (~127 tok)
-  - fn `saveAssignments` L271-280 (~97 tok)
-  - fn `App` L281-676 (~4043 tok)
-  - fn `PurgeDialog` L677-757 (~644 tok)
-  - fn `PlaceholderScreen` L758-795 (~263 tok)
+- `App.tsx` — SCREENS (~7826 tok)
+  - section `ThemeDef` L24-36 (~66 tok)
+  - section `Section` L37-47 (~55 tok)
+  - section `ImageSuggestion` L48-56 (~43 tok)
+  - section `ImageTopic` L57-62 (~23 tok)
+  - section `Analysis` L63-76 (~134 tok)
+  - section `AppData` L77-89 (~105 tok)
+  - section `PurgeDialogState` L90-96 (~46 tok)
+  - fn `useGlobalShortcuts` L97-176 (~515 tok)
+  - fn `GlobalKeyboardListener` L177-184 (~73 tok)
+  - fn `GlobalAudioPlayer` L185-264 (~818 tok)
+  - fn `GlobalDragBlock` L265-279 (~127 tok)
+  - fn `saveAssignments` L280-289 (~97 tok)
+  - fn `App` L290-706 (~4267 tok)
+  - fn `PurgeDialog` L707-787 (~644 tok)
+  - fn `PlaceholderScreen` L788-825 (~263 tok)
+
+## src/review/frontend/src/components/Chrome/
+
+- `Chrome.tsx` — fmtBuildTime (~3313 tok)
+  - fn `fmtBuildTime` L8-26 (~195 tok)
+  - fn `targetScreenForStatus` L27-38 (~67 tok)
+  - section `Props` L39-51 (~111 tok)
+  - fn `Chrome` L52-155 (~1069 tok)
+  - section `RailProps` L156-164 (~73 tok)
+  - fn `LibraryRail` L165-274 (~1027 tok)
+  - section `RailSongItemProps` L275-282 (~41 tok)
+  - fn `RailSongItem` L283-353 (~551 tok)
 
 ## src/review/frontend/src/screens/
 
 - `Analyze.tsx` — When true, run analysis on mount even if the song is already marked (~8302 tok)
 - `Drop.tsx` — Called after a successful /api/v1/import response. (~995 tok)
 - `Library.tsx` — ALLOWED_EXTS (~2965 tok)
-- `Theme.module.css` — Styles: 37 rules (~1288 tok)
-- `Theme.tsx` — formatTimestamp (~3839 tok)
+- `Pictures.module.css` — Styles: 19 rules (~570 tok)
+- `Pictures.tsx` — formatTimestamp (~1494 tok)
+  - section `ImageSuggestion` L4-12 (~43 tok)
+  - section `ImageTopic` L13-18 (~23 tok)
+  - section `Song` L19-23 (~16 tok)
+  - section `PicturesScreenProps` L24-30 (~41 tok)
+  - fn `formatTimestamp` L31-37 (~69 tok)
+  - fn `Pictures` L38-143 (~1278 tok)
+- `Theme.module.css` — Styles: 28 rules (~978 tok)
+- `Theme.tsx` — DEFAULT_OVERRIDES (~3340 tok)
   - section `Theme` L10-22 (~66 tok)
   - section `Section` L23-30 (~32 tok)
   - section `Song` L31-37 (~28 tok)
-  - section `ImageSuggestion` L38-45 (~36 tok)
-  - section `ThemeScreenProps` L46-55 (~68 tok)
-  - fn `formatTimestamp` L56-69 (~106 tok)
-  - section `EditState` L70-82 (~64 tok)
-  - fn `EditDialog` L83-184 (~991 tok)
-  - fn `Theme` L185-406 (~2186 tok)
+  - section `ThemeScreenProps` L38-53 (~94 tok)
+  - section `EditState` L54-66 (~64 tok)
+  - fn `EditDialog` L67-168 (~991 tok)
+  - fn `Theme` L169-367 (~1814 tok)
 - `Timeline.tsx` — Returns the beat entry whose t_ms is <= timeMs (last beat at or before playhead) (~7150 tok)
+
+## src/review/frontend/src/store/
+
+- `app.ts` — Exports Screen, useAppStore (~238 tok)
 
 ## src/review/frontend/tests/screens/
 
@@ -1195,6 +1278,12 @@
 - `test_runner.py` — Tests for ``src.microscope.runner``. (~3473 tok)
 - `test_verify_coverage.py` — Tests for ``verify_panel_coverage`` (OpenSpec (~1668 tok)
 
+## tests/review/
+
+- `test_api_images.py` — Tests for GET/POST /api/v1/images (global image library for Pictures effects). (~761 tok)
+  - class `TestUploadImage` L7-52 (~496 tok)
+  - class `TestListImages` L53-73 (~227 tok)
+
 ## tests/ui/
 
 - `conftest.py` — Shared fixtures for browser-driven UI flow tests. (~1887 tok)
@@ -1219,12 +1308,14 @@
 
 ## tests/unit/test_generator/
 
-- `test_picture_effects.py` — Tests for effect_placer._place_picture_effects (catalog images on Matrix/Mega Tree props). (~2321 tok)
-  - fn `_prop` L12-15 (~34 tok)
-  - class `TestPlacePictureEffects` L16-131 (~1372 tok)
-  - class `TestPictureEffectsConfigFlag` L132-148 (~153 tok)
-  - class `TestCatalogImages` L149-166 (~198 tok)
-  - class `TestSuggestImagesForWords` L167-200 (~442 tok)
+- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~2953 tok)
+  - fn `_prop` L18-21 (~34 tok)
+  - fn `_library_entry` L22-25 (~55 tok)
+  - class `TestPlacePictureEffects` L26-139 (~1356 tok)
+  - class `TestPictureEffectsConfigFlag` L140-156 (~153 tok)
+  - class `TestImageLibraryStorage` L157-185 (~356 tok)
+  - class `TestSuggestImagesForWords` L186-224 (~494 tok)
+  - class `TestFindUnmatchedTopics` L225-256 (~361 tok)
 
 ## tests/validation/
 
