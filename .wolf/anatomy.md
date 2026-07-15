@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T18:41:41.268Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T21:16:54.007Z
 > Files: 625 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -1084,7 +1084,7 @@
   - class `PropFamilyRecipe` L70-719 (~9498 tok)
   - fn `recipe_for_group` L720-775 (~667 tok)
   - fn `section_qualifies` L776-782 (~99 tok)
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~42903 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~43303 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -1114,7 +1114,7 @@
   - fn `_humanize_group_name` L1936-1943 (~87 tok)
   - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
   - fn `_place_per_beat` L2176-2235 (~743 tok)
-  - fn `_place_per_trigger` L2236-3377 (~13043 tok)
+  - fn `_place_per_trigger` L2236-3402 (~13436 tok)
 - `image_catalog.py` — Global image library for xLights Pictures effects. (~2192 tok)
   - fn `_state_home` L27-33 (~46 tok)
   - fn `_images_root` L34-37 (~22 tok)
@@ -1308,15 +1308,16 @@
 
 ## tests/unit/test_generator/
 
-- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~4380 tok)
-  - fn `_prop` L22-25 (~34 tok)
-  - fn `_library_entry` L26-29 (~55 tok)
-  - class `TestPlacePictureEffects` L30-164 (~1670 tok)
-  - class `TestPlacePictureEffectsWordMatches` L165-247 (~983 tok)
-  - class `TestPictureEffectsConfigFlag` L248-264 (~153 tok)
-  - class `TestImageLibraryStorage` L265-293 (~356 tok)
-  - class `TestSuggestImagesForWords` L294-333 (~510 tok)
-  - class `TestFindUnmatchedTopics` L334-365 (~361 tok)
+- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~5246 tok)
+  - fn `_prop` L27-30 (~34 tok)
+  - fn `_group` L31-34 (~39 tok)
+  - fn `_match` L35-38 (~62 tok)
+  - fn `_library_entry` L39-42 (~55 tok)
+  - class `TestPlacePictureEffects` L43-320 (~3357 tok)
+  - class `TestPictureEffectsConfigFlag` L321-337 (~153 tok)
+  - class `TestImageLibraryStorage` L338-366 (~356 tok)
+  - class `TestSuggestImagesForWords` L367-406 (~510 tok)
+  - class `TestFindUnmatchedTopics` L407-438 (~361 tok)
 - `test_xsq_writer.py` — Tests for XSQ writer — xLights .xsq XML serialization. (~15499 tok)
   - fn `_make_theme` L21-32 (~76 tok)
   - fn `_make_plan` L33-102 (~499 tok)

@@ -3186,19 +3186,28 @@ def _place_picture_effects(
     rating: reviewing the reference corpus (2026-07-15) showed only Matrix/Mega
     Tree props carry real varied Pictures content.
 
-    Each eligible prop is redirected to its enclosing tier group (looked up
-    in ``groups`` by membership) rather than placed on its own raw model row.
-    This matters because of a previously-hit xLights rendering quirk
-    (bug-184, 2026-07-12): when a model has its own direct effect on its own
-    row, that row's effect covers/overrides whatever the model's parent
-    group renders onto it — group and direct-model content do not blend.
-    Placing the picture burst on the group instead lets it stack as an
-    ordinary extra layer alongside the group's existing theme content
-    (confirmed 2026-07-15 against a real generated .xsq: Pictures placed
-    directly on the raw "Matrix"/"Mega Tree" model blanked out all the
-    theme content the "06_PROP_Matrix"/"08_HERO_Mega_Tree" groups carry for
-    those same props). A prop with no enclosing group falls back to its own
-    row directly, same as before.
+    Each eligible prop is redirected to its most specific enclosing tier
+    group (looked up in ``groups`` by membership) rather than placed on its
+    own raw model row. This matters because of a previously-hit xLights
+    rendering quirk (bug-184, 2026-07-12): when a model has its own direct
+    effect on its own row, that row's effect covers/overrides whatever the
+    model's parent group renders onto it — group and direct-model content
+    do not blend. Placing the picture burst on the group instead lets it
+    stack as an ordinary extra layer alongside the group's existing theme
+    content (confirmed 2026-07-15 against a real generated .xsq: Pictures
+    placed directly on the raw "Matrix"/"Mega Tree" model blanked out all
+    the theme content the "06_PROP_Matrix"/"08_HERO_Mega_Tree" groups carry
+    for those same props).
+
+    "Most specific" deliberately excludes tier-1 whole-house canvas groups
+    (bug-243, 2026-07-15): every prop is also a member of ``01_BASE_All``,
+    which ``groups`` always lists before any tier-6/8 group, so a plain
+    first-match lookup always redirected the burst onto the entire-display
+    canvas instead of the intended matrix — the overlay was in the file but
+    never visible as a matrix accent. Candidates are filtered to non-tier-1,
+    non-``_FADES`` groups and the smallest-membership (tightest) match wins.
+    A prop with no such enclosing group falls back to its own row directly,
+    same as before.
 
     Each burst uses a modest fixed scale (``_PICTURE_SCALE_PERCENT``) so the
     image reads as an accent rather than filling the whole buffer, a short
@@ -3226,7 +3235,11 @@ def _place_picture_effects(
     targets: dict[str, str] = {}
     for prop in eligible:
         name = getattr(prop, "name", "")
-        group = next((g for g in groups if name in g.members), None)
+        candidates = [
+            g for g in groups
+            if name in g.members and g.tier > 1 and not g.name.endswith("_FADES")
+        ]
+        group = min(candidates, key=lambda g: (len(g.members), g.name), default=None)
         targets[name] = group.name if group is not None else name
 
     matches = sorted(

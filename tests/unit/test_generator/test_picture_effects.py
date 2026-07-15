@@ -153,6 +153,27 @@ class TestPlacePictureEffects:
         assert set(result) == {"06_PROP_Matrix"}
         assert result["06_PROP_Matrix"][0].model_or_group == "06_PROP_Matrix"
 
+    def test_burst_prefers_specific_tier_group_over_whole_house_canvas(self):
+        library = load_effect_library()
+        # bug-243 (2026-07-15): every prop is also a member of the tier-1
+        # "01_BASE_All" whole-house canvas group, and that group is always
+        # generated (and listed) before any tier-6/8 group. A first-match
+        # lookup over `groups` always picked 01_BASE_All, so the burst was
+        # written to the file but rendered across the entire display instead
+        # of the intended matrix. The tighter, non-tier-1 group must win.
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[
+                _group("01_BASE_All", members=["Matrix1", "Arch1", "Tree1"], tier=1),
+                _group("06_PROP_Matrix", members=["Matrix1"], tier=6),
+            ],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
+        )
+        assert set(result) == {"06_PROP_Matrix"}
+
     def test_prop_with_no_enclosing_group_falls_back_to_own_row(self):
         library = load_effect_library()
         result = _place_picture_effects(
