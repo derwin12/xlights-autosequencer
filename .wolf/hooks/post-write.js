@@ -36,12 +36,17 @@ async function main() {
         return;
     }
     const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(projectRoot, filePath);
-    // Skip processing for .wolf/ internal files to avoid slow self-referential updates
+    // .wolf/ internal files (buglog.json, cerebrum.md, memory.md, etc.) skip the
+    // expensive self-referential work below (anatomy store rebuild, memory.md
+    // auto-append, bug auto-detection) to avoid slow/noisy recursive updates —
+    // but they still fall through to step 3 (session tracker). Session tracking
+    // must not be skipped here: stop.js's checkMultiEditFiles/checkSemanticSummaries
+    // read session.files_written specifically to check whether buglog.json/
+    // memory.md were updated, so exiting before step 3 made those checks
+    // permanently unsatisfiable (bug-210's fix covered the read side; this
+    // covers the write side) — see .wolf/cerebrum.md 2026-07-15 entry.
     const relPath = normalizePath(path.relative(projectRoot, absolutePath));
-    if (relPath.startsWith(".wolf/")) {
-        process.exit(0);
-        return;
-    }
+    const isWolfInternal = relPath.startsWith(".wolf/");
     // Never track files outside the project root (e.g. the Claude Code scratchpad under
     // /private/tmp). path.relative() yields ../.. section keys that pollute anatomy.md and are
     // wiped again by every full `openwolf scan`, so the index churns instead of converging.
@@ -61,7 +66,8 @@ async function main() {
     // 1. Update the anatomy store, then re-render anatomy.md from it.
     //    All of this happens under the anatomy lock; if the lock cannot be
     //    acquired within budget we skip — a later writer converges the state.
-    try {
+    //    Skipped for .wolf/ internal files (self-referential noise).
+    if (!isWolfInternal) try {
         const relPathLocal = normalizePath(path.relative(projectRoot, absolutePath));
         let fileContent = "";
         try {
@@ -107,8 +113,9 @@ async function main() {
         });
     }
     catch { }
-    // 2. Append richer entry to memory.md
-    try {
+    // 2. Append richer entry to memory.md (skipped for .wolf/ internal files —
+    //    would otherwise self-append an entry every time memory.md itself is edited)
+    if (!isWolfInternal) try {
         const action = toolName === "Write" ? "Created" : toolName === "MultiEdit" ? "Multi-edited" : "Edited";
         const relFile = normalizePath(path.relative(projectRoot, absolutePath));
         const fileContent = input.tool_input?.content ?? "";
@@ -148,8 +155,9 @@ async function main() {
         }
     }
     catch { }
-    // 4. Auto-detect bug-fix patterns and log them
-    try {
+    // 4. Auto-detect bug-fix patterns and log them (skipped for .wolf/ internal
+    //    files — editing buglog.json itself shouldn't recursively auto-log a bug)
+    if (!isWolfInternal) try {
         if (oldStr && newStr) {
             autoDetectBugFix(wolfDir, absolutePath, projectRoot, oldStr, newStr);
         }

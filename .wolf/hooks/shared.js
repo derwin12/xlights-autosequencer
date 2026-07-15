@@ -616,11 +616,25 @@ export function countSemanticEntries(wolfDir) {
     try {
         const content = fs.readFileSync(memoryPath, "utf-8");
         const mechanical = /^\|\s*[\d:]+\s*\|\s*(Created|Edited|Multi-edited|Session end:|designqc:)/;
+        const tableFurniture = /^\|\s*(Time|-+)\s*\|/;
         const today = new Date().toISOString().slice(0, 10);
         const todayPrefix = `| ${today}`;
+        const sessionHeader = /^##\s*Session:\s*(\d{4}-\d{2}-\d{2})/;
         let count = 0;
+        // Rows count as "today" either when the row itself is date-prefixed
+        // (`| 2026-07-15 | ...`) or when it's a bare `| HH:MM | ... |` row
+        // under a `## Session: 2026-07-15 ...` header — this project's
+        // actual convention groups entries under a dated session header
+        // rather than repeating the date on every row.
+        let inTodaySession = false;
         for (const line of content.split("\n")) {
-            if (line.startsWith(todayPrefix) && !mechanical.test(line))
+            const headerMatch = line.match(sessionHeader);
+            if (headerMatch) {
+                inTodaySession = headerMatch[1] === today;
+                continue;
+            }
+            const isTodayRow = line.startsWith(todayPrefix) || (inTodaySession && line.startsWith("|"));
+            if (isTodayRow && !mechanical.test(line) && !tableFurniture.test(line))
                 count++;
         }
         return count;
