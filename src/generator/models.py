@@ -74,7 +74,20 @@ class EffectPlacement:
     #   list[tuple[float, float]]  — legacy (points only, assumes 0-100 range)
     #   tuple[list[tuple[float,float]], float, float] — (points, min, max)
     music_sparkles: int = 0  # 0=off, 1-100=sparkle frequency
-    layer: int = 0            # 0=primary effect layer, 1=accent overlay (Per Model Default)
+    # xsq_writer serializes <EffectLayer> children per group in ascending
+    # order of this field. For 06_PROP_Matrix on a real generated .xsq
+    # (bug-248, 2026-07-15), xLights rendered the FIRST child on top and
+    # each subsequent one further behind -- the opposite of this field's
+    # prior comment ("1=accent overlay"), which had assumed higher numbers
+    # sit in front and caused a visible regression (Pictures effect placed
+    # "on top" at the highest layer number instead rendered at the bottom
+    # of the stack). Only confirmed against that one group/theme so far --
+    # if another song/prop family's layered overlay (e.g. the tier-1
+    # background_accent_variant placement at layer=1 over a layer=0 base,
+    # effect_placer.py's "Tier 1 background accent overlay" block) turns
+    # out to render in the opposite order, verify against a real .xsq
+    # before trusting either direction as universal.
+    layer: int = 0
 
     def __post_init__(self) -> None:
         self.start_ms = frame_align(self.start_ms)

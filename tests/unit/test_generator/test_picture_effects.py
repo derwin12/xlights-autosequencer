@@ -186,17 +186,19 @@ class TestPlacePictureEffects:
         )
         assert set(result) == {"Matrix1"}
 
-    def test_burst_placed_above_existing_layers_not_fixed_layer_1(self):
+    def test_burst_placed_below_existing_layers_not_fixed_layer_1(self):
         library = load_effect_library()
         # bug-243 follow-up (2026-07-15): a fixed layer=1 collided with
-        # whatever theme layer a group's rotation pool already occupied.
-        # Observed twice: (1) as clipped-to-a-sliver 6000ms->100-275ms
-        # bursts when the pool densely packed layer 1 with back-to-back
-        # placements, and (2) visually masked entirely when an opaque "On"
-        # effect sat on a layer above the Pictures burst -- xLights renders
-        # higher layers on top, and "On" has no transparency to see through.
-        # The burst must always land one layer above the highest layer
-        # already used on its target group, so it's guaranteed topmost.
+        # whatever theme layer a group's rotation pool already occupied,
+        # clipping 6000ms bursts down to 100-275ms slivers. A first attempt
+        # fixed that by moving the burst to the *highest* layer number,
+        # under the assumption higher-number-renders-on-top -- confirmed
+        # wrong by inspecting a real generated .xsq (landed as the LAST
+        # <EffectLayer> child, which xLights renders at the bottom of the
+        # stack, hidden behind an opaque "On" layer -- user screenshot).
+        # xsq_writer serializes layers in ascending index order and xLights
+        # renders the *first* child on top, so the burst must land one
+        # layer *below* the lowest (topmost-rendering) index already used.
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
             groups=[_group("06_PROP_Matrix", members=["Matrix1"])],
@@ -204,11 +206,11 @@ class TestPlacePictureEffects:
             duration_ms=60_000,
             variation_seed=0,
             word_image_matches=[_match("snowman", 1000)],
-            existing_layers={"06_PROP_Matrix": 3},
+            existing_layers={"06_PROP_Matrix": 0},
         )
-        assert result["06_PROP_Matrix"][0].layer == 4
+        assert result["06_PROP_Matrix"][0].layer == -1
 
-    def test_burst_layer_defaults_to_1_when_target_has_no_existing_layers(self):
+    def test_burst_layer_defaults_to_0_when_target_has_no_existing_layers(self):
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
@@ -218,7 +220,7 @@ class TestPlacePictureEffects:
             variation_seed=0,
             word_image_matches=[_match("snowman", 1000)],
         )
-        assert result["Matrix1"][0].layer == 1
+        assert result["Matrix1"][0].layer == 0
 
     def test_burst_parameters_scale_fade_and_layer(self):
         library = load_effect_library()
@@ -232,7 +234,7 @@ class TestPlacePictureEffects:
         )
         placement = result["Matrix1"][0]
         assert placement.effect_name == "Pictures"
-        assert placement.layer == 1
+        assert placement.layer == 0
         assert placement.fade_in_ms == _PICTURE_FADE_MS
         assert placement.fade_out_ms == _PICTURE_FADE_MS
         assert placement.parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/snowman.gif"

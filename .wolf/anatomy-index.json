@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T21:34:44.609Z",
-    "fileCount": 625,
+    "lastScanned": "2026-07-15T21:42:28.840Z",
+    "fileCount": 626,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "39afbafe13682d62981e02a4e3b8d7b7a6c8b63ca4e58ac71d95e6e0acab460b",
-    "storeUpdatedAt": "2026-07-15T21:34:44.624Z"
+    "renderedHash": "c958de242bcb4cbee5ffb0e9650c56c2a02eae2775e850af3e991c1a802f9798",
+    "storeUpdatedAt": "2026-07-15T21:42:28.856Z"
   },
   "files": {
     ".DS_Store": {
@@ -3404,11 +3404,11 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 43702,
-      "hash": "16579cf88345905b",
-      "size": 153172,
-      "mtimeMs": 1784151271474.6533,
-      "updatedAt": "2026-07-15T21:34:31.620Z",
+      "tokens": 43819,
+      "hash": "33f8a06c83d59a5d",
+      "size": 153583,
+      "mtimeMs": 1784151634730.2383,
+      "updatedAt": "2026-07-15T21:40:34.862Z",
       "source": "hook",
       "symbols": [
         {
@@ -3618,8 +3618,8 @@
           "name": "_place_per_trigger",
           "kind": "fn",
           "startLine": 2236,
-          "endLine": 3425,
-          "tokens": 13828
+          "endLine": 3431,
+          "tokens": 13943
         }
       ]
     },
@@ -4302,11 +4302,11 @@
     },
     "tests/unit/test_generator/test_picture_effects.py": {
       "description": "Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement.",
-      "tokens": 5860,
-      "hash": "826e12813c0a7d5b",
-      "size": 20508,
-      "mtimeMs": 1784151284469.9402,
-      "updatedAt": "2026-07-15T21:34:44.608Z",
+      "tokens": 5903,
+      "hash": "62e3fd277a576e26",
+      "size": 20659,
+      "mtimeMs": 1784151685335.0686,
+      "updatedAt": "2026-07-15T21:41:25.464Z",
       "source": "hook",
       "symbols": [
         {
@@ -4341,35 +4341,35 @@
           "name": "TestPlacePictureEffects",
           "kind": "class",
           "startLine": 43,
-          "endLine": 360,
-          "tokens": 3960
+          "endLine": 362,
+          "tokens": 4002
         },
         {
           "name": "TestPictureEffectsConfigFlag",
           "kind": "class",
-          "startLine": 361,
-          "endLine": 377,
+          "startLine": 363,
+          "endLine": 379,
           "tokens": 153
         },
         {
           "name": "TestImageLibraryStorage",
           "kind": "class",
-          "startLine": 378,
-          "endLine": 406,
+          "startLine": 380,
+          "endLine": 408,
           "tokens": 356
         },
         {
           "name": "TestSuggestImagesForWords",
           "kind": "class",
-          "startLine": 407,
-          "endLine": 446,
+          "startLine": 409,
+          "endLine": 448,
           "tokens": 510
         },
         {
           "name": "TestFindUnmatchedTopics",
           "kind": "class",
-          "startLine": 447,
-          "endLine": 478,
+          "startLine": 449,
+          "endLine": 480,
           "tokens": 361
         }
       ]
@@ -4484,11 +4484,11 @@
     },
     "src/generator/plan.py": {
       "description": "Plan builder — orchestrates the full sequence generation pipeline.",
-      "tokens": 10257,
-      "hash": "9adf6e048e28082b",
-      "size": 35953,
-      "mtimeMs": 1784151169553.797,
-      "updatedAt": "2026-07-15T21:32:49.708Z",
+      "tokens": 10353,
+      "hash": "be6c7bff8d3a9467",
+      "size": 36287,
+      "mtimeMs": 1784151650004.9968,
+      "updatedAt": "2026-07-15T21:40:50.134Z",
       "source": "hook",
       "symbols": [
         {
@@ -4509,63 +4509,63 @@
           "name": "build_plan",
           "kind": "fn",
           "startLine": 97,
-          "endLine": 419,
-          "tokens": 4339
+          "endLine": 423,
+          "tokens": 4433
         },
         {
           "name": "_audible_end_ms",
           "kind": "fn",
-          "startLine": 420,
-          "endLine": 439,
+          "startLine": 424,
+          "endLine": 443,
           "tokens": 219
         },
         {
           "name": "_place_end_of_song_fade",
           "kind": "fn",
-          "startLine": 440,
-          "endLine": 483,
+          "startLine": 444,
+          "endLine": 487,
           "tokens": 490
         },
         {
           "name": "_populate_assignment_decisions",
           "kind": "fn",
-          "startLine": 484,
-          "endLine": 582,
+          "startLine": 488,
+          "endLine": 586,
           "tokens": 1263
         },
         {
           "name": "_derive_anchor_palette",
           "kind": "fn",
-          "startLine": 583,
-          "endLine": 603,
+          "startLine": 587,
+          "endLine": 607,
           "tokens": 260
         },
         {
           "name": "_section_energies_from_story",
           "kind": "fn",
-          "startLine": 604,
-          "endLine": 645,
+          "startLine": 608,
+          "endLine": 649,
           "tokens": 446
         },
         {
           "name": "_write_plan_json",
           "kind": "fn",
-          "startLine": 646,
-          "endLine": 665,
+          "startLine": 650,
+          "endLine": 669,
           "tokens": 223
         },
         {
           "name": "generate_sequence",
           "kind": "fn",
-          "startLine": 666,
-          "endLine": 709,
+          "startLine": 670,
+          "endLine": 713,
           "tokens": 426
         },
         {
           "name": "regenerate_sections",
           "kind": "fn",
-          "startLine": 710,
-          "endLine": 839,
+          "startLine": 714,
+          "endLine": 843,
           "tokens": 1518
         }
       ]
@@ -5034,6 +5034,108 @@
           "startLine": 1256,
           "endLine": 1283,
           "tokens": 356
+        }
+      ]
+    },
+    "src/generator/models.py": {
+      "description": "Data models for the sequence generator.",
+      "tokens": 3859,
+      "hash": "f3e98b940bb160c4",
+      "size": 13518,
+      "mtimeMs": 1784151748707.5735,
+      "updatedAt": "2026-07-15T21:42:28.839Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "energy_to_mood",
+          "kind": "fn",
+          "startLine": 20,
+          "endLine": 28,
+          "tokens": 63
+        },
+        {
+          "name": "frame_align",
+          "kind": "fn",
+          "startLine": 29,
+          "endLine": 34,
+          "tokens": 52
+        },
+        {
+          "name": "SongProfile",
+          "kind": "class",
+          "startLine": 35,
+          "endLine": 46,
+          "tokens": 60
+        },
+        {
+          "name": "SectionEnergy",
+          "kind": "class",
+          "startLine": 47,
+          "endLine": 58,
+          "tokens": 59
+        },
+        {
+          "name": "EffectPlacement",
+          "kind": "class",
+          "startLine": 59,
+          "endLine": 99,
+          "tokens": 536
+        },
+        {
+          "name": "AccentPolicy",
+          "kind": "class",
+          "startLine": 100,
+          "endLine": 117,
+          "tokens": 228
+        },
+        {
+          "name": "SectionAssignment",
+          "kind": "class",
+          "startLine": 118,
+          "endLine": 153,
+          "tokens": 520
+        },
+        {
+          "name": "SequencePlan",
+          "kind": "class",
+          "startLine": 154,
+          "endLine": 180,
+          "tokens": 426
+        },
+        {
+          "name": "XsqDocument",
+          "kind": "class",
+          "startLine": 181,
+          "endLine": 193,
+          "tokens": 132
+        },
+        {
+          "name": "DurationTarget",
+          "kind": "class",
+          "startLine": 194,
+          "endLine": 202,
+          "tokens": 80
+        },
+        {
+          "name": "WorkingSetEntry",
+          "kind": "class",
+          "startLine": 203,
+          "endLine": 212,
+          "tokens": 123
+        },
+        {
+          "name": "WorkingSet",
+          "kind": "class",
+          "startLine": 213,
+          "endLine": 220,
+          "tokens": 78
+        },
+        {
+          "name": "GenerationConfig",
+          "kind": "class",
+          "startLine": 221,
+          "endLine": 299,
+          "tokens": 1319
         }
       ]
     }

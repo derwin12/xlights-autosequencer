@@ -3180,21 +3180,27 @@ def _place_picture_effects(
     every burst corresponds to a specific matched lyric word. Returns ``{}``
     when there are no matches; there is no generic filler/rotation content.
 
-    ``existing_layers`` maps each target group/model name to the highest
-    xLights EffectLayer index already occupied there by the per-section
-    theme/rotation content (see ``plan.py``'s call site, which derives it
-    from ``assignment.group_effects`` before this runs). Each burst is
-    placed one layer above that (bug-243 follow-up, 2026-07-15): a fixed
-    ``layer=1`` used to collide with whatever theme layer a given tier-6
-    group's rotation pool already occupies -- for a densely-packed pool
-    (Ripple/Shockwave/Pinwheel placements running nearly back-to-back for
-    the whole song), xsq_writer's per-layer overlap remover then trimmed
-    the burst down to whatever sliver of gap existed before the next
-    already-scheduled rotation effect (observed: 6000ms bursts clipped to
-    100-275ms in a real generated .xsq -- present in the file but far too
-    brief to be visible). Placing one layer above whatever the group
-    already uses guarantees no collision regardless of how many layers a
-    given theme's composition occupies.
+    ``existing_layers`` maps each target group/model name to the lowest
+    (i.e. topmost-rendering) xLights EffectLayer index already occupied
+    there by the per-section theme/rotation content (see ``plan.py``'s
+    call site, which derives it from ``assignment.group_effects`` before
+    this runs). Each burst is placed one layer below that number (bug-243
+    follow-up, 2026-07-15) -- xsq_writer serializes ``<EffectLayer>``
+    children in ascending layer-index order, and xLights renders the
+    *first* EffectLayer child on top, not the last: a fixed ``layer=1``
+    first collided with whatever theme layer a group's rotation pool
+    already occupied (a densely-packed pool, Ripple/Shockwave/Pinwheel
+    running nearly back-to-back for the whole song, meant xsq_writer's
+    per-layer overlap remover trimmed 6000ms bursts down to 100-275ms
+    slivers), and a first attempt at fixing that moved the burst to the
+    *highest* layer number under the assumption higher-number-renders-on-
+    top -- confirmed wrong by inspecting a real generated .xsq (burst
+    landed as the LAST EffectLayer child, i.e. visually at the bottom of
+    the stack, matching the user's screenshot of it hidden behind an
+    opaque "On" layer). Going one below whatever the group's topmost
+    layer already uses guarantees no collision and puts the burst first
+    in the serialized layer order regardless of how many layers a given
+    theme's composition occupies.
 
     Song-scoped, same rationale as ``_place_video_effect``/``_place_singing_faces``:
     fires once per generation, not part of the per-section theme/pool rotation.
@@ -3260,7 +3266,7 @@ def _place_picture_effects(
         targets[name] = group.name if group is not None else name
 
     picture_layer_by_target: dict[str, int] = {
-        target_name: (existing_layers or {}).get(target_name, 0) + 1
+        target_name: (existing_layers or {}).get(target_name, 1) - 1
         for target_name in set(targets.values())
     }
 
