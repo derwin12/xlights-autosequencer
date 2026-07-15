@@ -328,6 +328,16 @@ _DRUM_ACCENT_ALTERNATING = ("Shockwave Full Fast", "On Bold")
 # xLights effects that render only the first palette color — checking more
 # colors on these is invalid in the sequencer and the extras never show.
 _FIRST_COLOR_ONLY_EFFECTS: frozenset[str] = frozenset({"On", "Shockwave"})
+
+# Corpus-recipe per-beat placements of these effects get a mirrored buffer
+# transform on alternating occurrences within a 4-beat bar (user request,
+# 2026-07-15, matching a real xLights clipboard paste of a Spirals effect
+# with B_CHOICE_BufferTransform="Flip Horizontal"). Only applies at the
+# normal 1-beat-per-segment stride -- the sparser "alt style" bar pacing
+# (beats_per_placement_alt, e.g. cane/horizontal's whole-song 4-beat mode)
+# places only one segment per bar, so there's no "2nd and 4th of the bar"
+# to flip.
+_FLIP_TRANSFORM_EFFECTS: frozenset[str] = frozenset({"Spirals", "Single Strand"})
 _DRUM_BIAS_THRESHOLD = 0.80  # >80% same label → use alternating kick/snare fallback
 
 # 042B: Whole-house impact accent at section peaks
@@ -2074,10 +2084,19 @@ def _place_corpus_recipe(
             if use_ping_pong_direction
             else None
         )
+        instance_index = i // beat_stride
+        beat_params = params
+        if (
+            beat_stride == 1
+            and effect_name in _FLIP_TRANSFORM_EFFECTS
+            and instance_index % 2 == 1
+        ):
+            beat_params = dict(params)
+            beat_params["B_CHOICE_BufferTransform"] = "Flip Horizontal"
         p = _make_placement(
             effect_def, group.name, start, end,
-            params, palette, layer.blend_mode, "beat",
-            instance_index=i // beat_stride,
+            beat_params, palette, layer.blend_mode, "beat",
+            instance_index=instance_index,
             direction_cycle=direction_cycle, preserve_directions=True,
         )
         p.layer = mask_layer_idx

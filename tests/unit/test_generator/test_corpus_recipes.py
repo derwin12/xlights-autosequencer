@@ -879,6 +879,74 @@ class TestMaskSparkles:
         assert high_on.music_sparkles == 15 + round(100 * 0.5)
 
 
+# ── Alternating Flip Horizontal buffer transform ─────────────────────────────
+# User request (2026-07-15), matching a real xLights clipboard paste of a
+# Spirals effect with B_CHOICE_BufferTransform="Flip Horizontal". Scoped to
+# effect name (Spirals, Single Strand), not prop family -- applies to
+# whichever recipe places one of these at the normal 1-beat-per-segment
+# stride. Only the 2nd/4th placement of each 4-beat bar flips (odd
+# instance_index); the sparse "alt style" 4-beat-per-segment pacing has only
+# one placement per bar, so it never qualifies.
+
+
+class TestFlipTransformAlternation:
+    def test_cane_single_strand_flips_every_other_beat(self) -> None:
+        # variation_seed=0: primary Single Strand, normal 1-beat stride.
+        result = _place(_make_section(label="chorus"), _CANE_GROUP, variation_seed=0)
+        placements = result["06_PROP_Candy_Cane"]
+        assert len(placements) == len(_BEATS)
+        for i, p in enumerate(placements):
+            if i % 2 == 1:
+                assert p.parameters["B_CHOICE_BufferTransform"] == "Flip Horizontal"
+            else:
+                assert "B_CHOICE_BufferTransform" not in p.parameters
+
+    def test_cane_spirals_alt_flips_every_other_beat(self) -> None:
+        # variation_seed=3: alt effect (Spirals) selected, still normal
+        # 1-beat stride (use_alt_style/sparse pacing only applies to the
+        # primary effect's own bounce style, not the alt effect).
+        result = _place(_make_section(label="chorus"), _CANE_GROUP, variation_seed=3)
+        placements = result["06_PROP_Candy_Cane"]
+        assert placements
+        assert all(p.effect_name == "Spirals" for p in placements)
+        for i, p in enumerate(placements):
+            if i % 2 == 1:
+                assert p.parameters["B_CHOICE_BufferTransform"] == "Flip Horizontal"
+            else:
+                assert "B_CHOICE_BufferTransform" not in p.parameters
+
+    def test_cane_sparse_bounce_pacing_never_flips(self) -> None:
+        # variation_seed=1: primary effect's bounce style -- sparse 4-beat
+        # pacing means only one segment per bar, so there's no "2nd/4th of
+        # the bar" and the transform must never appear.
+        result = _place(_make_section(label="chorus"), _CANE_GROUP, variation_seed=1)
+        placements = result["06_PROP_Candy_Cane"]
+        assert placements
+        assert all("B_CHOICE_BufferTransform" not in p.parameters for p in placements)
+
+    def test_star_single_strand_flips_every_other_beat(self) -> None:
+        # Matches TestStarRecipe.test_repeated_section_alternates_to_chase's
+        # setup: chorus + variation_seed=3 selects the alt effect (Single
+        # Strand) at the normal 1-beat stride.
+        result = _place(_make_section(label="chorus"), _STAR_GROUP,
+                        variation_seed=3, library_names=_LIBRARY_STAR)
+        chase_placements = [p for p in result["06_PROP_Star"] if p.effect_name == "Single Strand"]
+        assert chase_placements
+        for i, p in enumerate(chase_placements):
+            if i % 2 == 1:
+                assert p.parameters["B_CHOICE_BufferTransform"] == "Flip Horizontal"
+            else:
+                assert "B_CHOICE_BufferTransform" not in p.parameters
+
+    def test_snowflake_shockwave_not_affected(self) -> None:
+        # Shockwave is not in the flip scope (effect-name-scoped, not
+        # family-scoped) -- snowflake's primary effect must stay untouched.
+        result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP)
+        placements = result["06_PROP_Snowflake"]
+        assert placements
+        assert all("B_CHOICE_BufferTransform" not in p.parameters for p in placements)
+
+
 # ── vivid unmask color selection ─────────────────────────────────────────────
 
 

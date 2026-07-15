@@ -4400,6 +4400,55 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-260",
+      "timestamp": "2026-07-15T23:36:19.922Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 13\u219222 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T23:36:19.922Z"
+    },
+    {
+      "id": "bug-261",
+      "timestamp": "2026-07-15T23:37:50.162Z",
+      "error_message": "Significant refactor of ",
+      "file": "tests/unit/test_generator/test_corpus_recipes.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10\u219213 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T23:37:50.162Z"
+    },
+    {
+      "id": "bug-254",
+      "timestamp": "2026-07-15",
+      "error_message": "User requested alternating Flip Horizontal buffer transform for Spirals/Single Strand corpus-recipe placements (2nd/4th of every 4-beat bar), matching a real xLights clipboard paste",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "Not a bug -- new feature. No existing mechanism set B_CHOICE_BufferTransform at all.",
+      "fix": "Added _FLIP_TRANSFORM_EFFECTS={\"Spirals\",\"Single Strand\"}. In _place_corpus_recipe's per-beat placement loop, when beat_stride==1 (normal per-beat pacing, not the sparse 4-beat alt-style mode) and effect_name is in that set and instance_index is odd, adds B_CHOICE_BufferTransform=\"Flip Horizontal\" to that placement's params (odd instance_index == 2nd/4th position within a 4-beat bar, confirmed mathematically equivalent to true bar-relative indexing when bar length is 4 and stride is 1). Scoped to effect name, not prop family, per user clarification -- applies wherever any recipe places Spirals or Single Strand at normal per-beat pacing (cane, star, arch, minitree, etc.), not just the two families first mentioned.",
+      "tags": [
+        "generator",
+        "corpus-recipes",
+        "buffer-transform",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }
