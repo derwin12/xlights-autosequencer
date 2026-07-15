@@ -107,16 +107,9 @@ OpenWolf's value comes from learning across sessions. You MUST update `.wolf/cer
 
 ## Branch Discipline
 
-**Never work directly on `main` or `master`.** Every new task gets a new branch.
+**Work directly on `main`.** No per-task feature branches — commit straight to `main` (2026-07-15: user decided the branch-per-task overhead wasn't worth it for this project's workflow).
 
-- Before starting any code change, check `git branch --show-current`. If on `main`/`master`, create a new branch first:
-  - `fix/<slug>` for bug fixes
-  - `feat/<slug>` for new features
-  - `refactor/<slug>` for pure refactors
-  - `chore/<slug>` for tooling/docs
-- If already on a feature branch, verify the new task is part of the same logical change. If it isn't, stop and create a new branch.
-- Do not commit unrelated work to an existing feature branch — open a new branch off `main`.
-- Before merging any branch: run `/review-diff` and resolve every CRITICAL and HIGH finding.
+- Before merging in any pre-existing feature branch, or before pushing a non-trivial change: run `/review-diff` and resolve every CRITICAL and HIGH finding.
 
 ## Code Review Discipline
 
