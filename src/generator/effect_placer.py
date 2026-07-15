@@ -1105,10 +1105,15 @@ def place_effects(
                             result.setdefault(group.name, []).extend(rot_placements)
                     continue
 
-            # Tier 4 (BEAT): use chase pattern — distribute beats across groups
+            # Tier 4 (BEAT): use chase pattern — distribute beats across groups.
+            # Substitute blocky/chase effects the same way GEO (tier 2) does —
+            # 04_BEAT_N groups are round-robin mixes of dissimilar prop types
+            # (src/grouper/grouper.py::_tier4_rhythm), not one physical linear
+            # prop, so Single Strand/Bars/Curtain don't read as a chase here.
             if tier == 4 and groups_for_tier:
+                beat_effect_def = _substitute_beat_canvas_effect(effect_def, effect_library)
                 chase_result = _place_chase_across_groups(
-                    effect_def, layer, groups_for_tier,
+                    beat_effect_def, layer, groups_for_tier,
                     assignment.section, hierarchy, tier_palette,
                     variant_library=variant_library,
                 )
@@ -1707,6 +1712,27 @@ def _substitute_bounding_box_effect(
         if alt is not None:
             return alt
     return effect_def
+
+
+def _substitute_beat_canvas_effect(
+    effect_def: EffectDefinition,
+    effect_library: EffectLibrary,
+) -> EffectDefinition:
+    """Substitute blocky/chase effects with Color Wash for BEAT-tier canvases.
+
+    04_BEAT_N groups are round-robin mixes of dissimilar prop types (see
+    src/grouper/grouper.py::_tier4_rhythm), the same "bounding box of
+    dissimilar props" situation as GEO (tier 2) -- a chase effect like
+    Single Strand doesn't read as a chase across unrelated props. Uses
+    ``_BLOCKY_ON_BOUNDING_BOX`` (already covers Single Strand/Bars/Curtain)
+    but substitutes specifically Color Wash rather than GEO's fallback
+    chain (user request, 2026-07-15): that chain leads with motion effects
+    (Plasma/Spirals/...) which weren't wanted here.
+    """
+    if effect_def.name not in _BLOCKY_ON_BOUNDING_BOX:
+        return effect_def
+    alt = effect_library.effects.get("Color Wash")
+    return alt if alt is not None else effect_def
 
 
 def _substitute_matrix_effect(
