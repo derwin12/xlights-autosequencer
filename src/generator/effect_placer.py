@@ -3152,6 +3152,11 @@ def _place_video_effect(
 _PICTURE_BURST_MS = 6_000
 _PICTURE_MIN_GAP_MS = 5_000
 _PICTURE_FADE_MS = 800
+# Start the burst this far ahead of the matched word's own start time, so the
+# image (plus its fade-in) is already fully visible by the moment the lyric
+# is actually sung, rather than popping in right on top of it (user request,
+# 2026-07-15).
+_PICTURE_LEAD_MS = 1_000
 # Keep the image a modest accent rather than filling the whole buffer, per
 # user request (2026-07-15): the picture should feel like a small addition
 # to the sequence, not overwhelm it.
@@ -3290,7 +3295,8 @@ def _place_picture_effects(
     result: dict[str, list[EffectPlacement]] = {}
     scheduled_end_by_target: dict[str, int] = {}
     for match in matches:
-        start = max(0, int(match["start_ms"]))
+        word_start = int(match["start_ms"])
+        start = max(0, word_start - _PICTURE_LEAD_MS)
         if start >= duration_ms:
             continue
         end = min(start + _PICTURE_BURST_MS, duration_ms)
@@ -3298,7 +3304,7 @@ def _place_picture_effects(
             continue
         filename = match["stored_path"]
         direction = _PICTURE_DIRECTIONS[
-            random.Random(f"{variation_seed}:{match.get('word')}:{start}")
+            random.Random(f"{variation_seed}:{match.get('word')}:{word_start}")
             .randrange(len(_PICTURE_DIRECTIONS))
         ]
         for target_name in set(targets.values()):

@@ -1,1090 +1,2182 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T21:57:02.077Z
-> Files: 626 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T22:07:32.549Z
+> Files: 554 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
-- `.DS_Store` (~1640 tok)
 - `.gitignore` — Git ignore rules (~686 tok)
-- `CLAUDE.md` — OpenWolf (~8227 tok)
-- `LICENSE` — Project license (~285 tok)
-- `pyproject.toml` — Automatically generate xLights sequences from audio files (~752 tok)
-- `README.md` — Project documentation (~3264 tok)
-- `xlights_rgbeffects.xml` (~106466 tok)
+- `CLAUDE.md` — OpenWolf (~9905 tok)
+- `LICENSE` — Project license (~291 tok)
+- `pyproject.toml` — Automatically generate xLights sequences from audio files (~1070 tok)
+- `README.md` — Project documentation (~4601 tok)
+- `run_cli.py` (~20 tok)
 
 ## .claude/
 
-- `settings.json` (~441 tok)
-- `settings.local.json` (~469 tok)
+- `settings.json` (~514 tok)
+- `settings.local.json` (~486 tok)
 
 ## .claude/commands/
 
-- `pre-mortem.md` — User Input (~483 tok)
-- `review-diff.md` — User Input (~1250 tok)
-- `speckit.analyze.md` — User Input (~1793 tok)
-- `speckit.checklist.md` — Checklist Purpose: "Unit Tests for English" (~4232 tok)
-- `speckit.clarify.md` — User Input (~2827 tok)
-- `speckit.constitution.md` — User Input (~1360 tok)
-- `speckit.implement.md` — User Input (~2591 tok)
-- `speckit.plan.md` — User Input (~1543 tok)
-- `speckit.specify.md` — User Input (~3720 tok)
-- `speckit.tasks.md` — User Input (~2285 tok)
-- `speckit.taskstoissues.md` — User Input (~273 tok)
+- `pre-mortem.md` — User Input (~495 tok)
+- `reframe.md` — Mode: migrate [framework] (~551 tok)
+- `review-diff.md` — User Input (~1281 tok)
+- `security-audit.md` — Layer 1 — Dependencies (~510 tok)
+- `speckit.analyze.md` — User Input (~1839 tok)
+- `speckit.checklist.md` — Checklist Purpose: "Unit Tests for English" (~4306 tok)
+- `speckit.clarify.md` — User Input (~2873 tok)
+- `speckit.constitution.md` — User Input (~1381 tok)
+- `speckit.implement.md` — User Input (~2640 tok)
+- `speckit.plan.md` — User Input (~1581 tok)
+- `speckit.specify.md` — User Input (~3795 tok)
+- `speckit.tasks.md` — User Input (~2335 tok)
+- `speckit.taskstoissues.md` — User Input (~280 tok)
 
 ## .claude/rules/
 
-- `openwolf.md` (~313 tok)
+- `openwolf.md` (~328 tok)
 
 ## .claude/skills/pre-mortem/
 
-- `SKILL.md` — Input (~2104 tok)
-
-## .claude/worktrees/024-story-review-flyouts/.pytest_cache/
-
-- `.gitignore` — Git ignore rules (~10 tok)
-- `CACHEDIR.TAG` (~51 tok)
-- `README.md` — Project documentation (~76 tok)
-
-## .claude/worktrees/024-story-review-flyouts/.pytest_cache/v/cache/
-
-- `lastfailed` (~3006 tok)
-- `nodeids` (~32329 tok)
-
-## .claude/worktrees/024-story-review-flyouts/analysis/
-
-- `batch_analyze.sh` — Batch-analyze a directory of MP3s using only the algorithms needed (~583 tok)
-- `batch_energy.py` — analyze_energy, main (~1977 tok)
-- `batch_ensemble_v2.py` — class: run_segmentino, get_harmonic_peaks, augment_sections, main (~2165 tok)
-- `batch_ensemble.py` — class: run_segmentino, run_qm_segmenter, find_consensus, find_unique + 2 more (~2879 tok)
-- `batch_report.py` — load_results, get_track, analyze_energy, analyze_bars + 3 more (~4120 tok)
-- `split_clips.py` — get_segmentino_sections, get_harmonic_splits, extract_clip, process_song + 2 more (~3256 tok)
-
-## .claude/worktrees/024-story-review-flyouts/tests/fixtures/
-
-- `10s_mixed.wav` (~112999 tok)
-- `10s_vocals.wav` (~116359 tok)
-- `ambient_10s.wav` (~113156 tok)
-- `beat_120bpm_10s.wav` (~116988 tok)
-- `drums_melody_10s.wav` (~112751 tok)
-
-## .claude/worktrees/026-theme-editor/analysis/
-
-- `batch_analyze.sh` — Batch-analyze a directory of MP3s using only the algorithms needed (~583 tok)
-- `batch_energy.py` — analyze_energy, main (~1977 tok)
-- `batch_ensemble_v2.py` — class: run_segmentino, get_harmonic_peaks, augment_sections, main (~2165 tok)
-- `batch_ensemble.py` — class: run_segmentino, run_qm_segmenter, find_consensus, find_unique + 2 more (~2879 tok)
-- `batch_report.py` — load_results, get_track, analyze_energy, analyze_bars + 3 more (~4120 tok)
-- `split_clips.py` — get_segmentino_sections, get_harmonic_splits, extract_clip, process_song + 2 more (~3256 tok)
-
-## .claude/worktrees/026-theme-editor/tests/fixtures/
-
-- `10s_vocals.wav` (~116359 tok)
-
-## .claude/worktrees/027-unified-dashboard/.pytest_cache/
-
-- `.gitignore` — Git ignore rules (~10 tok)
-- `CACHEDIR.TAG` (~51 tok)
-- `README.md` — Project documentation (~76 tok)
-
-## .claude/worktrees/027-unified-dashboard/.pytest_cache/v/cache/
-
-- `lastfailed` (~1 tok)
-- `nodeids` (~569 tok)
-
-## .claude/worktrees/027-unified-dashboard/analysis/
-
-- `batch_analyze.sh` — Batch-analyze a directory of MP3s using only the algorithms needed (~583 tok)
-- `batch_energy.py` — analyze_energy, main (~1977 tok)
-- `batch_ensemble_v2.py` — class: run_segmentino, get_harmonic_peaks, augment_sections, main (~2165 tok)
-- `batch_ensemble.py` — class: run_segmentino, run_qm_segmenter, find_consensus, find_unique + 2 more (~2879 tok)
-- `batch_report.py` — load_results, get_track, analyze_energy, analyze_bars + 3 more (~4120 tok)
-- `split_clips.py` — get_segmentino_sections, get_harmonic_splits, extract_clip, process_song + 2 more (~3256 tok)
-
-## .claude/worktrees/027-unified-dashboard/tests/fixtures/
-
-- `10s_mixed.wav` (~112999 tok)
-- `10s_vocals.wav` (~116359 tok)
-- `ambient_10s.wav` (~113156 tok)
-- `beat_120bpm_10s.wav` (~116988 tok)
-- `drums_melody_10s.wav` (~112751 tok)
-
-## .claude/worktrees/049-section-preview/
-
-- `.gitignore` — Git ignore rules (~294 tok)
-- `CLAUDE.md` — XLight AutoSequencer Development Guidelines (~5096 tok)
-- `LICENSE` — Project license (~285 tok)
-- `pyproject.toml` — Python project configuration (~502 tok)
-- `README.md` — Project documentation (~3264 tok)
-
-## .claude/worktrees/049-section-preview/.claude/
-
-- `settings.local.json` (~469 tok)
-
-## .claude/worktrees/049-section-preview/.claude/commands/
-
-- `review-diff.md` — User Input (~1250 tok)
-- `speckit.analyze.md` — User Input (~1793 tok)
-- `speckit.checklist.md` — Checklist Purpose: "Unit Tests for English" (~4232 tok)
-- `speckit.clarify.md` — User Input (~2827 tok)
-- `speckit.constitution.md` — User Input (~1360 tok)
-- `speckit.implement.md` — User Input (~2591 tok)
-- `speckit.plan.md` — User Input (~1543 tok)
-- `speckit.specify.md` — User Input (~3720 tok)
-- `speckit.tasks.md` — User Input (~2285 tok)
-- `speckit.taskstoissues.md` — User Input (~273 tok)
-
-## .claude/worktrees/049-section-preview/.devcontainer/
-
-- `devcontainer.json` (~626 tok)
-- `Dockerfile` — Docker container definition (~4618 tok)
-- `init-firewall.sh` (~1391 tok)
-- `xlights-check.sh` — Validate xLights sequences (check sequence). (~663 tok)
-- `xlights-render.sh` — Render xLights sequences to FSEQ. (~665 tok)
-
-## .claude/worktrees/049-section-preview/.pytest_cache/
-
-- `.gitignore` — Git ignore rules (~10 tok)
-- `CACHEDIR.TAG` (~51 tok)
-- `README.md` — Project documentation (~76 tok)
-
-## .claude/worktrees/049-section-preview/.pytest_cache/v/cache/
-
-- `lastfailed` (~3718 tok)
-- `nodeids` (~58245 tok)
-
-## .claude/worktrees/049-section-preview/.specify/
-
-- `init-options.json` (~60 tok)
-
-## .claude/worktrees/049-section-preview/.specify/memory/
-
-- `constitution.md` — XLight AutoSequencer Constitution (~1631 tok)
-
-## .claude/worktrees/049-section-preview/.specify/scripts/bash/
-
-- `check-prerequisites.sh` — Consolidated prerequisite checking script (~1759 tok)
-- `common.sh` — Common functions and variables for all scripts (~2842 tok)
-- `create-new-feature.sh` (~3285 tok)
-- `setup-plan.sh` (~642 tok)
-- `update-agent-context.sh` — Update agent context files with information from plan.md (~8403 tok)
-
-## .claude/worktrees/049-section-preview/.specify/templates/
-
-- `agent-file-template.md` — [PROJECT NAME] Development Guidelines (~116 tok)
-- `checklist-template.md` — [CHECKLIST TYPE] Checklist: [FEATURE NAME] (~328 tok)
-- `constitution-template.md` — [PROJECT_NAME] Constitution (~584 tok)
-- `plan-template.md` — Implementation Plan: [FEATURE] (~887 tok)
-- `spec-template.md` — Feature Specification: [FEATURE NAME] (~990 tok)
-- `tasks-template.md` — Tasks: [FEATURE NAME] (~2286 tok)
-
-## .claude/worktrees/049-section-preview/analysis/
-
-- `batch_analyze.sh` — Batch-analyze a directory of MP3s using only the algorithms needed (~583 tok)
-- `batch_energy.py` — analyze_energy, main (~1977 tok)
-- `batch_ensemble_v2.py` — class: run_segmentino, get_harmonic_peaks, augment_sections, main (~2165 tok)
-- `batch_ensemble.py` — class: run_segmentino, run_qm_segmenter, find_consensus, find_unique + 2 more (~2879 tok)
-- `batch_report.py` — load_results, get_track, analyze_energy, analyze_bars + 3 more (~4120 tok)
-- `split_clips.py` — get_segmentino_sections, get_harmonic_splits, extract_clip, process_song + 2 more (~3256 tok)
-
-## .claude/worktrees/049-section-preview/design_handoff_xonset/
-
-- `Prototype.html` — x-onset · Interactive Prototype (~612 tok)
-- `README.md` — Project documentation (~6510 tok)
-
-## .claude/worktrees/049-section-preview/design_handoff_xonset/assets/
-
-- `highway-data.js` (~7715 tok)
-
-## .claude/worktrees/049-section-preview/design_handoff_xonset/prototype/
-
-- `analyze-screen.jsx` — Analyze screen v2 — feels like the tool is actually finding things. (~8406 tok)
-- `app.jsx` — App entry: mount, route to screen, keyboard shortcuts. (~601 tok)
-- `export-screen.jsx` — Export screen — dry-run first, commit second. Staged pipeline, per-section render, (~7739 tok)
-- `lights.jsx` — Live animated lights strip. Reacts to beats + section + theme. (~1333 tok)
-- `other-screens.jsx` — The 4 other screens — Library, Drop, Analyze, Export. (~7861 tok)
-- `sections-edit.jsx` — Editable sections UI — inline handles on the strip/waveform + Sections mode. (~4990 tok)
-- `shell.jsx` — Chrome: header, tool strip (nav), library rail, status bar, tweaks panel. (~3277 tok)
-- `state.jsx` — Shared state, theme palettes, helpers, tweak mode. (~3590 tok)
-- `theme-picker.jsx` — Theme picker — the north-star interactive screen. (~5234 tok)
-- `timeline.jsx` — Review timeline screen — scrub, play, raw detector tracks. (~4714 tok)
-
-## .claude/worktrees/049-section-preview/design_handoff_xonset/reference/
-
-- `Flow Wireframes.html` — xlight-autosequencer · Flow Wireframes (~23986 tok)
-- `Pro-Tool Flow.html` — x-onset · Pro-Tool Flow (~786 tok)
-- `Visual Directions.html` — x-onset · Visual Directions (~825 tok)
-
-## .claude/worktrees/049-section-preview/docs/
-
-- `algorithm-categories.md` — Algorithm Categories (~2609 tok)
-- `algorithms.md` — Algorithm Reference (~5091 tok)
-- `architecture-overview.md` — Architecture Overview (~2768 tok)
-- `data-structures.md` — Data Structures (~2651 tok)
-- `effect-themes-library.md` — Composite Effect Library — Thematic Design Spec (~1855 tok)
-- `export-formats.md` — Export Formats (~2148 tok)
-- `hierarchy.md` — Hierarchy Levels (L0–L6) (~2486 tok)
-- `magic-lighting-breakdown.md` — Magic [feat. David Archuleta] — Section-by-Section Lighting Design (~7315 tok)
-- `musical-analysis-design.md` — Musical Analysis Design Document (~6657 tok)
-- `orchestrator-design.md` — Orchestrator Design — Zero-Flag Analysis Pipeline (~2589 tok)
-- `parameter-tuning-guide.md` — Cross-Song Parameter Tuning Guide (~2354 tok)
-- `pipeline.md` — Analysis Pipeline (~2937 tok)
-- `quality-scoring.md` — Quality Scoring (~2110 tok)
-- `quickstart-tutorial.md` — x-onset Quick Start Tutorial (~4973 tok)
-- `quickstart.md` — Quickstart: Analyzing a Song End-to-End (~2062 tok)
-- `README.md` — Project documentation (~497 tok)
-- `reference-sequence-analysis.md` — Reference Sequence Analysis (~5399 tok)
-- `review-ui.md` — Review UI (~2649 tok)
-- `segment-classification-changelog.md` — Segment Classification Changelog (~2621 tok)
-- `song-story-spec.md` — Song Story Tool — Specification (~5184 tok)
-- `song-timeline-analysis.md` — Song Timeline Analysis — Algorithm Overview (~1231 tok)
-- `song-timeline-phase1-features.md` — Phase 1: Feature Extraction (~3209 tok)
-- `song-timeline-phase2-sections.md` — Phase 2: Section Detection (~1308 tok)
-- `song-timeline-phase3-events.md` — Phase 3: Event Detection (~2510 tok)
-- `song-timeline-phase4-profiling.md` — Phase 4: Section Profiling (~2003 tok)
-- `song-timeline-phase5-ranking.md` — Phase 5: Dramatic Moment Ranking (~1558 tok)
-- `song-timeline-phase6-assembly.md` — Phase 6: Timeline Assembly (~2025 tok)
-- `song-timeline-thresholds.md` — Threshold and Parameter Reference (~1825 tok)
-- `stem-affinity-rationale.md` — Stem Affinity Rationale (~2362 tok)
-- `stem-lighting-framework.md` — Stem-Enhanced Lighting Framework (~8058 tok)
-- `stem-separation.md` — Stem Separation & Routing (~2076 tok)
-- `sweep-system.md` — Parameter Sweep System (~2434 tok)
-- `timbre-dissonance-integration.md` — Timbre, Dissonance, and Stem Dominance — Generator Integration RFC (~2490 tok)
-- `timing-tracks-guide.md` — Timing Tracks Guide (~1168 tok)
-- `troubleshooting.md` — Troubleshooting Guide (~1659 tok)
-- `tunable-parameters.md` — Tunable Parameters Reference (~1815 tok)
-- `unaddressed-review-items.md` — Unaddressed Review Items (~1871 tok)
-- `xlight-grouping-design.md` — Automated xLights Grouping Algorithm — Design Spec (~2411 tok)
-- `xlights-effect-params.md` — xLights Effect Parameters Reference (~16670 tok)
-
-## .claude/worktrees/049-section-preview/scripts/
-
-- `analyze_reference_xsq.py` — Analyze a hand-sequenced xLights .xsq file to extract sequencing patterns. (~8845 tok)
-- `compare_genius_sections.py` — Compare our segment classifier output with Genius lyric sections. (~2321 tok)
-- `consolidate_direction_variants.py` — Consolidate directional variant pairs into single variants with direction_cycle. (~2514 tok)
-- `install.sh` — XLight AutoSequencer — full dependency installer (~4027 tok)
-- `scrape_xlights_effects.py` — Scrape xLights effect parameters from GitHub C++ source files. (~2857 tok)
-- `start.sh` — Start the xlight-analyze review UI (upload + analysis + story pipeline). (~1453 tok)
-
-## .claude/worktrees/049-section-preview/specs/032-section-transitions-fadeout/
-
-- `data-model.md` — Data Model: Section Transitions & End-of-Song Fade Out (~1017 tok)
-- `plan.md` — Implementation Plan: Section Transitions & End-of-Song Fade Out (~904 tok)
-- `quickstart.md` — Quickstart: Section Transitions & End-of-Song Fade Out (~724 tok)
-- `research.md` — Research: Section Transitions & End-of-Song Fade Out (~1472 tok)
-- `spec.md` — Feature Specification: Section Transitions & End-of-Song Fade Out (~3492 tok)
-- `tasks.md` — Tasks: Section Transitions & End-of-Song Fade Out (~3411 tok)
-
-## .claude/worktrees/049-section-preview/specs/032-section-transitions-fadeout/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Section Transitions & End-of-Song Fade Out (~333 tok)
-
-## .claude/worktrees/049-section-preview/specs/034-library-sequence-gen/
-
-- `data-model.md` — Data Model: Song Library Sequence Generation (~784 tok)
-- `plan.md` — Implementation Plan: Song Library Sequence Generation (~1842 tok)
-- `quickstart.md` — Quickstart: Song Library Sequence Generation (~768 tok)
-- `research.md` — Research: Song Library Sequence Generation (~1843 tok)
-- `spec.md` — Feature Specification: Song Library Sequence Generation (~2175 tok)
-- `tasks.md` — Tasks: Song Library Sequence Generation (~4455 tok)
-
-## .claude/worktrees/049-section-preview/specs/034-library-sequence-gen/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Song Library Sequence Generation (~286 tok)
-
-## .claude/worktrees/049-section-preview/specs/034-library-sequence-gen/contracts/
-
-- `generate_api.md` — API Contract: Sequence Generation Endpoints (~759 tok)
-- `settings_api.md` — API Contract: Settings Endpoints (grouper save update) (~233 tok)
-
-## .claude/worktrees/049-section-preview/specs/035-sequence-quality-refinement/
-
-- `spec.md` — Feature Specification: Sequence Quality Refinement (~3827 tok)
-
-## .claude/worktrees/049-section-preview/specs/035-sequence-quality-refinement/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Sequence Quality Refinement (~341 tok)
-
-## .claude/worktrees/049-section-preview/specs/037-duration-scaling/
-
-- `spec.md` — Feature Specification: Duration Scaling (~4207 tok)
-- `tasks.md` — Tasks: Duration Scaling (037) (~2578 tok)
-
-## .claude/worktrees/049-section-preview/specs/037-duration-scaling/checklists/
-
-- `requirements.md` — Requirements Checklist: 037 Duration Scaling (~1113 tok)
-
-## .claude/worktrees/049-section-preview/specs/038-palette-restraint/
-
-- `data-model.md` — Data Model: Palette Restraint (~642 tok)
-- `plan.md` — Implementation Plan: Palette Restraint (~1993 tok)
-- `quickstart.md` — Quickstart: Palette Restraint (~340 tok)
-- `research.md` — Research: Palette Restraint (~1018 tok)
-- `spec.md` — Feature Specification: Palette Restraint (~3611 tok)
-- `tasks.md` — Tasks: Palette Restraint (~2821 tok)
-
-## .claude/worktrees/049-section-preview/specs/038-palette-restraint/checklists/
-
-- `requirements.md` — Requirements Checklist: 038 Palette Restraint (~1111 tok)
-
-## .claude/worktrees/049-section-preview/specs/039-dynamic-model-activation/
-
-- `spec.md` — Feature Specification: Dynamic Model Activation (~4501 tok)
-
-## .claude/worktrees/049-section-preview/specs/039-dynamic-model-activation/checklists/
-
-- `requirements.md` — Requirements Checklist: Dynamic Model Activation (039) (~1239 tok)
-
-## .claude/worktrees/049-section-preview/specs/040-sparkles-value-curves/
-
-- `spec.md` — Feature Specification: MusicSparkles + Rotation Value Curves (~3897 tok)
-
-## .claude/worktrees/049-section-preview/specs/040-sparkles-value-curves/checklists/
-
-- `requirements.md` — Requirements Checklist: MusicSparkles + Rotation Value Curves (040) (~1116 tok)
-
-## .claude/worktrees/049-section-preview/specs/041-prop-type-affinity/
-
-- `data-model.md` — Data Model: Prop-Type Effect Affinity (041) (~303 tok)
-- `plan.md` — Implementation Plan: Prop-Type Effect Affinity (~1138 tok)
-- `quickstart.md` — Quickstart: Prop-Type Effect Affinity (041) (~939 tok)
-- `research.md` — Research: Prop-Type Effect Affinity (041) (~941 tok)
-- `spec.md` — Feature Specification: Prop-Type Effect Affinity (~2221 tok)
-- `tasks.md` — Tasks: Prop-Type Effect Affinity (041) (~2278 tok)
-
-## .claude/worktrees/049-section-preview/specs/045-web-ux-wayfinding/
-
-- `plan.md` — Implementation Plan: Web UX Overhaul — Phase 1 Wayfinding (~2679 tok)
-- `quickstart.md` — Quickstart: Web UX Phase 1 Wayfinding (045) (~1087 tok)
-- `research.md` — Research: Web UX Phase 1 Wayfinding (045) (~1054 tok)
-- `spec.md` — Feature Specification: Web UX Overhaul — Phase 1 Wayfinding (~5597 tok)
-- `tasks.md` — Tasks: Web UX Overhaul — Phase 1 Wayfinding (045) (~4847 tok)
-
-## .claude/worktrees/049-section-preview/specs/046-song-workspace-shell/
-
-- `plan.md` — Implementation Plan: Song Workspace Shell (~3209 tok)
-- `quickstart.md` — Quickstart: Song Workspace Shell (~1317 tok)
-- `research.md` — Research: Song Workspace Shell (~2129 tok)
-- `spec.md` — Feature Specification: Song Workspace Shell (~5589 tok)
-- `tasks.md` — Tasks: Song Workspace Shell (046) (~5502 tok)
-
-## .claude/worktrees/049-section-preview/specs/047-creative-brief/
-
-- `data-model.md` — Phase 1 Data Model: Creative Brief (~1809 tok)
-- `plan.md` — Implementation Plan: Creative Brief (Per-Song Workspace, Phase 3) (~4046 tok)
-- `quickstart.md` — Quickstart: Creative Brief Manual Verification (~1563 tok)
-- `research.md` — Phase 0 Research: Creative Brief (~2728 tok)
-- `spec.md` — Feature Specification: Creative Brief (Per-Song Workspace, Phase 3) (~8811 tok)
-- `tasks.md` — Tasks: Creative Brief (Per-Song Workspace, Phase 3) (047) (~7647 tok)
-
-## .claude/worktrees/049-section-preview/specs/048-pipeline-decision-ordering/
-
-- `data-model.md` — Data Model: Pipeline Decision-Ordering Refactor (048) (~1865 tok)
-- `plan.md` — Implementation Plan: Pipeline Decision-Ordering Refactor (~4143 tok)
-- `quickstart.md` — Quickstart: Verifying the 048 Refactor (~1480 tok)
-- `research.md` — Research: Pipeline Decision-Ordering Refactor (048) (~2243 tok)
-- `spec.md` — Feature Specification: Pipeline Decision-Ordering Refactor (~7641 tok)
-- `tasks.md` — Tasks: Pipeline Decision-Ordering Refactor (048) (~7668 tok)
-
-## .claude/worktrees/049-section-preview/specs/049-section-preview-render/
-
-- `data-model.md` — Phase 1 Data Model — Section Preview Render (~1374 tok)
-- `plan.md` — Implementation Plan: Section Preview Render (~4061 tok)
-- `quickstart.md` — Quickstart — Section Preview Render (~1004 tok)
-- `research.md` — Phase 0 Research — Section Preview Render (~1970 tok)
-- `spec.md` — Feature Specification: Short-Section Preview Render (~6791 tok)
-- `tasks.md` — Tasks: Section Preview Render (049) (~6472 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/001-audio-timing-tracks/
-
-- `data-model.md` — Data Model: Audio Analysis and Timing Track Generation (~1594 tok)
-- `plan.md` — Implementation Plan: Audio Analysis and Timing Track Generation (~1265 tok)
-- `quickstart.md` — Quickstart: Audio Analysis and Timing Track Generation (~530 tok)
-- `research.md` — Research: Audio Analysis and Timing Track Generation (~2869 tok)
-- `spec.md` — Feature Specification: Audio Analysis and Timing Track Generation (~2225 tok)
-- `tasks.md` — Tasks: Audio Analysis and Timing Track Generation (~4922 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/001-audio-timing-tracks/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Audio Analysis and Timing Track Generation (~324 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/001-audio-timing-tracks/contracts/
-
-- `cli.md` — CLI Contract: xlight-analyze (~2450 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/002-track-review-ui/
-
-- `data-model.md` — Data Model: Timing Track Review UI (~1134 tok)
-- `plan.md` — Implementation Plan: Timing Track Review UI (~1622 tok)
-- `research.md` — Research: Timing Track Review UI (~1698 tok)
-- `spec.md` — Feature Specification: Timing Track Review UI (~3065 tok)
-- `tasks.md` — Tasks: Timing Track Review UI (~3448 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/002-track-review-ui/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Timing Track Review UI (~391 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/002-track-review-ui/contracts/
-
-- `ui.md` — UI Contract: Timing Track Review UI (~1439 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/003-stem-separation/
-
-- `research.md` — Research: Music Stem Separation (~1750 tok)
-- `spec.md` — Feature Specification: Music Stem Separation (~1456 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/004-vocal-phoneme-tracks/
-
-- `spec.md` — Feature Specification: Vocal Phoneme Timing Tracks (~1587 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/005-vamp-parameter-tuning/
-
-- `data-model.md` — Data Model: Vamp Plugin Parameter Tuning (~1396 tok)
-- `plan.md` — Implementation Plan: Vamp Plugin Parameter Tuning (~2684 tok)
-- `quickstart.md` — Quickstart: Vamp Parameter Sweep (~508 tok)
-- `research.md` — Research: Vamp Plugin Parameter Tuning (~1704 tok)
-- `spec.md` — Feature Specification: Vamp Plugin Parameter Tuning (~2512 tok)
-- `tasks.md` — Tasks: Vamp Plugin Parameter Tuning (~4266 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/005-vamp-parameter-tuning/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Vamp Plugin Parameter Tuning (~284 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/005-vamp-parameter-tuning/contracts/
-
-- `cli-commands.md` — CLI Contract: Vamp Parameter Tuning Commands (~1686 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/006-quality-score-config/
-
-- `spec.md` — Feature Specification: Configurable Quality Scoring (~1826 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/007-upload-and-analyze/
-
-- `data-model.md` — Data Model: In-Browser MP3 Upload and Analysis (~913 tok)
-- `plan.md` — Implementation Plan: In-Browser MP3 Upload and Analysis (~1554 tok)
-- `research.md` — Research: In-Browser MP3 Upload and Analysis (~1623 tok)
-- `spec.md` — Feature Specification: In-Browser MP3 Upload and Analysis (~2659 tok)
-- `tasks.md` — Tasks: In-Browser MP3 Upload and Analysis (~3474 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/007-upload-and-analyze/checklists/
-
-- `requirements.md` — Specification Quality Checklist: In-Browser MP3 Upload and Analysis (~378 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/007-upload-and-analyze/contracts/
-
-- `upload.md` — Upload Contract: In-Browser MP3 Upload and Analysis (~1269 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/008-stem-separation/
-
-- `data-model.md` — Data Model: Stem Separation (~880 tok)
-- `plan.md` — Implementation Plan: Stem Separation (~1134 tok)
-- `quickstart.md` — Quickstart: Stem Separation (~586 tok)
-- `research.md` — Research: Stem Separation (~1402 tok)
-- `spec.md` — Feature Specification: Stem Separation (~1950 tok)
-- `tasks.md` — Tasks: Stem Separation (~2576 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/008-stem-separation/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Stem Separation (~307 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/008-stem-separation/contracts/
-
-- `cli.md` — CLI Contract: Stem Separation (~698 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/009-vocal-phoneme-tracks/
-
-- `data-model.md` — Data Model: Vocal Phoneme Timing Tracks (~1107 tok)
-- `plan.md` — Implementation Plan: Vocal Phoneme Timing Tracks (~1185 tok)
-- `quickstart.md` — Quickstart: Vocal Phoneme Timing Tracks (~652 tok)
-- `research.md` — Research: Vocal Phoneme Timing Tracks (~1922 tok)
-- `spec.md` — Feature Specification: Vocal Phoneme Timing Tracks (~2816 tok)
-- `tasks.md` — Tasks: Vocal Phoneme Timing Tracks (~2845 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/009-vocal-phoneme-tracks/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Vocal Phoneme Timing Tracks (~360 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/009-vocal-phoneme-tracks/contracts/
-
-- `cli.md` — CLI Contract: Vocal Phoneme Timing Tracks (~1068 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/010-analysis-cache-library/
-
-- `data-model.md` — Data Model: Analysis Cache and Song Library (~1049 tok)
-- `plan.md` — Implementation Plan: Analysis Cache and Song Library (~1019 tok)
-- `quickstart.md` — Quickstart: Analysis Cache and Song Library (~680 tok)
-- `research.md` — Research: Analysis Cache and Song Library (~1463 tok)
-- `tasks.md` — Tasks: Analysis Cache and Song Library (~2710 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/010-analysis-cache-library/contracts/
-
-- `cli.md` — CLI Contract: Analysis Cache and Song Library (~911 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/011-quality-score-config/
-
-- `data-model.md` — Data Model: Configurable Quality Scoring (~1458 tok)
-- `plan.md` — Implementation Plan: Configurable Quality Scoring (~1204 tok)
-- `quickstart.md` — Quickstart: Configurable Quality Scoring (~686 tok)
-- `research.md` — Research: Configurable Quality Scoring (~2119 tok)
-- `spec.md` — Feature Specification: Configurable Quality Scoring (~3389 tok)
-- `tasks.md` — Tasks: Configurable Quality Scoring (~3421 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/011-quality-score-config/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Configurable Quality Scoring (~321 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/011-quality-score-config/contracts/
-
-- `cli.md` — CLI Contract: Configurable Quality Scoring (~1144 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/012-intelligent-stem-sweep/
-
-- `data-model.md` — Data Model: Intelligent Stem Analysis and Automated Light Sequencing Pipeline (~2068 tok)
-- `plan.md` — Implementation Plan: Intelligent Stem Analysis and Automated Light Sequencing Pipeline (~1582 tok)
-- `quickstart.md` — Quickstart: Intelligent Stem Analysis Pipeline (~671 tok)
-- `research.md` — Research: Intelligent Stem Analysis and Automated Light Sequencing Pipeline (~3370 tok)
-- `spec.md` — Feature Specification: Intelligent Stem Analysis and Automated Light Sequencing Pipeline (~5352 tok)
-- `tasks.md` — Tasks: Intelligent Stem Analysis and Automated Light Sequencing Pipeline (~5555 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/012-intelligent-stem-sweep/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Intelligent Stem Analysis and Automated Light Sequencing Pipeline (~374 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/012-intelligent-stem-sweep/contracts/
-
-- `cli.md` — CLI Contract: Intelligent Stem Analysis Pipeline (~1031 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/013-genius-lyric-segments/
-
-- `data-model.md` — Data Model: Genius Lyric Segment Timing (~1125 tok)
-- `plan.md` — Implementation Plan: Genius Lyric Segment Timing (~1147 tok)
-- `quickstart.md` — Quickstart: Genius Lyric Segment Timing (~1028 tok)
-- `research.md` — Research: Genius Lyric Segment Timing (~1842 tok)
-- `spec.md` — Feature Specification: Genius Lyric Segment Timing (~2563 tok)
-- `tasks.md` — Tasks: Genius Lyric Segment Timing (~3599 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/013-genius-lyric-segments/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Genius Lyric Segment Timing (~365 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/013-genius-lyric-segments/contracts/
-
-- `cli-genius-flag.md` — CLI Contract: `--genius` Flag (~793 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/014-cli-wizard-pipeline/
-
-- `data-model.md` — Data Model: Interactive CLI Wizard & Pipeline Optimization (~1486 tok)
-- `plan.md` — Implementation Plan: Interactive CLI Wizard & Pipeline Optimization (~1336 tok)
-- `quickstart.md` — Developer Quickstart: 014-cli-wizard-pipeline (~498 tok)
-- `research.md` — Research: Interactive CLI Wizard & Pipeline Optimization (~2546 tok)
-- `spec.md` — Feature Specification: Interactive CLI Wizard & Pipeline Optimization (~3615 tok)
-- `tasks.md` — Tasks: Interactive CLI Wizard & Pipeline Optimization (~5811 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/014-cli-wizard-pipeline/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Interactive CLI Wizard & Pipeline Optimization (~294 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/014-cli-wizard-pipeline/contracts/
-
-- `cli-wizard.md` — CLI Contract: `wizard` Subcommand (~922 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/015-sweep-matrix/
-
-- `data-model.md` — Data Model: Comprehensive Stem×Parameter Sweep Matrix (~1382 tok)
-- `plan.md` — Implementation Plan: Comprehensive Stem×Parameter Sweep Matrix (~1167 tok)
-- `quickstart.md` — Quickstart: Comprehensive Stem×Parameter Sweep Matrix (~700 tok)
-- `research.md` — Research: Comprehensive Stem×Parameter Sweep Matrix (~1696 tok)
-- `spec.md` — Feature Specification: Comprehensive Stem×Parameter Sweep Matrix (~5666 tok)
-- `tasks.md` — Tasks: Comprehensive Stem×Parameter Sweep Matrix (~3888 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/015-sweep-matrix/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Comprehensive Stem×Parameter Sweep Matrix (~366 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/015-sweep-matrix/contracts/
-
-- `cli-sweep-matrix.md` — CLI Contract: `sweep-matrix` and `sweep-results` Subcommands (~680 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/016-hierarchy-orchestrator/
-
-- `data-model.md` — Data Model: Hierarchy Orchestrator (~1498 tok)
-- `plan.md` — Implementation Plan: Hierarchy Orchestrator (~1208 tok)
-- `research.md` — Research: Hierarchy Orchestrator (~1322 tok)
-- `spec.md` — Feature Specification: Hierarchy Orchestrator (~3650 tok)
-- `tasks.md` — Tasks: Hierarchy Orchestrator (~3268 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/016-hierarchy-orchestrator/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Hierarchy Orchestrator (~326 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/016-hierarchy-orchestrator/contracts/
-
-- `cli.md` — CLI Contract: Hierarchy Orchestrator (~638 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/017-xlights-layout-grouping/
-
-- `data-model.md` — Data Model: xLights Layout Grouping (~1163 tok)
-- `plan.md` — Implementation Plan: xLights Layout Grouping (~1469 tok)
-- `quickstart.md` — Quickstart: xLights Layout Grouping (~632 tok)
-- `research.md` — Research: xLights Layout Grouping (~1053 tok)
-- `spec.md` — Feature Specification: xLights Layout Grouping (~3095 tok)
-- `tasks.md` — Tasks: xLights Layout Grouping (~3673 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/017-xlights-layout-grouping/checklists/
-
-- `requirements.md` — Specification Quality Checklist: xLights Layout Grouping (~335 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/017-xlights-layout-grouping/contracts/
-
-- `cli-contract.md` — CLI Contract: group-layout Command (~615 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/018-effect-themes-library/
-
-- `data-model.md` — Data Model: xLights Effect Library (~1465 tok)
-- `plan.md` — Implementation Plan: xLights Effect Library (~1573 tok)
-- `quickstart.md` — Quickstart: xLights Effect Library (~473 tok)
-- `research.md` — Research: xLights Effect Library (~1591 tok)
-- `spec.md` — Feature Specification: xLights Effect Library (~3115 tok)
-- `tasks.md` — Tasks: xLights Effect Library (~2745 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/018-effect-themes-library/checklists/
-
-- `requirements.md` — Specification Quality Checklist: xLights Effect Library (~315 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/018-effect-themes-library/contracts/
-
-- `api-contract.md` — API Contract: Effect Library (~458 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/019-effect-themes/
-
-- `data-model.md` — Data Model: Effect Themes (~924 tok)
-- `plan.md` — Implementation Plan: Effect Themes (~1210 tok)
-- `quickstart.md` — Quickstart: Effect Themes (~279 tok)
-- `research.md` — Research: Effect Themes (~653 tok)
-- `spec.md` — Feature Specification: Effect Themes (~2508 tok)
-- `tasks.md` — Tasks: Effect Themes (~1786 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/019-effect-themes/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Effect Themes (~333 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/019-effect-themes/contracts/
-
-- `api-contract.md` — API Contract: Theme Library (~390 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/020-sequence-generator/
-
-- `data-model.md` — Data Model: Sequence Generator (020) (~1584 tok)
-- `plan.md` — Implementation Plan: Sequence Generator (~2544 tok)
-- `quickstart.md` — Quickstart: Sequence Generator (020) (~747 tok)
-- `research.md` — Research: Sequence Generator (020) (~1505 tok)
-- `spec.md` — Feature Specification: Sequence Generator (~5663 tok)
-- `tasks.md` — Tasks: Sequence Generator (~4344 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/020-sequence-generator/contracts/
-
-- `cli-commands.md` — CLI Contract: Sequence Generator Commands (~529 tok)
-- `xsq-schema.md` — XSQ Output Schema Contract (~706 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/021-song-story-tool/
-
-- `data-model.md` — Data Model: Song Story Tool (~5459 tok)
-- `plan.md` — Implementation Plan: Song Story Tool (~2710 tok)
-- `quickstart.md` — Quickstart: Song Story Tool (~669 tok)
-- `research.md` — Research: Song Story Tool (~1675 tok)
-- `spec.md` — Feature Specification: Song Story Tool (~6254 tok)
-- `tasks.md` — Tasks: Song Story Tool (~5752 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/021-song-story-tool/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Song Story Tool (~399 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/021-song-story-tool/contracts/
-
-- `song-story-schema.md` — Song Story JSON Contract (~1730 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/022-layout-group-editor/
-
-- `data-model.md` — Data Model: Layout Group Editor (~1344 tok)
-- `plan.md` — Implementation Plan: Layout Group Editor (~1131 tok)
-- `quickstart.md` — Quickstart: Layout Group Editor (~402 tok)
-- `research.md` — Research: Layout Group Editor (~1259 tok)
-- `spec.md` — Feature Specification: Layout Group Editor (~4167 tok)
-- `tasks.md` — Tasks: Layout Group Editor (~4282 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/022-layout-group-editor/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Layout Group Editor (~293 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/022-layout-group-editor/contracts/
-
-- `api-routes.md` — API Routes Contract: Layout Group Editor (~1028 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/023-devcontainer-path-resolution/
-
-- `data-model.md` — Data Model: Devcontainer Path Resolution (~1047 tok)
-- `plan.md` — Implementation Plan: Devcontainer Path Resolution (~1197 tok)
-- `quickstart.md` — Quickstart: Devcontainer Path Resolution (~494 tok)
-- `research.md` — Research: Devcontainer Path Resolution (~1260 tok)
-- `spec.md` — Feature Specification: Devcontainer Path Resolution (~3152 tok)
-- `tasks.md` — Tasks: Devcontainer Path Resolution (~2750 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/023-devcontainer-path-resolution/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Devcontainer Path Resolution (~385 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/024-story-review-flyouts/
-
-- `data-model.md` — Data Model: 024-story-review-flyouts (~894 tok)
-- `plan.md` — Implementation Plan: Story Review Flyout Panels (~1940 tok)
-- `quickstart.md` — Quickstart: 024-story-review-flyouts (~664 tok)
-- `research.md` — Research: 024-story-review-flyouts (~1597 tok)
-- `spec.md` — Feature Specification: Story Review Flyout Panels (~4114 tok)
-- `tasks.md` — Tasks: Story Review Flyout Panels (~4319 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/024-story-review-flyouts/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Story Review Flyout Panels (~373 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/024-story-review-flyouts/contracts/
-
-- `flyout-ui-contract.md` — UI Contract: Flyout Panel (~1108 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/025-theme-data-endpoint/
-
-- `spec.md` — Feature Specification: Theme Data Endpoint (~531 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/026-theme-editor/
-
-- `data-model.md` — Data Model: Theme Editor (~1426 tok)
-- `plan.md` — Implementation Plan: Theme Editor (~1538 tok)
-- `quickstart.md` — Quickstart: Theme Editor (~616 tok)
-- `research.md` — Research: Theme Editor (~2125 tok)
-- `spec.md` — Feature Specification: Theme Editor (~5350 tok)
-- `tasks.md` — Tasks: Theme Editor (~6324 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/026-theme-editor/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Theme Editor (~320 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/026-theme-editor/contracts/
-
-- `theme-api.md` — API Contract: Theme Editor Endpoints (~1586 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/027-unified-dashboard/
-
-- `data-model.md` — Data Model: Unified Dashboard (~1016 tok)
-- `plan.md` — Implementation Plan: Unified Dashboard (~1842 tok)
-- `quickstart.md` — Quickstart: Unified Dashboard (~804 tok)
-- `research.md` — Research: Unified Dashboard (~1281 tok)
-- `spec.md` — Feature Specification: Unified Dashboard (~3868 tok)
-- `tasks.md` — Tasks: Unified Dashboard (~4516 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/027-unified-dashboard/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Unified Dashboard (~329 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/027-unified-dashboard/contracts/
-
-- `routes.md` — HTTP Route Contracts: Unified Dashboard (~1293 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/028-effects-variant-library/
-
-- `data-model.md` — Data Model: Effects Variant Library (~1701 tok)
-- `plan.md` — Implementation Plan: Effects Variant Library (~1357 tok)
-- `quickstart.md` — Quickstart: Effects Variant Library (~906 tok)
-- `research.md` — Research: Effects Variant Library (~1631 tok)
-- `spec.md` — Feature Specification: Effects Variant Library (~4120 tok)
-- `tasks.md` — Tasks: Effects Variant Library (~4538 tok)
-- `variant-catalog-backlog.md` — Variant Catalog Backlog (~8044 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/028-effects-variant-library/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Effects Variant Library (~338 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/028-effects-variant-library/contracts/
-
-- `api-endpoints.md` — API Contracts: Effects Variant Library (~1259 tok)
-- `cli-commands.md` — CLI Contracts: Effects Variant Library (~864 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/030-intelligent-effect-rotation/
-
-- `data-model.md` — Data Model: Intelligent Effect Rotation (~1722 tok)
-- `plan.md` — Implementation Plan: Intelligent Effect Rotation (~1140 tok)
-- `quickstart.md` — Quickstart: Intelligent Effect Rotation (~648 tok)
-- `research.md` — Research: Intelligent Effect Rotation (~1871 tok)
-- `spec.md` — Feature Specification: Intelligent Effect Rotation (~4586 tok)
-- `tasks.md` — Tasks: Intelligent Effect Rotation (~4606 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/030-intelligent-effect-rotation/checklists/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Intelligent Effect Rotation (~292 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/030-intelligent-effect-rotation/contracts/
-
-- `api-endpoints.md` — API Contracts: Intelligent Effect Rotation (~596 tok)
-- `cli-commands.md` — CLI Contracts: Intelligent Effect Rotation (~576 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/031-effect-variant-ui-wiring/
-
-- `data-model.md` — Data Model: Effect & Variant Library UI Wiring (~914 tok)
-- `plan.md` — Implementation Plan: Effect & Variant Library UI Wiring (~1010 tok)
-- `quickstart.md` — Quickstart: Effect & Variant Library UI Wiring (~625 tok)
-- `research.md` — Research: Effect & Variant Library UI Wiring (~1298 tok)
-- `spec.md` — Feature Specification: Effect & Variant Library UI Wiring (~2597 tok)
-- `tasks.md` — Tasks: Effect & Variant Library UI Wiring (~3220 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/031-effect-variant-ui-wiring/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Effect & Variant Library UI Wiring (~355 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/031-effect-variant-ui-wiring/contracts/
-
-- `variant-picker-api.md` — Contract: Variant Picker API (Frontend ↔ Backend) (~636 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/032-value-curves-integration/
-
-- `data-model.md` — Data Model: Value Curves Integration (~881 tok)
-- `plan.md` — Implementation Plan: Value Curves Integration (~968 tok)
-- `quickstart.md` — Quickstart: Value Curves Integration (~628 tok)
-- `research.md` — Research: Value Curves Integration (~1511 tok)
-- `spec.md` — Feature Specification: Value Curves Integration (~3354 tok)
-- `tasks.md` — Tasks: Value Curves Integration (~3225 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/032-value-curves-integration/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Value Curves Integration (~359 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/032-value-curves-integration/contracts/
-
-- `cli-curves-flag.md` — Contract: CLI --curves Flag (~311 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/033-theme-variant-separation/
-
-- `data-model.md` — Data Model: Theme and Effect Variant Separation (~1027 tok)
-- `plan.md` — Implementation Plan: Theme and Effect Variant Separation (~2245 tok)
-- `quickstart.md` — Quickstart: Theme and Effect Variant Separation (~505 tok)
-- `research.md` — Research: Theme and Effect Variant Separation (~1377 tok)
-- `spec.md` — Feature Specification: Theme and Effect Variant Separation (~3058 tok)
-- `tasks.md` — Tasks: Theme and Effect Variant Separation (~3723 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/033-theme-variant-separation/checklists/
-
-- `requirements.md` — Specification Quality Checklist: Theme and Effect Variant Separation (~383 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/033-theme-variant-separation/contracts/
-
-- `theme-api.md` — Theme API Contract Changes (~336 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/036-focused-effects-repetition/
-
-- `baseline_metrics.txt` (~4147 tok)
-- `data-model.md` — Data Model: Focused Effect Vocabulary + Embrace Repetition (~825 tok)
-- `plan.md` — Implementation Plan: Focused Effect Vocabulary + Embrace Repetition (~958 tok)
-- `quickstart.md` — Quickstart: Focused Effect Vocabulary + Embrace Repetition (~532 tok)
-- `research.md` — Research: Focused Effect Vocabulary + Embrace Repetition (~1345 tok)
-- `spec.md` — Feature Specification: Focused Effect Vocabulary + Embrace Repetition (~3969 tok)
-- `tasks.md` — Tasks: Focused Effect Vocabulary + Embrace Repetition (~3200 tok)
-- `validation_results.md` — Phase 1 Validation Results (~1355 tok)
-
-## .claude/worktrees/049-section-preview/specs/archive/036-focused-effects-repetition/checklists/
-
-- `requirements.md` — Requirements Checklist: 036 - Focused Effect Vocabulary + Embrace Repetition (~934 tok)
-
-## .claude/worktrees/049-section-preview/src/
-
-- `__init__.py` (~0 tok)
-- `cache.py` — Analysis result cache keyed by MD5 of the source audio file. (~1796 tok)
-- `cli_old.py` — CLI entry point for xlight-analyze. (~32257 tok)
-- `export.py` — T015: JSON serialisation and deserialisation for AnalysisResult. (~181 tok)
-- `generator_wizard.py` — Interactive wizard for sequence generation. (~2470 tok)
-- `library.py` — Global song library index stored at ~/.xlight/library.json. (~1816 tok)
-- `log.py` — Centralized logging for xlight-analyze — writes to ~/.xlight/logs/. (~315 tok)
-- `paths.py` — Cross-environment path resolution for the xLights show directory. (~2174 tok)
-- `settings.py` — Installation-wide settings stored at ~/.xlight/settings.json. (~489 tok)
-- `wizard.py` — Interactive CLI wizard for configuring and launching xlight-analyze runs. (~3896 tok)
-
-## .claude/worktrees/049-section-preview/src/analyzer/
-
-- `__init__.py` (~0 tok)
-- `audio.py` — T013: MP3/WAV loader — returns mono float32 array + AudioFile metadata. (~351 tok)
-- `capabilities.py` — Capability detection for the hierarchy orchestrator. (~1374 tok)
-- `conditioning.py` — Data conditioning: downsample, smooth, normalize feature curves for xLights export. (~764 tok)
-- `cross_song_tuner.py` — Cross-song parameter tuning framework. (~8690 tok)
-- `derived.py` — Derived feature computation for L0 Special Moments. (~1491 tok)
-- `diversity.py` — Diversity filter — removes near-identical tracks from --top N selection. (~1009 tok)
-- `drum_classifier.py` — Drum hit classifier: label each drum onset as kick, snare, or hihat. (~666 tok)
-- `essentia_features.py` — Essentia-based audio feature extraction. (~1210 tok)
-- `genius_segments.py` — Genius lyric segment timing: fetch, parse, and align section headers to audio. (~8376 tok)
-- `interaction.py` — Cross-stem musical interaction analysis. (~2966 tok)
-- `orchestrator.py` — Hierarchy orchestrator: zero-flag pipeline for hierarchical music analysis. (~13310 tok)
-- `parallel.py` — Parallel pipeline executor: PipelineStep, DependencyGraph, ParallelRunner. (~3482 tok)
-- `phoneme_align.py` — Session-friendly WhisperX word/phoneme alignment wrapper (in-process first, .venv-vamp sidecar fallback); feeds singing-faces export (~1600 tok)
-- `phonemes.py` — Vocal phoneme analysis: WhisperX transcription + cmudict decomposition. (~4807 tok)
-- `pipeline.py` — Automated end-to-end analysis pipeline (US7). (~2440 tok)
-- `progress.py` — Multi-track live progress display for parallel pipeline execution (T031). (~1436 tok)
-- `result.py` — Core data classes for the analysis pipeline. (~8644 tok)
-- `runner.py` — T016: AnalysisRunner — orchestrates all algorithm runs for a single audio file. (~3360 tok)
-- `scorer.py` — Quality scorer for timing tracks — category-aware with explainable breakdowns. (~2566 tok)
-- `scoring_config.py` — Scoring configuration: categories, algorithm mapping, weights, and config loading. (~3788 tok)
-- `segment_selector.py` — Representative audio segment selection for sweep optimization. (~652 tok)
-- `selector.py` — Best-of selection for hierarchy levels. (~1255 tok)
-- `solos.py` — Solo region detection from per-stem energy curves. (~1733 tok)
-- `stem_affinity.py` — Stem affinity table: maps each algorithm to its preferred stems with rationale. (~1860 tok)
-- `stem_inspector.py` — Stem quality inspection and intelligent sweep config generation. (~3931 tok)
-- `stems.py` — Stem separation: StemSet dataclass, StemSeparator, StemCache. (~2966 tok)
-- `structure.py` — Song structure analysis using librosa segmentation + lyric-enhanced clustering. (~4211 tok)
-- `sweep_matrix.py` — Sweep matrix: comprehensive algorithm×stem×parameter sweep engine. (~6874 tok)
-- `sweep.py` — 005: Parameter sweep runner for Vamp algorithms. (~4731 tok)
-- `validator.py` — Hierarchy mark placement validator. (~4359 tok)
-- `value_curve_scorer.py` — Quality scoring for continuous value curves (energy, spectral flux, etc.). (~439 tok)
-- `vamp_params.py` — 005: Vamp plugin parameter discovery and validation. (~1505 tok)
-- `vamp_runner.py` — URL configuration (~1447 tok)
-- `xtiming.py` — XTimingWriter: generate xLights .xtiming XML from PhonemeResult. (~1348 tok)
-- `xvc_export.py` — xLights value curve (.xvc) XML export. (~1028 tok)
-
-## .claude/worktrees/049-section-preview/src/analyzer/algorithms/
-
-- `__init__.py` (~0 tok)
-- `base.py` — T010: Abstract base class for all analysis algorithms. (~671 tok)
-- `librosa_bands.py` — T028: Librosa frequency band energy peak algorithms. (~1174 tok)
-- `librosa_beats.py` — T027: Librosa beat and bar tracking algorithms. (~626 tok)
-- `librosa_hpss.py` — T029: Librosa HPSS (Harmonic-Percussive Source Separation) algorithms. (~726 tok)
-- `librosa_onset.py` — T030: Librosa full-spectrum onset detection algorithm. (~341 tok)
-- `madmom_beat.py` — T031: Madmom RNN beat and downbeat tracking algorithms (optional). (~633 tok)
-- `registry.py` — Centralized algorithm registry — single source of truth for all algorithm discovery. (~2246 tok)
-- `vamp_aubio.py` — Aubio Vamp plugin wrappers: onset detection, tempo/beat tracking, note events. (~723 tok)
-- `vamp_bbc.py` — BBC Vamp plugin wrappers: energy, spectral flux, peaks, rhythm. (~1557 tok)
-- `vamp_beats.py` — T032: Vamp beat tracking algorithms — QM and BeatRoot. (~822 tok)
-- `vamp_extra.py` — Additional Vamp plugin wrappers: key detection, transcription, percussion, etc. (~1854 tok)
-- `vamp_harmony.py` — T035: Vamp NNLS Chroma and Chordino harmony algorithms. (~644 tok)
-- `vamp_onsets.py` — T033: Vamp onset detection algorithms — QM onset detector. (~860 tok)
-- `vamp_pitch.py` — T035: Vamp pYIN pitch/note algorithms. (~736 tok)
-- `vamp_segmentation.py` — Segmentino Vamp plugin wrapper: automatic structural segmentation. (~609 tok)
-- `vamp_structure.py` — T034: Vamp structural segmentation and tempo algorithms. (~567 tok)
-- `vamp_utils.py` — Shared helper functions for Vamp plugin algorithm wrappers. (~399 tok)
-
-## .claude/worktrees/agent-a4576356981f76a28/.wolf/
-
-- `anatomy.md` — anatomy.md (~13907 tok)
-
-## .claude/worktrees/refine-warnings-7/src/review/api/v1/
-
-- `analysis.py` — Analysis endpoints — T047. (~15291 tok)
-
-## .claude/worktrees/refine-warnings-7/src/story/
-
-- `builder.py` — Song story builder — top-level orchestration for the song story tool. (~14028 tok)
-
-## .claude/worktrees/refine-warnings-7/tests/unit/
-
-- `test_builder_refinement_warnings.py` — Unit tests for §7 — Step 15c capability-skip warnings. (~2480 tok)
+- `SKILL.md` — Input (~2151 tok)
+
+## .devcontainer/
+
+- `devcontainer.json` (~644 tok)
+- `Dockerfile` — Docker container definition (~4226 tok)
+- `init-firewall.sh` (~1465 tok)
+- `xlights-check.sh` — Validate xLights sequences (check sequence). (~683 tok)
+- `xlights-render.sh` — Render xLights sequences to FSEQ. (~685 tok)
 
 ## .github/workflows/
 
-- `evaluate.yml` — CI: Acceptance Gate (Tier A) (~1647 tok)
+- `evaluate.yml` — CI: Acceptance Gate (Tier A) (~2250 tok)
+- `pr-screenshots-cleanup.yml` — CI: PR Screenshots — Cleanup (~319 tok)
+- `pr-screenshots-rerun.yml` — CI: PR Screenshots — Rerun trigger (~423 tok)
+- `screenshots-on-pr.yml` — CI: PR Screenshots (~4763 tok)
 
-## .wolf/hooks/
+## .pytest_cache/
 
-- `post-write.js` — File types where a value/string change is normal content editing, not a bug (~7137 tok)
-  - fn `main` L17-165 (~1957 tok)
-  - fn `summarizeEdit` L166-247 (~1091 tok)
-  - fn `extractCalls` L248-253 (~110 tok)
-  - fn `bugAutoDetectEnabled` L254-263 (~87 tok)
-  - fn `autoDetectBugFix` L264-315 (~612 tok)
-  - fn `detectFixPattern` L316-497 (~2472 tok)
-  - fn `extractChangedLines` L498-503 (~96 tok)
-  - fn `tokenizeCode` L504-506 (~32 tok)
-  - fn `findOperatorChange` L507-519 (~136 tok)
-  - fn `extractCSSProps` L520-529 (~87 tok)
+- `.gitignore` — Git ignore rules (~10 tok)
+- `CACHEDIR.TAG` (~51 tok)
+- `README.md` — Project documentation (~76 tok)
 
-## C:/Users/daryl/AppData/Local/Temp/claude/H--Github-xlight-autosequencer/99daea5b-98e1-4e63-8e83-b1a35c7b3cae/scratchpad/
+## .pytest_cache/v/cache/
 
-- `rescan_corpus.sh` (~413 tok)
+- `lastfailed` (~1396 tok)
+- `nodeids` (~88214 tok)
 
-## docs/
+## .specify/
 
-- `microscope-tier-effectiveness.md` — Tier and Layout Effectiveness — 2026-05-02 Diagnostic (~1637 tok)
-- `xlights-effect-params.md` — xLights Effect Parameters Reference (~17091 tok)
+- `init-options.json` (~63 tok)
 
-## openspec/changes/acceptance-gate/
+## .specify/memory/
 
-- `tasks.md` — 1. Corpus wiring (reuse existing CC0 pattern) (~2580 tok)
+- `constitution.md` — XLight AutoSequencer Constitution (~1668 tok)
 
-## openspec/changes/design-first-gate/
+## .specify/scripts/bash/
 
-- `design.md` — Context (~1978 tok)
-- `proposal.md` — Why (~840 tok)
-- `tasks.md` — 1. CLAUDE.md gate (~840 tok)
+- `check-prerequisites.sh` — Consolidated prerequisite checking script (~1813 tok)
+- `common.sh` — Common functions and variables for all scripts (~2921 tok)
+- `create-new-feature.sh` (~3378 tok)
+- `setup-plan.sh` (~663 tok)
+- `update-agent-context.sh` — Update agent context files with information from plan.md (~8640 tok)
 
-## openspec/changes/design-first-gate/specs/design-gate/
+## .specify/templates/
 
-- `spec.md` — ADDED Requirements (~1095 tok)
+- `agent-file-template.md` — [PROJECT NAME] Development Guidelines (~123 tok)
+- `checklist-template.md` — [CHECKLIST TYPE] Checklist: [FEATURE NAME] (~338 tok)
+- `constitution-template.md` — [PROJECT_NAME] Constitution (~597 tok)
+- `plan-template.md` — Implementation Plan: [FEATURE] (~913 tok)
+- `spec-template.md` — Feature Specification: [FEATURE NAME] (~1019 tok)
+- `tasks-template.md` — Tasks: [FEATURE NAME] (~2348 tok)
 
-## openspec/changes/design-first-gate/specs/pre-mortem-review/
+## .venv/
 
-- `spec.md` — ADDED Requirements (~1018 tok)
+- `pyvenv.cfg` (~86 tok)
 
-## openspec/changes/microscope-panel-tier-coverage/
+## .venv/Include/site/python3.12/greenlet/
 
-- `design.md` — Context (~1549 tok)
-- `proposal.md` — Why (~1233 tok)
-- `tasks.md` — 1. Research — find candidate fixtures (~1014 tok)
+- `greenlet.h` — ifndef Py_GREENLETOBJECT_H (~1406 tok)
 
-## openspec/changes/microscope-panel-tier-coverage/specs/microscope-panel-tier-coverage/
+## .venv/Lib/site-packages/
 
-- `spec.md` — ADDED Requirements (~929 tok)
+- `__editable___xlight_autosequencer_0_1_0_finder.py` — _EditableFinder: find_spec, find_spec, find_module, install (~2345 tok)
+  - class `_EditableFinder` L14-42 (~366 tok)
+  - class `_EditableNamespaceFinder` L43-73 (~319 tok)
+  - fn `install` L74-86 (~152 tok)
+- `__editable__.xlight_autosequencer-0.1.0.pth` (~30 tok)
+- `_cffi_backend.cp312-win_amd64.pyd` (~48031 tok)
+- `_soundfile.py` (~1690 tok)
+- `ada92cb5d92a588d1b93__mypyc.cp312-win_amd64.pyd` (~60104 tok)
+- `distutils-precedence.pth` (~41 tok)
+- `isympy.py` — main (~3206 tok)
+  - fn `main` L176-343 (~1424 tok)
+- `lameenc.cp312-win_amd64.pyd` (~79986 tok)
+- `pylab.py` (~32 tok)
+- `retrying.py` — you may not use this file except in compliance with the License. (~3505 tok)
+  - fn `_retry_if_exception_of_type` L25-31 (~58 tok)
+  - fn `retry` L32-63 (~235 tok)
+  - fn `_pick_logger` L64-81 (~218 tok)
+  - class `Retrying` L82-302 (~2363 tok)
+  - class `Attempt` L303-336 (~334 tok)
+  - class `RetryError` L337-347 (~80 tok)
+- `scipy-1.17.1-cp312-cp312-win_amd64.whl` (~0 tok)
+- `six.py` — Utilities for writing code that runs on Python 2 and 3 (~9916 tok)
+  - fn `_add_doc` L80-84 (~27 tok)
+  - fn `_import_module` L85-90 (~41 tok)
+  - class `_LazyDescr` L91-107 (~128 tok)
+  - class `MovedModule` L108-128 (~141 tok)
+  - class `_LazyModule` L129-143 (~108 tok)
+  - class `MovedAttribute` L144-168 (~208 tok)
+  - class `_SixMetaPathImporter` L169-244 (~628 tok)
+  - class `_MovedItems` L245-339 (~1469 tok)
+  - class `Module_six_moves_urllib_parse` L340-381 (~590 tok)
+  - class `Module_six_moves_urllib_error` L382-401 (~199 tok)
+  - class `Module_six_moves_urllib_request` L402-458 (~865 tok)
+  - class `Module_six_moves_urllib_response` L459-479 (~225 tok)
+  - class `Module_six_moves_urllib_robotparser` L480-497 (~186 tok)
+  - class `Module_six_moves_urllib` L498-514 (~196 tok)
+  - fn `add_move` L515-519 (~29 tok)
+  - fn `remove_move` L520-698 (~1291 tok)
+  - fn `assertCountEqual` L699-702 (~31 tok)
+  - fn `assertRaisesRegex` L703-706 (~32 tok)
+  - fn `assertRegex` L707-710 (~28 tok)
+  - fn `assertNotRegex` L711-860 (~1364 tok)
+  - fn `with_metaclass` L861-884 (~280 tok)
+  - fn `add_metaclass` L885-902 (~184 tok)
+  - fn `ensure_binary` L903-920 (~130 tok)
+  - fn `ensure_str` L921-943 (~183 tok)
+  - fn `ensure_text` L944-962 (~130 tok)
+  - fn `python_2_unicode_compatible` L963-1004 (~537 tok)
+- `soundfile.py` — python-soundfile is an audio library based on libsndfile, CFFI and NumPy. (~19223 tok)
+  - fn `read` L225-320 (~1242 tok)
+  - fn `write` L321-379 (~628 tok)
+  - fn `blocks` L380-440 (~702 tok)
+  - class `_SoundFileInfo` L441-492 (~555 tok)
+  - fn `info` L493-503 (~84 tok)
+  - fn `available_formats` L504-524 (~179 tok)
+  - fn `available_subtypes` L525-547 (~202 tok)
+  - fn `check_format` L548-566 (~135 tok)
+  - fn `default_subtype` L567-582 (~98 tok)
+  - class `SoundFile` L583-1507 (~10897 tok)
+  - fn `_error_check` L1508-1513 (~45 tok)
+  - fn `_format_int` L1514-1545 (~310 tok)
+  - fn `_check_mode` L1546-1564 (~177 tok)
+  - fn `_create_info_struct` L1565-1591 (~297 tok)
+  - fn `_get_format_from_filename` L1592-1615 (~255 tok)
+  - fn `_format_str` L1616-1625 (~81 tok)
+  - fn `_format_info` L1626-1636 (~135 tok)
+  - fn `_available_formats_helper` L1637-1644 (~90 tok)
+  - fn `_check_format` L1645-1655 (~102 tok)
+  - fn `_has_virtual_io_attrs` L1656-1667 (~116 tok)
+  - class `SoundFileError` L1668-1671 (~28 tok)
+  - class `SoundFileRuntimeError` L1672-1677 (~44 tok)
+  - class `LibsndfileError` L1678-1706 (~271 tok)
+- `threadpoolctl.py` — threadpoolctl (~14492 tok)
+  - class `_dl_phdr_info` L56-71 (~148 tok)
+  - class `LibController` L72-162 (~1064 tok)
+  - class `OpenBLASController` L163-234 (~782 tok)
+  - class `BLISController` L235-297 (~664 tok)
+  - class `FlexiBLASController` L298-425 (~1416 tok)
+  - class `MKLController` L426-481 (~512 tok)
+  - class `OpenMPController` L482-527 (~410 tok)
+  - fn `register` L528-535 (~75 tok)
+  - fn `_format_docstring` L536-545 (~63 tok)
+  - fn `_realpath` L546-551 (~65 tok)
+  - fn `threadpool_info` L552-569 (~208 tok)
+  - class `_ThreadpoolLimiter` L570-722 (~1649 tok)
+  - class `_ThreadpoolLimiterDecorator` L723-745 (~250 tok)
+  - class `threadpool_limits` L746-800 (~713 tok)
+  - class `ThreadpoolController` L801-1252 (~5556 tok)
+  - fn `_main` L1253-1293 (~313 tok)
+- `typing_extensions.py` — sentinel: final, done, done, disjoint_base (~47147 tok)
+  - fn `_caller` L164-336 (~1725 tok)
+  - class `_SpecialForm` L337-382 (~386 tok)
+  - class `_ExtensionsSpecialForm` L383-455 (~669 tok)
+  - fn `IntVar` L456-705 (~2560 tok)
+  - fn `_get_protocol_attrs` L706-1751 (~11687 tok)
+  - fn `_set_default` L1752-1756 (~40 tok)
+  - fn `_set_module` L1757-1763 (~47 tok)
+  - class `_DefaultMixin` L1764-1771 (~55 tok)
+  - class `_TypeVarLikeMeta` L1772-2205 (~4830 tok)
+  - class `_EllipsisDummy` L2206-2209 (~11 tok)
+  - fn `_create_concatenate_alias` L2210-2234 (~314 tok)
+  - fn `_concatenate_getitem` L2235-2639 (~4018 tok)
+  - fn `_unpack_args` L2640-3280 (~7064 tok)
+  - fn `_has_generic_or_protocol_as_origin` L3281-3302 (~258 tok)
+  - fn `_is_unpacked_typevartuple` L3303-4423 (~12628 tok)
 
-## openspec/changes/microscope-placement-coverage/
+## .venv/Lib/site-packages/_distutils_hack/
 
-- `design.md` — Context (~2261 tok)
-- `proposal.md` — Why (~1035 tok)
-- `tasks.md` — 1. Schema bump on SequenceSummary (~975 tok)
+- `__init__.py` — don't import any costly modules (~1930 tok)
+  - fn `warn_distutils_present` L10-24 (~167 tok)
+  - fn `clear_distutils` L25-44 (~150 tok)
+  - fn `enabled` L45-62 (~170 tok)
+  - fn `ensure_local_distutils` L63-79 (~142 tok)
+  - fn `do_override` L80-91 (~84 tok)
+  - class `_TrivialRe` L92-99 (~54 tok)
+  - class `DistutilsMetaFinder` L100-213 (~959 tok)
+  - fn `add_shim` L214-217 (~21 tok)
+  - class `shim` L218-225 (~47 tok)
+  - fn `insert_shim` L226-229 (~19 tok)
+  - fn `_remove_shim` L230-240 (~72 tok)
+- `override.py` (~13 tok)
 
-## openspec/changes/microscope-placement-coverage/specs/microscope-placement-coverage/
+## .venv/Lib/site-packages/_soundfile_data/
 
-- `spec.md` — ADDED Requirements (~1354 tok)
+- `__init__.py` — this file makes _soundfile_data importable, so we can query its path (~36 tok)
+- `COPYING` — Declares definition (~7072 tok)
 
-## scripts/
+## .venv/Lib/site-packages/_yaml/
 
-- `boundary_confidence_map.py` — Boundary confidence map — diagnostic tool for section boundary detection. (~8430 tok)
-- `startapp.sh` — Restart the xlight-review server running inside the xlight-dev devcontainer. (~489 tok)
+- `__init__.py` — This is a stub package designed to roughly emulate the _yaml (~401 tok)
 
-## src/
+## .venv/Lib/site-packages/aiohappyeyeballs-2.7.1.dist-info/
 
-- `cli_old.py` — CLI entry point for xlight-analyze. (~34201 tok)
+- `INSTALLER` (~2 tok)
+- `METADATA` (~1584 tok)
+- `RECORD` (~325 tok)
+- `WHEEL` (~24 tok)
 
-## src/cli/
+## .venv/Lib/site-packages/aiohappyeyeballs-2.7.1.dist-info/licenses/
 
-- `evaluate.py` — xlight-evaluate CLI — quality calibration subcommands. (~4748 tok)
-- `library.py` — ``library`` command group: list and refresh the user's analyzed song library. (~3148 tok)
-- `microscope.py` — xlight-evaluate microscope — visual-quality measurement subcommand group. (~5345 tok)
+- `LICENSE` — Project license (~3717 tok)
 
-## src/effects/
+## .venv/Lib/site-packages/aiohappyeyeballs/
 
-- `builtin_effects.json` (~58642 tok)
+- `__init__.py` (~104 tok)
+- `_staggered.py` — staggered_race, run_one_coro (~1914 tok)
+  - fn `_set_result` L15-20 (~54 tok)
+  - fn `_wait_one` L21-41 (~152 tok)
+  - fn `staggered_race` L42-198 (~1642 tok)
+- `impl.py` — Base implementation. (~2658 tok)
+  - fn `start_connection` L15-158 (~1608 tok)
+  - fn `_connect_sock` L159-227 (~739 tok)
+  - fn `_interleave_addrinfos` L228-248 (~236 tok)
+- `py.typed` (~0 tok)
+- `types.py` — Types for aiohappyeyeballs. (~83 tok)
+- `utils.py` — Utility functions for aiohappyeyeballs. (~732 tok)
+  - fn `addr_to_addr_infos` L9-33 (~223 tok)
+  - fn `pop_addr_infos_interleave` L34-55 (~192 tok)
+  - fn `_addr_tuple_to_ip_address` L56-62 (~81 tok)
+  - fn `remove_addr_infos` L63-83 (~205 tok)
 
-## src/evaluation/
+## .venv/Lib/site-packages/aiohttp-3.14.1.dist-info/
 
-- `acceptance_gate.py` — Acceptance-gate orchestrator. (~3802 tok)
-- `analyzer_baseline.py` — Analyzer-layer regression baseline. (~3292 tok)
-- `corpus_resolver.py` — Corpus resolver for the acceptance gate. (~1310 tok)
-- `models.py` — Core data model for the quality calibration harness. (~1327 tok)
-- `xsq_reader.py` — Parser for xLights .xsq and .xsqz sequence files. (~2732 tok)
+- `INSTALLER` (~2 tok)
+- `METADATA` — Declares html (~2271 tok)
+- `RECORD` (~2609 tok)
+- `top_level.txt` (~2 tok)
+- `WHEEL` (~27 tok)
 
-## src/evaluation/metrics/
+## .venv/Lib/site-packages/aiohttp-3.14.1.dist-info/licenses/
 
-- `coverage.py` — Placement coverage metric. (~686 tok)
-- `suitability.py` — Suitability metrics — variety + parallel pairing-fit signals. (~3865 tok)
-- `tier_breakdown.py` — Diagnostic metrics for tier and group activation. (~994 tok)
+- `LICENSE.txt` — Declares name (~2879 tok)
+
+## .venv/Lib/site-packages/aiohttp-3.14.1.dist-info/licenses/vendor/llhttp/
+
+- `LICENSE` — Project license (~291 tok)
+
+## .venv/Lib/site-packages/aiohttp/
+
+- `__init__.py` — Declares as (~2463 tok)
+  - fn `__dir__` L261-264 (~20 tok)
+  - fn `__getattr__` L265-280 (~186 tok)
+- `_cookie_helpers.py` — preserve_morsel_with_coded_value, parse_cookie_header, parse_set_cookie_headers (~4130 tok)
+  - fn `preserve_morsel_with_coded_value` L85-124 (~398 tok)
+  - fn `_unquote_replace` L125-137 (~108 tok)
+  - fn `_unquote` L138-166 (~220 tok)
+  - fn `parse_cookie_header` L167-265 (~1042 tok)
+  - fn `parse_set_cookie_headers` L266-362 (~1227 tok)
+- `_cparser.pxd` — Declares char (~1199 tok)
+- `_find_header.pxd` (~19 tok)
+- `_headers.pxi` — The file is autogenerated from aiohttp/hdrs.py (~558 tok)
+- `_http_parser.cp312-win_amd64.pyd` (~67180 tok)
+- `_http_parser.pyx` — Based on https://github.com/MagicStack/httptools (~9287 tok)
+- `_http_writer.cp312-win_amd64.pyd` (~12326 tok)
+- `_http_writer.pyx` (~1330 tok)
+- `abc.py` — AbstractRouter: post_init, frozen, freeze, resolve + 28 more (~2231 tok)
+  - class `AbstractRouter` L26-50 (~184 tok)
+  - class `AbstractMatchInfo` L51-99 (~372 tok)
+  - class `AbstractView` L100-115 (~110 tok)
+  - class `ResolveResult` L116-137 (~155 tok)
+  - class `AbstractResolver` L138-160 (~147 tok)
+  - class `AbstractCookieJar` L161-210 (~486 tok)
+  - class `AbstractStreamWriter` L211-253 (~342 tok)
+  - class `AbstractAccessLogger` L254-271 (~145 tok)
+- `base_protocol.py` — BaseProtocol: connected, writing_paused, pause_writing, resume_writing + 4 more (~1380 tok)
+  - class `BaseProtocol` L19-141 (~1142 tok)
+- `client_exceptions.py` — HTTP related errors. (~3439 tok)
+  - class `ClientError` L61-64 (~24 tok)
+  - class `ClientResponseError` L65-139 (~669 tok)
+  - class `ContentTypeError` L140-143 (~26 tok)
+  - class `WSServerHandshakeError` L144-147 (~28 tok)
+  - class `ClientHttpProxyError` L148-156 (~64 tok)
+  - class `TooManyRedirects` L157-160 (~27 tok)
+  - class `ClientConnectionError` L161-164 (~26 tok)
+  - class `ClientConnectionResetError` L165-168 (~32 tok)
+  - class `ClientOSError` L169-172 (~23 tok)
+  - class `ClientConnectorError` L173-210 (~313 tok)
+  - class `ClientConnectorDNSError` L211-218 (~59 tok)
+  - class `ClientProxyConnectionError` L219-226 (~59 tok)
+  - class `UnixClientConnectorError` L227-249 (~188 tok)
+  - class `ServerConnectionError` L250-253 (~26 tok)
+  - class `ServerDisconnectedError` L254-264 (~87 tok)
+  - class `ServerTimeoutError` L265-268 (~30 tok)
+  - class `ConnectionTimeoutError` L269-272 (~25 tok)
+  - class `SocketTimeoutError` L273-276 (~23 tok)
+  - class `ServerFingerprintMismatch` L277-290 (~148 tok)
+  - class `ClientPayloadError` L291-294 (~22 tok)
+  - class `InvalidURL` L295-331 (~278 tok)
+  - class `InvalidUrlClientError` L332-335 (~23 tok)
+  - class `RedirectClientError` L336-339 (~22 tok)
+  - class `NonHttpUrlClientError` L340-343 (~23 tok)
+  - class `InvalidUrlRedirectClientError` L344-347 (~37 tok)
+  - class `NonHttpUrlRedirectClientError` L348-351 (~37 tok)
+  - class `ClientSSLError` L352-375 (~147 tok)
+  - class `ClientConnectorSSLError` L376-379 (~30 tok)
+  - class `ClientConnectorCertificateError` L380-424 (~382 tok)
+  - class `WSMessageTypeError` L425-427 (~24 tok)
+- `client_middleware_digest_auth.py` — DigestAuthChallenge: escape_quotes, unescape_quotes, parse_header_pairs, H + 1 more (~5582 tok)
+  - class `DigestAuthChallenge` L27-107 (~962 tok)
+  - fn `escape_quotes` L108-112 (~38 tok)
+  - fn `unescape_quotes` L113-117 (~39 tok)
+  - fn `parse_header_pairs` L118-144 (~267 tok)
+  - class `DigestAuthMiddleware` L145-495 (~3923 tok)
+- `client_middlewares.py` — Client middleware support. (~564 tok)
+  - fn `build_client_middlewares` L18-56 (~378 tok)
+- `client_proto.py` — ResponseHandler: closed, upgraded, should_close, force_close + 14 more (~3716 tok)
+  - class `ResponseHandler` L26-371 (~3438 tok)
+- `client_reqrep.py` — ContentDisposition: fingerprint, check (~16075 tok)
+  - fn `_gen_default_accept_encoding` L94-106 (~82 tok)
+  - class `ContentDisposition` L107-112 (~34 tok)
+  - class `_RequestInfo` L113-119 (~34 tok)
+  - class `RequestInfo` L120-137 (~135 tok)
+  - class `Fingerprint` L138-175 (~366 tok)
+  - fn `_merge_ssl_params` L176-236 (~589 tok)
+  - class `ConnectionKey` L237-249 (~114 tok)
+  - fn `_is_expected_content_type` L250-257 (~79 tok)
+  - fn `_warn_if_unclosed_payload` L258-276 (~204 tok)
+  - class `ClientResponse` L277-814 (~5352 tok)
+  - class `ClientRequest` L815-1558 (~8010 tok)
+- `client_ws.py` — WebSocket client for asyncio. (~5723 tok)
+  - class `ClientWSTimeout` L53-60 (~64 tok)
+  - class `ClientWebSocketResponse` L61-561 (~5093 tok)
+- `client.py` — HTTP Client for asyncio. (~18892 tok)
+  - class `_RequestOptions` L176-205 (~263 tok)
+  - class `_WSConnectOptions` L206-230 (~200 tok)
+  - class `ClientTimeout` L231-265 (~351 tok)
+  - class `ClientSession` L266-1656 (~14959 tok)
+  - class `_BaseRequestContextManager` L1657-1698 (~384 tok)
+  - class `_SessionRequestContextManager` L1699-1809 (~1057 tok)
+- `compression_utils.py` — ZLibCompressObjProtocol: compress, flush, decompress, flush + 29 more (~4653 tok)
+  - class `ZLibCompressObjProtocol` L43-47 (~42 tok)
+  - class `ZLibDecompressObjProtocol` L48-61 (~96 tok)
+  - class `ZLibBackendProtocol` L62-89 (~205 tok)
+  - class `CompressObjArgs` L90-95 (~28 tok)
+  - class `ZLibBackendWrapper` L96-143 (~444 tok)
+  - fn `set_zlib_backend` L144-147 (~34 tok)
+  - fn `encoding_to_mode` L148-157 (~77 tok)
+  - class `DecompressionBaseHandler` L158-192 (~324 tok)
+  - class `ZLibCompressor` L193-267 (~880 tok)
+  - class `ZLibDecompressor` L268-338 (~837 tok)
+  - class `BrotliDecompressor` L339-386 (~532 tok)
+  - class `ZSTDDecompressor` L387-448 (~716 tok)
+- `connector.py` — _DeprecationWaiter: loop, transport, protocol, add_callback + 6 more (~20537 tok)
+  - class `_DeprecationWaiter` L101-120 (~157 tok)
+  - fn `_wait_for_close` L121-128 (~94 tok)
+  - class `Connection` L129-216 (~780 tok)
+  - class `_ConnectTunnelConnection` L217-236 (~252 tok)
+  - class `_TransportPlaceholder` L237-253 (~138 tok)
+  - class `BaseConnector` L254-842 (~6184 tok)
+  - class `_DNSCacheTable` L843-890 (~459 tok)
+  - fn `_make_ssl_context` L891-921 (~314 tok)
+  - class `TCPConnector` L922-1726 (~9640 tok)
+  - class `UnixConnector` L1727-1781 (~511 tok)
+  - class `NamedPipeConnector` L1782-1852 (~747 tok)
+- `cookiejar.py` — _RestrictedCookieUnpickler: find_class, unsafe, quote_cookie, cookies + 5 more (~7570 tok)
+  - class `_RestrictedCookieUnpickler` L46-85 (~464 tok)
+  - class `CookieJar` L86-632 (~6190 tok)
+  - class `DummyCookieJar` L633-679 (~354 tok)
+- `formdata.py` — FormData: is_multipart, add_field, add_fields (~1914 tok)
+  - class `FormData` L17-185 (~1764 tok)
+- `hdrs.py` — HTTP Headers constants. (~1494 tok)
+- `helpers.py` — Various helper functions (~9733 tok)
+  - class `noop` L114-118 (~24 tok)
+  - fn `encode_basic_auth` L119-130 (~157 tok)
+  - class `BasicAuth` L131-199 (~771 tok)
+  - fn `_basic_auth_no_warn` L200-210 (~112 tok)
+  - fn `strip_auth_from_url` L211-219 (~131 tok)
+  - fn `netrc_from_env` L220-263 (~437 tok)
+  - class `ProxyInfo` L264-268 (~19 tok)
+  - fn `basicauth_from_netrc` L269-297 (~310 tok)
+  - fn `proxies_from_env` L298-323 (~248 tok)
+  - fn `get_env_proxy_for_url` L324-338 (~163 tok)
+  - class `MimeType` L339-346 (~39 tok)
+  - fn `parse_mimetype` L347-385 (~291 tok)
+  - class `EnsureOctetStream` L386-411 (~254 tok)
+  - fn `parse_content_type` L412-425 (~161 tok)
+  - fn `guess_filename` L426-436 (~101 tok)
+  - fn `quoted_string` L437-449 (~144 tok)
+  - fn `content_disposition_header` L450-500 (~572 tok)
+  - fn `is_ip_address` L501-513 (~118 tok)
+  - fn `is_canonical_ipv4_address` L514-539 (~250 tok)
+  - fn `rfc822_formatted_time` L540-579 (~314 tok)
+  - fn `_weakref_handle` L580-587 (~56 tok)
+  - fn `weakref_handle` L588-603 (~124 tok)
+  - fn `call_later` L604-616 (~104 tok)
+  - fn `calculate_timeout_when` L617-628 (~82 tok)
+  - class `TimeoutHandle` L629-680 (~437 tok)
+  - class `BaseTimerContext` L681-688 (~53 tok)
+  - class `TimerNoop` L689-704 (~88 tok)
+  - class `TimerContext` L705-769 (~677 tok)
+  - fn `ceil_timeout` L770-783 (~103 tok)
+  - class `HeadersMixin` L784-1047 (~2374 tok)
+- `http_exceptions.py` — Low-level http related exceptions. (~924 tok)
+  - class `HttpProcessingError` L10-43 (~244 tok)
+  - class `BadHttpMessage` L44-53 (~76 tok)
+  - class `HttpBadRequest` L54-59 (~24 tok)
+  - class `PayloadEncodingError` L60-63 (~25 tok)
+  - class `ContentEncodingError` L64-67 (~25 tok)
+  - class `TransferEncodingError` L68-71 (~25 tok)
+  - class `ContentLengthError` L72-75 (~32 tok)
+  - class `DecompressSizeError` L76-79 (~25 tok)
+  - class `LineTooLong` L80-90 (~90 tok)
+  - class `InvalidHeader` L91-98 (~82 tok)
+  - class `BadStatusLine` L99-107 (~85 tok)
+  - class `BadHttpMethod` L108-116 (~104 tok)
+  - class `InvalidURLError` L117-119 (~14 tok)
+- `http_parser.py` — RawRequestMessage: parse_headers, parse_message, pause_reading, message_consumed + 2 more (~13253 tok)
+  - class `RawRequestMessage` L111-123 (~74 tok)
+  - class `RawResponseMessage` L124-138 (~89 tok)
+  - class `PayloadState` L139-144 (~34 tok)
+  - class `ParseState` L145-152 (~33 tok)
+  - class `ChunkState` L153-160 (~48 tok)
+  - class `HeadersParser` L161-252 (~960 tok)
+  - fn `_is_supported_upgrade` L253-259 (~78 tok)
+  - class `HttpParser` L260-640 (~4463 tok)
+  - class `HttpRequestParser` L641-740 (~1004 tok)
+  - class `HttpResponseParser` L741-826 (~762 tok)
+  - class `HttpPayloadParser` L827-1098 (~3378 tok)
+  - class `DeflateBuffer` L1099-1218 (~1176 tok)
+- `http_websocket.py` — WebSocket protocol versions 13 and 8. (~293 tok)
+- `http_writer.py` — Http related parsers and protocol. (~3710 tok)
+  - class `HttpVersion` L46-58 (~79 tok)
+  - class `StreamWriter` L59-355 (~2940 tok)
+  - fn `_safe_header` L356-364 (~77 tok)
+  - fn `_py_serialize_headers` L365-382 (~173 tok)
+- `http.py` (~616 tok)
+- `log.py` (~96 tok)
+- `multipart.py` — BadContentDispositionHeader: parse_content_disposition, is_token, is_quoted, is_rfc5987 + 10 more (~12974 tok)
+  - class `BadContentDispositionHeader` L67-70 (~18 tok)
+  - class `BadContentDispositionParam` L71-74 (~18 tok)
+  - fn `parse_content_disposition` L75-177 (~936 tok)
+  - fn `content_disposition_filename` L178-210 (~281 tok)
+  - class `MultipartResponseWrapper` L211-257 (~346 tok)
+  - class `BodyPartReader` L258-614 (~4050 tok)
+  - class `BodyPartReaderPayload` L615-650 (~422 tok)
+  - class `MultipartReader` L651-887 (~2526 tok)
+  - class `MultipartWriter` L888-1172 (~2992 tok)
+  - class `MultipartPayloadWriter` L1173-1229 (~580 tok)
+- `payload_streamer.py` — _stream_wrapper: file_sender, write, decode, write (~659 tok)
+  - class `_stream_wrapper` L36-50 (~116 tok)
+  - class `streamer` L51-64 (~123 tok)
+  - class `StreamWrapperPayload` L65-73 (~82 tok)
+  - class `StreamPayload` L74-80 (~76 tok)
+- `payload.py` — LookupError: get_payload, register_payload, get, register + 13 more (~12177 tok)
+  - class `LookupError` L51-54 (~31 tok)
+  - class `Order` L55-60 (~31 tok)
+  - fn `get_payload` L61-64 (~36 tok)
+  - fn `register_payload` L65-70 (~47 tok)
+  - class `payload_type` L71-84 (~110 tok)
+  - class `PayloadRegistry` L85-139 (~550 tok)
+  - class `Payload` L140-339 (~2067 tok)
+  - class `BytesPayload` L340-419 (~835 tok)
+  - class `StringPayload` L420-450 (~254 tok)
+  - class `StringIOPayload` L451-455 (~49 tok)
+  - class `IOBasePayload` L456-724 (~3122 tok)
+  - class `TextIOPayload` L725-842 (~1298 tok)
+  - class `BytesIOPayload` L843-927 (~938 tok)
+  - class `BufferedReaderPayload` L928-936 (~101 tok)
+  - class `JsonPayload` L937-956 (~131 tok)
+  - class `JsonBytesPayload` L957-991 (~248 tok)
+  - class `AsyncIterablePayload` L992-1121 (~1436 tok)
+  - class `StreamReaderPayload` L1122-1139 (~265 tok)
+- `py.typed` (~3 tok)
+- `pytest_plugin.py` — AiohttpClient: pytest_addoption, pytest_fixture_setup, wrapper, finalizer + 21 more (~3833 tok)
+  - class `AiohttpClient` L29-47 (~133 tok)
+  - class `AiohttpServer` L48-53 (~46 tok)
+  - class `AiohttpRawServer` L54-59 (~50 tok)
+  - fn `pytest_addoption` L60-80 (~162 tok)
+  - fn `pytest_fixture_setup` L81-138 (~556 tok)
+  - fn `fast` L139-144 (~44 tok)
+  - fn `loop_debug` L145-150 (~56 tok)
+  - fn `_runtime_warning_context` L151-174 (~216 tok)
+  - fn `_passthrough_loop_context` L175-190 (~141 tok)
+  - fn `pytest_pycollect_makeitem` L191-196 (~76 tok)
+  - fn `pytest_pyfunc_call` L197-222 (~298 tok)
+  - fn `pytest_generate_tests` L223-255 (~316 tok)
+  - fn `loop` L256-269 (~116 tok)
+  - fn `proactor_loop` L270-278 (~71 tok)
+  - fn `unused_port` L279-288 (~76 tok)
+  - fn `aiohttp_unused_port` L289-294 (~43 tok)
+  - fn `aiohttp_server` L295-323 (~201 tok)
+  - fn `test_server` L324-333 (~75 tok)
+  - fn `aiohttp_raw_server` L334-358 (~193 tok)
+  - fn `raw_test_server` L359-370 (~82 tok)
+  - fn `aiohttp_client` L371-432 (~523 tok)
+  - fn `test_client` L433-440 (~70 tok)
+- `resolver.py` — ThreadedResolver: resolve, close, resolve, close + 2 more (~2922 tok)
+  - class `ThreadedResolver` L27-84 (~582 tok)
+  - class `AsyncResolver` L85-204 (~1316 tok)
+  - class `_DNSResolverManager` L205-274 (~760 tok)
+- `streams.py` — EofStream: iter_chunked, iter_any, iter_chunks, get_read_buffer_limits + 15 more (~7110 tok)
+  - class `EofStream` L30-33 (~18 tok)
+  - class `AsyncStreamIterator` L34-53 (~140 tok)
+  - class `ChunkTupleAsyncStreamIterator` L54-70 (~120 tok)
+  - class `StreamReader` L71-581 (~4988 tok)
+  - class `EmptyStreamReader` L582-654 (~493 tok)
+  - class `DataQueue` L655-719 (~583 tok)
+  - class `FlowControlDataQueue` L720-761 (~404 tok)
+- `tcp_helpers.py` — Helper methods to tune a TCP connection (~286 tok)
+- `test_utils.py` — Utilities shared by tests. (~7270 tok)
+  - fn `get_unused_port_socket` L70-75 (~44 tok)
+  - fn `get_port_socket` L76-88 (~135 tok)
+  - fn `unused_port` L89-95 (~66 tok)
+  - class `BaseTestServer` L96-227 (~1194 tok)
+  - class `TestServer` L228-244 (~123 tok)
+  - class `RawTestServer` L245-262 (~162 tok)
+  - class `TestClient` L263-544 (~2606 tok)
+  - class `AioHTTPTestCase` L545-601 (~554 tok)
+  - fn `unittest_run_loop` L602-619 (~130 tok)
+  - fn `loop_context` L620-631 (~105 tok)
+  - fn `setup_test_loop` L632-644 (~99 tok)
+  - fn `teardown_test_loop` L645-658 (~104 tok)
+  - fn `_create_app_mock` L659-676 (~134 tok)
+  - fn `_create_transport` L677-688 (~110 tok)
+  - fn `make_mocked_request` L689-795 (~892 tok)
+  - fn `make_mocked_coro` L796-809 (~120 tok)
+- `tracing.py` — TraceConfig: trace_config_ctx, freeze, on_request_start, on_request_chunk_sent + 20 more (~4273 tok)
+  - class `TraceConfig` L39-199 (~1611 tok)
+  - class `TraceRequestStartParams` L200-208 (~59 tok)
+  - class `TraceRequestChunkSentParams` L209-217 (~57 tok)
+  - class `TraceResponseChunkReceivedParams` L218-226 (~60 tok)
+  - class `TraceRequestEndParams` L227-236 (~66 tok)
+  - class `TraceRequestExceptionParams` L237-246 (~70 tok)
+  - class `TraceRequestRedirectParams` L247-256 (~69 tok)
+  - class `TraceConnectionQueuedStartParams` L257-261 (~47 tok)
+  - class `TraceConnectionQueuedEndParams` L262-266 (~46 tok)
+  - class `TraceConnectionCreateStartParams` L267-271 (~47 tok)
+  - class `TraceConnectionCreateEndParams` L272-276 (~46 tok)
+  - class `TraceConnectionReuseconnParams` L277-281 (~45 tok)
+  - class `TraceDnsResolveHostStartParams` L282-288 (~50 tok)
+  - class `TraceDnsResolveHostEndParams` L289-295 (~49 tok)
+  - class `TraceDnsCacheHitParams` L296-302 (~45 tok)
+  - class `TraceDnsCacheMissParams` L303-309 (~46 tok)
+  - class `TraceRequestHeadersSentParams` L310-317 (~48 tok)
+  - class `Trace` L318-454 (~1392 tok)
+- `typedefs.py` — Declares Middleware (~496 tok)
+- `web_app.py` — View: get, get, get, get (~5712 tok)
+  - fn `_build_middlewares` L74-86 (~126 tok)
+  - class `Application` L87-571 (~4501 tok)
+  - class `CleanupError` L572-583 (~86 tok)
+  - class `CleanupContext` L584-611 (~280 tok)
+- `web_exceptions.py` — NotAppKeyWarning: link (~3087 tok)
+  - class `NotAppKeyWarning` L71-79 (~68 tok)
+  - class `HTTPException` L80-122 (~334 tok)
+  - class `HTTPError` L123-126 (~32 tok)
+  - class `HTTPRedirection` L127-130 (~31 tok)
+  - class `HTTPSuccessful` L131-134 (~30 tok)
+  - class `HTTPOk` L135-138 (~16 tok)
+  - class `HTTPCreated` L139-142 (~17 tok)
+  - class `HTTPAccepted` L143-146 (~17 tok)
+  - class `HTTPNonAuthoritativeInformation` L147-150 (~23 tok)
+  - class `HTTPNoContent` L151-155 (~24 tok)
+  - class `HTTPResetContent` L156-160 (~25 tok)
+  - class `HTTPPartialContent` L161-169 (~60 tok)
+  - class `HTTPMove` L170-193 (~191 tok)
+  - class `HTTPMultipleChoices` L194-197 (~18 tok)
+  - class `HTTPMovedPermanently` L198-201 (~18 tok)
+  - class `HTTPFound` L202-207 (~40 tok)
+  - class `HTTPSeeOther` L208-211 (~16 tok)
+  - class `HTTPNotModified` L212-217 (~40 tok)
+  - class `HTTPUseProxy` L218-222 (~29 tok)
+  - class `HTTPTemporaryRedirect` L223-226 (~18 tok)
+  - class `HTTPPermanentRedirect` L227-235 (~59 tok)
+  - class `HTTPClientError` L236-239 (~13 tok)
+  - class `HTTPBadRequest` L240-243 (~18 tok)
+  - class `HTTPUnauthorized` L244-247 (~19 tok)
+  - class `HTTPPaymentRequired` L248-251 (~20 tok)
+  - class `HTTPForbidden` L252-255 (~18 tok)
+  - class `HTTPNotFound` L256-259 (~18 tok)
+  - class `HTTPMethodNotAllowed` L260-286 (~210 tok)
+  - class `HTTPNotAcceptable` L287-290 (~19 tok)
+  - class `HTTPProxyAuthenticationRequired` L291-451 (~1030 tok)
+- `web_fileresponse.py` — _FileResponseResult: prepare (~4807 tok)
+  - class `_FileResponseResult` L74-91 (~170 tok)
+  - class `FileResponse` L92-420 (~4030 tok)
+- `web_log.py` — KeyMethod: compile_format, enabled, log (~2491 tok)
+  - class `KeyMethod` L15-19 (~36 tok)
+  - class `AccessLogger` L20-232 (~2304 tok)
+- `web_middlewares.py` — middleware, normalize_path_middleware, impl, impl (~1221 tok)
+  - fn `_check_request_resolves` L21-32 (~98 tok)
+  - fn `middleware` L33-37 (~32 tok)
+  - fn `normalize_path_middleware` L38-109 (~821 tok)
+  - fn `_fix_request_current_app` L110-122 (~115 tok)
+- `web_protocol.py` — RequestPayloadError: ssl_context, peername, sockname, keepalive_timeout + 3 more (~9134 tok)
+  - class `RequestPayloadError` L78-81 (~21 tok)
+  - class `PayloadAccessError` L82-89 (~56 tok)
+  - class `_ErrInfo` L90-98 (~39 tok)
+  - class `RequestHandler` L99-875 (~8202 tok)
+- `web_request.py` — FileField: clone, task, protocol, transport + 7 more (~9376 tok)
+  - class `FileField` L70-106 (~351 tok)
+  - class `BaseRequest` L107-875 (~7648 tok)
+  - class `Request` L876-949 (~664 tok)
+- `web_response.py` — ContentCoding: prepared, task, status, chunked + 22 more (~9055 tok)
+  - class `ContentCoding` L60-76 (~149 tok)
+  - class `StreamResponse` L77-651 (~5665 tok)
+  - class `Response` L652-856 (~2174 tok)
+  - fn `json_response` L857-882 (~188 tok)
+  - fn `json_bytes_response` L883-910 (~228 tok)
+- `web_routedef.py` — View: get, post, put, patch, delete, get, post, put, patch, delete (~1789 tok)
+  - class `AbstractRouteDef` L38-47 (~80 tok)
+  - class `RouteDef` L48-72 (~255 tok)
+  - class `StaticDef` L73-91 (~180 tok)
+  - fn `route` L92-95 (~40 tok)
+  - fn `head` L96-99 (~38 tok)
+  - fn `options` L100-103 (~39 tok)
+  - fn `get` L104-116 (~74 tok)
+  - fn `post` L117-120 (~38 tok)
+  - fn `put` L121-124 (~37 tok)
+  - fn `patch` L125-128 (~38 tok)
+  - fn `delete` L129-132 (~39 tok)
+  - fn `view` L133-136 (~39 tok)
+  - fn `static` L137-143 (~47 tok)
+  - class `RouteTableDef` L144-204 (~589 tok)
+- `web_runner.py` — GracefulExit: name, start, stop, port + 15 more (~3753 tok)
+  - class `GracefulExit` L37-40 (~14 tok)
+  - fn `_raise_graceful_exit` L41-44 (~18 tok)
+  - class `BaseSite` L45-83 (~338 tok)
+  - class `TCPSite` L84-152 (~656 tok)
+  - class `UnixSite` L153-190 (~280 tok)
+  - class `NamedPipeSite` L191-221 (~269 tok)
+  - class `SockSite` L222-262 (~351 tok)
+  - class `BaseRunner` L263-365 (~1032 tok)
+  - class `ServerRunner` L366-386 (~147 tok)
+  - class `AppRunner` L387-426 (~326 tok)
+- `web_server.py` — Low level HTTP server. (~932 tok)
+  - class `Server` L15-92 (~800 tok)
+- `web_urldispatcher.py` — _InfoDict: import, name, canonical, url_for + 30 more (~12907 tok)
+  - class `_InfoDict` L90-108 (~84 tok)
+  - class `AbstractResource` L109-155 (~351 tok)
+  - class `AbstractRoute` L156-240 (~802 tok)
+  - class `UrlMappingMatchInfo` L241-303 (~528 tok)
+  - class `MatchInfoError` L304-319 (~130 tok)
+  - fn `_default_expect_handler` L320-335 (~184 tok)
+  - class `Resource` L336-389 (~548 tok)
+  - class `PlainResource` L390-429 (~343 tok)
+  - class `DynamicResource` L430-503 (~746 tok)
+  - class `PrefixResource` L504-528 (~229 tok)
+  - class `StaticResource` L529-738 (~2368 tok)
+  - class `PrefixedSubAppResource` L739-782 (~466 tok)
+  - class `AbstractRuleMatching` L783-797 (~136 tok)
+  - class `Domain` L798-837 (~370 tok)
+  - class `MaskDomain` L838-853 (~129 tok)
+  - class `MatchedSubAppResource` L854-882 (~277 tok)
+  - class `ResourceRoute` L883-916 (~286 tok)
+  - class `SystemRoute` L917-946 (~246 tok)
+  - class `View` L947-966 (~221 tok)
+  - class `ResourcesView` L967-980 (~127 tok)
+  - class `RoutesView` L981-997 (~153 tok)
+  - class `UrlDispatcher` L998-1262 (~3064 tok)
+  - fn `_quote_path` L1263-1268 (~48 tok)
+  - fn `_unquote_path_safe` L1269-1274 (~42 tok)
+  - fn `_requote_path` L1275-1282 (~78 tok)
+- `web_ws.py` — WebSocketReady: prepare (~8068 tok)
+  - class `WebSocketReady` L78-85 (~34 tok)
+  - class `WebSocketResponse` L86-784 (~7260 tok)
+- `web.py` — import (~5433 tok)
+  - fn `_run_app` L297-419 (~1111 tok)
+  - fn `_cancel_tasks` L420-443 (~186 tok)
+  - fn `run_app` L444-524 (~888 tok)
+  - fn `main` L525-594 (~623 tok)
+- `worker.py` — Async gunicorn worker for aiohttp.web (~2507 tok)
+  - class `GunicornWebWorker` L38-248 (~2048 tok)
+  - class `GunicornUVLoopWebWorker` L249-267 (~160 tok)
+
+## .venv/Lib/site-packages/aiohttp/.hash/
+
+- `_cparser.pxd.hash` (~29 tok)
+- `_find_header.pxd.hash` (~30 tok)
+- `_http_parser.pyx.hash` (~30 tok)
+- `_http_writer.pyx.hash` (~30 tok)
+- `hdrs.py.hash` (~28 tok)
+
+## .venv/Lib/site-packages/aiohttp/_websocket/
+
+- `__init__.py` — WebSocket protocol versions 13 and 8. (~13 tok)
+- `helpers.py` — Helpers for WebSocket protocol versions 13 and 8. (~1479 tok)
+  - fn `_xor_table` L27-30 (~29 tok)
+  - fn `_websocket_mask_python` L31-77 (~419 tok)
+  - fn `ws_ext_parse` L78-128 (~580 tok)
+  - fn `ws_ext_gen` L129-149 (~219 tok)
+- `mask.cp312-win_amd64.pyd` (~9493 tok)
+- `mask.pxd` (~31 tok)
+- `mask.pyx` — from cpython cimport PyByteArray_AsString # cython still not exports that (~386 tok)
+- `models.py` — Models for WebSocket protocol versions 13 and 8. (~874 tok)
+  - class `WSCloseCode` L11-26 (~103 tok)
+  - class `WSMsgType` L27-50 (~112 tok)
+  - class `WSMessage` L51-64 (~101 tok)
+  - class `WSMessageTextBytes` L65-94 (~356 tok)
+  - class `WebSocketError` L95-105 (~78 tok)
+  - class `WSHandshakeError` L106-108 (~24 tok)
+- `reader_c.cp312-win_amd64.pyd` (~37397 tok)
+- `reader_c.pxd` — Declares WebSocketDataQueue (~746 tok)
+- `reader_c.py` — Reader for WebSocket protocol versions 13 and 8. (~5881 tok)
+  - class `WebSocketDataQueue` L55-135 (~759 tok)
+  - class `WebSocketReader` L136-510 (~4570 tok)
+- `reader_py.py` — Reader for WebSocket protocol versions 13 and 8. (~5881 tok)
+  - class `WebSocketDataQueue` L55-135 (~759 tok)
+  - class `WebSocketReader` L136-510 (~4570 tok)
+- `reader.py` — Reader for WebSocket protocol versions 13 and 8. (~304 tok)
+- `writer.py` — WebSocket protocol versions 13 and 8. (~3292 tok)
+  - class `WebSocketWriter` L39-262 (~2857 tok)
+
+## .venv/Lib/site-packages/aiohttp/_websocket/.hash/
+
+- `mask.pxd.hash` (~31 tok)
+- `mask.pyx.hash` (~31 tok)
+- `reader_c.pxd.hash` (~32 tok)
+
+## .venv/Lib/site-packages/aiosignal-1.4.0.dist-info/
+
+- `INSTALLER` (~2 tok)
+- `METADATA` (~977 tok)
+- `RECORD` (~188 tok)
+- `top_level.txt` (~3 tok)
+- `WHEEL` (~25 tok)
+
+## .venv/Lib/site-packages/aiosignal-1.4.0.dist-info/licenses/
+
+- `LICENSE` — Project license (~3022 tok)
+
+## .venv/Lib/site-packages/aiosignal/
+
+- `__init__.py` — Signal: send (~440 tok)
+- `py.typed` (~0 tok)
+
+## .venv/Lib/site-packages/alembic-1.18.5.dist-info/
+
+- `entry_points.txt` (~12 tok)
+- `INSTALLER` (~2 tok)
+- `METADATA` (~1925 tok)
+- `RECORD` (~3582 tok)
+- `top_level.txt` (~2 tok)
+- `WHEEL` (~25 tok)
+
+## .venv/Lib/site-packages/alembic-1.18.5.dist-info/licenses/
+
+- `LICENSE` — Project license (~283 tok)
+
+## .venv/Lib/site-packages/alembic/
+
+- `__init__.py` (~27 tok)
+- `__main__.py` (~23 tok)
+- `command.py` — mypy: allow-untyped-defs, allow-untyped-calls (~7286 tok)
+  - fn `list_templates` L25-41 (~160 tok)
+  - fn `init` L42-193 (~1496 tok)
+  - fn `revision` L194-322 (~1281 tok)
+  - fn `check` L323-381 (~440 tok)
+  - fn `merge` L382-448 (~462 tok)
+  - fn `upgrade` L449-492 (~313 tok)
+  - fn `downgrade` L493-539 (~347 tok)
+  - fn `show` L540-565 (~206 tok)
+  - fn `history` L566-634 (~617 tok)
+  - fn `heads` L635-661 (~203 tok)
+  - fn `branches` L662-690 (~261 tok)
+  - fn `current` L691-731 (~337 tok)
+  - fn `stamp` L732-798 (~582 tok)
+  - fn `edit` L799-831 (~251 tok)
+  - fn `ensure_version` L832-856 (~158 tok)
+- `config.py` — URL configuration (~9996 tok)
+  - class `Config` L35-671 (~6441 tok)
+  - class `MessagingOptions` L672-675 (~19 tok)
+  - class `CommandFunction` L676-689 (~100 tok)
+  - class `CommandLine` L690-1039 (~3162 tok)
+  - fn `main` L1040-1052 (~72 tok)
+- `context.py` — create proxy functions for (~56 tok)
+- `context.pyi` — ### this file stubs are generated by tools/write_pyi.py - do not edit ### (~8675 tok)
+- `environment.py` (~13 tok)
+- `migration.py` (~12 tok)
+- `op.py` — create proxy functions for (~48 tok)
+- `op.pyi` — ### this file stubs are generated by tools/write_pyi.py - do not edit ### (~14227 tok)
+- `py.typed` (~0 tok)
+
+## .venv/Lib/site-packages/alembic/autogenerate/
+
+- `__init__.py` (~156 tok)
+- `api.py` — SQLAlchemy: AutogenContext (~6509 tok)
+  - fn `compare_metadata` L50-175 (~1042 tok)
+  - fn `produce_migrations` L176-206 (~261 tok)
+  - fn `render_python_code` L207-257 (~556 tok)
+  - fn `_render_migration_diffs` L258-278 (~164 tok)
+  - class `AutogenContext` L279-527 (~2558 tok)
+  - class `RevisionContext` L528-668 (~1514 tok)
+- `render.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~10789 tok)
+  - fn `_render_gen_name` L59-68 (~92 tok)
+  - fn `_indent` L69-74 (~46 tok)
+  - fn `_render_python_into_templatevars` L75-96 (~206 tok)
+  - fn `_render_cmd_body` L97-123 (~176 tok)
+  - fn `render_op` L124-131 (~59 tok)
+  - fn `render_op_text` L132-138 (~55 tok)
+  - fn `_render_modify_table` L139-167 (~255 tok)
+  - fn `_render_create_table_comment` L168-201 (~303 tok)
+  - fn `_render_drop_table_comment` L202-232 (~259 tok)
+  - fn `_add_table` L233-290 (~438 tok)
+  - fn `_drop_table` L291-305 (~122 tok)
+  - fn `_render_dialect_kwargs_items` L306-315 (~84 tok)
+  - fn `_add_index` L316-355 (~368 tok)
+  - fn `_drop_index` L356-381 (~271 tok)
+  - fn `_add_unique_constraint` L382-388 (~67 tok)
+  - fn `_add_fk_constraint` L389-435 (~388 tok)
+  - fn `_add_pk_constraint` L436-440 (~40 tok)
+  - fn `_add_check_constraint` L441-445 (~39 tok)
+  - fn `_drop_constraint` L446-468 (~249 tok)
+  - fn `_add_column` L469-495 (~249 tok)
+  - fn `_drop_column` L496-524 (~244 tok)
+  - fn `_alter_column` L525-587 (~662 tok)
+  - class `_f_name` L588-596 (~63 tok)
+  - fn `_ident` L597-612 (~142 tok)
+  - fn `_render_potential_expr` L613-657 (~417 tok)
+  - fn `_get_index_rendered_expressions` L658-670 (~102 tok)
+  - fn `_uq_constraint` L671-714 (~466 tok)
+  - fn `_user_autogenerate_prefix` L715-722 (~60 tok)
+  - fn `_sqlalchemy_autogenerate_prefix` L723-726 (~42 tok)
+  - fn `_alembic_autogenerate_prefix` L727-1188 (~4297 tok)
+- `rewriter.py` — Rewriter: chain, add_column_nullable, add_column_idx, rewrites + 2 more (~2233 tok)
+  - class `Rewriter` L33-241 (~1962 tok)
+
+## .venv/Lib/site-packages/alembic/autogenerate/compare/
+
+- `__init__.py` (~517 tok)
+  - fn `_populate_migration_script` L33-42 (~95 tok)
+  - fn `_produce_net_changes` L43-63 (~215 tok)
+- `comments.py` — setup (~924 tok)
+  - fn `_compare_column_comment` L26-54 (~271 tok)
+  - fn `_compare_table_comment` L55-95 (~403 tok)
+  - fn `setup` L96-107 (~77 tok)
+- `constraints.py` — mypy: allow-untyped-defs, allow-untyped-calls, allow-incomplete-defs (~7974 tok)
+  - fn `_compare_indexes_and_uniques` L53-443 (~3936 tok)
+  - fn `_correct_for_uq_duplicates_uix` L444-518 (~721 tok)
+  - fn `_make_index` L519-550 (~314 tok)
+  - fn `_make_unique_constraint` L551-564 (~133 tok)
+  - fn `_make_foreign_key` L565-625 (~610 tok)
+  - fn `_compare_foreign_keys` L626-752 (~1244 tok)
+  - fn `_compare_nullable` L753-796 (~428 tok)
+  - fn `setup` L797-813 (~110 tok)
+- `schema.py` — mypy: allow-untyped-calls (~485 tok)
+- `server_defaults.py` — setup (~3084 tok)
+  - fn `_render_server_default_for_compare` L32-50 (~183 tok)
+  - fn `_normalize_computed_default` L51-60 (~97 tok)
+  - fn `_compare_computed_default` L61-118 (~555 tok)
+  - fn `_warn_computed_not_supported` L119-122 (~42 tok)
+  - fn `_compare_identity_default` L123-179 (~470 tok)
+  - fn `_user_compare_server_default` L180-237 (~546 tok)
+  - fn `_dialect_impl_compare_server_default` L238-295 (~576 tok)
+  - fn `_setup_autoincrement` L296-314 (~180 tok)
+  - fn `setup` L315-345 (~215 tok)
+- `tables.py` — mypy: allow-untyped-calls (~3032 tok)
+  - fn `_autogen_for_tables` L36-85 (~434 tok)
+  - fn `_compare_tables` L86-235 (~1616 tok)
+  - fn `_compare_columns` L236-309 (~690 tok)
+  - fn `setup` L310-317 (~42 tok)
+- `types.py` — setup (~1145 tok)
+  - fn `_compare_type_setup` L26-54 (~218 tok)
+  - fn `_user_compare_type` L55-102 (~400 tok)
+  - fn `_dialect_impl_compare_type` L103-134 (~263 tok)
+  - fn `setup` L135-148 (~98 tok)
+- `util.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~2721 tok)
+  - class `_InspectorConv` L42-84 (~348 tok)
+  - class `_LegacyInspectorConv` L85-132 (~444 tok)
+  - class `_SQLA2InspectorConv` L133-315 (~1628 tok)
+
+## .venv/Lib/site-packages/alembic/ddl/
+
+- `__init__.py` (~44 tok)
+- `_autogen.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~2650 tok)
+  - class `ComparisonResult` L41-77 (~330 tok)
+  - class `_constraint_sig` L78-159 (~675 tok)
+  - class `_uq_constraint_sig` L160-197 (~291 tok)
+  - class `_ix_constraint_sig` L198-248 (~402 tok)
+  - class `_fk_constraint_sig` L249-319 (~567 tok)
+  - fn `is_index_sig` L320-323 (~29 tok)
+  - fn `is_uq_sig` L324-327 (~27 tok)
+  - fn `is_fk_sig` L328-330 (~27 tok)
+- `base.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~3480 tok)
+  - class `AlterTable` L42-58 (~111 tok)
+  - class `RenameTable` L59-69 (~91 tok)
+  - class `AlterColumn` L70-92 (~224 tok)
+  - class `ColumnNullable` L93-100 (~62 tok)
+  - class `ColumnType` L101-108 (~66 tok)
+  - class `ColumnName` L109-116 (~60 tok)
+  - class `ColumnDefault` L117-128 (~77 tok)
+  - class `ComputedColumnDefault` L129-136 (~67 tok)
+  - class `IdentityColumnDefault` L137-150 (~92 tok)
+  - class `AddColumn` L151-167 (~158 tok)
+  - class `DropColumn` L168-180 (~91 tok)
+  - class `ColumnComment` L181-189 (~70 tok)
+  - fn `visit_rename_table` L190-199 (~84 tok)
+  - fn `visit_add_column` L200-214 (~132 tok)
+  - fn `visit_drop_column` L215-224 (~90 tok)
+  - fn `visit_column_nullable` L225-235 (~96 tok)
+  - fn `visit_column_type` L236-244 (~90 tok)
+  - fn `visit_column_name` L245-253 (~94 tok)
+  - fn `visit_column_default` L254-268 (~130 tok)
+  - fn `visit_computed_column` L269-278 (~86 tok)
+  - fn `visit_identity_column` L279-288 (~88 tok)
+  - fn `quote_dotted` L289-299 (~86 tok)
+  - fn `format_table_name` L300-311 (~95 tok)
+  - fn `format_column_name` L312-317 (~54 tok)
+  - fn `format_server_default` L318-330 (~112 tok)
+  - fn `format_type` L331-334 (~36 tok)
+  - fn `alter_table` L335-342 (~49 tok)
+  - fn `drop_column` L343-351 (~67 tok)
+  - fn `alter_column` L352-355 (~36 tok)
+  - fn `add_column` L356-410 (~509 tok)
+- `impl.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~8965 tok)
+  - class `ImplMeta` L75-90 (~114 tok)
+  - class `DefaultImpl` L91-865 (~7620 tok)
+  - class `Params` L866-872 (~32 tok)
+  - fn `_compare_identity_options` L873-922 (~506 tok)
+- `mssql.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~4971 tok)
+  - class `MSSQLImpl` L53-296 (~2448 tok)
+  - class `_ExecDropConstraint` L297-312 (~102 tok)
+  - class `_ExecDropFKConstraint` L313-324 (~90 tok)
+  - fn `_exec_drop_col_constraint` L325-349 (~258 tok)
+  - fn `_exec_drop_col_fk_constraint` L350-369 (~228 tok)
+  - fn `visit_add_column` L370-376 (~68 tok)
+  - fn `mssql_add_column` L377-383 (~56 tok)
+  - fn `visit_column_nullable` L384-395 (~120 tok)
+  - fn `visit_column_default` L396-408 (~126 tok)
+  - fn `visit_rename_column` L409-419 (~106 tok)
+  - fn `visit_column_type` L420-430 (~92 tok)
+  - fn `visit_rename_table` L431-439 (~80 tok)
+  - fn `_add_column_comment` L440-461 (~186 tok)
+  - fn `_update_column_comment` L462-483 (~188 tok)
+  - fn `_drop_column_comment` L484-499 (~154 tok)
+  - fn `visit_column_comment` L500-524 (~221 tok)
+- `mysql.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~5701 tok)
+  - class `MySQLImpl` L44-388 (~3736 tok)
+  - class `MariaDBImpl` L389-392 (~17 tok)
+  - class `MySQLAlterDefault` L393-405 (~100 tok)
+  - class `MySQLChangeColumn` L406-434 (~282 tok)
+  - class `MySQLModifyColumn` L435-442 (~66 tok)
+  - fn `_mysql_doesnt_support_individual` L443-449 (~63 tok)
+  - fn `_mysql_alter_default` L450-464 (~143 tok)
+  - fn `_mysql_modify_column` L465-482 (~165 tok)
+  - fn `_mysql_change_column` L483-500 (~167 tok)
+  - fn `_mysql_colspec` L501-525 (~234 tok)
+  - fn `_mysql_drop_constraint` L526-562 (~374 tok)
+- `oracle.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~1784 tok)
+  - class `OracleImpl` L35-94 (~564 tok)
+  - fn `visit_add_column` L95-104 (~79 tok)
+  - fn `visit_column_nullable` L105-115 (~97 tok)
+  - fn `visit_column_type` L116-126 (~95 tok)
+  - fn `visit_column_name` L127-137 (~103 tok)
+  - fn `visit_column_default` L138-152 (~131 tok)
+  - fn `visit_column_comment` L153-170 (~142 tok)
+  - fn `visit_rename_table` L171-179 (~77 tok)
+  - fn `alter_column` L180-183 (~36 tok)
+  - fn `add_column` L184-188 (~56 tok)
+  - fn `visit_identity_column` L189-203 (~130 tok)
+- `postgresql.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~8691 tok)
+  - class `PostgresqlImpl` L82-518 (~4652 tok)
+  - class `PostgresqlColumnType` L519-529 (~98 tok)
+  - fn `visit_rename_table` L530-539 (~89 tok)
+  - fn `visit_column_type` L540-551 (~118 tok)
+  - fn `visit_column_comment` L552-573 (~182 tok)
+  - fn `visit_identity_column` L574-612 (~390 tok)
+  - class `CreateExcludeConstraintOp` L613-750 (~1312 tok)
+  - fn `_add_exclude_constraint` L751-757 (~72 tok)
+  - fn `_render_inline_exclude_constraint` L758-771 (~108 tok)
+  - fn `_postgresql_autogenerate_prefix` L772-778 (~68 tok)
+  - fn `_exclude_constraint` L779-841 (~604 tok)
+  - fn `_render_potential_column` L842-865 (~226 tok)
+- `sqlite.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~2291 tok)
+  - class `SQLiteImpl` L41-203 (~1605 tok)
+  - fn `visit_rename_table` L204-213 (~84 tok)
+  - fn `visit_column_name` L214-238 (~268 tok)
+
+## .venv/Lib/site-packages/alembic/operations/
+
+- `__init__.py` (~91 tok)
+- `base.py` — mypy: allow-untyped-calls (~22410 tok)
+  - class `AbstractOperations` L74-590 (~5504 tok)
+  - class `Operations` L591-1700 (~13546 tok)
+  - class `BatchOperations` L1701-2002 (~2730 tok)
+- `batch.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~7700 tok)
+  - class `BatchOperationsImpl` L54-211 (~1654 tok)
+  - class `ApplyBatchImpl` L212-721 (~5526 tok)
+- `ops.py` — MigrateOperation: info, reverse, to_diff_tuple, constraint_type + 16 more (~28379 tok)
+  - class `MigrateOperation` L62-93 (~208 tok)
+  - class `AddConstraintOp` L94-133 (~359 tok)
+  - class `DropConstraintOp` L134-268 (~1254 tok)
+  - class `CreatePrimaryKeyOp` L269-392 (~1222 tok)
+  - class `CreateUniqueConstraintOp` L393-527 (~1360 tok)
+  - class `CreateForeignKeyOp` L528-755 (~2236 tok)
+  - class `CreateCheckConstraintOp` L756-887 (~1316 tok)
+  - class `CreateIndexOp` L888-1042 (~1375 tok)
+  - class `DropIndexOp` L1043-1165 (~1050 tok)
+  - class `CreateTableOp` L1166-1334 (~1808 tok)
+  - class `DropTableOp` L1335-1437 (~937 tok)
+  - class `AlterTableOp` L1438-1451 (~92 tok)
+  - class `RenameTableOp` L1452-1491 (~336 tok)
+  - class `CreateTableCommentOp` L1492-1604 (~1005 tok)
+  - class `DropTableCommentOp` L1605-1687 (~724 tok)
+  - class `AlterColumnOp` L1688-2045 (~4017 tok)
+  - class `AddColumnOp` L2046-2300 (~2664 tok)
+  - class `DropColumnOp` L2301-2440 (~1285 tok)
+  - class `BulkInsertOp` L2441-2565 (~1280 tok)
+  - class `ExecuteSQLOp` L2566-2691 (~1357 tok)
+  - class `OpContainer` L2692-2714 (~187 tok)
+  - class `ModifyTableOps` L2715-2736 (~167 tok)
+  - class `UpgradeOps` L2737-2764 (~203 tok)
+  - class `DowngradeOps` L2765-2788 (~160 tok)
+  - class `MigrationScript` L2789-2919 (~1242 tok)
+- `schemaobj.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~2706 tok)
+  - class `SchemaObjects` L40-291 (~2346 tok)
+- `toimpl.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~2419 tok)
+  - fn `alter_column` L18-85 (~684 tok)
+  - fn `drop_table` L86-95 (~94 tok)
+  - fn `drop_column` L96-109 (~110 tok)
+  - fn `create_index` L110-120 (~101 tok)
+  - fn `drop_index` L121-132 (~98 tok)
+  - fn `create_table` L133-144 (~108 tok)
+  - fn `rename_table` L145-153 (~77 tok)
+  - fn `create_table_comment` L154-161 (~78 tok)
+  - fn `drop_table_comment` L162-169 (~74 tok)
+  - fn `add_column` L170-217 (~486 tok)
+  - fn `create_constraint` L218-226 (~73 tok)
+  - fn `drop_constraint` L227-246 (~172 tok)
+  - fn `bulk_insert` L247-255 (~80 tok)
+  - fn `execute_sql` L256-262 (~62 tok)
+
+## .venv/Lib/site-packages/alembic/runtime/
+
+- `__init__.py` (~0 tok)
+- `environment.py` — EnvironmentContext: my_function, is_offline_mode, is_transactional_ddl, requires_connection + 9 more (~12115 tok)
+  - class `EnvironmentContext` L110-1075 (~11364 tok)
+- `migration.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~13837 tok)
+  - class `_ProxyTransaction` L55-83 (~266 tok)
+  - class `MigrationContext` L84-708 (~7093 tok)
+  - class `HeadMaintainer` L709-819 (~1109 tok)
+  - class `MigrationInfo` L820-950 (~1390 tok)
+  - class `MigrationStep` L951-1001 (~384 tok)
+  - class `RevisionStep` L1002-1227 (~2088 tok)
+  - class `StampStep` L1228-1347 (~1051 tok)
+- `plugins.py` — Plugin: remove, add_autogenerate_comparator, populate_autogenerate_priority_dispatch, setup_plugin_from_module (~1636 tok)
+  - class `Plugin` L24-155 (~1332 tok)
+  - fn `_make_re` L156-171 (~108 tok)
+  - fn `_setup` L172-180 (~69 tok)
+
+## .venv/Lib/site-packages/alembic/script/
+
+- `__init__.py` (~29 tok)
+- `base.py` — URL configuration (~10634 tok)
+  - class `ScriptDirectory` L53-801 (~7710 tok)
+  - class `Script` L802-1064 (~2519 tok)
+- `revision.py` — _CollectRevisionsProtocol: heads, bases (~17783 tok)
+  - class `_CollectRevisionsProtocol` L51-61 (~92 tok)
+  - class `RevisionError` L62-65 (~12 tok)
+  - class `RangeNotAncestorError` L66-77 (~102 tok)
+  - class `MultipleHeads` L78-87 (~94 tok)
+  - class `ResolutionError` L88-93 (~48 tok)
+  - class `CycleDetected` L94-104 (~81 tok)
+  - class `DependencyCycleDetected` L105-111 (~50 tok)
+  - class `LoopDetected` L112-118 (~42 tok)
+  - class `DependencyLoopDetected` L119-125 (~57 tok)
+  - class `RevisionMap` L126-1537 (~14994 tok)
+  - class `Revision` L1538-1705 (~1703 tok)
+  - fn `tuple_rev_as_scalar` L1706-1709 (~17 tok)
+  - fn `tuple_rev_as_scalar` L1710-1714 (~33 tok)
+  - fn `tuple_rev_as_scalar` L1715-1725 (~59 tok)
+  - fn `is_revision` L1726-1729 (~26 tok)
+- `write_hooks.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~1534 tok)
+  - fn `register` L27-45 (~95 tok)
+  - fn `_invoke` L46-69 (~206 tok)
+  - fn `_run_hooks` L70-90 (~179 tok)
+  - fn `_parse_cmdline_options` L91-111 (~211 tok)
+  - fn `_get_required_option` L112-121 (~86 tok)
+  - fn `_run_hook` L122-136 (~138 tok)
+  - fn `console_scripts` L137-167 (~294 tok)
+  - fn `exec_` L168-173 (~64 tok)
+  - fn `module` L174-182 (~104 tok)
+
+## .venv/Lib/site-packages/alembic/templates/async/
+
+- `alembic.ini.mako` — A generic, single database configuration. (~1336 tok)
+- `env.py` — this is the Alembic Config object, which provides (~683 tok)
+  - fn `run_migrations_offline` L31-54 (~189 tok)
+  - fn `do_run_migrations` L55-61 (~59 tok)
+  - fn `run_async_migrations` L62-79 (~133 tok)
+  - fn `run_migrations_online` L80-90 (~62 tok)
+- `README` (~16 tok)
+- `script.py.mako` (~188 tok)
+
+## .venv/Lib/site-packages/alembic/templates/generic/
+
+- `alembic.ini.mako` — A generic, single database configuration. (~1336 tok)
+- `env.py` — this is the Alembic Config object, which provides (~601 tok)
+  - fn `run_migrations_offline` L29-52 (~189 tok)
+  - fn `run_migrations_online` L53-79 (~194 tok)
+- `README` (~11 tok)
+- `script.py.mako` (~188 tok)
+
+## .venv/Lib/site-packages/alembic/templates/multidb/
+
+- `alembic.ini.mako` — a multi-database configuration. (~1423 tok)
+- `env.py` — run_migrations_offline, run_migrations_online (~1209 tok)
+  - fn `run_migrations_offline` L46-81 (~349 tok)
+  - fn `run_migrations_online` L82-141 (~501 tok)
+- `README` (~162 tok)
+- `script.py.mako` (~330 tok)
+
+## .venv/Lib/site-packages/alembic/templates/pyproject/
+
+- `alembic.ini.mako` — A generic, single database configuration. (~209 tok)
+- `env.py` — this is the Alembic Config object, which provides (~601 tok)
+  - fn `run_migrations_offline` L29-52 (~189 tok)
+  - fn `run_migrations_online` L53-79 (~194 tok)
+- `pyproject.toml.mako` (~800 tok)
+- `README` (~16 tok)
+- `script.py.mako` (~188 tok)
+
+## .venv/Lib/site-packages/alembic/templates/pyproject_async/
+
+- `alembic.ini.mako` — A generic, single database configuration. (~209 tok)
+- `env.py` — this is the Alembic Config object, which provides (~683 tok)
+  - fn `run_migrations_offline` L31-54 (~189 tok)
+  - fn `do_run_migrations` L55-61 (~59 tok)
+  - fn `run_async_migrations` L62-79 (~133 tok)
+  - fn `run_migrations_online` L80-90 (~62 tok)
+- `pyproject.toml.mako` (~800 tok)
+- `README` (~12 tok)
+- `script.py.mako` (~188 tok)
+
+## .venv/Lib/site-packages/alembic/testing/
+
+- `__init__.py` (~371 tok)
+- `assertions.py` — _ErrorContainer: assert_raises, assert_raises_context_ok, assert_raises_message, assert_raises_message_context_ok + 9 more (~1527 tok)
+  - fn `_assert_proper_exception_context` L22-42 (~204 tok)
+  - fn `assert_raises` L43-46 (~39 tok)
+  - fn `assert_raises_context_ok` L47-50 (~36 tok)
+  - fn `assert_raises_message` L51-56 (~52 tok)
+  - fn `assert_raises_message_context_ok` L57-62 (~47 tok)
+  - fn `_assert_raises` L63-70 (~61 tok)
+  - class `_ErrorContainer` L71-75 (~21 tok)
+  - fn `_expect_raises` L76-100 (~232 tok)
+  - fn `expect_raises` L101-104 (~34 tok)
+  - fn `expect_raises_message` L105-112 (~58 tok)
+  - fn `eq_ignore_whitespace` L113-124 (~76 tok)
+  - fn `_get_dialect` L125-138 (~106 tok)
+  - fn `expect_warnings` L139-154 (~161 tok)
+  - fn `emits_python_deprecation_warning` L155-170 (~108 tok)
+  - fn `expect_deprecated` L171-174 (~30 tok)
+  - fn `expect_sqlalchemy_deprecated` L175-178 (~36 tok)
+  - fn `expect_sqlalchemy_deprecated_20` L179-181 (~36 tok)
+- `env.py` — URL configuration (~3472 tok)
+  - fn `_get_staging_directory` L19-28 (~50 tok)
+  - fn `_replace_logger` L29-37 (~87 tok)
+  - fn `_restore_logger` L38-46 (~61 tok)
+  - fn `staging_env` L47-81 (~362 tok)
+  - fn `clear_staging_env` L82-89 (~52 tok)
+  - fn `script_file_fixture` L90-96 (~54 tok)
+  - fn `env_file_fixture` L97-116 (~106 tok)
+  - fn `_sqlite_file_db` L117-124 (~89 tok)
+  - fn `_sqlite_testing_config` L125-170 (~252 tok)
+  - fn `_multi_dir_testing_config` L171-214 (~265 tok)
+  - fn `_no_sql_pyproject_config` L215-258 (~212 tok)
+  - fn `_no_sql_testing_config` L259-297 (~194 tok)
+  - fn `_write_toml_config` L298-304 (~48 tok)
+  - fn `_write_config_file` L305-311 (~41 tok)
+  - fn `_testing_config` L312-322 (~91 tok)
+  - fn `write_script` L323-348 (~243 tok)
+  - fn `make_sourceless` L349-369 (~161 tok)
+  - fn `three_rev_fixture` L370-387 (~99 tok)
+  - fn `upgrade` L388-391 (~14 tok)
+  - fn `downgrade` L392-409 (~81 tok)
+  - fn `upgrade` L410-413 (~14 tok)
+  - fn `downgrade` L414-432 (~82 tok)
+  - fn `upgrade` L433-436 (~14 tok)
+  - fn `downgrade` L437-444 (~23 tok)
+  - fn `multi_heads_fixture` L445-469 (~144 tok)
+  - fn `upgrade` L470-473 (~14 tok)
+  - fn `downgrade` L474-493 (~84 tok)
+  - fn `upgrade` L494-497 (~14 tok)
+  - fn `downgrade` L498-517 (~84 tok)
+  - fn `upgrade` L518-582 (~336 tok)
+- `fixtures.py` — SQLAlchemy: TestBase (~3409 tok)
+  - class `TestBase` L44-143 (~854 tok)
+  - class `TablesTest` L144-150 (~31 tok)
+  - fn `capture_db` L151-165 (~82 tok)
+  - fn `capture_context_buffer` L166-172 (~40 tok)
+  - fn `capture_context_buffer` L173-178 (~30 tok)
+  - fn `capture_context_buffer` L179-198 (~143 tok)
+  - fn `capture_engine_context_buffer` L199-225 (~190 tok)
+  - fn `op_fixture` L226-309 (~683 tok)
+  - class `AlterColRoundTripFixture` L310-405 (~991 tok)
+- `requirements.py` — SuiteRequirements: schemas, autocommit_isolation, materialized_views, unique_constraint_reflection + 32 more (~1305 tok)
+  - class `SuiteRequirements` L7-190 (~1271 tok)
+- `schemacompare.py` — SQLAlchemy: CompareTable (~1383 tok)
+  - class `CompareTable` L7-30 (~177 tok)
+  - class `CompareColumn` L31-45 (~96 tok)
+  - class `CompareIndex` L46-72 (~224 tok)
+  - class `CompareCheckConstraint` L73-89 (~153 tok)
+  - class `CompareForeignKey` L90-115 (~233 tok)
+  - class `ComparePrimaryKey` L116-143 (~234 tok)
+  - class `CompareUniqueConstraint` L144-170 (~234 tok)
+- `util.py` — testing/util.py (~958 tok)
+  - fn `flag_combinations` L17-65 (~355 tok)
+  - fn `resolve_lambda` L66-82 (~146 tok)
+  - fn `metadata_fixture` L83-107 (~199 tok)
+  - fn `_safe_int` L108-114 (~33 tok)
+  - fn `testing_engine` L115-127 (~113 tok)
+- `warnings.py` — testing/warnings.py (~238 tok)
+
+## .venv/Lib/site-packages/alembic/testing/plugin/
+
+- `__init__.py` (~0 tok)
+- `bootstrap.py` (~15 tok)
+
+## .venv/Lib/site-packages/alembic/testing/suite/
+
+- `__init__.py` (~83 tok)
+- `_autogen_fixtures.py` — SQLAlchemy: ModelOne (~4058 tok)
+  - fn `new_table` L41-44 (~20 tok)
+  - fn `_default_include_object` L45-56 (~75 tok)
+  - class `ModelOne` L57-154 (~720 tok)
+  - class `NamingConvModel` L155-266 (~1016 tok)
+  - class `_ComparesFKs` L267-321 (~480 tok)
+  - class `AutogenTest` L322-384 (~554 tok)
+  - class `AutogenFixtureTest` L385-480 (~880 tok)
+- `test_autogen_comments.py` — SQLAlchemy: AutogenerateCommentsTest (~1796 tok)
+  - class `AutogenerateCommentsTest` L13-243 (~1713 tok)
+- `test_autogen_computed.py` — SQLAlchemy: AutogenerateComputedTest (~1302 tok)
+  - class `AutogenerateComputedTest` L20-158 (~1166 tok)
+- `test_autogen_diffs.py` — SQLAlchemy: AlterColumnTest (~2399 tok)
+  - class `AlterColumnTest` L16-90 (~688 tok)
+  - class `AutoincrementTest` L91-274 (~1601 tok)
+- `test_autogen_fks.py` — SQLAlchemy: AutogenerateForeignKeysTest (~9409 tok)
+  - class `AutogenerateForeignKeysTest` L16-470 (~3611 tok)
+  - class `IncludeHooksTest` L471-715 (~2004 tok)
+  - class `AutogenerateFKOptionsTest` L716-1192 (~3679 tok)
+- `test_autogen_identity.py` — SQLAlchemy: AutogenerateIdentityTest (~1664 tok)
+  - class `AutogenerateIdentityTest` L16-227 (~1556 tok)
+- `test_environment.py` — Tests: proxy_transaction_rollback, proxy_transaction_commit, proxy_transaction_contextmanager_commit, proxy_transaction_contextmanager_rollback + 1... (~3394 tok)
+  - class `MigrationTransactionTest` L15-365 (~3297 tok)
+- `test_op.py` — Test against the builders in the op.* module. (~384 tok)
+
+## .venv/Lib/site-packages/alembic/util/
+
+- `__init__.py` (~508 tok)
+- `compat.py` — mypy: no-warn-unused-ignores (~1089 tok)
+  - class `EncodedIO` L37-94 (~450 tok)
+  - fn `importlib_metadata_get` L95-105 (~109 tok)
+  - fn `formatannotation_fwdref` L106-125 (~212 tok)
+  - fn `read_config_parser` L126-131 (~52 tok)
+- `editor.py` — open_in_editor (~728 tok)
+  - fn `open_in_editor` L17-40 (~229 tok)
+  - fn `_find_editor` L41-60 (~183 tok)
+  - fn `_find_executable` L61-74 (~133 tok)
+  - fn `_default_editors` L75-82 (~91 tok)
+- `exc.py` — Declares CommandError (~284 tok)
+- `langhelpers.py` — _ModuleClsMeta: create_module_class_proxy, translate, decorate, rev_id + 13 more (~3762 tok)
+  - class `_ModuleClsMeta` L45-50 (~56 tok)
+  - class `ModuleClsProxy` L51-222 (~1597 tok)
+  - fn `_with_legacy_names` L223-230 (~57 tok)
+  - fn `rev_id` L231-235 (~19 tok)
+  - fn `to_tuple` L236-239 (~24 tok)
+  - fn `to_tuple` L240-243 (~21 tok)
+  - fn `to_tuple` L244-248 (~28 tok)
+  - fn `to_tuple` L249-261 (~80 tok)
+  - fn `dedupe_tuple` L262-265 (~28 tok)
+  - class `PriorityDispatchResult` L266-285 (~124 tok)
+  - class `DispatchPriority` L286-303 (~128 tok)
+  - class `Dispatcher` L304-355 (~462 tok)
+  - class `PriorityDispatcher` L356-442 (~798 tok)
+  - fn `not_none` L443-446 (~25 tok)
+- `messaging.py` — write_outstream, status, err, obfuscate_url_pw + 4 more (~942 tok)
+  - fn `write_outstream` L35-54 (~172 tok)
+  - fn `status` L55-69 (~106 tok)
+  - fn `err` L70-75 (~39 tok)
+  - fn `obfuscate_url_pw` L76-79 (~34 tok)
+  - fn `warn` L80-83 (~32 tok)
+  - fn `warn_deprecated` L84-87 (~37 tok)
+  - fn `msg` L88-113 (~205 tok)
+  - fn `format_as_comma` L114-123 (~91 tok)
+- `pyfiles.py` — URL configuration (~1345 tok)
+  - fn `template_to_file` L24-53 (~283 tok)
+  - fn `coerce_resource_to_filename` L54-79 (~282 tok)
+  - fn `pyc_file_from_path` L80-101 (~185 tok)
+  - fn `load_python_file` L102-129 (~248 tok)
+  - fn `load_module_py` L130-139 (~85 tok)
+  - fn `_preserving_path_as_str` L140-154 (~138 tok)
+- `sqla_compat.py` — mypy: allow-untyped-defs, allow-incomplete-defs, allow-untyped-calls (~4356 tok)
+  - class `_CompilerProtocol` L55-58 (~32 tok)
+  - fn `_safe_int` L59-89 (~228 tok)
+  - fn `_get_identity_options_dict` L90-140 (~427 tok)
+  - fn `constraint_name_defined` L141-146 (~48 tok)
+  - fn `constraint_name_string` L147-150 (~30 tok)
+  - fn `constraint_name_or_none` L151-158 (~54 tok)
+  - fn `_ensure_scope_for_ddl` L159-180 (~154 tok)
+  - fn `_safe_begin_connection_transaction` L181-190 (~65 tok)
+  - fn `_safe_commit_connection_transaction` L191-198 (~51 tok)
+  - fn `_safe_rollback_connection_transaction` L199-206 (~52 tok)
+  - fn `_get_connection_in_transaction` L207-216 (~80 tok)
+  - fn `_idx_table_bound_expressions` L217-220 (~35 tok)
+  - fn `_copy` L221-227 (~56 tok)
+  - fn `_connectable_has_table` L228-233 (~55 tok)
+  - fn `_exec_on_inspector` L234-238 (~44 tok)
+  - fn `_nullability_might_be_unset` L239-244 (~48 tok)
+  - fn `_server_default_is_computed` L245-248 (~38 tok)
+  - fn `_server_default_is_identity` L249-252 (~38 tok)
+  - fn `_table_for_constraint` L253-261 (~79 tok)
+  - fn `_columns_for_constraint` L262-270 (~86 tok)
+  - fn `_resolve_for_variant` L271-295 (~175 tok)
+  - fn `_get_table_key` L296-302 (~43 tok)
+  - fn `_fk_spec` L303-335 (~284 tok)
+  - fn `_fk_is_self_referential` L336-344 (~86 tok)
+  - fn `_is_type_bound` L345-351 (~67 tok)
+  - fn `_find_columns` L352-359 (~56 tok)
+  - fn `_remove_column_from_collection` L360-377 (~176 tok)
+  - fn `_textual_index_column` L378-395 (~203 tok)
+  - fn `_copy_expression` L396-416 (~170 tok)
+  - class `_textual_index_element` L417-511 (~868 tok)
+
+## .venv/Lib/site-packages/antlr4/
+
+- `__init__.py` (~322 tok)
+- `BufferedTokenStream.py` — Use of this file is governed by the BSD 3-clause license that (~3080 tok)
+  - class `TokenStream` L24-28 (~11 tok)
+  - class `BufferedTokenStream` L29-303 (~2811 tok)
+- `CommonTokenFactory.py` — Use of this file is governed by the BSD 3-clause license that (~603 tok)
+  - class `TokenFactory` L13-16 (~11 tok)
+  - class `CommonTokenFactory` L17-62 (~498 tok)
+- `CommonTokenStream.py` — Use of this file is governed by the BSD 3-clause license that (~792 tok)
+  - class `CommonTokenStream` L37-88 (~427 tok)
+- `FileStream.py` — Use of this file is governed by the BSD 3-clause license that (~248 tok)
+- `InputStream.py` — Use of this file is governed by the BSD 3-clause license that (~667 tok)
+  - class `InputStream` L14-88 (~582 tok)
+- `IntervalSet.py` — Use of this file is governed by the BSD 3-clause license that (~1705 tok)
+  - class `IntervalSet` L13-181 (~1619 tok)
+- `Lexer.py` — Use of this file is governed by the BSD 3-clause license that (~3298 tok)
+  - class `TokenSource` L25-29 (~11 tok)
+  - class `Lexer` L30-330 (~3031 tok)
+- `ListTokenSource.py` — Use of this file is governed by the BSD 3-clause license that (~1531 tok)
+  - class `ListTokenSource` L20-145 (~1342 tok)
+- `LL1Analyzer.py` — Use of this file is governed by the BSD 3-clause license that (~2215 tok)
+  - class `LL1Analyzer` L16-174 (~2022 tok)
+- `Parser.py` — Use of this file is governed by the BSD 3-clause license that (~6538 tok)
+  - class `TraceListener` L25-46 (~231 tok)
+  - class `Parser` L47-581 (~6003 tok)
+- `ParserInterpreter.py` — Use of this file is governed by the BSD 3-clause license that (~2059 tok)
+  - class `ParserInterpreter` L34-171 (~1663 tok)
+- `ParserRuleContext.py` — Use of this file is governed by the BSD 3-clause license that (~1932 tok)
+  - class `ParserRuleContext` L36-181 (~1429 tok)
+  - class `InterpreterRuleContext` L182-187 (~66 tok)
+- `PredictionContext.py` — Use of this file is governed by the BSD 3-clause license that (~6565 tok)
+  - class `PredictionContext` L15-70 (~508 tok)
+  - fn `calculateHashCode` L71-73 (~41 tok)
+  - fn `calculateListsHashCode` L74-83 (~112 tok)
+  - class `PredictionContextCache` L84-108 (~208 tok)
+  - class `SingletonPredictionContext` L109-157 (~445 tok)
+  - class `EmptyPredictionContext` L158-177 (~118 tok)
+  - class `ArrayPredictionContext` L178-239 (~621 tok)
+  - fn `PredictionContextFromRuleContext` L240-255 (~207 tok)
+  - fn `merge` L256-307 (~617 tok)
+  - fn `mergeSingletons` L308-404 (~1168 tok)
+  - fn `mergeRoot` L405-443 (~485 tok)
+  - fn `mergeArrays` L444-534 (~1034 tok)
+  - fn `combineCommonParents` L535-545 (~90 tok)
+  - fn `getCachedPredictionContext` L546-607 (~629 tok)
+  - fn `getAllContextNodes` L608-624 (~173 tok)
+- `Recognizer.py` — Use of this file is governed by the BSD 3-clause license that (~1538 tok)
+  - class `Recognizer` L13-148 (~1423 tok)
+- `RuleContext.py` — Use of this file is governed by the BSD 3-clause license that (~2314 tok)
+  - class `RuleContext` L35-228 (~1938 tok)
+- `StdinStream.py` — Declares StdinStream (~87 tok)
+- `Token.py` — Use of this file is governed by the BSD 3-clause license that (~1488 tok)
+  - class `Token` L12-69 (~550 tok)
+  - class `CommonToken` L70-156 (~827 tok)
+- `TokenStreamRewriter.py` — Use of this file is governed by the BSD 3-clause license that (~2950 tok)
+  - class `TokenStreamRewriter` L13-256 (~2862 tok)
+- `Utils.py` — Use of this file is governed by the BSD 3-clause license that (~266 tok)
+
+## .venv/Lib/site-packages/antlr4/atn/
+
+- `__init__.py` (~8 tok)
+- `ATN.py` — Use of this file is governed by the BSD 3-clause license that (~1654 tok)
+  - class `ATN` L14-133 (~1538 tok)
+- `ATNConfig.py` — Use of this file is governed by the BSD 3-clause license that (~1876 tok)
+  - class `ATNConfig` L23-115 (~1134 tok)
+  - class `LexerATNConfig` L116-160 (~507 tok)
+- `ATNConfigSet.py` — Use of this file is governed by the BSD 3-clause license that (~2375 tok)
+  - class `ATNConfigSet` L22-208 (~2130 tok)
+  - class `OrderedATNConfigSet` L209-213 (~27 tok)
+- `ATNDeserializationOptions.py` — Use of this file is governed by the BSD 3-clause license that (~289 tok)
+- `ATNDeserializer.py` — Use of this file is governed by the BSD 3-clause license that (~6358 tok)
+  - class `ATNDeserializer` L33-530 (~6011 tok)
+- `ATNSimulator.py` — Use of this file is governed by the BSD 3-clause license that (~657 tok)
+  - class `ATNSimulator` L12-48 (~536 tok)
+- `ATNState.py` — Use of this file is governed by the BSD 3-clause license that (~2190 tok)
+  - class `ATNState` L71-146 (~655 tok)
+  - class `BasicState` L147-153 (~34 tok)
+  - class `DecisionState` L154-161 (~66 tok)
+  - class `BlockStartState` L162-168 (~42 tok)
+  - class `BasicBlockStartState` L169-175 (~55 tok)
+  - class `BlockEndState` L176-188 (~120 tok)
+  - class `RuleStopState` L189-194 (~36 tok)
+  - class `RuleStartState` L195-206 (~110 tok)
+  - class `PlusLoopbackState` L207-217 (~117 tok)
+  - class `PlusBlockStartState` L218-226 (~72 tok)
+  - class `StarBlockStartState` L227-232 (~41 tok)
+  - class `StarLoopbackState` L233-239 (~38 tok)
+  - class `StarLoopEntryState` L240-250 (~116 tok)
+  - class `LoopEndState` L251-259 (~74 tok)
+  - class `TokensStartState` L260-265 (~38 tok)
+- `ATNType.py` — Use of this file is governed by the BSD 3-clause license that (~121 tok)
+- `LexerAction.py` — Use of this file is governed by the BSD 3-clause license that (~2862 tok)
+  - class `LexerActionType` L13-23 (~166 tok)
+  - class `LexerAction` L24-42 (~159 tok)
+  - class `LexerSkipAction` L43-60 (~130 tok)
+  - class `LexerTypeAction` L61-87 (~201 tok)
+  - class `LexerPushModeAction` L88-118 (~279 tok)
+  - class `LexerPopModeAction` L119-138 (~171 tok)
+  - class `LexerMoreAction` L139-156 (~130 tok)
+  - class `LexerModeAction` L157-191 (~358 tok)
+  - class `LexerCustomAction` L192-226 (~370 tok)
+  - class `LexerChannelAction` L227-262 (~407 tok)
+  - class `LexerIndexedCustomAction` L263-299 (~416 tok)
+- `LexerActionExecutor.py` — Use of this file is governed by the BSD 3-clause license that (~1835 tok)
+  - class `LexerActionExecutor` L22-144 (~1622 tok)
+- `LexerATNSimulator.py` — Use of this file is governed by the BSD 3-clause license that (~7276 tok)
+  - class `SimState` L36-51 (~90 tok)
+  - class `LexerATNSimulator` L52-571 (~6680 tok)
+- `ParserATNSimulator.py` — Use of this file is governed by the BSD 3-clause license that (~22962 tok)
+  - class `ParserATNSimulator` L257-1650 (~19467 tok)
+- `PredictionMode.py` — Use of this file is governed by the BSD 3-clause license that (~6425 tok)
+  - class `PredictionMode` L21-500 (~6244 tok)
+- `SemanticContext.py` — Use of this file is governed by the BSD 3-clause license that (~2999 tok)
+  - class `SemanticContext` L19-65 (~577 tok)
+  - fn `andContext` L66-79 (~97 tok)
+  - fn `orContext` L80-92 (~97 tok)
+  - fn `filterPrecedencePredicates` L93-96 (~40 tok)
+  - class `Predicate` L97-124 (~300 tok)
+  - class `PrecedencePredicate` L125-155 (~262 tok)
+  - class `AND` L156-241 (~730 tok)
+  - class `OR` L242-324 (~707 tok)
+- `Transition.py` — Use of this file is governed by the BSD 3-clause license that (~2504 tok)
+  - class `Transition` L28-69 (~297 tok)
+  - class `AtomTransition` L70-89 (~176 tok)
+  - class `RuleTransition` L90-104 (~186 tok)
+  - class `EpsilonTransition` L105-119 (~147 tok)
+  - class `RangeTransition` L120-140 (~193 tok)
+  - class `AbstractPredicateTransition` L141-146 (~36 tok)
+  - class `PredicateTransition` L147-166 (~224 tok)
+  - class `ActionTransition` L167-184 (~201 tok)
+  - class `SetTransition` L185-202 (~162 tok)
+  - class `NotSetTransition` L203-217 (~148 tok)
+  - class `WildcardTransition` L218-231 (~111 tok)
+  - class `PrecedencePredicateTransition` L232-269 (~343 tok)
+
+## .venv/Lib/site-packages/antlr4/dfa/
+
+- `__init__.py` (~8 tok)
+- `DFA.py` — Use of this file is governed by the BSD 3-clause license that (~1540 tok)
+  - class `DFA` L13-134 (~1415 tok)
+- `DFASerializer.py` — Use of this file is governed by the BSD 3-clause license that (~720 tok)
+  - class `DFASerializer` L14-66 (~557 tok)
+  - class `LexerDFASerializer` L67-74 (~52 tok)
+- `DFAState.py` — Use of this file is governed by the BSD 3-clause license that (~1596 tok)
+  - class `PredPrediction` L13-46 (~469 tok)
+  - class `DFAState` L47-127 (~1020 tok)
+
+## .venv/Lib/site-packages/antlr4/error/
+
+- `__init__.py` (~8 tok)
+- `DiagnosticErrorListener.py` — Use of this file is governed by the BSD 3-clause license that (~1266 tok)
+  - class `DiagnosticErrorListener` L32-108 (~901 tok)
+- `ErrorListener.py` — Use of this file is governed by the BSD 3-clause license that (~778 tok)
+  - class `ErrorListener` L13-26 (~135 tok)
+  - class `ConsoleErrorListener` L27-49 (~200 tok)
+  - class `ProxyErrorListener` L50-73 (~336 tok)
+- `Errors.py` — Use of this file is governed by the BSD 3-clause license that (~1932 tok)
+  - class `UnsupportedOperationException` L16-20 (~32 tok)
+  - class `IllegalStateException` L21-25 (~30 tok)
+  - class `CancellationException` L26-40 (~166 tok)
+  - class `RecognitionException` L41-81 (~485 tok)
+  - class `LexerNoViableAltException` L82-100 (~264 tok)
+  - class `NoViableAltException` L101-125 (~364 tok)
+  - class `InputMismatchException` L126-137 (~145 tok)
+  - class `FailedPredicateException` L138-160 (~280 tok)
+  - class `ParseCancellationException` L161-173 (~58 tok)
+- `ErrorStrategy.py` — Use of this file is governed by the BSD 3-clause license that (~8684 tok)
+  - class `ErrorStrategy` L17-40 (~160 tok)
+  - class `DefaultErrorStrategy` L41-685 (~8100 tok)
+  - class `BailErrorStrategy` L686-709 (~275 tok)
+
+## .venv/Lib/site-packages/antlr4/tree/
+
+- `__init__.py` (~0 tok)
+- `Chunk.py` — Use of this file is governed by the BSD 3-clause license that (~199 tok)
+- `ParseTreeMatch.py` — Use of this file is governed by the BSD 3-clause license that (~1282 tok)
+  - class `ParseTreeMatch` L16-119 (~1167 tok)
+- `ParseTreePattern.py` — Use of this file is governed by the BSD 3-clause license that (~808 tok)
+  - class `ParseTreePattern` L16-73 (~670 tok)
+- `ParseTreePatternMatcher.py` — Use of this file is governed by the BSD 3-clause license that (~4683 tok)
+  - class `CannotInvokeStartRule` L81-85 (~31 tok)
+  - class `StartRuleDoesNotConsumeFullPattern` L86-90 (~19 tok)
+  - class `ParseTreePatternMatcher` L91-375 (~3532 tok)
+- `RuleTagToken.py` — Use of this file is governed by the BSD 3-clause license that (~578 tok)
+  - class `RuleTagToken` L15-51 (~453 tok)
+- `TokenTagToken.py` — Use of this file is governed by the BSD 3-clause license that (~451 tok)
+- `Tree.py` — Use of this file is governed by the BSD 3-clause license that (~1592 tok)
+  - class `Tree` L14-16 (~9 tok)
+  - class `SyntaxTree` L17-19 (~10 tok)
+  - class `ParseTree` L20-22 (~11 tok)
+  - class `RuleNode` L23-25 (~11 tok)
+  - class `TerminalNode` L26-28 (~12 tok)
+  - class `ErrorNode` L29-31 (~12 tok)
+  - class `ParseTreeVisitor` L32-65 (~245 tok)
+  - class `ParseTreeListener` L66-81 (~89 tok)
+  - class `TerminalNodeImpl` L82-129 (~371 tok)
+  - class `ErrorNodeImpl` L130-138 (~61 tok)
+  - class `ParseTreeWalker` L139-192 (~646 tok)
+- `Trees.py` — Use of this file is governed by the BSD 3-clause license that (~1134 tok)
+  - class `Trees` L17-112 (~996 tok)
+
+## .venv/Lib/site-packages/antlr4/xpath/
+
+- `__init__.py` (~8 tok)
+- `XPath.py` — Use of this file is governed by the BSD 3-clause license that (~3719 tok)
+  - fn `serializedATN` L63-89 (~486 tok)
+  - class `XPathLexer` L90-146 (~480 tok)
+  - class `XPath` L147-274 (~1440 tok)
+  - class `XPathElement` L275-288 (~94 tok)
+  - class `XPathRuleAnywhereElement` L289-298 (~132 tok)
+  - class `XPathRuleElement` L299-308 (~129 tok)
+  - class `XPathTokenAnywhereElement` L309-318 (~128 tok)
+  - class `XPathTokenElement` L319-329 (~126 tok)
+  - class `XPathWildcardAnywhereElement` L330-341 (~84 tok)
+  - class `XPathWildcardElement` L342-353 (~81 tok)
+
+## .venv/Lib/site-packages/antlr4_python3_runtime-4.9.3.dist-info/
+
+- `INSTALLER` (~2 tok)
+- `METADATA` (~112 tok)
+- `RECORD` (~2180 tok)
+- `top_level.txt` (~2 tok)
+- `WHEEL` (~25 tok)
+
+## .venv/Lib/site-packages/asteroid_filterbanks-0.4.0.dist-info/
+
+- `INSTALLER` (~2 tok)
+- `LICENSE` — Project license (~286 tok)
+- `METADATA` (~874 tok)
+- `RECORD` (~734 tok)
+- `top_level.txt` (~6 tok)
+- `WHEEL` (~25 tok)
+
+## .venv/Lib/site-packages/asteroid_filterbanks/
+
+- `__init__.py` — defined: make_enc_dec, register_filterbank, get (~1328 tok)
+  - fn `make_enc_dec` L14-72 (~764 tok)
+  - fn `register_filterbank` L73-84 (~122 tok)
+  - fn `get` L85-132 (~331 tok)
+- `analytic_free_fb.py` — AnalyticFreeFB: conj, rfft, irfft, conj + 1 more (~785 tok)
+  - class `AnalyticFreeFB` L33-74 (~505 tok)
+- `deprecation.py` — VisibleDeprecationWarning: mark_deprecated, decorator, wrapped (~304 tok)
+- `enc_dec.py` — Filterbank: filters, pre_analysis, post_analysis, pre_synthesis + 14 more (~3552 tok)
+  - class `Filterbank` L10-73 (~658 tok)
+  - class `_EncDec` L74-120 (~469 tok)
+  - class `Encoder` L121-187 (~748 tok)
+  - fn `multishape_conv1d` L188-228 (~570 tok)
+  - fn `batch_packed_1d_conv` L229-238 (~125 tok)
+  - class `Decoder` L239-299 (~604 tok)
+  - fn `multishape_conv_transpose1d` L300-337 (~332 tok)
+- `free_fb.py` — FreeFB: filters (~325 tok)
+- `griffin_lim.py` — griffin_lim, misi (~2982 tok)
+  - fn `griffin_lim` L10-75 (~812 tok)
+  - fn `misi` L76-170 (~1220 tok)
+  - fn `_mixture_consistency` L171-241 (~900 tok)
+- `melgram_fb.py` — MelGramFB: post_analysis, get_config, forward (~909 tok)
+  - class `MelGramFB` L6-65 (~548 tok)
+  - class `MelScale` L66-102 (~344 tok)
+- `multiphase_gammatone_fb.py` — MultiphaseGammatoneFB: filters, generate_mpgtf, gammatone_impulse_response, erb_scale_2_freq_hz + 2 more (~1341 tok)
+  - class `MultiphaseGammatoneFB` L6-37 (~361 tok)
+  - fn `generate_mpgtf` L38-85 (~512 tok)
+  - fn `gammatone_impulse_response` L86-105 (~234 tok)
+  - fn `erb_scale_2_freq_hz` L106-111 (~52 tok)
+  - fn `freq_hz_2_erb_scale` L112-117 (~52 tok)
+  - fn `normalize_filters` L118-125 (~114 tok)
+- `param_sinc_fb.py` — ParamSincFB: filters, make_filters, to_mel, to_hz + 1 more (~1484 tok)
+  - class `ParamSincFB` L7-126 (~1458 tok)
+- `pcen.py` — ExponentialMovingAverage: set_weights, forward, forward, forward + 2 more (~3126 tok)
+  - class `ExponentialMovingAverage` L12-56 (~463 tok)
+  - class `TrainableParameters` L57-63 (~30 tok)
+  - class `_PCEN` L64-128 (~667 tok)
+  - class `PCEN` L129-193 (~812 tok)
+  - class `StatefulPCEN` L194-273 (~1088 tok)
+- `scripting.py` — is_tracing, script_if_tracing, wrapper (~428 tok)
+- `stft_fb.py` — STFTFB: filters, perfect_synthesis_window (~1155 tok)
+  - class `STFTFB` L6-78 (~862 tok)
+  - fn `perfect_synthesis_window` L79-104 (~275 tok)
+- `torch_stft_fb.py` — TorchSTFTFB: from_torch_args, pre_analysis, post_analysis, pre_synthesis + 4 more (~1840 tok)
+  - class `TorchSTFTFB` L9-130 (~1199 tok)
+  - fn `_restore_freqs_an` L131-137 (~46 tok)
+  - fn `_restore_freqs_syn` L138-144 (~46 tok)
+  - fn `ola_with_wdiv` L145-171 (~264 tok)
+  - fn `square_ola` L172-179 (~97 tok)
+  - fn `pad_all_shapes` L180-191 (~135 tok)
+- `transforms.py` — mul_c, reim, mag, magreim + 16 more (~3982 tok)
+  - fn `mul_c` L9-49 (~359 tok)
+  - fn `reim` L50-60 (~97 tok)
+  - fn `mag` L61-95 (~255 tok)
+  - fn `magreim` L96-106 (~96 tok)
+  - fn `apply_real_mask` L107-122 (~154 tok)
+  - fn `apply_mag_mask` L123-160 (~349 tok)
+  - fn `apply_complex_mask` L161-196 (~298 tok)
+  - fn `is_asteroid_complex` L197-211 (~126 tok)
+  - fn `check_complex` L212-231 (~188 tok)
+  - fn `to_numpy` L232-247 (~156 tok)
+  - fn `from_numpy` L248-265 (~166 tok)
+  - fn `is_torchaudio_complex` L266-278 (~82 tok)
+  - fn `check_torchaudio_complex` L279-294 (~135 tok)
+  - fn `to_torchaudio` L295-310 (~153 tok)
+  - fn `from_torchaudio` L311-326 (~162 tok)
+  - fn `to_torch_complex` L327-341 (~147 tok)
+  - fn `from_torch_complex` L342-356 (~146 tok)
+  - fn `angle` L357-375 (~177 tok)
+  - fn `from_magphase` L376-391 (~168 tok)
+  - fn `magphase` L392-398 (~72 tok)
+  - fn `centerfreq_correction` L399-427 (~272 tok)
+  - fn `phase_centerfreq_correction` L428-448 (~188 tok)
+
+## .venv/Lib/site-packages/attr/
+
+- `__init__.py` — SPDX-License-Identifier: MIT (~588 tok)
+  - class `AttrsInstance` L37-80 (~184 tok)
+  - fn `_make_getattr` L81-105 (~188 tok)
+- `__init__.pyi` — Declares import (~3020 tok)
+- `_cmp.py` — SPDX-License-Identifier: MIT (~1177 tok)
+  - fn `cmp_using` L13-111 (~828 tok)
+  - fn `_make_init` L112-125 (~60 tok)
+  - fn `_make_operator` L126-148 (~138 tok)
+  - fn `_is_comparable_to` L149-155 (~49 tok)
+  - fn `_check_same_type` L156-161 (~53 tok)
+- `_cmp.pyi` (~99 tok)
+- `_compat.py` — SPDX-License-Identifier: MIT (~809 tok)
+  - class `_AnnotationExtractor` L40-94 (~493 tok)
+  - fn `get_generic_base` L95-100 (~54 tok)
+- `_config.py` — SPDX-License-Identifier: MIT (~241 tok)
+- `_funcs.py` — SPDX-License-Identifier: MIT (~4709 tok)
+  - fn `asdict` L28-153 (~1334 tok)
+  - fn `_asdict_anything` L154-231 (~639 tok)
+  - fn `astuple` L232-353 (~1207 tok)
+  - fn `has` L354-381 (~208 tok)
+  - fn `assoc` L382-424 (~386 tok)
+  - fn `resolve_types` L425-498 (~820 tok)
+- `_make.py` — SPDX-License-Identifier: MIT (~30323 tok)
+  - class `_Nothing` L62-89 (~192 tok)
+  - class `_CacheHashWrapper` L90-105 (~156 tok)
+  - fn `attrib` L106-215 (~945 tok)
+  - fn `_compile_and_eval` L216-229 (~97 tok)
+  - fn `_linecache_and_compile` L230-264 (~254 tok)
+  - fn `_make_attr_tuple_class` L265-287 (~195 tok)
+  - class `_Attributes` L288-293 (~34 tok)
+  - fn `_is_class_var` L294-310 (~138 tok)
+  - fn `_has_own_attribute` L311-317 (~50 tok)
+  - fn `_collect_base_attrs` L318-350 (~298 tok)
+  - fn `_collect_base_attrs_broken` L351-378 (~254 tok)
+  - fn `_transform_attrs` L379-506 (~1242 tok)
+  - fn `_make_cached_property_getattr` L507-558 (~558 tok)
+  - fn `_frozen_setattrs` L559-575 (~111 tok)
+  - fn `_frozen_delattrs` L576-586 (~73 tok)
+  - fn `evolve` L587-644 (~463 tok)
+  - class `_ClassBuilder` L645-1227 (~5816 tok)
+  - fn `_determine_attrs_eq_order` L1228-1255 (~234 tok)
+  - fn `_determine_attrib_eq_order` L1256-1298 (~377 tok)
+  - fn `_determine_whether_to_implement` L1299-1324 (~222 tok)
+  - fn `attrs` L1325-1592 (~2598 tok)
+  - fn `_has_frozen_base_class` L1593-1600 (~51 tok)
+  - fn `_generate_unique_filename` L1601-1610 (~81 tok)
+  - fn `_make_hash_script` L1611-1682 (~650 tok)
+  - fn `_add_hash` L1683-1696 (~101 tok)
+  - fn `__ne__` L1697-1708 (~72 tok)
+  - fn `_make_eq_script` L1709-1745 (~306 tok)
+  - fn `_make_order` L1746-1801 (~399 tok)
+  - fn `_add_eq` L1802-1818 (~107 tok)
+  - fn `_make_repr_script` L1819-3407 (~13844 tok)
+- `_next_gen.py` — SPDX-License-Identifier: MIT (~7507 tok)
+  - fn `define` L23-436 (~4948 tok)
+  - fn `field` L437-622 (~2023 tok)
+  - fn `asdict` L623-638 (~119 tok)
+  - fn `astuple` L639-650 (~96 tok)
+  - fn `inspect` L651-675 (~194 tok)
+- `_typing_compat.pyi` — MYPY is a special constant in mypy which works the same way as `TYPE_CHECKING`. (~126 tok)
+- `_version_info.py` — SPDX-License-Identifier: MIT (~635 tok)
+  - class `VersionInfo` L12-90 (~577 tok)
+- `_version_info.pyi` — Declares VersionInfo (~56 tok)
+- `converters.py` — SPDX-License-Identifier: MIT (~1104 tok)
+  - fn `optional` L21-65 (~330 tok)
+  - fn `default_if_none` L66-124 (~471 tok)
+  - fn `to_bool` L125-163 (~228 tok)
+- `converters.pyi` (~172 tok)
+- `exceptions.py` — SPDX-License-Identifier: MIT (~569 tok)
+  - class `FrozenError` L6-22 (~114 tok)
+  - class `FrozenInstanceError` L23-30 (~42 tok)
+  - class `FrozenAttributeError` L31-38 (~42 tok)
+  - class `AttrsAttributeNotFoundError` L39-46 (~49 tok)
+  - class `NotAnAttrsClassError` L47-54 (~44 tok)
+  - class `DefaultAlreadySetError` L55-63 (~56 tok)
+  - class `UnannotatedAttributeError` L64-71 (~50 tok)
+  - class `PythonTooOldError` L72-80 (~50 tok)
+  - class `NotCallableError` L81-96 (~103 tok)
+- `exceptions.pyi` — Declares FrozenError (~144 tok)
+- `filters.py` — SPDX-License-Identifier: MIT (~513 tok)
+  - fn `_split_what` L10-20 (~92 tok)
+  - fn `include` L21-47 (~188 tok)
+  - fn `exclude` L48-73 (~194 tok)
+- `filters.pyi` (~56 tok)
+- `py.typed` (~0 tok)
+- `setters.py` — SPDX-License-Identifier: MIT (~462 tok)
+- `setters.pyi` (~156 tok)
+- `validators.py` — SPDX-License-Identifier: MIT (~6158 tok)
+  - fn `set_disabled` L42-59 (~96 tok)
+  - fn `get_disabled` L60-72 (~78 tok)
+  - fn `disabled` L73-92 (~128 tok)
+  - class `_InstanceOfValidator` L93-112 (~161 tok)
+  - fn `instance_of` L113-130 (~169 tok)
+  - class `_MatchesReValidator` L131-151 (~168 tok)
+  - fn `matches_re` L152-200 (~468 tok)
+  - class `_OptionalValidator` L201-213 (~80 tok)
+  - fn `optional` L214-235 (~224 tok)
+  - class `_InValidator` L236-258 (~182 tok)
+  - fn `in_` L259-294 (~348 tok)
+  - class `_IsCallableValidator` L295-315 (~175 tok)
+  - fn `is_callable` L316-332 (~145 tok)
+  - class `_DeepIterable` L333-360 (~236 tok)
+  - fn `deep_iterable` L361-387 (~246 tok)
+  - class `_DeepMapping` L388-409 (~237 tok)
+  - fn `deep_mapping` L410-460 (~474 tok)
+  - class `_NumberValidator` L461-477 (~144 tok)
+  - fn `lt` L478-492 (~99 tok)
+  - fn `le` L493-507 (~97 tok)
+  - fn `ge` L508-522 (~97 tok)
+  - fn `gt` L523-538 (~111 tok)
+  - class `_MaxLengthValidator` L539-553 (~126 tok)
+  - fn `max_len` L554-567 (~102 tok)
+  - class `_MinLengthValidator` L568-582 (~126 tok)
+  - fn `min_len` L583-596 (~104 tok)
+  - class `_SubclassOfValidator` L597-616 (~157 tok)
+  - fn `_subclass_of` L617-634 (~173 tok)
+  - class `_NotValidator` L635-670 (~289 tok)
+  - fn `not_` L671-751 (~737 tok)
+- `validators.pyi` (~1090 tok)
+
+## .venv/Lib/site-packages/attrs-26.1.0.dist-info/
+
+- `INSTALLER` (~2 tok)
+- `METADATA` — Declares Classifier (~2334 tok)
+- `RECORD` (~949 tok)
+- `WHEEL` (~24 tok)
+
+## .venv/Lib/site-packages/attrs-26.1.0.dist-info/licenses/
+
+- `LICENSE` — Project license (~296 tok)
+
+## .venv/Lib/site-packages/attrs/
+
+- `__init__.py` — SPDX-License-Identifier: MIT (~338 tok)
+- `__init__.pyi` — Declares our (~2511 tok)
+- `converters.py` — SPDX-License-Identifier: MIT (~22 tok)
+- `exceptions.py` — SPDX-License-Identifier: MIT (~22 tok)
+- `filters.py` — SPDX-License-Identifier: MIT (~21 tok)
+- `py.typed` (~0 tok)
+- `setters.py` — SPDX-License-Identifier: MIT (~21 tok)
+- `validators.py` — SPDX-License-Identifier: MIT (~22 tok)
+
+## .venv/Lib/site-packages/audioread-3.1.0.dist-info/
+
+- `INSTALLER` (~2 tok)
+- `METADATA` — Declares transparently (~2394 tok)
+- `RECORD` (~377 tok)
+- `WHEEL` (~24 tok)
+
+## .venv/Lib/site-packages/audioread-3.1.0.dist-info/licenses/
+
+- `LICENSE` — Project license (~284 tok)
+
+## .venv/Lib/site-packages/audioread/
+
+- `__init__.py` — Multi-library, cross-platform audio decoding. (~1012 tok)
+  - fn `_gst_available` L22-43 (~120 tok)
+  - fn `_ca_available` L44-52 (~63 tok)
+  - fn `_mad_available` L53-66 (~72 tok)
+  - fn `available_backends` L67-106 (~282 tok)
+  - fn `audio_open` L107-132 (~242 tok)
+- `base.py` — This file is part of audioread. (~208 tok)
+- `exceptions.py` — This file is part of audioread. (~275 tok)
+- `ffdec.py` — Read audio data using the ffmpeg command line tool via its standard (~3012 tok)
+  - class `FFmpegError` L38-41 (~12 tok)
+  - class `CommunicationError` L42-45 (~29 tok)
+  - class `UnsupportedError` L46-49 (~26 tok)
+  - class `NotInstalledError` L50-53 (~24 tok)
+  - class `ReadTimeoutError` L54-57 (~29 tok)
+  - class `QueueReaderThread` L58-79 (~184 tok)
+  - fn `popen_multiple` L80-98 (~205 tok)
+  - fn `available` L99-121 (~159 tok)
+  - class `FFmpegAudioFile` L122-321 (~2049 tok)
+- `gstdec.py` — Use Gstreamer to decode audio files. (~4184 tok)
+  - class `GStreamerError` L69-72 (~13 tok)
+  - class `UnknownTypeError` L73-81 (~76 tok)
+  - class `FileReadError` L82-86 (~29 tok)
+  - class `NoStreamError` L87-94 (~60 tok)
+  - class `MetadataMissingError` L95-101 (~48 tok)
+  - class `IncompleteGStreamerError` L102-118 (~114 tok)
+  - fn `get_loop_thread` L119-130 (~94 tok)
+  - class `MainLoopThread` L131-144 (~85 tok)
+  - class `GstAudioFile` L145-430 (~3072 tok)
+- `macca.py` — Read audio files using CoreAudio on Mac OS X. (~3114 tok)
+  - fn `_load_framework` L29-79 (~522 tok)
+  - fn `multi_char_literal` L80-105 (~220 tok)
+  - class `MacError` L106-116 (~83 tok)
+  - fn `check` L117-126 (~63 tok)
+  - class `CFObject` L127-137 (~69 tok)
+  - class `CFURL` L138-156 (~190 tok)
+  - class `AudioStreamBasicDescription` L157-170 (~141 tok)
+  - class `AudioBuffer` L171-178 (~56 tok)
+  - class `AudioBufferList` L179-187 (~49 tok)
+  - class `ExtAudioFile` L188-349 (~1461 tok)
+- `maddec.py` — Decode MPEG audio files with MAD (via pymad). (~720 tok)
+  - class `UnsupportedError` L22-25 (~24 tok)
+  - class `MadAudioFile` L26-87 (~476 tok)
+- `rawread.py` — Uses standard-library modules to read AIFF, AIFF-C, and WAV files. (~1235 tok)
+  - class `UnsupportedError` L32-35 (~25 tok)
+  - class `BitWidthError` L36-39 (~25 tok)
+  - fn `byteswap` L40-53 (~120 tok)
+  - class `RawAudioFile` L54-150 (~778 tok)
+
+## .venv/Lib/site-packages/av/
+
+- `__init__.pxd` (~0 tok)
+- `__init__.py` — MUST import the core before anything else in order to initialize the underlying (~755 tok)
+  - fn `_delvewheel_patch_1_13_0` L6-73 (~572 tok)
+  - fn `get_include` L74-86 (~118 tok)
+- `__main__.py` — main (~464 tok)
+- `_core.pxd` (~87 tok)
+- `_core.py` — decode_version (~575 tok)
+  - fn `decode_version` L11-66 (~517 tok)
+- `_core.pyd` (~7753 tok)
+- `_core.pyi` — Declares _Meta (~71 tok)
+- `about.py` (~7 tok)
+- `bitstream.pxd` — Declares BitStreamFilterContext (~52 tok)
+- `bitstream.py` — class: filter, flush, get_filter_names (~1216 tok)
+  - class `BitStreamFilterContext` L12-114 (~982 tok)
+  - fn `get_filter_names` L115-130 (~108 tok)
+- `bitstream.pyd` (~10174 tok)
+- `bitstream.pyi` — Declares BitStreamFilterContext (~119 tok)
+- `buffer.pxd` — Declares ByteSource (~102 tok)
+- `buffer.py` — class: bytesource, buffer_size, buffer_ptr, update (~858 tok)
+  - class `ByteSource` L14-42 (~234 tok)
+  - fn `bytesource` L43-52 (~70 tok)
+  - class `Buffer` L53-101 (~440 tok)
+- `buffer.pyd` (~11127 tok)
+- `buffer.pyi` — When Python 3.12 becomes our lowest supported version, we could make this (~87 tok)
+- `datasets.py` — URL configuration (~893 tok)
+  - fn `iter_data_dirs` L12-46 (~254 tok)
+  - fn `cached_download` L47-95 (~348 tok)
+  - fn `fate` L96-109 (~115 tok)
+  - fn `curated` L110-120 (~93 tok)
+- `device.py` — DeviceInfo: enumerate_input_devices, enumerate_output_devices (~1864 tok)
+  - class `DeviceInfo` L8-41 (~286 tok)
+  - fn `_build_device_list` L42-75 (~306 tok)
+  - fn `_enumerate_via_log_fallback` L76-125 (~534 tok)
+  - fn `enumerate_input_devices` L126-161 (~383 tok)
+  - fn `enumerate_output_devices` L162-188 (~271 tok)
+- `device.pyd` (~15327 tok)
+- `device.pyi` — Declares DeviceInfo (~143 tok)
+- `dictionary.pxd` — Declares Dictionary (~47 tok)
+- `dictionary.py` — class: keys, copy, pop, update + 1 more (~680 tok)
+  - class `Dictionary` L7-74 (~586 tok)
+  - fn `wrap_dictionary` L75-79 (~45 tok)
+- `dictionary.pyd` (~15051 tok)
+- `dictionary.pyi` — Declares Dictionary (~169 tok)
+- `error.pxd` (~24 tok)
+- `error.py` — Will get extended with all the exceptions. (~3107 tok)
+  - fn `code_to_tag` L26-43 (~96 tok)
+  - fn `tag_to_code` L44-55 (~86 tok)
+  - class `FFmpegError` L56-124 (~475 tok)
+  - class `LookupError` L125-128 (~16 tok)
+  - class `HTTPError` L129-132 (~12 tok)
+  - class `HTTPClientError` L133-179 (~696 tok)
+  - fn `_error_type_tag` L180-184 (~34 tok)
+  - fn `_error_type_strerror` L185-197 (~95 tok)
+  - fn `_extend_builtin` L198-235 (~410 tok)
+  - class `ArgumentError` L236-252 (~139 tok)
+  - class `UndefinedError` L253-293 (~268 tok)
+  - fn `stash_exception` L294-312 (~150 tok)
+  - fn `err_check` L313-357 (~386 tok)
+- `error.pyd` (~24906 tok)
+- `error.pyi` — Declares FFmpegError (~876 tok)
+- `format.pxd` — Declares ContainerFormat (~72 tok)
+- `format.py` — Flags: build_container_format, input, output, is_input + 7 more (~1640 tok)
+  - fn `build_container_format` L10-25 (~143 tok)
+  - class `Flags` L26-49 (~450 tok)
+  - class `ContainerFormat` L50-139 (~735 tok)
+  - fn `get_output_format_names` L140-153 (~99 tok)
+  - fn `get_input_format_names` L154-169 (~123 tok)
+- `format.pyd` (~10570 tok)
+- `format.pyi` — Declares import (~386 tok)
+- `frame.pxd` — Declares Frame (~114 tok)
+- `frame.py` — class: dts, dts, pts, pts + 12 more (~1715 tok)
+  - class `Frame` L10-202 (~1584 tok)
+- `frame.pyd` (~11134 tok)
+- `frame.pyi` — Declares SideData (~148 tok)
+- `index.pxd` — Declares IndexEntry (~81 tok)
+- `index.py` — class: wrap_index_entry, pos, timestamp, flags + 6 more (~1268 tok)
+  - fn `wrap_index_entry` L9-16 (~60 tok)
+  - class `IndexEntry` L17-68 (~360 tok)
+  - fn `wrap_index_entries` L69-76 (~58 tok)
+  - class `IndexEntries` L77-150 (~699 tok)
+- `index.pyd` (~15463 tok)
+- `index.pyi` — Declares IndexEntry (~163 tok)
+- `logging.pxd` — Declares char (~89 tok)
+- `logging.py` — type: ignore (~3076 tok)
+  - fn `adapt_level` L65-90 (~262 tok)
+  - fn `get_level` L91-95 (~32 tok)
+  - fn `set_level` L96-123 (~250 tok)
+  - fn `set_libav_level` L124-134 (~101 tok)
+  - fn `restore_default_callback` L135-145 (~99 tok)
+  - fn `get_skip_repeated` L146-150 (~27 tok)
+  - fn `set_skip_repeated` L151-162 (~73 tok)
+  - fn `get_last_error` L163-177 (~91 tok)
+  - class `Capture` L178-221 (~305 tok)
+  - fn `log_context_name` L222-231 (~83 tok)
+  - fn `log` L232-253 (~162 tok)
+  - fn `log_callback_gil` L254-309 (~497 tok)
+  - fn `log_callback_emit` L310-327 (~128 tok)
+  - fn `log_callback` L328-372 (~344 tok)
+  - fn `nolog_callback` L373-383 (~55 tok)
+- `logging.pyd` (~16531 tok)
+- `logging.pyi` — Declares Capture (~253 tok)
+- `opaque.pxd` — Declares OpaqueContainer (~66 tok)
+- `opaque.py` — type:ignore (~508 tok)
+  - fn `key_free` L14-22 (~67 tok)
+  - class `OpaqueContainer` L23-59 (~336 tok)
+- `opaque.pyd` (~8291 tok)
+- `packet.pxd` — Declares PacketSideData (~156 tok)
+- `packet.py` — Check https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/packet.h#L41 (~4180 tok)
+  - fn `packet_sidedata_type_to_literal` L61-64 (~42 tok)
+  - fn `packet_sidedata_type_from_literal` L65-70 (~48 tok)
+  - class `PacketSideData` L71-181 (~927 tok)
+  - fn `_packet_sidedata_from_packet` L182-202 (~159 tok)
+  - fn `_python_free` L203-213 (~67 tok)
+  - class `Packet` L214-497 (~2324 tok)
+- `packet.pyd` (~22767 tok)
+- `packet.pyi` — Declares PacketSideData (~899 tok)
+- `plane.pxd` — Declares Plane (~55 tok)
+- `plane.py` — Declares class (~186 tok)
+- `plane.pyd` (~9647 tok)
+- `plane.pyi` — Declares Plane (~48 tok)
+- `py.typed` (~0 tok)
+- `stream.pxd` — Declares Stream (~215 tok)
+- `stream.py` — Disposition: wrap_stream, id, profiles, profile + 13 more (~2942 tok)
+  - class `Disposition` L15-36 (~140 tok)
+  - class `Discard` L37-50 (~95 tok)
+  - fn `wrap_stream` L51-87 (~412 tok)
+  - class `Stream` L88-309 (~1661 tok)
+  - class `DataStream` L310-328 (~142 tok)
+  - class `AttachmentStream` L329-366 (~295 tok)
+- `stream.pyd` (~16265 tok)
+- `stream.pyi` — Declares import (~545 tok)
+- `utils.pxd` — Declares lib (~100 tok)
+- `utils.py` — type: ignore (~595 tok)
+  - fn `_decode` L10-14 (~41 tok)
+  - fn `avdict_to_dict` L15-31 (~142 tok)
+  - fn `dict_to_avdict` L32-47 (~105 tok)
+  - fn `avrational_to_fraction` L48-56 (~60 tok)
+  - fn `to_avrational` L57-62 (~48 tok)
+  - fn `check_ndarray` L63-75 (~132 tok)
+- `utils.pyd` (~7613 tok)
+
+## .venv/Lib/site-packages/av/audio/
+
+- `__init__.pxd` (~0 tok)
+- `__init__.py` (~27 tok)
+- `__init__.pyi` (~74 tok)
+- `codeccontext.pxd` — Declares AudioCodecContext (~92 tok)
+- `codeccontext.py` — class: frame_size, sample_rate, sample_rate, rate + 6 more (~897 tok)
+  - class `AudioCodecContext` L12-107 (~754 tok)
+- `codeccontext.pyd` (~10586 tok)
+- `codeccontext.pyi` — Declares _Format (~286 tok)
+- `fifo.pxd` — Declares AudioFifo (~128 tok)
+- `fifo.py` — class: write, read, read_many, format + 3 more (~2120 tok)
+  - class `AudioFifo` L8-223 (~2013 tok)
+- `fifo.pyd` (~13306 tok)
+- `fifo.pyi` — Declares AudioFifo (~196 tok)
+- `format.pxd` — Declares AudioFormat (~42 tok)
+- `format.py` — class: get_audio_format, name, bytes, bits + 5 more (~1079 tok)
+  - fn `get_audio_format` L12-24 (~90 tok)
+  - class `AudioFormat` L25-146 (~890 tok)
+- `format.pyd` (~8958 tok)
+- `format.pyi` — Declares AudioFormat (~66 tok)
+- `frame.pxd` — Declares AudioFrame (~206 tok)
+- `frame.py` — class: alloc_audio_frame, from_ndarray, planes, samples + 5 more (~1802 tok)
+  - fn `alloc_audio_frame` L12-31 (~89 tok)
+  - class `AudioFrame` L32-207 (~1551 tok)
+- `frame.pyd` (~15586 tok)
+- `frame.pyi` — Declares _Format (~390 tok)
+- `layout.pxd` — Declares AudioLayout (~42 tok)
+- `layout.py` — import: get_audio_layout, nb_channels, channels, name (~954 tok)
+  - class `AudioChannel` L9-20 (~65 tok)
+  - fn `get_audio_layout` L21-29 (~73 tok)
+  - class `AudioLayout` L30-110 (~736 tok)
+- `layout.pyd` (~13146 tok)
+- `layout.pyi` — Declares class (~70 tok)
+- `plane.pxd` — Declares AudioPlane (~37 tok)
+- `plane.py` — Declares class (~125 tok)
+- `plane.pyd` (~9375 tok)
+- `plane.pyi` — Declares AudioPlane (~21 tok)
+- `resampler.pxd` — Declares AudioResampler (~144 tok)
+- `resampler.py` — class: resample (~1474 tok)
+  - class `AudioResampler` L11-141 (~1390 tok)
+- `resampler.pyd` (~14254 tok)
+- `resampler.pyi` — Declares AudioResampler (~178 tok)
+- `stream.pxd` — Declares AudioStream (~59 tok)
+- `stream.py` — class: encode, decode (~481 tok)
+- `stream.pyd` (~10721 tok)
+- `stream.pyi` — Declares _Format (~273 tok)
+
+## .venv/Lib/site-packages/av/codec/
+
+- `__init__.pxd` (~0 tok)
+- `__init__.py` (~101 tok)
+- `codec.pxd` — Declares Codec (~75 tok)
+- `codec.py` — Properties: wrap_codec, create, mode, is_decoder + 22 more (~4246 tok)
+  - fn `wrap_codec` L15-22 (~64 tok)
+  - class `Properties` L23-32 (~83 tok)
+  - class `Capabilities` L33-56 (~254 tok)
+  - class `PixFmtLoss` L57-72 (~160 tok)
+  - class `UnknownCodecError` L73-78 (~22 tok)
+  - class `Codec` L79-354 (~2335 tok)
+  - fn `get_codec_names` L355-370 (~107 tok)
+  - fn `dump_codecs` L371-410 (~302 tok)
+  - fn `dump_hwconfigs` L411-427 (~110 tok)
+  - fn `find_best_pix_fmt_of_list` L428-485 (~534 tok)
+- `codec.pyd` (~17886 tok)
+- `codec.pyi` — Declares import (~1431 tok)
+- `context.pxd` — Declares CodecContext (~696 tok)
+- `context.py` — ThreadType: wrap_codec_context, create, flags, flags + 13 more (~8192 tok)
+  - fn `wrap_codec_context` L21-48 (~255 tok)
+  - class `ThreadType` L49-57 (~89 tok)
+  - class `Flags` L58-80 (~257 tok)
+  - class `Flags2` L81-93 (~129 tok)
+  - class `CodecContext` L94-824 (~7035 tok)
+- `context.pyd` (~28454 tok)
+- `context.pyi` — Declares import (~962 tok)
+- `hwaccel.pxd` — Declares HWConfig (~165 tok)
+- `hwaccel.py` — HWDeviceType: wrap_hwconfig, device_type, format, methods + 3 more (~2295 tok)
+  - class `HWDeviceType` L12-30 (~190 tok)
+  - class `HWConfigMethod` L31-45 (~133 tok)
+  - fn `wrap_hwconfig` L46-58 (~108 tok)
+  - class `HWConfig` L59-95 (~304 tok)
+  - fn `hwdevices_available` L96-110 (~132 tok)
+  - class `HWAccel` L111-221 (~1279 tok)
+- `hwaccel.pyd` (~16405 tok)
+- `hwaccel.pyi` — Declares import (~423 tok)
+
+## .venv/Lib/site-packages/av/container/
+
+- `__init__.pxd` (~0 tok)
+- `__init__.py` (~44 tok)
+- `__init__.pyi` (~18 tok)
+- `core.pxd` — Declares Container (~374 tok)
+- `core.py` — Flags: interrupt_cb, pyav_io_open, pyav_io_open_gil, pyav_io_close + 1 more (~6558 tok)
+  - fn `interrupt_cb` L33-59 (~225 tok)
+  - fn `pyav_io_open` L60-72 (~109 tok)
+  - fn `pyav_io_open_gil` L73-119 (~408 tok)
+  - fn `pyav_io_close` L120-128 (~64 tok)
+  - fn `pyav_io_close_gil` L129-156 (~239 tok)
+  - fn `_free_chapters` L157-171 (~175 tok)
+  - class `Flags` L172-187 (~475 tok)
+  - class `AudioCodec` L188-228 (~749 tok)
+  - class `Container` L229-493 (~2450 tok)
+  - fn `open` L494-613 (~1212 tok)
+- `core.pyd` (~25475 tok)
+- `core.pyi` — Declares import (~1467 tok)
+- `input.pxd` — Declares InputContainer (~46 tok)
+- `input.py` — class: close_input, start_time, duration, bit_rate + 6 more (~3520 tok)
+  - fn `close_input` L14-24 (~98 tok)
+  - class `InputContainer` L25-318 (~3178 tok)
+- `input.pyd` (~19248 tok)
+- `input.pyi` — Declares InputContainer (~841 tok)
+- `output.pxd` — Declares OutputContainer (~120 tok)
+- `output.py` — class: close_output, add_stream, add_mux_stream, add_stream_from_template (~8189 tok)
+  - fn `_set_codecpar_extradata` L20-39 (~167 tok)
+  - fn `close_output` L40-67 (~343 tok)
+  - class `OutputContainer` L68-713 (~7257 tok)
+- `output.pyd` (~23708 tok)
+- `output.pyi` — Declares OutputContainer (~608 tok)
+- `pyio.pxd` — Declares uint8_t (~202 tok)
+- `pyio.py` — type: ignore (~1870 tok)
+  - class `PyIOFile` L19-92 (~762 tok)
+  - fn `pyio_read` L93-99 (~58 tok)
+  - fn `pyio_read_gil` L100-119 (~164 tok)
+  - fn `pyio_write` L120-126 (~59 tok)
+  - fn `pyio_write_gil` L127-146 (~163 tok)
+  - fn `pyio_seek` L147-156 (~114 tok)
+  - fn `pyio_seek_gil` L157-182 (~186 tok)
+  - fn `pyio_close_gil` L183-190 (~53 tok)
+  - fn `pyio_close_custom_gil` L191-205 (~108 tok)
+- `pyio.pyd` (~10175 tok)
+- `streams.pxd` — Declares StreamContainer (~43 tok)
+- `streams.py` — View: get (~1572 tok)
+  - fn `_get_media_type_enum` L9-25 (~144 tok)
+  - fn `_get_best_stream_index` L26-44 (~140 tok)
+  - class `StreamContainer` L45-179 (~1195 tok)
+- `streams.pyd` (~19100 tok)
+- `streams.pyi` — Declares StreamContainer (~321 tok)
+
+## .venv/Lib/site-packages/~umpy/core/
+
+- `_multiarray_tests.cp312-win_amd64.pyd` (~17504 tok)
+
+## .venv/Lib/site-packages/~umpy/fft/
+
+- `_pocketfft_internal.cp312-win_amd64.pyd` (~29273 tok)
+
+## .venv/Lib/site-packages/~umpy/linalg/
+
+- `_umath_linalg.cp312-win_amd64.pyd` (~28238 tok)
+
+## .venv/Lib/site-packages/~umpy/random/
+
+- `_bounded_integers.cp312-win_amd64.pyd` (~61256 tok)
+- `_common.cp312-win_amd64.pyd` (~44025 tok)
+- `_generator.cp312-win_amd64.pyd` (~182654 tok)
+- `_mt19937.cp312-win_amd64.pyd` (~20011 tok)
+- `_pcg64.cp312-win_amd64.pyd` (~21694 tok)
+- `_philox.cp312-win_amd64.pyd` (~18163 tok)
+- `_sfc64.cp312-win_amd64.pyd` (~13429 tok)
+- `bit_generator.cp312-win_amd64.pyd` (~42518 tok)
+- `mtrand.cp312-win_amd64.pyd` (~154420 tok)
 
 ## src/generator/
 
-- `corpus_recipes.py` — Declares from (~11312 tok)
-  - class `PropFamilyRecipe` L70-719 (~9498 tok)
-  - fn `recipe_for_group` L720-775 (~667 tok)
-  - fn `section_qualifies` L776-782 (~99 tok)
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~43880 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~43975 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -1114,250 +2206,17 @@
   - fn `_humanize_group_name` L1936-1943 (~87 tok)
   - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
   - fn `_place_per_beat` L2176-2235 (~743 tok)
-  - fn `_place_per_trigger` L2236-3436 (~14002 tok)
-- `image_catalog.py` — Global image library for xLights Pictures effects. (~2192 tok)
-  - fn `_state_home` L27-33 (~46 tok)
-  - fn `_images_root` L34-37 (~22 tok)
-  - fn `_manifest_path` L38-41 (~22 tok)
-  - fn `load_image_library` L42-57 (~131 tok)
-  - fn `_save_manifest` L58-74 (~147 tok)
-  - fn `save_image_to_library` L75-101 (~250 tok)
-  - fn `catalog_images` L102-116 (~172 tok)
-  - fn `suggest_images_for_words` L117-179 (~781 tok)
-  - fn `find_unmatched_topics` L180-213 (~373 tok)
-- `models.py` — Data models for the sequence generator. (~3859 tok)
-  - fn `energy_to_mood` L20-28 (~63 tok)
-  - fn `frame_align` L29-34 (~52 tok)
-  - class `SongProfile` L35-46 (~60 tok)
-  - class `SectionEnergy` L47-58 (~59 tok)
-  - class `EffectPlacement` L59-99 (~536 tok)
-  - class `AccentPolicy` L100-117 (~228 tok)
-  - class `SectionAssignment` L118-153 (~520 tok)
-  - class `SequencePlan` L154-180 (~426 tok)
-  - class `XsqDocument` L181-193 (~132 tok)
-  - class `DurationTarget` L194-202 (~80 tok)
-  - class `WorkingSetEntry` L203-212 (~123 tok)
-  - class `WorkingSet` L213-220 (~78 tok)
-  - class `GenerationConfig` L221-299 (~1319 tok)
-- `plan.py` — Plan builder — orchestrates the full sequence generation pipeline. (~10353 tok)
-  - fn `read_song_metadata` L53-88 (~292 tok)
-  - fn `_first_tag` L89-96 (~64 tok)
-  - fn `build_plan` L97-423 (~4433 tok)
-  - fn `_audible_end_ms` L424-443 (~219 tok)
-  - fn `_place_end_of_song_fade` L444-487 (~490 tok)
-  - fn `_populate_assignment_decisions` L488-586 (~1263 tok)
-  - fn `_derive_anchor_palette` L587-607 (~260 tok)
-  - fn `_section_energies_from_story` L608-649 (~446 tok)
-  - fn `_write_plan_json` L650-669 (~223 tok)
-  - fn `generate_sequence` L670-713 (~426 tok)
-  - fn `regenerate_sections` L714-843 (~1518 tok)
-- `xsq_writer.py` — XSQ writer — serializes a SequencePlan to xLights .xsq XML format. (~12665 tok)
-  - fn `write_xsq` L277-658 (~5347 tok)
-  - fn `_serialize_palette` L659-682 (~270 tok)
-  - fn `_serialize_effect_params` L683-740 (~792 tok)
-  - fn `_strip_storage_prefix` L741-752 (~136 tok)
-  - fn `_encode_value_curve` L753-778 (~284 tok)
-  - fn `_ensure_palette` L779-792 (~111 tok)
-  - fn `_ensure_effect_entry` L793-806 (~120 tok)
-  - fn `parse_xsq` L807-878 (~709 tok)
-  - fn `remove_effects_in_range` L879-889 (~141 tok)
-  - fn `_remove_overlaps_per_layer` L890-907 (~222 tok)
-  - fn `_remove_overlaps` L908-931 (~260 tok)
-  - fn `_emit_timing_layer` L932-962 (~335 tok)
-  - fn `_build_lyric_layers` L963-1012 (~580 tok)
-  - fn `_collect_timing_tracks` L1013-1050 (~392 tok)
-  - fn `fseq_guidance` L1051-1057 (~71 tok)
-
-## src/microscope/
-
-- `panel.py` — Microscope panel runner. (~2393 tok)
-- `runner.py` — Microscope per-song runner. (~3014 tok)
-- `sensitivity.py` — Sensitivity gate for the visual-quality microscope. (~5057 tok)
-- `verify.py` — Tier-coverage verification for the microscope panel. (~1442 tok)
-
-## src/review/
-
-- `server.py` — Flask review server for xlight-analyze review UI. (~24403 tok)
-
-## src/review/api/v1/
-
-- `__init__.py` — not_found, method_not_allowed, internal_error (~321 tok)
-- `analysis.py` — Analysis endpoints — T047. (~17851 tok)
-  - class `_RunState` L33-51 (~211 tok)
-  - fn `_now_iso` L52-55 (~32 tok)
-  - fn `_run_id` L56-59 (~32 tok)
-  - fn `_default_overrides` L60-84 (~215 tok)
-  - fn `_song_seed` L85-100 (~161 tok)
-  - fn `_smart_default_theme_ids` L101-171 (~905 tok)
-  - fn `_auto_assign_defaults` L172-201 (~301 tok)
-  - fn `_analyze_stub` L202-289 (~1170 tok)
-  - fn `_analyze_in_background` L290-751 (~6747 tok)
-  - fn `start_analyze` L752-791 (~455 tok)
-  - fn `commit_analyze` L792-907 (~1308 tok)
-  - fn `analyze_status` L908-938 (~245 tok)
-  - fn `get_analysis` L939-982 (~519 tok)
-  - fn `_extrapolate_grid` L983-1050 (~753 tok)
-  - fn `_rebuild_analysis_from_cache` L1051-1242 (~2579 tok)
-  - fn `get_stem_peaks` L1243-1300 (~668 tok)
-  - fn `get_peaks_window` L1301-1375 (~920 tok)
-- `images.py` — GET/POST /api/v1/images — global image library for Pictures effects. (~553 tok)
-  - fn `list_images` L23-27 (~35 tok)
-  - fn `upload_image` L28-55 (~304 tok)
-- `library.py` — Library endpoints — GET /library, folder CRUD, song delete + purge (T045, T090, T092, T094). (~4808 tok)
-
-## src/review/frontend/src/
-
-- `App.tsx` — SCREENS (~7826 tok)
-  - section `ThemeDef` L24-36 (~66 tok)
-  - section `Section` L37-47 (~55 tok)
-  - section `ImageSuggestion` L48-56 (~43 tok)
-  - section `ImageTopic` L57-62 (~23 tok)
-  - section `Analysis` L63-76 (~134 tok)
-  - section `AppData` L77-89 (~105 tok)
-  - section `PurgeDialogState` L90-96 (~46 tok)
-  - fn `useGlobalShortcuts` L97-176 (~515 tok)
-  - fn `GlobalKeyboardListener` L177-184 (~73 tok)
-  - fn `GlobalAudioPlayer` L185-264 (~818 tok)
-  - fn `GlobalDragBlock` L265-279 (~127 tok)
-  - fn `saveAssignments` L280-289 (~97 tok)
-  - fn `App` L290-706 (~4267 tok)
-  - fn `PurgeDialog` L707-787 (~644 tok)
-  - fn `PlaceholderScreen` L788-825 (~263 tok)
-
-## src/review/frontend/src/components/Chrome/
-
-- `Chrome.tsx` — fmtBuildTime (~3313 tok)
-  - fn `fmtBuildTime` L8-26 (~195 tok)
-  - fn `targetScreenForStatus` L27-38 (~67 tok)
-  - section `Props` L39-51 (~111 tok)
-  - fn `Chrome` L52-155 (~1069 tok)
-  - section `RailProps` L156-164 (~73 tok)
-  - fn `LibraryRail` L165-274 (~1027 tok)
-  - section `RailSongItemProps` L275-282 (~41 tok)
-  - fn `RailSongItem` L283-353 (~551 tok)
-
-## src/review/frontend/src/screens/
-
-- `Analyze.tsx` — When true, run analysis on mount even if the song is already marked (~8302 tok)
-- `Drop.tsx` — Called after a successful /api/v1/import response. (~995 tok)
-- `Library.tsx` — ALLOWED_EXTS (~2965 tok)
-- `Pictures.module.css` — Styles: 19 rules (~570 tok)
-- `Pictures.tsx` — formatTimestamp (~1494 tok)
-  - section `ImageSuggestion` L4-12 (~43 tok)
-  - section `ImageTopic` L13-18 (~23 tok)
-  - section `Song` L19-23 (~16 tok)
-  - section `PicturesScreenProps` L24-30 (~41 tok)
-  - fn `formatTimestamp` L31-37 (~69 tok)
-  - fn `Pictures` L38-143 (~1278 tok)
-- `Theme.module.css` — Styles: 28 rules (~978 tok)
-- `Theme.tsx` — DEFAULT_OVERRIDES (~3340 tok)
-  - section `Theme` L10-22 (~66 tok)
-  - section `Section` L23-30 (~32 tok)
-  - section `Song` L31-37 (~28 tok)
-  - section `ThemeScreenProps` L38-53 (~94 tok)
-  - section `EditState` L54-66 (~64 tok)
-  - fn `EditDialog` L67-168 (~991 tok)
-  - fn `Theme` L169-367 (~1814 tok)
-- `Timeline.tsx` — Returns the beat entry whose t_ms is <= timeMs (last beat at or before playhead) (~7150 tok)
-
-## src/review/frontend/src/store/
-
-- `app.ts` — Exports Screen, useAppStore (~238 tok)
-
-## src/review/frontend/tests/screens/
-
-- `Analyze.test.tsx` — mockFetch (~547 tok)
-- `Drop.test.tsx` — Mock fetch globally (~616 tok)
-
-## src/story/
-
-- `builder.py` — Song story builder — top-level orchestration for the song story tool. (~10110 tok)
-
-## tests/evaluation/
-
-- `test_analyzer_baseline.py` — Tests for src/evaluation/analyzer_baseline.py. (~2479 tok)
-- `test_coverage_metric.py` — Tests for ``placement_coverage_pct`` (OpenSpec change (~1372 tok)
-- `test_gate_cli.py` — Tests for `xlight-evaluate gate` — orchestration + exit code + JSON report. (~3073 tok)
-- `test_tier_breakdown_metric.py` — Tests for ``tier_placement_breakdown`` and ``group_utilization`` (~840 tok)
-- `test_xsq_reader_layout_models.py` — Tests for ``_read_layout_model_names`` and the ``layout_path`` kwarg on (~1143 tok)
-
-## tests/fixtures/cc0_music/
-
-- `manifest.json` (~568 tok)
-- `README.md` — Project documentation (~616 tok)
-
-## tests/microscope/
-
-- `test_panel_manifest_intent.py` — Tests for tier_intent manifest schema (OpenSpec (~1192 tok)
-- `test_runner.py` — Tests for ``src.microscope.runner``. (~3473 tok)
-- `test_verify_coverage.py` — Tests for ``verify_panel_coverage`` (OpenSpec (~1668 tok)
-
-## tests/review/
-
-- `test_api_images.py` — Tests for GET/POST /api/v1/images (global image library for Pictures effects). (~761 tok)
-  - class `TestUploadImage` L7-52 (~496 tok)
-  - class `TestListImages` L53-73 (~227 tok)
-
-## tests/ui/
-
-- `conftest.py` — Shared fixtures for browser-driven UI flow tests. (~1887 tok)
-- `README.md` — Project documentation (~1929 tok)
-
-## tests/ui/flows/
-
-- `__init__.py` (~0 tok)
-- `test_analyze_flow.py` — Analyze flow: uploaded song progresses through analysis to a populated view. (~572 tok)
-- `test_content_flow.py` — Content verification flow: upload → real analysis → assert content matches manifest. (~2184 tok)
-- `test_export_flow.py` — Export flow: the export screen renders without crash for an analyzed song. (~878 tok)
-- `test_folder_filter_flow.py` — Folder toggle + filter pill interactions on the library screen. (~980 tok)
-- `test_metadata_edit_flow.py` — Metadata override flow: edit artist/title on the analyze-screen banner, (~934 tok)
-- `test_multi_song_flow.py` — Multi-song library navigation: upload two songs, navigate between them, (~1298 tok)
-- `test_timeline_flow.py` — Timeline screen navigation: tab access + analysis-gated placeholder. (~1108 tok)
-- `test_upload_flow.py` — Upload flow: pick a fixture MP3, POST /api/v1/import, verify analyze screen. (~398 tok)
-- `test_view_flow.py` — View flow: analyzed content renders in the UI coherently. (~602 tok)
-
-## tests/unit/
-
-- `test_effect_placer.py` — Tests for src/generator/effect_placer — _build_effect_pool prop_type filtering (spec 041). (~4954 tok)
+  - fn `_place_per_trigger` L2236-3442 (~14096 tok)
 
 ## tests/unit/test_generator/
 
-- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~5903 tok)
-  - fn `_prop` L27-30 (~34 tok)
-  - fn `_group` L31-34 (~39 tok)
-  - fn `_match` L35-38 (~62 tok)
-  - fn `_library_entry` L39-42 (~55 tok)
-  - class `TestPlacePictureEffects` L43-362 (~4002 tok)
-  - class `TestPictureEffectsConfigFlag` L363-379 (~153 tok)
-  - class `TestImageLibraryStorage` L380-408 (~356 tok)
-  - class `TestSuggestImagesForWords` L409-448 (~510 tok)
-  - class `TestFindUnmatchedTopics` L449-480 (~361 tok)
-- `test_xsq_writer.py` — Tests for XSQ writer — xLights .xsq XML serialization. (~15499 tok)
-  - fn `_make_theme` L21-32 (~76 tok)
-  - fn `_make_plan` L33-102 (~499 tok)
-  - fn `_write_and_parse` L103-110 (~74 tok)
-  - class `TestXsqWriter` L111-388 (~3598 tok)
-  - class `TestSpiralsDefaultsMatchCatalogStorageNames` L389-409 (~294 tok)
-  - fn `_default_keys_match_catalog` L410-426 (~236 tok)
-  - class `TestMorphCoordinateKeysMatchCatalog` L427-452 (~370 tok)
-  - class `TestMeteorsOffsetKeysMatchCatalog` L453-468 (~219 tok)
-  - class `TestGarlandsCatalogAndDefaults` L469-491 (~283 tok)
-  - class `TestCirclesValuesMatchXLightsRanges` L492-516 (~357 tok)
-  - class `TestGalaxyCatalogAndDefaults` L517-532 (~209 tok)
-  - class `TestTextCatalogKeysMatchXLights` L533-556 (~315 tok)
-  - class `TestFacesCatalogAndDefaults` L557-577 (~246 tok)
-  - class `TestPinwheel3DChoiceCasing` L578-593 (~211 tok)
-  - class `TestVideoEffectPortability` L594-642 (~564 tok)
-  - class `TestPictureFilenamePortability` L643-730 (~1052 tok)
-  - class `TestScopedPreviewParams` L731-875 (~1604 tok)
-  - class `TestXsqParser` L876-944 (~723 tok)
-  - fn `_make_hierarchy_with_stems` L945-969 (~213 tok)
-  - class `TestStemOnsetTimingTracks` L970-1012 (~495 tok)
-  - class `TestLyricsTimingTrack` L1013-1072 (~761 tok)
-  - class `TestLyricLayeredTimingTrack` L1073-1145 (~1077 tok)
-  - class `TestFacesAndTextEffectSerialization` L1146-1255 (~1164 tok)
-  - class `TestMigratedSliderKeysAbsent` L1256-1283 (~356 tok)
-
-## tests/validation/
-
-- `download_fixtures.py` — Download CC0 music fixtures for end-to-end validation testing. (~1546 tok)
+- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~6215 tok)
+  - fn `_prop` L28-31 (~34 tok)
+  - fn `_group` L32-35 (~39 tok)
+  - fn `_match` L36-39 (~62 tok)
+  - fn `_library_entry` L40-43 (~55 tok)
+  - class `TestPlacePictureEffects` L44-383 (~4302 tok)
+  - class `TestPictureEffectsConfigFlag` L384-400 (~153 tok)
+  - class `TestImageLibraryStorage` L401-429 (~356 tok)
+  - class `TestSuggestImagesForWords` L430-469 (~510 tok)
+  - class `TestFindUnmatchedTopics` L470-501 (~361 tok)

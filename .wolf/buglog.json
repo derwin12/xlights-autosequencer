@@ -4260,6 +4260,46 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-253",
+      "timestamp": "2026-07-15T22:07:13.125Z",
+      "error_message": "Significant refactor of ",
+      "file": "tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 39\u219259 lines (5 removed) | Also: first_end = 1_000 + _PICTURE_BURST_MS; second_start = first_end + _PICTURE_MIN_GAP_MS + 1",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-15T22:07:32.582Z"
+    },
+    {
+      "id": "bug-250",
+      "timestamp": "2026-07-15",
+      "error_message": "User: images should appear 1s before the matched lyric word instead of exactly on its timestamp, so the burst is fully visible (past its fade-in) by the moment the word is sung",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "Not a bug -- a UX timing request. The burst start was pinned exactly to the matched words start_ms, so the fade-in (800ms) played concurrently with the word instead of finishing beforehand.",
+      "fix": "Added _PICTURE_LEAD_MS=1000; burst start is now max(0, word_start - 1000). Clamped at 0 for words in the first second. Random direction seed keyed on the original word start_ms (not the shifted placed start) for stability. Tests updated/added: renamed the start-time test, added test_lead_in_clamped_to_zero_for_early_matches, and recomputed the far-apart-matches gap test constants for the new lead offset.",
+      "tags": [
+        "generator",
+        "pictures-effect",
+        "timing",
+        "py"
+      ],
+      "related_bugs": [
+        "bug-184",
+        "bug-243",
+        "bug-246",
+        "bug-247",
+        "bug-248",
+        "bug-249"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

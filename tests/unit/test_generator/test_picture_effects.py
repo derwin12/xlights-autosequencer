@@ -8,6 +8,7 @@ from src.generator.effect_placer import (
     _PICTURE_BURST_MS,
     _PICTURE_DIRECTIONS,
     _PICTURE_FADE_MS,
+    _PICTURE_LEAD_MS,
     _PICTURE_MIN_GAP_MS,
     _PICTURE_SCALE_PERCENT,
     _PICTURE_SPEED,
@@ -250,19 +251,39 @@ class TestPlacePictureEffects:
         assert placement.parameters["E_SLIDER_Pictures_StartScale"] == _PICTURE_SCALE_PERCENT
         assert placement.parameters["E_SLIDER_Pictures_EndScale"] == _PICTURE_SCALE_PERCENT
 
-    def test_burst_starts_at_match_start_and_lasts_burst_duration(self):
+    def test_burst_starts_lead_ms_before_match_start_and_lasts_burst_duration(self):
         library = load_effect_library()
+        # bug (2026-07-15): the burst used to start exactly on the matched
+        # word's timestamp, popping in right as the lyric was sung instead
+        # of already being visible. It must now start _PICTURE_LEAD_MS
+        # earlier so it (plus its fade-in) is fully up by the time the word
+        # actually hits.
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
             groups=[],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
-            word_image_matches=[_match("snowman", 1000)],
+            word_image_matches=[_match("snowman", 5_000)],
         )
         placement = result["Matrix1"][0]
-        assert placement.start_ms == 1000
-        assert placement.end_ms == 1000 + _PICTURE_BURST_MS
+        assert placement.start_ms == 5_000 - _PICTURE_LEAD_MS
+        assert placement.end_ms == 5_000 - _PICTURE_LEAD_MS + _PICTURE_BURST_MS
+
+    def test_lead_in_clamped_to_zero_for_early_matches(self):
+        library = load_effect_library()
+        # A match within the first second of the song has no room for the
+        # full lead-in -- clamp to 0 instead of going negative.
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 500)],
+        )
+        placement = result["Matrix1"][0]
+        assert placement.start_ms == 0
 
     def test_burst_clipped_to_song_duration(self):
         library = load_effect_library()
@@ -275,7 +296,7 @@ class TestPlacePictureEffects:
             word_image_matches=[_match("snowman", 1000)],
         )
         placement = result["Matrix1"][0]
-        assert placement.start_ms == 1000
+        assert placement.start_ms == 0
         assert placement.end_ms == 3_000
 
     def test_match_at_or_past_song_end_is_skipped(self):
@@ -286,7 +307,7 @@ class TestPlacePictureEffects:
             effect_library=library,
             duration_ms=3_000,
             variation_seed=0,
-            word_image_matches=[_match("snowman", 3_000)],
+            word_image_matches=[_match("snowman", 3_000 + _PICTURE_LEAD_MS)],
         )
         assert result == {}
 
@@ -312,8 +333,8 @@ class TestPlacePictureEffects:
 
     def test_far_apart_matches_both_fire(self):
         library = load_effect_library()
-        first_end = 1_000 + _PICTURE_BURST_MS
-        second_start = first_end + _PICTURE_MIN_GAP_MS + 1_000
+        first_placed_end = max(0, 1_000 - _PICTURE_LEAD_MS) + _PICTURE_BURST_MS
+        second_start = first_placed_end + _PICTURE_LEAD_MS + _PICTURE_MIN_GAP_MS + 1_000
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
             _match("fool", second_start, stored_path="/lib/fool.gif"),
