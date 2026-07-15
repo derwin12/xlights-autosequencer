@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T23:37:50.132Z
-> Files: 558 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T23:52:12.764Z
+> Files: 560 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -2211,6 +2211,20 @@
   - fn `_place_corpus_recipe` L1954-2201 (~3299 tok)
   - fn `_place_per_beat` L2202-2261 (~743 tok)
   - fn `_place_per_trigger` L2262-3485 (~14441 tok)
+- `plan.py` — Plan builder — orchestrates the full sequence generation pipeline. (~11189 tok)
+  - fn `read_song_metadata` L53-88 (~292 tok)
+  - fn `_first_tag` L89-96 (~64 tok)
+  - fn `build_plan` L97-430 (~4549 tok)
+  - fn `_audible_end_ms` L431-450 (~219 tok)
+  - fn `_place_end_of_song_fade` L451-500 (~558 tok)
+  - fn `_audible_start_ms` L501-518 (~196 tok)
+  - fn `_place_start_of_song_fade` L519-560 (~435 tok)
+  - fn `_populate_assignment_decisions` L561-659 (~1263 tok)
+  - fn `_derive_anchor_palette` L660-680 (~260 tok)
+  - fn `_section_energies_from_story` L681-722 (~446 tok)
+  - fn `_write_plan_json` L723-742 (~223 tok)
+  - fn `generate_sequence` L743-786 (~426 tok)
+  - fn `regenerate_sections` L787-916 (~1518 tok)
 - `xsq_writer.py` — XSQ writer — serializes a SequencePlan to xLights .xsq XML format. (~13087 tok)
   - fn `write_xsq` L277-658 (~5347 tok)
   - fn `_serialize_palette` L659-688 (~388 tok)
@@ -2263,6 +2277,15 @@
   - class `TestMegaTopperRecipe` L1236-1285 (~671 tok)
   - class `TestStarRecipe` L1286-1376 (~1232 tok)
   - class `TestMatrixMotionRotation` L1377-1435 (~868 tok)
+- `test_end_of_song_fade.py` — Tests for the end-of-song fade over trailing silence (01_BASE_All_FADES). (~3872 tok)
+  - fn `_make_effect` L14-28 (~123 tok)
+  - fn `_make_library` L29-37 (~73 tok)
+  - fn `_make_hierarchy` L38-44 (~65 tok)
+  - fn `_make_assignment` L45-62 (~171 tok)
+  - class `TestTier1CanvasGroups` L63-76 (~192 tok)
+  - class `TestFadesGroupExcludedFromThemePlacement` L77-106 (~333 tok)
+  - class `TestPlaceEndOfSongFade` L107-195 (~1248 tok)
+  - class `TestPlaceStartOfSongFade` L196-301 (~1428 tok)
 - `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~6874 tok)
   - fn `_prop` L28-31 (~34 tok)
   - fn `_group` L32-35 (~39 tok)

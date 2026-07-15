@@ -5,7 +5,7 @@ from src.analyzer.result import HierarchyResult
 from src.effects.library import EffectLibrary
 from src.effects.models import EffectDefinition
 from src.generator.models import SectionAssignment, SectionEnergy
-from src.generator.plan import _place_end_of_song_fade
+from src.generator.plan import _place_end_of_song_fade, _place_start_of_song_fade
 from src.grouper.grouper import PowerGroup, _tier1_canvas
 from src.grouper.layout import Prop
 from src.themes.models import Theme
@@ -191,3 +191,110 @@ class TestPlaceEndOfSongFade:
         assert len(fades) == 1
         assert fades[0].start_ms == 28000
         assert fades[0].end_ms == 30000
+
+
+class TestPlaceStartOfSongFade:
+    def test_intro_silence_over_threshold_gets_min_blend_fade_in(self) -> None:
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(0, 30000)]
+        hierarchy = _make_hierarchy(30000)
+        # 10 fps: silence for the first 36 frames (3.6s), then audio -- same
+        # shape as the real "1999" (Prince) intro that prompted this feature.
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10,
+            values=[0] * 36 + [50] * 264,
+        )
+        library = _make_library("On")
+        _place_start_of_song_fade(assignments, _GROUPS, library, hierarchy)
+        fades = assignments[0].group_effects.get("01_BASE_All_FADES", [])
+        assert len(fades) == 1
+        fade = fades[0]
+        assert fade.effect_name == "On"
+        assert fade.start_ms == 0
+        assert fade.end_ms == 3600
+        assert fade.color_palette == ["#FFFFFF"]
+        assert fade.parameters["E_TEXTCTRL_Eff_On_Start"] == "0"
+        assert fade.parameters["T_CHOICE_LayerMethod"] == "Min"
+        assert fade.parameters["T_SLIDER_EffectLayerMix"] == "0"
+
+    def test_intro_silence_under_one_second_gets_no_fade(self) -> None:
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(0, 30000)]
+        hierarchy = _make_hierarchy(30000)
+        # 500ms of silence -- under the 1-second threshold, no fade at all.
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10,
+            values=[0] * 5 + [50] * 295,
+        )
+        library = _make_library("On")
+        _place_start_of_song_fade(assignments, _GROUPS, library, hierarchy)
+        assert "01_BASE_All_FADES" not in assignments[0].group_effects
+
+    def test_no_intro_silence_gets_no_fade(self) -> None:
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(0, 30000)]
+        hierarchy = _make_hierarchy(30000)
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10, values=[50] * 300,
+        )
+        library = _make_library("On")
+        _place_start_of_song_fade(assignments, _GROUPS, library, hierarchy)
+        assert "01_BASE_All_FADES" not in assignments[0].group_effects
+
+    def test_no_energy_curve_gets_no_fade(self) -> None:
+        # Falls back to _audible_start_ms=0 when no curve is available.
+        assignments = [_make_assignment(0, 30000)]
+        library = _make_library("On")
+        _place_start_of_song_fade(assignments, _GROUPS, library, _make_hierarchy(30000))
+        assert "01_BASE_All_FADES" not in assignments[0].group_effects
+
+    def test_missing_fades_group_is_noop(self) -> None:
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(0, 30000)]
+        hierarchy = _make_hierarchy(30000)
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10,
+            values=[0] * 36 + [50] * 264,
+        )
+        library = _make_library("On")
+        groups = [PowerGroup(name="01_BASE_All", tier=1, members=["A"])]
+        _place_start_of_song_fade(assignments, groups, library, hierarchy)
+        assert "01_BASE_All_FADES" not in assignments[0].group_effects
+
+    def test_no_assignments_is_noop(self) -> None:
+        library = _make_library("On")
+        _place_start_of_song_fade([], _GROUPS, library, _make_hierarchy(30000))
+
+    def test_on_missing_from_library_is_noop(self) -> None:
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(0, 30000)]
+        hierarchy = _make_hierarchy(30000)
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10,
+            values=[0] * 36 + [50] * 264,
+        )
+        library = _make_library("Color Wash")
+        _place_start_of_song_fade(assignments, _GROUPS, library, hierarchy)
+        assert "01_BASE_All_FADES" not in assignments[0].group_effects
+
+    def test_fade_lands_on_first_assignment_even_out_of_order(self) -> None:
+        from src.analyzer.result import ValueCurve
+
+        assignments = [_make_assignment(10000, 25000), _make_assignment(0, 10000)]
+        hierarchy = _make_hierarchy(30000)
+        hierarchy.energy_curves["full_mix"] = ValueCurve(
+            name="full_mix", stem_source="full_mix", fps=10,
+            values=[0] * 36 + [50] * 264,
+        )
+        library = _make_library("On")
+        _place_start_of_song_fade(assignments, _GROUPS, library, hierarchy)
+        # Placed on assignments[0] specifically (list order), not "whichever
+        # section starts earliest" -- mirrors _place_end_of_song_fade using
+        # assignments[-1] by list position.
+        assert assignments[0].group_effects.get("01_BASE_All_FADES")
+        assert not assignments[1].group_effects.get("01_BASE_All_FADES")

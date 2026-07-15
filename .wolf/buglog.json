@@ -4449,6 +4449,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-255",
+      "timestamp": "2026-07-15",
+      "error_message": "User: '1999 (Prince)' has ~3s of intro silence -- confirmed via direct RMS analysis (literal 0.0 RMS from 0 to 3.6s), asked for a fade-in mirroring the existing end-of-song fade-out when intro silence exceeds 1 second",
+      "file": "src/generator/plan.py",
+      "root_cause": "Not a bug -- new feature. No existing mechanism handled leading silence, only trailing.",
+      "fix": "Added _audible_start_ms (mirrors _audible_end_ms: first full-mix energy frame >= _SILENCE_ENERGY_THRESHOLD, falls back to 0) and _place_start_of_song_fade (mirrors _place_end_of_song_fade: white On effect on 01_BASE_All_FADES from 0 to audible_start, E_TEXTCTRL_Eff_On_Start=0 + LayerMethod=Min ramping brightness 0->100). Only fires when intro silence exceeds _FADE_IN_MIN_SILENCE_MS=1000. User confirmed the exact parameter shape via a real xLights clipboard paste (Eff_On_Start=0, LayerMethod=Min) matching the implementation.",
+      "tags": [
+        "generator",
+        "fade",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

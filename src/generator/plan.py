@@ -395,6 +395,13 @@ def build_plan(
     # ramps the whole display to black by the end of the sequence.
     _place_end_of_song_fade(assignments, groups, effect_library, hierarchy)
 
+    # 6c. Start-of-song fade-in — mirrors 6b: when the audio has more than
+    # _FADE_IN_MIN_SILENCE_MS of leading silence (user request, 2026-07-15),
+    # one white Min-blend On on 01_BASE_All_FADES ramps the whole display up
+    # from black over that intro silence instead of snapping on abruptly
+    # ahead of the beat.
+    _place_start_of_song_fade(assignments, groups, effect_library, hierarchy)
+
     # 7. Assemble plan
     return SequencePlan(
         song_profile=profile,
@@ -483,6 +490,72 @@ def _place_end_of_song_fade(
         color_palette=["#FFFFFF"],
     )
     assignments[-1].group_effects.setdefault("01_BASE_All_FADES", []).append(fade)
+
+
+# Only fade in when the intro silence exceeds this — most songs start right
+# on the beat and shouldn't get an artificial fade-in (user request,
+# 2026-07-15: "if there is more than 1 second of silence").
+_FADE_IN_MIN_SILENCE_MS = 1000
+
+
+def _audible_start_ms(hierarchy: HierarchyResult) -> int:
+    """Return when the song's audio actually starts (mirrors ``_audible_end_ms``).
+
+    Uses the first full-mix energy frame at or above
+    ``_SILENCE_ENERGY_THRESHOLD``; falls back to 0 when no energy curve is
+    available (curves are optional analyzer output).
+    """
+    curve = hierarchy.energy_curves.get("full_mix")
+    if curve is not None and curve.values and curve.fps > 0:
+        first_idx = next(
+            (i for i, v in enumerate(curve.values) if v >= _SILENCE_ENERGY_THRESHOLD),
+            None,
+        )
+        if first_idx is not None:
+            return int(first_idx * 1000 / curve.fps)
+    return 0
+
+
+def _place_start_of_song_fade(
+    assignments: list[SectionAssignment],
+    groups: list[PowerGroup],
+    effect_library: EffectLibrary,
+    hierarchy: HierarchyResult,
+) -> None:
+    """Fade the whole display in from black over intro silence, mirroring
+    ``_place_end_of_song_fade``.
+
+    One white On effect on ``01_BASE_All_FADES`` spans from 0 to the audible
+    start of the song (see ``_audible_start_ms``): brightness ramps 0 -> 100
+    (``Eff_On_Start=0``) and ``LayerMethod=Min`` clamps every layer rendered
+    beneath it, same mechanism as the end-of-song fade just reversed. Only
+    fires when the intro silence exceeds ``_FADE_IN_MIN_SILENCE_MS`` — a
+    song that starts right on the beat gets no fade at all.
+    """
+    if not assignments:
+        return
+    if not any(g.name == "01_BASE_All_FADES" for g in groups):
+        return
+    audible_start = _audible_start_ms(hierarchy)
+    if audible_start < _FADE_IN_MIN_SILENCE_MS:
+        return
+    on_def = effect_library.effects.get("On")
+    if on_def is None:
+        return
+    fade = EffectPlacement(
+        effect_name="On",
+        xlights_id=on_def.xlights_id,
+        model_or_group="01_BASE_All_FADES",
+        start_ms=0,
+        end_ms=audible_start,
+        parameters={
+            "E_TEXTCTRL_Eff_On_Start": "0",
+            "T_CHOICE_LayerMethod": "Min",
+            "T_SLIDER_EffectLayerMix": "0",
+        },
+        color_palette=["#FFFFFF"],
+    )
+    assignments[0].group_effects.setdefault("01_BASE_All_FADES", []).append(fade)
 
 
 def _populate_assignment_decisions(

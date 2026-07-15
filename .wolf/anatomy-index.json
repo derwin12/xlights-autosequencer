@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T23:37:50.132Z",
-    "fileCount": 558,
+    "lastScanned": "2026-07-15T23:52:12.764Z",
+    "fileCount": 560,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "add338efec8401b42b35a721da1f49c89edbe69f765ef5b4ada8286b239c28a6",
-    "storeUpdatedAt": "2026-07-15T23:37:50.150Z"
+    "renderedHash": "cd63e6446404e2498d09bdaf61aa3714329570c12ebf6dad74e4918c816a1ea1",
+    "storeUpdatedAt": "2026-07-15T23:52:12.781Z"
   },
   "files": {
     ".claude/commands/pre-mortem.md": {
@@ -15842,6 +15842,175 @@
           "startLine": 1377,
           "endLine": 1435,
           "tokens": 868
+        }
+      ]
+    },
+    "src/generator/plan.py": {
+      "description": "Plan builder — orchestrates the full sequence generation pipeline.",
+      "tokens": 11189,
+      "hash": "eb82d6ad95f85921",
+      "size": 39220,
+      "mtimeMs": 1784159500464.5618,
+      "updatedAt": "2026-07-15T23:51:40.616Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "read_song_metadata",
+          "kind": "fn",
+          "startLine": 53,
+          "endLine": 88,
+          "tokens": 292
+        },
+        {
+          "name": "_first_tag",
+          "kind": "fn",
+          "startLine": 89,
+          "endLine": 96,
+          "tokens": 64
+        },
+        {
+          "name": "build_plan",
+          "kind": "fn",
+          "startLine": 97,
+          "endLine": 430,
+          "tokens": 4549
+        },
+        {
+          "name": "_audible_end_ms",
+          "kind": "fn",
+          "startLine": 431,
+          "endLine": 450,
+          "tokens": 219
+        },
+        {
+          "name": "_place_end_of_song_fade",
+          "kind": "fn",
+          "startLine": 451,
+          "endLine": 500,
+          "tokens": 558
+        },
+        {
+          "name": "_audible_start_ms",
+          "kind": "fn",
+          "startLine": 501,
+          "endLine": 518,
+          "tokens": 196
+        },
+        {
+          "name": "_place_start_of_song_fade",
+          "kind": "fn",
+          "startLine": 519,
+          "endLine": 560,
+          "tokens": 435
+        },
+        {
+          "name": "_populate_assignment_decisions",
+          "kind": "fn",
+          "startLine": 561,
+          "endLine": 659,
+          "tokens": 1263
+        },
+        {
+          "name": "_derive_anchor_palette",
+          "kind": "fn",
+          "startLine": 660,
+          "endLine": 680,
+          "tokens": 260
+        },
+        {
+          "name": "_section_energies_from_story",
+          "kind": "fn",
+          "startLine": 681,
+          "endLine": 722,
+          "tokens": 446
+        },
+        {
+          "name": "_write_plan_json",
+          "kind": "fn",
+          "startLine": 723,
+          "endLine": 742,
+          "tokens": 223
+        },
+        {
+          "name": "generate_sequence",
+          "kind": "fn",
+          "startLine": 743,
+          "endLine": 786,
+          "tokens": 426
+        },
+        {
+          "name": "regenerate_sections",
+          "kind": "fn",
+          "startLine": 787,
+          "endLine": 916,
+          "tokens": 1518
+        }
+      ]
+    },
+    "tests/unit/test_generator/test_end_of_song_fade.py": {
+      "description": "Tests for the end-of-song fade over trailing silence (01_BASE_All_FADES).",
+      "tokens": 3872,
+      "hash": "83834bc56d6f2fe7",
+      "size": 13553,
+      "mtimeMs": 1784159532623.327,
+      "updatedAt": "2026-07-15T23:52:12.763Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "_make_effect",
+          "kind": "fn",
+          "startLine": 14,
+          "endLine": 28,
+          "tokens": 123
+        },
+        {
+          "name": "_make_library",
+          "kind": "fn",
+          "startLine": 29,
+          "endLine": 37,
+          "tokens": 73
+        },
+        {
+          "name": "_make_hierarchy",
+          "kind": "fn",
+          "startLine": 38,
+          "endLine": 44,
+          "tokens": 65
+        },
+        {
+          "name": "_make_assignment",
+          "kind": "fn",
+          "startLine": 45,
+          "endLine": 62,
+          "tokens": 171
+        },
+        {
+          "name": "TestTier1CanvasGroups",
+          "kind": "class",
+          "startLine": 63,
+          "endLine": 76,
+          "tokens": 192
+        },
+        {
+          "name": "TestFadesGroupExcludedFromThemePlacement",
+          "kind": "class",
+          "startLine": 77,
+          "endLine": 106,
+          "tokens": 333
+        },
+        {
+          "name": "TestPlaceEndOfSongFade",
+          "kind": "class",
+          "startLine": 107,
+          "endLine": 195,
+          "tokens": 1248
+        },
+        {
+          "name": "TestPlaceStartOfSongFade",
+          "kind": "class",
+          "startLine": 196,
+          "endLine": 301,
+          "tokens": 1428
         }
       ]
     }

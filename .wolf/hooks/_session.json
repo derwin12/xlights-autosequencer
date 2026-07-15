@@ -13,8 +13,8 @@
       "first_read": "2026-07-15T21:08:46.120Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/plan.py": {
-      "count": 5,
-      "tokens": 10257,
+      "count": 9,
+      "tokens": 10471,
       "first_read": "2026-07-15T21:10:46.930Z"
     },
     "H:/Github/xlight-autosequencer/src/grouper/classifier.py": {
@@ -91,6 +91,11 @@
       "count": 9,
       "tokens": 20126,
       "first_read": "2026-07-15T23:26:34.903Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_end_of_song_fade.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T23:51:48.769Z"
     }
   },
   "files_written": [
@@ -387,6 +392,30 @@
       "action": "edit",
       "tokens": 225,
       "at": "2026-07-15T23:37:50.156Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/plan.py",
+      "action": "edit",
+      "tokens": 200,
+      "at": "2026-07-15T23:51:22.795Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/plan.py",
+      "action": "edit",
+      "tokens": 734,
+      "at": "2026-07-15T23:51:40.640Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_end_of_song_fade.py",
+      "action": "edit",
+      "tokens": 24,
+      "at": "2026-07-15T23:51:54.781Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_end_of_song_fade.py",
+      "action": "edit",
+      "tokens": 1512,
+      "at": "2026-07-15T23:52:12.787Z"
     }
   ],
   "edit_counts": {
@@ -394,17 +423,18 @@
     "tests/unit/test_generator/test_picture_effects.py": 10,
     ".wolf/hooks/stop.js": 1,
     ".wolf/cerebrum.md": 3,
-    "src/generator/plan.py": 2,
+    "src/generator/plan.py": 4,
     "src/generator/models.py": 2,
     "README.md": 2,
     "src/generator/xsq_writer.py": 1,
     "tests/integration/test_palette_restraint.py": 1,
     "src/generator/corpus_recipes.py": 5,
-    "tests/unit/test_generator/test_corpus_recipes.py": 3
+    "tests/unit/test_generator/test_corpus_recipes.py": 3,
+    "tests/unit/test_generator/test_end_of_song_fade.py": 2
   },
   "anatomy_hits": 10,
-  "anatomy_misses": 8,
-  "repeated_reads_warned": 68,
+  "anatomy_misses": 9,
+  "repeated_reads_warned": 72,
   "cerebrum_warnings": 0,
-  "stop_count": 56
+  "stop_count": 58
 }
