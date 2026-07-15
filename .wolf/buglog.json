@@ -3608,6 +3608,107 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-15T14:19:59.356Z"
+    },
+    {
+      "id": "bug-216",
+      "timestamp": "2026-07-15T14:33:04.321Z",
+      "error_message": "Wrong operator: != should be ==",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "Used \"!=\" instead of \"==\"",
+      "fix": "Changed operator != → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:33:04.321Z"
+    },
+    {
+      "id": "bug-217",
+      "timestamp": "2026-07-15T14:33:09.535Z",
+      "error_message": "Incorrect value in code",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "Had \"E_FILEPICKER_Pictures_Filename\"",
+      "fix": "Changed to \"E_TEXTCTRL_Pictures_Filename\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:33:09.535Z"
+    },
+    {
+      "id": "bug-218",
+      "timestamp": "2026-07-15T14:33:27.254Z",
+      "error_message": "Wrong reference: E_FILEPICKER_Pictures_Filename should be E_TEXTCTRL_Pictures_Filename",
+      "file": "tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "Used \"E_FILEPICKER_Pictures_Filename\" instead of \"E_TEXTCTRL_Pictures_Filename\"",
+      "fix": "Changed E_FILEPICKER_Pictures_Filename → E_TEXTCTRL_Pictures_Filename",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:33:27.254Z"
+    },
+    {
+      "id": "bug-219",
+      "timestamp": "2026-07-15T14:33:31.570Z",
+      "error_message": "Incorrect value in code",
+      "file": "tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "Had \"Tests for effect_placer._place_picture_effects (c",
+      "fix": "Changed to \"Tests for effect_placer._place_picture_effects (c",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:33:31.570Z"
+    },
+    {
+      "id": "bug-220",
+      "timestamp": "2026-07-15T14:33:42.624Z",
+      "error_message": "Significant refactor of ",
+      "file": "tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 12→39 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:33:42.624Z"
+    },
+    {
+      "id": "bug-213",
+      "timestamp": "2026-07-15",
+      "error_message": "Pictures effect (bug-209) silently would not have displayed images when opened in real xLights -- wrong filename attribute name.",
+      "file": "src/effects/builtin_effects.json, src/generator/effect_placer.py, tests/unit/test_generator/test_picture_effects.py",
+      "root_cause": "builtin_effects.json cataloged Pictures_Filename as storage_name E_FILEPICKER_Pictures_Filename / widget_type filepicker -- a guess from an earlier cataloging pass, never verified against a real xLights-generated sequence. Confirmed wrong by extracting real Pictures effect XML from 5 of the 13 reference .xsqz packages (87 total placements): the actual attribute is E_TEXTCTRL_Pictures_Filename, consistent across all 87. Same bug class as bug-192/193/194 (slider->textctrl migrations) -- a cataloged widget_type/storage_name guess diverging from the real xLights-serialized attribute.",
+      "fix": "Changed builtin_effects.json Pictures_Filename storage_name to E_TEXTCTRL_Pictures_Filename, widget_type to textctrl. Changed the hardcoded parameter key in effect_placer.py._place_picture_effects from E_FILEPICKER_Pictures_Filename to E_TEXTCTRL_Pictures_Filename. Also narrowed _place_picture_effects eligibility from the general prop_suitability rating (matrix=ideal/tree=good) to Matrix display type OR Mega Tree name match only, per explicit user request after the same corpus review showed every other prop family with any Pictures placement just repeated one shared decorative image (not real per-prop content) -- only Matrix/Matrix2/Mega Tree carried genuinely varied placements. Updated test_picture_effects.py accordingly (added megatree-name-match and megatopper-non-match tests). 602 tests pass.",
+      "tags": [
+        "generator",
+        "effects",
+        "pictures-effect",
+        "textctrl-migration",
+        "corpus-verified"
+      ],
+      "related_bugs": [
+        "bug-209",
+        "bug-192"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

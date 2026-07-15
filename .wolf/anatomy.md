@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T14:23:36.191Z
-> Files: 611 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T14:33:50.331Z
+> Files: 613 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -1059,6 +1059,10 @@
 - `library.py` — ``library`` command group: list and refresh the user's analyzed song library. (~3148 tok)
 - `microscope.py` — xlight-evaluate microscope — visual-quality measurement subcommand group. (~5345 tok)
 
+## src/effects/
+
+- `builtin_effects.json` (~58642 tok)
+
 ## src/evaluation/
 
 - `acceptance_gate.py` — Acceptance-gate orchestrator. (~3802 tok)
@@ -1079,7 +1083,37 @@
   - class `PropFamilyRecipe` L70-719 (~9498 tok)
   - fn `recipe_for_group` L720-775 (~667 tok)
   - fn `section_qualifies` L776-782 (~99 tok)
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~26888 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~42182 tok)
+  - fn `_darken_palette_hsl` L109-146 (~466 tok)
+  - fn `_vivid_mask_color` L147-183 (~464 tok)
+  - fn `_saturated_colors` L184-203 (~194 tok)
+  - fn `_dim_palette` L204-223 (~203 tok)
+  - fn `_lighten_palette` L224-365 (~2018 tok)
+  - fn `_apply_palette_target` L366-381 (~184 tok)
+  - fn `restrain_palette` L382-395 (~197 tok)
+  - fn `compute_music_sparkles` L396-418 (~279 tok)
+  - fn `compute_duration_target` L419-442 (~270 tok)
+  - fn `compute_scaled_fades` L443-467 (~222 tok)
+  - fn `_build_effect_pool` L468-497 (~319 tok)
+  - fn `derive_working_set` L498-579 (~1090 tok)
+  - fn `select_from_working_set` L580-618 (~446 tok)
+  - fn `_compute_fadeout_ms_for_final_section` L619-644 (~299 tok)
+  - fn `place_effects` L645-1290 (~9590 tok)
+  - fn `_select_groups_for_layer` L1291-1359 (~716 tok)
+  - fn `_assign_layers_to_tiers` L1360-1391 (~381 tok)
+  - fn `_place_effect_on_group` L1392-1557 (~2104 tok)
+  - fn `_place_chase_across_groups` L1558-1635 (~848 tok)
+  - fn `_place_radial_chase_on_subgroup` L1636-1695 (~630 tok)
+  - fn `_substitute_bounding_box_effect` L1696-1716 (~243 tok)
+  - fn `_substitute_beat_canvas_effect` L1717-1737 (~274 tok)
+  - fn `_substitute_matrix_effect` L1738-1759 (~255 tok)
+  - fn `_place_call_response` L1760-1837 (~919 tok)
+  - fn `_resolve_palette` L1838-1881 (~533 tok)
+  - fn `_place_per_bar` L1882-1935 (~642 tok)
+  - fn `_humanize_group_name` L1936-1943 (~87 tok)
+  - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
+  - fn `_place_per_beat` L2176-2235 (~743 tok)
+  - fn `_place_per_trigger` L2236-3322 (~12337 tok)
 
 ## src/microscope/
 
@@ -1182,6 +1216,15 @@
 ## tests/unit/
 
 - `test_effect_placer.py` — Tests for src/generator/effect_placer — _build_effect_pool prop_type filtering (spec 041). (~4954 tok)
+
+## tests/unit/test_generator/
+
+- `test_picture_effects.py` — Tests for effect_placer._place_picture_effects (catalog images on Matrix/Mega Tree props). (~2321 tok)
+  - fn `_prop` L12-15 (~34 tok)
+  - class `TestPlacePictureEffects` L16-131 (~1372 tok)
+  - class `TestPictureEffectsConfigFlag` L132-148 (~153 tok)
+  - class `TestCatalogImages` L149-166 (~198 tok)
+  - class `TestSuggestImagesForWords` L167-200 (~442 tok)
 
 ## tests/validation/
 

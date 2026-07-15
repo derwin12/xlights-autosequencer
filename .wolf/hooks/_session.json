@@ -13,12 +13,12 @@
       "first_read": "2026-07-15T13:09:15.546Z"
     },
     "H:/Github/xlight-autosequencer/src/effects/builtin_effects.json": {
-      "count": 2,
+      "count": 3,
       "tokens": 0,
       "first_read": "2026-07-15T13:12:02.407Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/effect_placer.py": {
-      "count": 7,
+      "count": 8,
       "tokens": 26888,
       "first_read": "2026-07-15T13:12:08.750Z"
     },
@@ -133,7 +133,7 @@
       "first_read": "2026-07-15T13:30:05.496Z"
     },
     "H:/Github/xlight-autosequencer/scripts/mine_prop_corpus.py": {
-      "count": 3,
+      "count": 4,
       "tokens": 0,
       "first_read": "2026-07-15T13:43:13.331Z"
     },
@@ -226,6 +226,11 @@
       "count": 1,
       "tokens": 593,
       "first_read": "2026-07-15T14:23:32.297Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_picture_effects.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T14:33:21.576Z"
     }
   },
   "files_written": [
@@ -330,6 +335,54 @@
       "action": "edit",
       "tokens": 20,
       "at": "2026-07-15T14:23:36.210Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/effects/builtin_effects.json",
+      "action": "edit",
+      "tokens": 108,
+      "at": "2026-07-15T14:32:24.157Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/effect_placer.py",
+      "action": "edit",
+      "tokens": 596,
+      "at": "2026-07-15T14:33:04.318Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/effect_placer.py",
+      "action": "edit",
+      "tokens": 32,
+      "at": "2026-07-15T14:33:09.532Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_picture_effects.py",
+      "action": "edit",
+      "tokens": 8,
+      "at": "2026-07-15T14:33:27.250Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_picture_effects.py",
+      "action": "edit",
+      "tokens": 28,
+      "at": "2026-07-15T14:33:31.565Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_picture_effects.py",
+      "action": "edit",
+      "tokens": 493,
+      "at": "2026-07-15T14:33:42.618Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_picture_effects.py",
+      "action": "edit",
+      "tokens": 184,
+      "at": "2026-07-15T14:33:50.350Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/cerebrum.md",
+      "action": "edit",
+      "tokens": 685,
+      "at": "2026-07-15T14:35:37.606Z"
     }
   ],
   "edit_counts": {
@@ -340,13 +393,16 @@
     "src/review/frontend/src/App.tsx": 2,
     ".wolf/hooks/post-write.js": 4,
     ".wolf/buglog.json": 1,
-    ".wolf/cerebrum.md": 1,
+    ".wolf/cerebrum.md": 2,
     "src/generator/corpus_recipes.py": 1,
-    ".gitignore": 1
+    ".gitignore": 1,
+    "src/effects/builtin_effects.json": 1,
+    "src/generator/effect_placer.py": 2,
+    "tests/unit/test_generator/test_picture_effects.py": 4
   },
   "anatomy_hits": 5,
-  "anatomy_misses": 40,
-  "repeated_reads_warned": 27,
+  "anatomy_misses": 41,
+  "repeated_reads_warned": 30,
   "cerebrum_warnings": 0,
-  "stop_count": 21
+  "stop_count": 23
 }

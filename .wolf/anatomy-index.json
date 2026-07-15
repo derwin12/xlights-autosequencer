@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T14:23:36.191Z",
-    "fileCount": 611,
+    "lastScanned": "2026-07-15T14:33:50.331Z",
+    "fileCount": 613,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "63c8c21991a2c3faa8178a85e3058b9657011674e1f1882bcac985bc1b503ec1",
-    "storeUpdatedAt": "2026-07-15T14:23:36.206Z"
+    "renderedHash": "ecef60e5e15574641a29c17ae7c6a241a58fdef65dcc2f0631222244c1a0fb84",
+    "storeUpdatedAt": "2026-07-15T14:33:50.346Z"
   },
   "files": {
     ".DS_Store": {
@@ -3404,9 +3404,224 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 26888,
-      "updatedAt": "2026-07-14T22:54:57.395Z",
-      "source": "md-import"
+      "tokens": 42182,
+      "hash": "1b6a4501ee11883a",
+      "size": 147845,
+      "mtimeMs": 1784125989366.704,
+      "updatedAt": "2026-07-15T14:33:09.510Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "_darken_palette_hsl",
+          "kind": "fn",
+          "startLine": 109,
+          "endLine": 146,
+          "tokens": 466
+        },
+        {
+          "name": "_vivid_mask_color",
+          "kind": "fn",
+          "startLine": 147,
+          "endLine": 183,
+          "tokens": 464
+        },
+        {
+          "name": "_saturated_colors",
+          "kind": "fn",
+          "startLine": 184,
+          "endLine": 203,
+          "tokens": 194
+        },
+        {
+          "name": "_dim_palette",
+          "kind": "fn",
+          "startLine": 204,
+          "endLine": 223,
+          "tokens": 203
+        },
+        {
+          "name": "_lighten_palette",
+          "kind": "fn",
+          "startLine": 224,
+          "endLine": 365,
+          "tokens": 2018
+        },
+        {
+          "name": "_apply_palette_target",
+          "kind": "fn",
+          "startLine": 366,
+          "endLine": 381,
+          "tokens": 184
+        },
+        {
+          "name": "restrain_palette",
+          "kind": "fn",
+          "startLine": 382,
+          "endLine": 395,
+          "tokens": 197
+        },
+        {
+          "name": "compute_music_sparkles",
+          "kind": "fn",
+          "startLine": 396,
+          "endLine": 418,
+          "tokens": 279
+        },
+        {
+          "name": "compute_duration_target",
+          "kind": "fn",
+          "startLine": 419,
+          "endLine": 442,
+          "tokens": 270
+        },
+        {
+          "name": "compute_scaled_fades",
+          "kind": "fn",
+          "startLine": 443,
+          "endLine": 467,
+          "tokens": 222
+        },
+        {
+          "name": "_build_effect_pool",
+          "kind": "fn",
+          "startLine": 468,
+          "endLine": 497,
+          "tokens": 319
+        },
+        {
+          "name": "derive_working_set",
+          "kind": "fn",
+          "startLine": 498,
+          "endLine": 579,
+          "tokens": 1090
+        },
+        {
+          "name": "select_from_working_set",
+          "kind": "fn",
+          "startLine": 580,
+          "endLine": 618,
+          "tokens": 446
+        },
+        {
+          "name": "_compute_fadeout_ms_for_final_section",
+          "kind": "fn",
+          "startLine": 619,
+          "endLine": 644,
+          "tokens": 299
+        },
+        {
+          "name": "place_effects",
+          "kind": "fn",
+          "startLine": 645,
+          "endLine": 1290,
+          "tokens": 9590
+        },
+        {
+          "name": "_select_groups_for_layer",
+          "kind": "fn",
+          "startLine": 1291,
+          "endLine": 1359,
+          "tokens": 716
+        },
+        {
+          "name": "_assign_layers_to_tiers",
+          "kind": "fn",
+          "startLine": 1360,
+          "endLine": 1391,
+          "tokens": 381
+        },
+        {
+          "name": "_place_effect_on_group",
+          "kind": "fn",
+          "startLine": 1392,
+          "endLine": 1557,
+          "tokens": 2104
+        },
+        {
+          "name": "_place_chase_across_groups",
+          "kind": "fn",
+          "startLine": 1558,
+          "endLine": 1635,
+          "tokens": 848
+        },
+        {
+          "name": "_place_radial_chase_on_subgroup",
+          "kind": "fn",
+          "startLine": 1636,
+          "endLine": 1695,
+          "tokens": 630
+        },
+        {
+          "name": "_substitute_bounding_box_effect",
+          "kind": "fn",
+          "startLine": 1696,
+          "endLine": 1716,
+          "tokens": 243
+        },
+        {
+          "name": "_substitute_beat_canvas_effect",
+          "kind": "fn",
+          "startLine": 1717,
+          "endLine": 1737,
+          "tokens": 274
+        },
+        {
+          "name": "_substitute_matrix_effect",
+          "kind": "fn",
+          "startLine": 1738,
+          "endLine": 1759,
+          "tokens": 255
+        },
+        {
+          "name": "_place_call_response",
+          "kind": "fn",
+          "startLine": 1760,
+          "endLine": 1837,
+          "tokens": 919
+        },
+        {
+          "name": "_resolve_palette",
+          "kind": "fn",
+          "startLine": 1838,
+          "endLine": 1881,
+          "tokens": 533
+        },
+        {
+          "name": "_place_per_bar",
+          "kind": "fn",
+          "startLine": 1882,
+          "endLine": 1935,
+          "tokens": 642
+        },
+        {
+          "name": "_humanize_group_name",
+          "kind": "fn",
+          "startLine": 1936,
+          "endLine": 1943,
+          "tokens": 87
+        },
+        {
+          "name": "_place_corpus_recipe",
+          "kind": "fn",
+          "startLine": 1944,
+          "endLine": 2175,
+          "tokens": 3056
+        },
+        {
+          "name": "_place_per_beat",
+          "kind": "fn",
+          "startLine": 2176,
+          "endLine": 2235,
+          "tokens": 743
+        },
+        {
+          "name": "_place_per_trigger",
+          "kind": "fn",
+          "startLine": 2236,
+          "endLine": 3322,
+          "tokens": 12337
+        }
+      ]
     },
     "src/microscope/panel.py": {
       "description": "Microscope panel runner.",
@@ -3956,6 +4171,61 @@
           "startLine": 776,
           "endLine": 782,
           "tokens": 99
+        }
+      ]
+    },
+    "src/effects/builtin_effects.json": {
+      "description": "",
+      "tokens": 58642,
+      "hash": "a2fd5b5128f157c4",
+      "size": 205246,
+      "mtimeMs": 1784125943983.038,
+      "updatedAt": "2026-07-15T14:32:24.138Z",
+      "source": "hook"
+    },
+    "tests/unit/test_generator/test_picture_effects.py": {
+      "description": "Tests for effect_placer._place_picture_effects (catalog images on Matrix/Mega Tree props).",
+      "tokens": 2321,
+      "hash": "4733cb2eb7daf420",
+      "size": 8123,
+      "mtimeMs": 1784126030184.408,
+      "updatedAt": "2026-07-15T14:33:50.330Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "_prop",
+          "kind": "fn",
+          "startLine": 12,
+          "endLine": 15,
+          "tokens": 34
+        },
+        {
+          "name": "TestPlacePictureEffects",
+          "kind": "class",
+          "startLine": 16,
+          "endLine": 131,
+          "tokens": 1372
+        },
+        {
+          "name": "TestPictureEffectsConfigFlag",
+          "kind": "class",
+          "startLine": 132,
+          "endLine": 148,
+          "tokens": 153
+        },
+        {
+          "name": "TestCatalogImages",
+          "kind": "class",
+          "startLine": 149,
+          "endLine": 166,
+          "tokens": 198
+        },
+        {
+          "name": "TestSuggestImagesForWords",
+          "kind": "class",
+          "startLine": 167,
+          "endLine": 200,
+          "tokens": 442
         }
       ]
     }
