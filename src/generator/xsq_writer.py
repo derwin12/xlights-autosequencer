@@ -342,6 +342,13 @@ def write_xsq(
     for group_name, placements in plan.crash_effects.items():
         unordered.setdefault(group_name, []).extend(placements)
 
+    # Song-scoped Pictures placements (catalog images cycling on matrix/tree
+    # props) — same rationale as vocal_effects. Filenames are already
+    # show-relative (e.g. "Images/snowman.gif"), so no path rewriting is
+    # needed here, unlike plan.video_effects below.
+    for group_name, placements in plan.picture_effects.items():
+        unordered.setdefault(group_name, []).extend(placements)
+
     # Song-scoped Video placement (imported video clip on a matrix). Its
     # E_FILEPICKERCTRL_Video_Filename holds an absolute path into
     # ~/.xlight/library/ — a devcontainer-only location with no host

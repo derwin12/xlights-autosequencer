@@ -159,6 +159,9 @@ class SequencePlan:
     # 01_BASE_All_FADES), keyed by group name. Same rationale as
     # vocal_effects/video_effects.
     crash_effects: dict[str, list[EffectPlacement]] = field(default_factory=dict)
+    # Song-scoped Pictures placements (catalog images cycling on matrix/tree
+    # props), keyed by model name. Same rationale as vocal_effects/video_effects.
+    picture_effects: dict[str, list[EffectPlacement]] = field(default_factory=dict)
 
 
 @dataclass
@@ -226,6 +229,7 @@ class GenerationConfig:
     whole_house_composite: bool = True  # Energy-gated multi-layer accent on tier-1 BASE_All (spec: whole-house-composite)
     tier_selection: bool = True         # Energy/mood-driven single partition tier per section
     crash_accents: bool = True          # Rare whole-house Shockwave on 01_BASE_All_FADES at extreme percussive transients
+    picture_effects: bool = True        # Cycle catalog images (show_dir/Images) on matrix/tree props
     # Nominal fields (spec 047) — stored but not read in Phase 3. Phase 4
     # (spec 048 follow-up) will wire them into build_plan/theme_selector so
     # the Brief tab can drop its client-side MOOD_DEFAULTS ruleset.

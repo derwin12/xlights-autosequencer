@@ -3144,6 +3144,77 @@ def _place_video_effect(
     return {target.name: [placement]}
 
 
+# Each eligible prop cycles through the catalog in segments of this length
+# rather than showing one static image for the whole song.
+_PICTURE_SEGMENT_MS = 20_000
+
+
+def _place_picture_effects(
+    props: list[Any],
+    image_catalog: list[str],
+    effect_library: EffectLibrary,
+    duration_ms: int,
+    variation_seed: int,
+) -> dict[str, list[EffectPlacement]]:
+    """Place Pictures effects on suitable props, rotating through ``image_catalog``.
+
+    Song-scoped, same rationale as ``_place_video_effect``/``_place_singing_faces``:
+    fires once per generation, not part of the per-section theme/pool rotation.
+    Eligibility follows the ``Pictures`` effect's ``prop_suitability`` rating
+    (matrix/tree favored, ``not_recommended`` types like arch/radial skipped).
+    Each eligible prop gets its own image sequence, cycling through the full
+    catalog in ``_PICTURE_SEGMENT_MS``-long segments across the whole song, with
+    a per-prop rotation offset (seeded by ``variation_seed`` + prop name) so
+    multiple props don't all show the same image at the same time.
+    """
+    if not image_catalog or duration_ms <= 0:
+        return {}
+    pictures_def = effect_library.get("Pictures")
+    if pictures_def is None:
+        return {}
+
+    eligible = [
+        p for p in props
+        if pictures_def.prop_suitability.get(
+            prop_type_for_display_as(getattr(p, "display_as", "")), "possible"
+        ) != "not_recommended"
+    ]
+    if not eligible:
+        return {}
+
+    n_segments = max(1, -(-duration_ms // _PICTURE_SEGMENT_MS))  # ceil div
+
+    result: dict[str, list[EffectPlacement]] = {}
+    for prop in eligible:
+        offset = random.Random(f"{variation_seed}:{prop.name}").randrange(len(image_catalog))
+        placements: list[EffectPlacement] = []
+        for i in range(n_segments):
+            start = i * _PICTURE_SEGMENT_MS
+            end = min(start + _PICTURE_SEGMENT_MS, duration_ms)
+            if end <= start:
+                continue
+            filename = image_catalog[(offset + i) % len(image_catalog)]
+            placements.append(EffectPlacement(
+                effect_name="Pictures",
+                xlights_id="Pictures",
+                model_or_group=prop.name,
+                start_ms=start,
+                end_ms=end,
+                parameters={
+                    "E_FILEPICKER_Pictures_Filename": filename,
+                },
+                color_palette=["#FFFFFF"],
+            ))
+        if placements:
+            result[prop.name] = placements
+
+    logger.info(
+        "picture_effects: %d prop(s) x %d catalog image(s), %d segment(s) each",
+        len(result), len(image_catalog), n_segments,
+    )
+    return result
+
+
 def _vocal_regions(vocal_words: Optional[list[dict]]) -> list[tuple[int, int]]:
     """Merge word marks into contiguous vocal regions.
 

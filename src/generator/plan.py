@@ -18,6 +18,7 @@ from src.generator.effect_placer import (
     _place_impact_accent,
     _place_crash_accents,
     _place_lyric_text,
+    _place_picture_effects,
     _place_singing_faces,
     _place_video_effect,
     _place_whole_house_composite,
@@ -26,6 +27,7 @@ from src.generator.effect_placer import (
     place_effects,
     restrain_palette,
 )
+from src.generator.image_catalog import catalog_images
 from src.generator.energy import derive_section_energies
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
@@ -326,6 +328,20 @@ def build_plan(
             fade_exclusion_start_ms=fade_exclusion_start_ms,
         )
 
+    # 5e. Catalog images cycling on matrix/tree props (config.picture_effects).
+    # Song-scoped, same rationale as vocal_effects/video_effects/crash_effects.
+    picture_effects: dict[str, list] = {}
+    if config.picture_effects:
+        image_catalog = catalog_images()
+        if image_catalog:
+            picture_effects = _place_picture_effects(
+                props=effect_props,
+                image_catalog=image_catalog,
+                effect_library=effect_library,
+                duration_ms=hierarchy.duration_ms,
+                variation_seed=config.variation_seed,
+            )
+
     # 5. Value curves — generate for each placement when curves are enabled
     if config.curves_mode != "none":
         for assignment in assignments:
@@ -370,6 +386,7 @@ def build_plan(
         vocal_effects=vocal_effects,
         video_effects=video_effects,
         crash_effects=crash_effects,
+        picture_effects=picture_effects,
     )
 
 
