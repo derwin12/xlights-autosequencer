@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T15:08:48.979Z
-> Files: 624 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T18:41:41.268Z
+> Files: 625 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -1084,7 +1084,7 @@
   - class `PropFamilyRecipe` L70-719 (~9498 tok)
   - fn `recipe_for_group` L720-775 (~667 tok)
   - fn `section_qualifies` L776-782 (~99 tok)
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~42182 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~42903 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -1114,7 +1114,7 @@
   - fn `_humanize_group_name` L1936-1943 (~87 tok)
   - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
   - fn `_place_per_beat` L2176-2235 (~743 tok)
-  - fn `_place_per_trigger` L2236-3322 (~12337 tok)
+  - fn `_place_per_trigger` L2236-3377 (~13043 tok)
 - `image_catalog.py` — Global image library for xLights Pictures effects. (~2192 tok)
   - fn `_state_home` L27-33 (~46 tok)
   - fn `_images_root` L34-37 (~22 tok)
@@ -1137,22 +1137,22 @@
   - fn `_write_plan_json` L631-650 (~223 tok)
   - fn `generate_sequence` L651-694 (~426 tok)
   - fn `regenerate_sections` L695-824 (~1518 tok)
-- `xsq_writer.py` — XSQ writer — serializes a SequencePlan to xLights .xsq XML format. (~12429 tok)
-  - fn `write_xsq` L276-641 (~5128 tok)
-  - fn `_serialize_palette` L642-665 (~270 tok)
-  - fn `_serialize_effect_params` L666-723 (~792 tok)
-  - fn `_strip_storage_prefix` L724-735 (~136 tok)
-  - fn `_encode_value_curve` L736-761 (~284 tok)
-  - fn `_ensure_palette` L762-775 (~111 tok)
-  - fn `_ensure_effect_entry` L776-789 (~120 tok)
-  - fn `parse_xsq` L790-861 (~709 tok)
-  - fn `remove_effects_in_range` L862-872 (~141 tok)
-  - fn `_remove_overlaps_per_layer` L873-890 (~222 tok)
-  - fn `_remove_overlaps` L891-914 (~260 tok)
-  - fn `_emit_timing_layer` L915-945 (~335 tok)
-  - fn `_build_lyric_layers` L946-995 (~580 tok)
-  - fn `_collect_timing_tracks` L996-1033 (~392 tok)
-  - fn `fseq_guidance` L1034-1040 (~71 tok)
+- `xsq_writer.py` — XSQ writer — serializes a SequencePlan to xLights .xsq XML format. (~12665 tok)
+  - fn `write_xsq` L277-658 (~5347 tok)
+  - fn `_serialize_palette` L659-682 (~270 tok)
+  - fn `_serialize_effect_params` L683-740 (~792 tok)
+  - fn `_strip_storage_prefix` L741-752 (~136 tok)
+  - fn `_encode_value_curve` L753-778 (~284 tok)
+  - fn `_ensure_palette` L779-792 (~111 tok)
+  - fn `_ensure_effect_entry` L793-806 (~120 tok)
+  - fn `parse_xsq` L807-878 (~709 tok)
+  - fn `remove_effects_in_range` L879-889 (~141 tok)
+  - fn `_remove_overlaps_per_layer` L890-907 (~222 tok)
+  - fn `_remove_overlaps` L908-931 (~260 tok)
+  - fn `_emit_timing_layer` L932-962 (~335 tok)
+  - fn `_build_lyric_layers` L963-1012 (~580 tok)
+  - fn `_collect_timing_tracks` L1013-1050 (~392 tok)
+  - fn `fseq_guidance` L1051-1057 (~71 tok)
 
 ## src/microscope/
 
@@ -1308,14 +1308,40 @@
 
 ## tests/unit/test_generator/
 
-- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~2953 tok)
-  - fn `_prop` L18-21 (~34 tok)
-  - fn `_library_entry` L22-25 (~55 tok)
-  - class `TestPlacePictureEffects` L26-139 (~1356 tok)
-  - class `TestPictureEffectsConfigFlag` L140-156 (~153 tok)
-  - class `TestImageLibraryStorage` L157-185 (~356 tok)
-  - class `TestSuggestImagesForWords` L186-224 (~494 tok)
-  - class `TestFindUnmatchedTopics` L225-256 (~361 tok)
+- `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~4380 tok)
+  - fn `_prop` L22-25 (~34 tok)
+  - fn `_library_entry` L26-29 (~55 tok)
+  - class `TestPlacePictureEffects` L30-164 (~1670 tok)
+  - class `TestPlacePictureEffectsWordMatches` L165-247 (~983 tok)
+  - class `TestPictureEffectsConfigFlag` L248-264 (~153 tok)
+  - class `TestImageLibraryStorage` L265-293 (~356 tok)
+  - class `TestSuggestImagesForWords` L294-333 (~510 tok)
+  - class `TestFindUnmatchedTopics` L334-365 (~361 tok)
+- `test_xsq_writer.py` — Tests for XSQ writer — xLights .xsq XML serialization. (~15499 tok)
+  - fn `_make_theme` L21-32 (~76 tok)
+  - fn `_make_plan` L33-102 (~499 tok)
+  - fn `_write_and_parse` L103-110 (~74 tok)
+  - class `TestXsqWriter` L111-388 (~3598 tok)
+  - class `TestSpiralsDefaultsMatchCatalogStorageNames` L389-409 (~294 tok)
+  - fn `_default_keys_match_catalog` L410-426 (~236 tok)
+  - class `TestMorphCoordinateKeysMatchCatalog` L427-452 (~370 tok)
+  - class `TestMeteorsOffsetKeysMatchCatalog` L453-468 (~219 tok)
+  - class `TestGarlandsCatalogAndDefaults` L469-491 (~283 tok)
+  - class `TestCirclesValuesMatchXLightsRanges` L492-516 (~357 tok)
+  - class `TestGalaxyCatalogAndDefaults` L517-532 (~209 tok)
+  - class `TestTextCatalogKeysMatchXLights` L533-556 (~315 tok)
+  - class `TestFacesCatalogAndDefaults` L557-577 (~246 tok)
+  - class `TestPinwheel3DChoiceCasing` L578-593 (~211 tok)
+  - class `TestVideoEffectPortability` L594-642 (~564 tok)
+  - class `TestPictureFilenamePortability` L643-730 (~1052 tok)
+  - class `TestScopedPreviewParams` L731-875 (~1604 tok)
+  - class `TestXsqParser` L876-944 (~723 tok)
+  - fn `_make_hierarchy_with_stems` L945-969 (~213 tok)
+  - class `TestStemOnsetTimingTracks` L970-1012 (~495 tok)
+  - class `TestLyricsTimingTrack` L1013-1072 (~761 tok)
+  - class `TestLyricLayeredTimingTrack` L1073-1145 (~1077 tok)
+  - class `TestFacesAndTextEffectSerialization` L1146-1255 (~1164 tok)
+  - class `TestMigratedSliderKeysAbsent` L1256-1283 (~356 tok)
 
 ## tests/validation/
 
