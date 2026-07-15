@@ -342,12 +342,42 @@ def write_xsq(
     for group_name, placements in plan.crash_effects.items():
         unordered.setdefault(group_name, []).extend(placements)
 
-    # Song-scoped Pictures placements (catalog images cycling on matrix/tree
-    # props) — same rationale as vocal_effects. Filenames are already
-    # show-relative (e.g. "Images/snowman.gif"), so no path rewriting is
-    # needed here, unlike plan.video_effects below.
+    # Song-scoped Pictures placements (image library entries cycling on
+    # Matrix/Mega Tree props) — same rationale as vocal_effects. Filenames
+    # hold absolute paths into the container-local image library
+    # (~/.xlight/library/images/), unusable by xLights on the host — copied
+    # next to output_path and rewritten to a bare filename, same treatment
+    # as plan.video_effects below. Multiple placements commonly reference
+    # the same library file (e.g. every 20s segment of one prop's rotation
+    # before it cycles to the next image), so each source is only copied once.
+    _copied_pictures: dict[str, str] = {}
     for group_name, placements in plan.picture_effects.items():
         unordered.setdefault(group_name, []).extend(placements)
+        for placement in placements:
+            src = placement.parameters.get("E_TEXTCTRL_Pictures_Filename")
+            if not src:
+                continue
+            if src in _copied_pictures:
+                placement.parameters["E_TEXTCTRL_Pictures_Filename"] = _copied_pictures[src]
+                continue
+            src_path = Path(src)
+            dest = output_path.parent / src_path.name
+            if dest.exists():
+                logger.info(
+                    "picture_effect: '%s' already present at '%s' — skipping copy",
+                    src_path.name, dest,
+                )
+            elif src_path.exists():
+                import shutil
+                shutil.copy2(src_path, dest)
+                logger.info("picture_effect: copied '%s' -> '%s'", src_path, dest)
+            else:
+                logger.warning(
+                    "picture_effect: source '%s' does not exist — xLights won't "
+                    "find '%s'", src_path, src_path.name,
+                )
+            _copied_pictures[src] = src_path.name
+            placement.parameters["E_TEXTCTRL_Pictures_Filename"] = src_path.name
 
     # Song-scoped Video placement (imported video clip on a matrix). Its
     # E_FILEPICKERCTRL_Video_Filename holds an absolute path into

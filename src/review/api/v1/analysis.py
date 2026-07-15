@@ -581,12 +581,15 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                         "status": "failed", "error": str(exc)})
 
         # ── Image suggestions (advisory only, see image_catalog.py) ──────────
-        # Fuzzy-matches lyric words against show_dir/Images filenames so the
-        # review UI can hint "you have an image for this word". Does not
+        # Fuzzy-matches lyric words against the global uploaded-image
+        # library's tags so the review UI can hint "you have an image for
+        # this word" / prompt uploads for unmatched topics. Does not
         # influence generation — Pictures placement (generator/effect_placer.py)
-        # rotates through the catalog independently of these matches.
-        from src.generator.image_catalog import catalog_images, suggest_images_for_words
-        image_suggestions = suggest_images_for_words(words_list, catalog_images())
+        # rotates through the whole library independently of these matches.
+        from src.generator.image_catalog import find_unmatched_topics, load_image_library, suggest_images_for_words
+        _image_library = load_image_library()
+        image_suggestions = suggest_images_for_words(words_list, _image_library)
+        image_topics = find_unmatched_topics(words_list, _image_library)
 
         # ── Value curves (BBC energy per stem + spectral flux) ───────────────
         # Downsample to ≤2000 points each to keep the response size manageable.
@@ -681,6 +684,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             "words": words_list,
             "phonemes": phonemes_list,
             "image_suggestions": image_suggestions,
+            "image_topics": image_topics,
             "value_curves": curves_out,
             "peaks": peaks,
             "detectors": detectors,
@@ -706,6 +710,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                     "words": words_list,
                     "phonemes": phonemes_list,
                     "image_suggestions": image_suggestions,
+                    "image_topics": image_topics,
                 })
             except Exception:
                 pass

@@ -328,7 +328,7 @@ def build_plan(
             fade_exclusion_start_ms=fade_exclusion_start_ms,
         )
 
-    # 5e. Catalog images cycling on matrix/tree props (config.picture_effects).
+    # 5e. Library images cycling on Matrix/Mega Tree props (config.picture_effects).
     # Song-scoped, same rationale as vocal_effects/video_effects/crash_effects.
     picture_effects: dict[str, list] = {}
     if config.picture_effects:

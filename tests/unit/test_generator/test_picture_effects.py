@@ -1,4 +1,4 @@
-"""Tests for effect_placer._place_picture_effects (catalog images on Matrix/Mega Tree props)."""
+"""Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,11 +6,21 @@ from pathlib import Path
 from src.effects.library import load_effect_library
 from src.generator.effect_placer import _PICTURE_SEGMENT_MS, _place_picture_effects
 from src.generator.models import GenerationConfig
-from src.generator.image_catalog import catalog_images, suggest_images_for_words
+from src.generator.image_catalog import (
+    catalog_images,
+    find_unmatched_topics,
+    load_image_library,
+    save_image_to_library,
+    suggest_images_for_words,
+)
 
 
 def _prop(name: str, display_as: str):
     return type("FakeProp", (), {"name": name, "display_as": display_as})()
+
+
+def _library_entry(tag: str, filename: str = "img.gif", stored_path: str = "/lib/img.gif") -> dict:
+    return {"id": "abc123", "tag": tag, "filename": filename, "stored_path": stored_path}
 
 
 class TestPlacePictureEffects:
@@ -29,7 +39,7 @@ class TestPlacePictureEffects:
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["Images/a.gif"],
+            image_catalog=["/lib/a.gif"],
             effect_library=library,
             duration_ms=0,
             variation_seed=0,
@@ -44,7 +54,7 @@ class TestPlacePictureEffects:
         # all just repeated one shared decorative image, not real content.
         result = _place_picture_effects(
             props=[_prop("Arch1", "Arches"), _prop("Snowflake1", "Star"), _prop("Tree1", "Tree")],
-            image_catalog=["Images/a.gif"],
+            image_catalog=["/lib/a.gif"],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
@@ -55,7 +65,7 @@ class TestPlacePictureEffects:
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Mega Tree", "Custom"), _prop("MegaTree2", "Custom")],
-            image_catalog=["Images/a.gif"],
+            image_catalog=["/lib/a.gif"],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
@@ -69,7 +79,7 @@ class TestPlacePictureEffects:
         # distinction preserved in corpus_recipes.py).
         result = _place_picture_effects(
             props=[_prop("Mega Topper", "Custom")],
-            image_catalog=["Images/a.gif"],
+            image_catalog=["/lib/a.gif"],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
@@ -80,7 +90,7 @@ class TestPlacePictureEffects:
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix")],
-            image_catalog=["Images/a.gif", "Images/b.gif"],
+            image_catalog=["/lib/a.gif", "/lib/b.gif"],
             effect_library=library,
             duration_ms=60_000,
             variation_seed=0,
@@ -94,15 +104,13 @@ class TestPlacePictureEffects:
         assert placements[0].start_ms == 0
         assert placements[-1].end_ms == 60_000
         for p in placements:
-            assert p.parameters["E_TEXTCTRL_Pictures_Filename"] in {
-                "Images/a.gif", "Images/b.gif"
-            }
+            assert p.parameters["E_TEXTCTRL_Pictures_Filename"] in {"/lib/a.gif", "/lib/b.gif"}
 
     def test_multiple_props_can_get_different_offsets(self):
         library = load_effect_library()
         result = _place_picture_effects(
             props=[_prop("Matrix1", "Matrix"), _prop("Mega Tree", "Custom")],
-            image_catalog=["Images/a.gif", "Images/b.gif", "Images/c.gif"],
+            image_catalog=["/lib/a.gif", "/lib/b.gif", "/lib/c.gif"],
             effect_library=library,
             duration_ms=_PICTURE_SEGMENT_MS,
             variation_seed=0,
@@ -115,7 +123,7 @@ class TestPlacePictureEffects:
     def test_deterministic_for_same_seed(self):
         library = load_effect_library()
         props = [_prop("Matrix1", "Matrix")]
-        catalog = ["Images/a.gif", "Images/b.gif", "Images/c.gif"]
+        catalog = ["/lib/a.gif", "/lib/b.gif", "/lib/c.gif"]
         first = _place_picture_effects(
             props=props, image_catalog=catalog, effect_library=library,
             duration_ms=60_000, variation_seed=42,
@@ -146,54 +154,102 @@ class TestPictureEffectsConfigFlag:
         assert config.picture_effects is False
 
 
-class TestCatalogImages:
-    def test_no_show_dir_returns_empty(self):
-        assert catalog_images(show_dir=None) == []
+class TestImageLibraryStorage:
+    def test_empty_library_returns_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        assert load_image_library() == []
+        assert catalog_images() == []
 
-    def test_missing_images_subdir_returns_empty(self, tmp_path):
-        assert catalog_images(show_dir=tmp_path) == []
+    def test_save_and_load_round_trips(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        entry = save_image_to_library(
+            tag="snowman", filename="snowman.gif", data=b"gif-bytes",
+            uploaded_at="2026-07-15T00:00:00Z",
+        )
+        assert entry["tag"] == "snowman"
+        assert Path(entry["stored_path"]).read_bytes() == b"gif-bytes"
 
-    def test_finds_images_recursively(self, tmp_path):
-        images_dir = tmp_path / "Images"
-        (images_dir / "sub").mkdir(parents=True)
-        (images_dir / "top.gif").write_bytes(b"gif")
-        (images_dir / "sub" / "nested.png").write_bytes(b"png")
-        (images_dir / "notes.txt").write_bytes(b"not an image")
+        library = load_image_library()
+        assert len(library) == 1
+        assert library[0]["id"] == entry["id"]
 
-        result = catalog_images(show_dir=tmp_path)
-        assert result == ["Images/sub/nested.png", "Images/top.gif"]
+        assert catalog_images() == [entry["stored_path"]]
+
+    def test_multiple_uploads_accumulate(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        save_image_to_library(tag="snowman", filename="a.gif", data=b"1", uploaded_at="t1")
+        save_image_to_library(tag="rocker", filename="b.gif", data=b"2", uploaded_at="t2")
+        assert len(load_image_library()) == 2
+        assert len(catalog_images()) == 2
 
 
 class TestSuggestImagesForWords:
     def test_no_words_returns_empty(self):
-        assert suggest_images_for_words(None, ["Images/snowman.gif"]) == []
-        assert suggest_images_for_words([], ["Images/snowman.gif"]) == []
+        library = [_library_entry("snowman")]
+        assert suggest_images_for_words(None, library) == []
+        assert suggest_images_for_words([], library) == []
 
-    def test_no_catalog_returns_empty(self):
+    def test_no_library_returns_empty(self):
         words = [{"label": "snowman", "start_ms": 1000, "end_ms": 1500}]
         assert suggest_images_for_words(words, []) == []
 
     def test_exact_word_match(self):
         words = [{"label": "Snowman", "start_ms": 1000, "end_ms": 1500}]
-        result = suggest_images_for_words(words, ["Images/snowman.gif"])
+        library = [_library_entry("snowman", filename="snowman.gif")]
+        result = suggest_images_for_words(words, library)
         assert len(result) == 1
-        assert result[0]["matched_file"] == "Images/snowman.gif"
+        assert result[0]["matched_file"] == "snowman.gif"
+        assert result[0]["matched_tag"] == "snowman"
         assert result[0]["word"] == "Snowman"
         assert result[0]["start_ms"] == 1000
         assert result[0]["score"] == 1.0
 
     def test_short_word_skipped(self):
         words = [{"label": "the", "start_ms": 0, "end_ms": 200}]
-        result = suggest_images_for_words(words, ["Images/the.gif"])
-        assert result == []
+        library = [_library_entry("the")]
+        assert suggest_images_for_words(words, library) == []
 
     def test_unmatched_word_produces_no_suggestion(self):
         words = [{"label": "helicopter", "start_ms": 0, "end_ms": 500}]
-        result = suggest_images_for_words(words, ["Images/snowman.gif"])
-        assert result == []
+        library = [_library_entry("snowman")]
+        assert suggest_images_for_words(words, library) == []
 
     def test_close_variant_matches_via_fuzzy_ratio(self):
         words = [{"label": "snowmen", "start_ms": 0, "end_ms": 500}]
-        result = suggest_images_for_words(words, ["Images/snowman.gif"])
+        library = [_library_entry("snowman", filename="snowman.gif")]
+        result = suggest_images_for_words(words, library)
         assert len(result) == 1
-        assert result[0]["matched_file"] == "Images/snowman.gif"
+        assert result[0]["matched_file"] == "snowman.gif"
+
+
+class TestFindUnmatchedTopics:
+    def test_no_words_returns_empty(self):
+        assert find_unmatched_topics(None, []) == []
+
+    def test_matched_word_excluded(self):
+        words = [{"label": "snowman", "start_ms": 0, "end_ms": 500}]
+        library = [_library_entry("snowman")]
+        assert find_unmatched_topics(words, library) == []
+
+    def test_unmatched_real_word_included(self):
+        words = [{"label": "rocker", "start_ms": 0, "end_ms": 500}]
+        assert find_unmatched_topics(words, []) == [
+            {"word": "rocker", "start_ms": 0, "end_ms": 500}
+        ]
+
+    def test_stopword_excluded(self):
+        words = [{"label": "with", "start_ms": 0, "end_ms": 200}]
+        assert find_unmatched_topics(words, []) == []
+
+    def test_short_word_excluded(self):
+        words = [{"label": "the", "start_ms": 0, "end_ms": 200}]
+        assert find_unmatched_topics(words, []) == []
+
+    def test_dedupes_repeated_word_keeping_first_occurrence(self):
+        words = [
+            {"label": "rocker", "start_ms": 5000, "end_ms": 5500},
+            {"label": "rocker", "start_ms": 1000, "end_ms": 1500},
+        ]
+        result = find_unmatched_topics(words, [])
+        assert len(result) == 1
+        assert result[0]["start_ms"] == 5000
