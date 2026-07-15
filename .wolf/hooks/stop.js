@@ -150,11 +150,29 @@ function checkForMissingBugLogs(wolfDir, session) {
         .map(([file]) => path.basename(file));
     if (multiEditFiles.length === 0)
         return null;
+    // files_written only records writes made through the Edit/Write tools
+    // (recorded by post-write.js's PostToolUse hook) -- a buglog.json update
+    // made via Bash (e.g. a python -c json.dump one-liner, or any shell
+    // redirection) never appears there, so this check used to nag forever
+    // even after the bug was correctly logged. Fall back to the file's mtime
+    // vs session start, same pattern checkStatusFreshness already uses for
+    // STATUS.md, which catches a buglog.json write regardless of which tool
+    // made it.
     const buglogWritten = session.files_written.some(w => w.file.includes("buglog.json"));
-    if (!buglogWritten) {
-        return `ACTION REQUIRED: Files edited 3+ times this session (${multiEditFiles.join(", ")}) but buglog.json was not updated. Log the bug fixes to .wolf/buglog.json now.`;
+    if (buglogWritten)
+        return null;
+    const buglogPath = path.join(wolfDir, "buglog.json");
+    try {
+        const stat = fs.statSync(buglogPath);
+        const sessionStartMs = session.started ? Date.parse(session.started) : 0;
+        if (sessionStartMs && stat.mtimeMs >= sessionStartMs) {
+            return null;
+        }
     }
-    return null;
+    catch {
+        // buglog.json doesn't exist -- fall through to the reminder below.
+    }
+    return `ACTION REQUIRED: Files edited 3+ times this session (${multiEditFiles.join(", ")}) but buglog.json was not updated. Log the bug fixes to .wolf/buglog.json now.`;
 }
 /**
  * Check if STATUS.md is older than the session start AND there was meaningful
