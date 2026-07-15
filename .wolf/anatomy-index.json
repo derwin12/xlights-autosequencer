@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-14T22:54:57.391Z",
-    "fileCount": 605,
+    "lastScanned": "2026-07-15T14:23:36.191Z",
+    "fileCount": 611,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "95495d4a111358102eba70248e8988a03cda7f057740b5f56b6d3334e7d1d75d",
-    "storeUpdatedAt": "2026-07-14T22:54:57.397Z"
+    "renderedHash": "63c8c21991a2c3faa8178a85e3058b9657011674e1f1882bcac985bc1b503ec1",
+    "storeUpdatedAt": "2026-07-15T14:23:36.206Z"
   },
   "files": {
     ".DS_Store": {
@@ -17,9 +17,12 @@
     },
     ".gitignore": {
       "description": "Git ignore rules",
-      "tokens": 593,
-      "updatedAt": "2026-07-14T22:54:57.393Z",
-      "source": "md-import"
+      "tokens": 686,
+      "hash": "81949f26d61e6ec6",
+      "size": 2581,
+      "mtimeMs": 1784125416048.8608,
+      "updatedAt": "2026-07-15T14:23:36.191Z",
+      "source": "hook"
     },
     "CLAUDE.md": {
       "description": "OpenWolf",
@@ -3449,9 +3452,112 @@
     },
     "src/review/frontend/src/App.tsx": {
       "description": "SCREENS",
-      "tokens": 6875,
-      "updatedAt": "2026-07-14T22:54:57.395Z",
-      "source": "md-import"
+      "tokens": 7538,
+      "hash": "b4207ff45b155e86",
+      "size": 27353,
+      "mtimeMs": 1784124526702.2173,
+      "updatedAt": "2026-07-15T14:08:46.836Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "ThemeDef",
+          "kind": "section",
+          "startLine": 23,
+          "endLine": 35,
+          "tokens": 66
+        },
+        {
+          "name": "Section",
+          "kind": "section",
+          "startLine": 36,
+          "endLine": 46,
+          "tokens": 55
+        },
+        {
+          "name": "ImageSuggestion",
+          "kind": "section",
+          "startLine": 47,
+          "endLine": 54,
+          "tokens": 36
+        },
+        {
+          "name": "Analysis",
+          "kind": "section",
+          "startLine": 55,
+          "endLine": 67,
+          "tokens": 126
+        },
+        {
+          "name": "AppData",
+          "kind": "section",
+          "startLine": 68,
+          "endLine": 80,
+          "tokens": 102
+        },
+        {
+          "name": "PurgeDialogState",
+          "kind": "section",
+          "startLine": 81,
+          "endLine": 87,
+          "tokens": 46
+        },
+        {
+          "name": "useGlobalShortcuts",
+          "kind": "fn",
+          "startLine": 88,
+          "endLine": 167,
+          "tokens": 515
+        },
+        {
+          "name": "GlobalKeyboardListener",
+          "kind": "fn",
+          "startLine": 168,
+          "endLine": 175,
+          "tokens": 73
+        },
+        {
+          "name": "GlobalAudioPlayer",
+          "kind": "fn",
+          "startLine": 176,
+          "endLine": 255,
+          "tokens": 818
+        },
+        {
+          "name": "GlobalDragBlock",
+          "kind": "fn",
+          "startLine": 256,
+          "endLine": 270,
+          "tokens": 127
+        },
+        {
+          "name": "saveAssignments",
+          "kind": "fn",
+          "startLine": 271,
+          "endLine": 280,
+          "tokens": 97
+        },
+        {
+          "name": "App",
+          "kind": "fn",
+          "startLine": 281,
+          "endLine": 676,
+          "tokens": 4043
+        },
+        {
+          "name": "PurgeDialog",
+          "kind": "fn",
+          "startLine": 677,
+          "endLine": 757,
+          "tokens": 644
+        },
+        {
+          "name": "PlaceholderScreen",
+          "kind": "fn",
+          "startLine": 758,
+          "endLine": 795,
+          "tokens": 263
+        }
+      ]
     },
     "src/review/frontend/src/screens/Analyze.tsx": {
       "description": "When true, run analysis on mount even if the song is already marked",
@@ -3638,6 +3744,220 @@
       "tokens": 1546,
       "updatedAt": "2026-07-14T22:54:57.395Z",
       "source": "md-import"
+    },
+    "C:/Users/daryl/AppData/Local/Temp/claude/H--Github-xlight-autosequencer/99daea5b-98e1-4e63-8e83-b1a35c7b3cae/scratchpad/rescan_corpus.sh": {
+      "description": "",
+      "tokens": 413,
+      "hash": "7a64867d65e05f38",
+      "size": 1548,
+      "mtimeMs": 1784123285323.566,
+      "updatedAt": "2026-07-15T13:48:05.464Z",
+      "source": "hook"
+    },
+    "scripts/startapp.sh": {
+      "description": "Restart the xlight-review server running inside the xlight-dev devcontainer.",
+      "tokens": 489,
+      "hash": "0281e3c06dc2b0dc",
+      "size": 1835,
+      "mtimeMs": 1784123979235.5981,
+      "updatedAt": "2026-07-15T13:59:39.369Z",
+      "source": "hook"
+    },
+    "src/review/frontend/src/screens/Theme.tsx": {
+      "description": "formatTimestamp",
+      "tokens": 3839,
+      "hash": "ec3f1c3c6732745b",
+      "size": 13444,
+      "mtimeMs": 1784124496653.8003,
+      "updatedAt": "2026-07-15T14:08:16.917Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "Theme",
+          "kind": "section",
+          "startLine": 10,
+          "endLine": 22,
+          "tokens": 66
+        },
+        {
+          "name": "Section",
+          "kind": "section",
+          "startLine": 23,
+          "endLine": 30,
+          "tokens": 32
+        },
+        {
+          "name": "Song",
+          "kind": "section",
+          "startLine": 31,
+          "endLine": 37,
+          "tokens": 28
+        },
+        {
+          "name": "ImageSuggestion",
+          "kind": "section",
+          "startLine": 38,
+          "endLine": 45,
+          "tokens": 36
+        },
+        {
+          "name": "ThemeScreenProps",
+          "kind": "section",
+          "startLine": 46,
+          "endLine": 55,
+          "tokens": 68
+        },
+        {
+          "name": "formatTimestamp",
+          "kind": "fn",
+          "startLine": 56,
+          "endLine": 69,
+          "tokens": 106
+        },
+        {
+          "name": "EditState",
+          "kind": "section",
+          "startLine": 70,
+          "endLine": 82,
+          "tokens": 64
+        },
+        {
+          "name": "EditDialog",
+          "kind": "fn",
+          "startLine": 83,
+          "endLine": 184,
+          "tokens": 991
+        },
+        {
+          "name": "Theme",
+          "kind": "fn",
+          "startLine": 185,
+          "endLine": 406,
+          "tokens": 2186
+        }
+      ]
+    },
+    "src/review/frontend/src/screens/Theme.module.css": {
+      "description": "Styles: 37 rules",
+      "tokens": 1288,
+      "hash": "2d18beeaa851d4ca",
+      "size": 4506,
+      "mtimeMs": 1784124512816.16,
+      "updatedAt": "2026-07-15T14:08:33.163Z",
+      "source": "hook"
+    },
+    ".wolf/hooks/post-write.js": {
+      "description": "File types where a value/string change is normal content editing, not a bug",
+      "tokens": 7137,
+      "hash": "7f256758ff602e08",
+      "size": 25202,
+      "mtimeMs": 1784124907019.0752,
+      "updatedAt": "2026-07-15T14:15:07.161Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "main",
+          "kind": "fn",
+          "startLine": 17,
+          "endLine": 165,
+          "tokens": 1957
+        },
+        {
+          "name": "summarizeEdit",
+          "kind": "fn",
+          "startLine": 166,
+          "endLine": 247,
+          "tokens": 1091
+        },
+        {
+          "name": "extractCalls",
+          "kind": "fn",
+          "startLine": 248,
+          "endLine": 253,
+          "tokens": 110
+        },
+        {
+          "name": "bugAutoDetectEnabled",
+          "kind": "fn",
+          "startLine": 254,
+          "endLine": 263,
+          "tokens": 87
+        },
+        {
+          "name": "autoDetectBugFix",
+          "kind": "fn",
+          "startLine": 264,
+          "endLine": 315,
+          "tokens": 612
+        },
+        {
+          "name": "detectFixPattern",
+          "kind": "fn",
+          "startLine": 316,
+          "endLine": 497,
+          "tokens": 2472
+        },
+        {
+          "name": "extractChangedLines",
+          "kind": "fn",
+          "startLine": 498,
+          "endLine": 503,
+          "tokens": 96
+        },
+        {
+          "name": "tokenizeCode",
+          "kind": "fn",
+          "startLine": 504,
+          "endLine": 506,
+          "tokens": 32
+        },
+        {
+          "name": "findOperatorChange",
+          "kind": "fn",
+          "startLine": 507,
+          "endLine": 519,
+          "tokens": 136
+        },
+        {
+          "name": "extractCSSProps",
+          "kind": "fn",
+          "startLine": 520,
+          "endLine": 529,
+          "tokens": 87
+        }
+      ]
+    },
+    "src/generator/corpus_recipes.py": {
+      "description": "Declares from",
+      "tokens": 11312,
+      "hash": "c4c8b5ad20948f8e",
+      "size": 39693,
+      "mtimeMs": 1784125195484.009,
+      "updatedAt": "2026-07-15T14:19:59.257Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "PropFamilyRecipe",
+          "kind": "class",
+          "startLine": 70,
+          "endLine": 719,
+          "tokens": 9498
+        },
+        {
+          "name": "recipe_for_group",
+          "kind": "fn",
+          "startLine": 720,
+          "endLine": 775,
+          "tokens": 667
+        },
+        {
+          "name": "section_qualifies",
+          "kind": "fn",
+          "startLine": 776,
+          "endLine": 782,
+          "tokens": 99
+        }
+      ]
     }
   }
 }

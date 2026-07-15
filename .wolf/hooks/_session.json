@@ -1,32 +1,352 @@
 {
-  "session_id": "session-2026-05-04-1402",
-  "started": "2026-05-04T21:02:17.578Z",
+  "session_id": "session-2026-07-15-0905",
+  "started": "2026-07-15T13:05:14.413Z",
   "files_read": {
-    "/workspace/.gitignore": {
+    "C:/Users/daryl/.ccs/instances/teams/projects/H--Github-xlight-autosequencer/memory/devcontainer_review_server_restart.md": {
       "count": 1,
-      "tokens": 420,
-      "first_read": "2026-05-04T21:04:26.874Z"
+      "tokens": 0,
+      "first_read": "2026-07-15T13:05:29.556Z"
     },
-    "/workspace/src/microscope/verify.py": {
+    "H:/Github/xlight-autosequencer/scripts/start.sh": {
       "count": 1,
-      "tokens": 1442,
-      "first_read": "2026-05-04T21:04:40.005Z"
+      "tokens": 0,
+      "first_read": "2026-07-15T13:09:15.546Z"
+    },
+    "H:/Github/xlight-autosequencer/src/effects/builtin_effects.json": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:12:02.407Z"
+    },
+    "H:/Github/xlight-autosequencer/src/generator/effect_placer.py": {
+      "count": 7,
+      "tokens": 26888,
+      "first_read": "2026-07-15T13:12:08.750Z"
+    },
+    "H:/Github/xlight-autosequencer/src/video/layout.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:12:10.782Z"
+    },
+    "H:/Github/xlight-autosequencer/src/paths.py": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:12:16.924Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/api/v1/import_video.py": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:12:27.328Z"
+    },
+    "H:/Github/xlight-autosequencer/src/generator/models.py": {
+      "count": 3,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:16:07.683Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/api/v1/export.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:16:09.059Z"
+    },
+    "H:/Github/xlight-autosequencer/src/generator/plan.py": {
+      "count": 5,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:16:14.701Z"
+    },
+    "H:/Github/xlight-autosequencer/src/effects/library.py": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:16:30.276Z"
+    },
+    "H:/Github/xlight-autosequencer/src/analyzer/crash_accents.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:23:41.941Z"
+    },
+    "H:/Github/xlight-autosequencer/src/analyzer/free_transcription.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:23:49.016Z"
+    },
+    "H:/Github/xlight-autosequencer/src/analyzer/result.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:24:05.702Z"
+    },
+    "H:/Github/xlight-autosequencer/src/analyzer/phonemes.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:24:06.014Z"
+    },
+    "H:/Github/xlight-autosequencer/src/evaluation/generator_runner.py": {
+      "count": 3,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:24:06.615Z"
+    },
+    "H:/Github/xlight-autosequencer/src/analyzer/synced_lyrics.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:24:46.403Z"
+    },
+    "H:/Github/xlight-autosequencer/src/effects/models.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:24:47.358Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/api/v1/analysis.py": {
+      "count": 3,
+      "tokens": 13834,
+      "first_read": "2026-07-15T13:24:54.384Z"
+    },
+    "H:/Github/xlight-autosequencer/src/grouper/layout.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:25:05.372Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/storage/assignments.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:25:13.057Z"
+    },
+    "H:/Github/xlight-autosequencer/pyproject.toml": {
+      "count": 1,
+      "tokens": 752,
+      "first_read": "2026-07-15T13:25:28.041Z"
+    },
+    "H:/Github/xlight-autosequencer/src/analyzer/orchestrator.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:25:37.176Z"
+    },
+    "H:/Github/xlight-autosequencer/src/generator/xsq_writer.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:26:25.340Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_crash_accents_placement.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:28:20.950Z"
+    },
+    "H:/Github/xlight-autosequencer/src/generator/image_catalog.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:30:05.496Z"
+    },
+    "H:/Github/xlight-autosequencer/scripts/mine_prop_corpus.py": {
+      "count": 3,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:43:13.331Z"
+    },
+    "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py": {
+      "count": 3,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:47:34.456Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/snowflake_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:44.687Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/arch_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:45.051Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/cane_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:45.426Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/horizontal_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:46.144Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/vertical_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:46.512Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/icicle_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:46.869Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/matrix_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:47.238Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/megatree_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:47.957Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/minitree_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:48.382Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/star_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:48.692Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/topper_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:49.073Z"
+    },
+    "H:/Github/xlight-autosequencer/docs/all_sequencing_corpus/INDEX.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:57:49.455Z"
+    },
+    "H:/Github/xlight-autosequencer/scripts/startapp.sh": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T13:59:23.043Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx": {
+      "count": 3,
+      "tokens": 0,
+      "first_read": "2026-07-15T14:07:03.163Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx": {
+      "count": 2,
+      "tokens": 6875,
+      "first_read": "2026-07-15T14:07:08.665Z"
+    },
+    "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.module.css": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T14:08:21.467Z"
+    },
+    "H:/Github/xlight-autosequencer/.gitignore": {
+      "count": 1,
+      "tokens": 593,
+      "first_read": "2026-07-15T14:23:32.297Z"
     }
   },
   "files_written": [
     {
-      "file": "/workspace/.gitignore",
+      "file": "C:/Users/daryl/AppData/Local/Temp/claude/H--Github-xlight-autosequencer/99daea5b-98e1-4e63-8e83-b1a35c7b3cae/scratchpad/rescan_corpus.sh",
+      "action": "create",
+      "tokens": 443,
+      "at": "2026-07-15T13:48:05.508Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/scripts/startapp.sh",
       "action": "edit",
-      "tokens": 24,
-      "at": "2026-05-04T21:04:31.642Z"
+      "tokens": 392,
+      "at": "2026-07-15T13:59:33.109Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/scripts/startapp.sh",
+      "action": "edit",
+      "tokens": 76,
+      "at": "2026-07-15T13:59:39.388Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx",
+      "action": "edit",
+      "tokens": 172,
+      "at": "2026-07-15T14:08:02.264Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx",
+      "action": "edit",
+      "tokens": 42,
+      "at": "2026-07-15T14:08:06.791Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.tsx",
+      "action": "edit",
+      "tokens": 376,
+      "at": "2026-07-15T14:08:16.960Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/screens/Theme.module.css",
+      "action": "edit",
+      "tokens": 309,
+      "at": "2026-07-15T14:08:33.218Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx",
+      "action": "edit",
+      "tokens": 138,
+      "at": "2026-07-15T14:08:39.637Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/review/frontend/src/App.tsx",
+      "action": "edit",
+      "tokens": 95,
+      "at": "2026-07-15T14:08:46.854Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/hooks/post-write.js",
+      "action": "edit",
+      "tokens": 294,
+      "at": "2026-07-15T14:15:07.180Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/hooks/post-write.js",
+      "action": "edit",
+      "tokens": 675,
+      "at": "2026-07-15T14:15:35.105Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/hooks/post-write.js",
+      "action": "edit",
+      "tokens": 56,
+      "at": "2026-07-15T14:15:40.151Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/hooks/post-write.js",
+      "action": "edit",
+      "tokens": 97,
+      "at": "2026-07-15T14:15:46.291Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/buglog.json",
+      "action": "edit",
+      "tokens": 3,
+      "at": "2026-07-15T14:15:55.540Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/cerebrum.md",
+      "action": "edit",
+      "tokens": 418,
+      "at": "2026-07-15T14:16:39.095Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py",
+      "action": "edit",
+      "tokens": 432,
+      "at": "2026-07-15T14:19:59.349Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.gitignore",
+      "action": "edit",
+      "tokens": 20,
+      "at": "2026-07-15T14:23:36.210Z"
     }
   ],
   "edit_counts": {
+    "C:/Users/daryl/AppData/Local/Temp/claude/H--Github-xlight-autosequencer/99daea5b-98e1-4e63-8e83-b1a35c7b3cae/scratchpad/rescan_corpus.sh": 1,
+    "scripts/startapp.sh": 2,
+    "src/review/frontend/src/screens/Theme.tsx": 3,
+    "src/review/frontend/src/screens/Theme.module.css": 1,
+    "src/review/frontend/src/App.tsx": 2,
+    ".wolf/hooks/post-write.js": 4,
+    ".wolf/buglog.json": 1,
+    ".wolf/cerebrum.md": 1,
+    "src/generator/corpus_recipes.py": 1,
     ".gitignore": 1
   },
-  "anatomy_hits": 2,
-  "anatomy_misses": 0,
-  "repeated_reads_warned": 0,
+  "anatomy_hits": 5,
+  "anatomy_misses": 40,
+  "repeated_reads_warned": 27,
   "cerebrum_warnings": 0,
-  "stop_count": 1
+  "stop_count": 21
 }

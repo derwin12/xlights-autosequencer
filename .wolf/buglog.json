@@ -3478,6 +3478,136 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-209",
+      "timestamp": "2026-07-15",
+      "error_message": "FEATURE (not a bug fix): user requested support for xLights Pictures effects (image/GIF display), which were fully cataloged in builtin_effects.json but never placed by the generator.",
+      "file": "src/generator/image_catalog.py (new), src/generator/effect_placer.py, src/generator/plan.py, src/generator/models.py, src/generator/xsq_writer.py, src/review/api/v1/analysis.py, tests/unit/test_generator/test_picture_effects.py (new)",
+      "root_cause": "N/A (new feature). Prior gap: Pictures effect (E_FILEPICKER_Pictures_Filename, prop_suitability matrix=ideal/tree=good/arch=not_recommended) existed in builtin_effects.json since an earlier catalog pass but had zero callers anywhere in src/generator/ -- dead catalog entry.",
+      "fix": "New src/generator/image_catalog.py::catalog_images() recursively globs <show_dir>/Images for image/gif files, returning show-relative POSIX paths (Images/name.gif) computed directly against the resolved show_dir rather than via paths.to_show_relative() (which re-resolves show dir independently and would not honor a caller-supplied show_dir in tests). New effect_placer._place_picture_effects() places Pictures effects on props whose prop_suitability rating is not not_recommended (matrix/tree favored, arch/outline/radial skipped), cycling each eligible prop through the full catalog in 20s segments across the whole song, with a per-prop random offset seeded by variation_seed+prop name so props do not all show the same image simultaneously. Song-scoped like vocal_effects/video_effects/crash_effects (new SequencePlan.picture_effects field, new GenerationConfig.picture_effects flag default True) -- deliberately NOT threaded through export.py/generator_runner.py as a config-supplied path (unlike video_path, see bug-192) since the directory is a fixed derivable convention, not a per-song upload; this sidesteps that entire bug class by construction. Also added an advisory-only companion: image_catalog.suggest_images_for_words() fuzzy-matches (difflib.SequenceMatcher, stdlib, no new dependency) lyric words against catalog filename stems and is wired into the review analyze flow (src/review/api/v1/analysis.py, after align_words_and_phonemes) as a new image_suggestions field in the analysis result + persisted session -- informational only, does not influence generation; wiring it into placement is deferred as an explicit fast-follow per user decision (2026-07-15).",
+      "tags": [
+        "generator",
+        "effects",
+        "pictures-effect",
+        "image-catalog",
+        "analyzer-advisory",
+        "new-feature",
+        "review"
+      ],
+      "related_bugs": [
+        "bug-192"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-210",
+      "timestamp": "2026-07-15",
+      "error_message": "Stop hook nagged ACTION REQUIRED: no semantic summary was written to memory.md every single turn this session, even immediately after genuine memory.md entries were added.",
+      "file": ".wolf/hooks/shared.js",
+      "root_cause": "countSemanticEntries() required each memory.md row to literally start with the date string (\"| 2026-07-15 | ...\"), but this project has always grouped entries under a \"## Session: 2026-07-15 HH:MM\" header with bare \"| HH:MM | ... |\" rows underneath -- the established convention across every prior session. line.startsWith(todayPrefix) never matched any row in this file, so the semantic count was permanently 0 regardless of what was actually written.",
+      "fix": "countSemanticEntries() now tracks whether the current line falls under a \"## Session: <today>\" header (session_header regex) and counts bare | HH:MM | rows within that block as today-dated, in addition to the original date-prefixed-row check (kept for any project using that literal convention). Also excludes table header/separator furniture rows (\"| Time | ...\", \"|---|...\") that would otherwise false-positive count once inside a matched session block. Verified via a standalone node import: countSemanticEntries returned 0 before the fix (with 5+ genuine entries already present) and 5 after.",
+      "tags": [
+        "openwolf",
+        "hooks",
+        "stop-hook",
+        "memory-md",
+        "false-positive"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-211",
+      "timestamp": "2026-07-15",
+      "error_message": "FEATURE (not a bug fix): user asked to add a UI surface for the image_suggestions advisory field (previously backend-only, no frontend visibility) on the Theme screen.",
+      "file": "src/review/frontend/src/screens/Theme.tsx, src/review/frontend/src/screens/Theme.module.css, src/review/frontend/src/App.tsx",
+      "root_cause": "N/A (new feature). image_suggestions was added to the analyze API response/session (bug-209) but never wired into any frontend screen -- the data existed but was invisible without inspecting raw API responses.",
+      "fix": "Added an ImageSuggestion type + imageSuggestions prop to Theme.tsx, rendering a small panel below the main theme-assignment body (after SectionStrip/ThemeCard/Inspector, before the edit dialog) listing each lyric-word match with timestamp, word, and matched show-relative filename, plus a hint that new images dropped into Images/ are picked up automatically at export time (not yet timestamp-targeted -- that wiring is the explicitly deferred fast-follow from bug-209). App.tsx threads analysis.image_suggestions through as the new prop. vite build succeeds; a repo-wide tsc --noEmit surfaced ~40 pre-existing unrelated type errors (unused React imports, test-file issues, Song/Assignment interface drift) that predate this change and are not gated by any script in package.json (no tsc step exists) -- none reference the new code. Verified live: catalog_images() found all 11 real files under F:\\ShowFolderAI\\Images, server restarted, 580 tests pass.",
+      "tags": [
+        "frontend",
+        "review",
+        "pictures-effect",
+        "image-suggestions",
+        "theme-screen",
+        "new-feature"
+      ],
+      "related_bugs": [
+        "bug-209"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-212",
+      "timestamp": "2026-07-15T14:15:07.183Z",
+      "error_message": "Significant refactor of ",
+      "file": ".wolf/hooks/post-write.js",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 8→13 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:15:07.183Z"
+    },
+    {
+      "id": "bug-213",
+      "timestamp": "2026-07-15T14:15:40.157Z",
+      "error_message": "Wrong reference: try should be skipped",
+      "file": ".wolf/hooks/post-write.js",
+      "root_cause": "Used \"try\" instead of \"skipped\"",
+      "fix": "Changed try → skipped",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:15:40.157Z"
+    },
+    {
+      "id": "bug-212",
+      "timestamp": "2026-07-15",
+      "error_message": "ACTION REQUIRED: Files edited 3+ times this session (Theme.tsx) but buglog.json was not updated -- kept re-firing even after buglog.json was genuinely updated multiple times via the Edit tool.",
+      "file": ".wolf/hooks/post-write.js",
+      "root_cause": "post-write.js exits immediately (process.exit(0)) for any file path starting with \".wolf/\" (intended to avoid slow self-referential anatomy-store rebuilds when editing buglog.json/cerebrum.md/memory.md themselves), but that early exit sat BEFORE step 3 (session-tracker recording), not just before the expensive anatomy-store/memory-append/bug-autodetect steps. This made stop.js checkMultiEditFiles/checkSemanticSummaries structurally unsatisfiable: session.files_written could never contain a buglog.json or cerebrum.md entry no matter how those files were edited, since the write was recorded in step 3 which the .wolf/ files never reached.",
+      "fix": "Introduced isWolfInternal flag computed at the same point as the old early-exit. Steps 1 (anatomy store), 2 (memory.md auto-append), and 4 (bug auto-detect) are now individually gated on !isWolfInternal (still skipped for .wolf/ files, preserving the original self-referential-noise avoidance), but step 3 (session tracker: files_written + edit_counts) now runs unconditionally for every file including .wolf/ internal ones. Verified via a simulated hook invocation (echo JSON piped to post-write.js) targeting .wolf/buglog.json: files_written count went 13->14 and checkMultiEditFiles buglogWritten flag flipped false->true against the real session state.",
+      "tags": [
+        "openwolf",
+        "hooks",
+        "post-write",
+        "session-tracking",
+        "false-positive",
+        "buglog-json"
+      ],
+      "related_bugs": [
+        "bug-210"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-215",
+      "timestamp": "2026-07-15T14:19:59.355Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/corpus_recipes.py",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 20→29 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15T14:19:59.356Z"
     }
   ]
 }

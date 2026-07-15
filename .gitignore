@@ -84,6 +84,7 @@ mad_russian_christmas/
 .wolf/designqc-captures/
 .wolf/suggestions.json
 .wolf/token-ledger.json
+.wolf/dashboard-token
 
 # User song data (audio, analysis, generated sequences)
 songs/

@@ -1,12 +1,12 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-06T16:36:31.774Z
-> Files: 610 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T14:23:36.191Z
+> Files: 611 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
 - `.DS_Store` (~1640 tok)
-- `.gitignore` — Git ignore rules (~593 tok)
+- `.gitignore` — Git ignore rules (~686 tok)
 - `CLAUDE.md` — OpenWolf (~8227 tok)
 - `LICENSE` — Project license (~285 tok)
 - `pyproject.toml` — Automatically generate xLights sequences from audio files (~752 tok)
@@ -919,8 +919,8 @@
 - `interaction.py` — Cross-stem musical interaction analysis. (~2966 tok)
 - `orchestrator.py` — Hierarchy orchestrator: zero-flag pipeline for hierarchical music analysis. (~13310 tok)
 - `parallel.py` — Parallel pipeline executor: PipelineStep, DependencyGraph, ParallelRunner. (~3482 tok)
-- `phonemes.py` — Vocal phoneme analysis: WhisperX transcription + cmudict decomposition. (~4807 tok)
 - `phoneme_align.py` — Session-friendly WhisperX word/phoneme alignment wrapper (in-process first, .venv-vamp sidecar fallback); feeds singing-faces export (~1600 tok)
+- `phonemes.py` — Vocal phoneme analysis: WhisperX transcription + cmudict decomposition. (~4807 tok)
 - `pipeline.py` — Automated end-to-end analysis pipeline (US7). (~2440 tok)
 - `progress.py` — Multi-track live progress display for parallel pipeline execution (T031). (~1436 tok)
 - `result.py` — Core data classes for the analysis pipeline. (~8644 tok)
@@ -984,6 +984,24 @@
 
 - `evaluate.yml` — CI: Acceptance Gate (Tier A) (~1647 tok)
 
+## .wolf/hooks/
+
+- `post-write.js` — File types where a value/string change is normal content editing, not a bug (~7137 tok)
+  - fn `main` L17-165 (~1957 tok)
+  - fn `summarizeEdit` L166-247 (~1091 tok)
+  - fn `extractCalls` L248-253 (~110 tok)
+  - fn `bugAutoDetectEnabled` L254-263 (~87 tok)
+  - fn `autoDetectBugFix` L264-315 (~612 tok)
+  - fn `detectFixPattern` L316-497 (~2472 tok)
+  - fn `extractChangedLines` L498-503 (~96 tok)
+  - fn `tokenizeCode` L504-506 (~32 tok)
+  - fn `findOperatorChange` L507-519 (~136 tok)
+  - fn `extractCSSProps` L520-529 (~87 tok)
+
+## C:/Users/daryl/AppData/Local/Temp/claude/H--Github-xlight-autosequencer/99daea5b-98e1-4e63-8e83-b1a35c7b3cae/scratchpad/
+
+- `rescan_corpus.sh` (~413 tok)
+
 ## docs/
 
 - `microscope-tier-effectiveness.md` — Tier and Layout Effectiveness — 2026-05-02 Diagnostic (~1637 tok)
@@ -1029,6 +1047,7 @@
 ## scripts/
 
 - `boundary_confidence_map.py` — Boundary confidence map — diagnostic tool for section boundary detection. (~8430 tok)
+- `startapp.sh` — Restart the xlight-review server running inside the xlight-dev devcontainer. (~489 tok)
 
 ## src/
 
@@ -1056,6 +1075,10 @@
 
 ## src/generator/
 
+- `corpus_recipes.py` — Declares from (~11312 tok)
+  - class `PropFamilyRecipe` L70-719 (~9498 tok)
+  - fn `recipe_for_group` L720-775 (~667 tok)
+  - fn `section_qualifies` L776-782 (~99 tok)
 - `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~26888 tok)
 
 ## src/microscope/
@@ -1076,13 +1099,38 @@
 
 ## src/review/frontend/src/
 
-- `App.tsx` — SCREENS (~6875 tok)
+- `App.tsx` — SCREENS (~7538 tok)
+  - section `ThemeDef` L23-35 (~66 tok)
+  - section `Section` L36-46 (~55 tok)
+  - section `ImageSuggestion` L47-54 (~36 tok)
+  - section `Analysis` L55-67 (~126 tok)
+  - section `AppData` L68-80 (~102 tok)
+  - section `PurgeDialogState` L81-87 (~46 tok)
+  - fn `useGlobalShortcuts` L88-167 (~515 tok)
+  - fn `GlobalKeyboardListener` L168-175 (~73 tok)
+  - fn `GlobalAudioPlayer` L176-255 (~818 tok)
+  - fn `GlobalDragBlock` L256-270 (~127 tok)
+  - fn `saveAssignments` L271-280 (~97 tok)
+  - fn `App` L281-676 (~4043 tok)
+  - fn `PurgeDialog` L677-757 (~644 tok)
+  - fn `PlaceholderScreen` L758-795 (~263 tok)
 
 ## src/review/frontend/src/screens/
 
 - `Analyze.tsx` — When true, run analysis on mount even if the song is already marked (~8302 tok)
 - `Drop.tsx` — Called after a successful /api/v1/import response. (~995 tok)
 - `Library.tsx` — ALLOWED_EXTS (~2965 tok)
+- `Theme.module.css` — Styles: 37 rules (~1288 tok)
+- `Theme.tsx` — formatTimestamp (~3839 tok)
+  - section `Theme` L10-22 (~66 tok)
+  - section `Section` L23-30 (~32 tok)
+  - section `Song` L31-37 (~28 tok)
+  - section `ImageSuggestion` L38-45 (~36 tok)
+  - section `ThemeScreenProps` L46-55 (~68 tok)
+  - fn `formatTimestamp` L56-69 (~106 tok)
+  - section `EditState` L70-82 (~64 tok)
+  - fn `EditDialog` L83-184 (~991 tok)
+  - fn `Theme` L185-406 (~2186 tok)
 - `Timeline.tsx` — Returns the beat entry whose t_ms is <= timeMs (last beat at or before playhead) (~7150 tok)
 
 ## src/review/frontend/tests/screens/
@@ -1138,7 +1186,3 @@
 ## tests/validation/
 
 - `download_fixtures.py` — Download CC0 music fixtures for end-to-end validation testing. (~1546 tok)
-
-- `scripts/mine_prop_corpus.py` — Read-only corpus miner for any prop family (generalized from mine_arch_corpus.py; --family/--tokens/--exclude-tokens CLI). Scans show folder .xsq/.xsqz, extracts placements/blend roles/beat alignment/section correlation. ~7k tokens.
-- `src/generator/corpus_recipes.py` — Corpus-derived prop-family recipes (snowflake=white Shockwave/beat, arch=white Single Strand/beat) + recipe_for_group/section_qualifies gating for tier-6 PROP placement. ~1k tokens.
-- `tests/unit/test_generator/test_corpus_recipes.py` — Matching, gating, per-beat white output, radial exclusion, multi-layer dedup tests. ~2k tokens.
