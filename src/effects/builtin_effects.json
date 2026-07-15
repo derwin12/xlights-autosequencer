@@ -5013,8 +5013,8 @@
       "parameters": [
         {
           "name": "Pictures_Filename",
-          "storage_name": "E_FILEPICKER_Pictures_Filename",
-          "widget_type": "filepicker",
+          "storage_name": "E_TEXTCTRL_Pictures_Filename",
+          "widget_type": "textctrl",
           "value_type": "string",
           "default": "",
           "min": null,

@@ -1,4 +1,4 @@
-"""Tests for effect_placer._place_picture_effects (catalog images on matrix/tree props)."""
+"""Tests for effect_placer._place_picture_effects (catalog images on Matrix/Mega Tree props)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,12 +36,39 @@ class TestPlacePictureEffects:
         )
         assert result == {}
 
-    def test_not_recommended_prop_type_excluded(self):
+    def test_non_matrix_non_megatree_prop_excluded(self):
         library = load_effect_library()
-        # Arch models classify as display_as "Arches" -> prop_type "arch",
-        # rated not_recommended for Pictures in builtin_effects.json.
+        # Eligibility is deliberately narrow (Matrix display type or a Mega
+        # Tree name match) -- reviewing the reference corpus (2026-07-15)
+        # showed every other prop family that had any Pictures placement at
+        # all just repeated one shared decorative image, not real content.
         result = _place_picture_effects(
-            props=[_prop("Arch1", "Arches")],
+            props=[_prop("Arch1", "Arches"), _prop("Snowflake1", "Star"), _prop("Tree1", "Tree")],
+            image_catalog=["Images/a.gif"],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+        )
+        assert result == {}
+
+    def test_megatree_name_match_included(self):
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Mega Tree", "Custom"), _prop("MegaTree2", "Custom")],
+            image_catalog=["Images/a.gif"],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+        )
+        assert set(result) == {"Mega Tree", "MegaTree2"}
+
+    def test_megatopper_not_matched_by_megatree_tokens(self):
+        library = load_effect_library()
+        # "Mega Topper" contains "mega" but not "mega tree"/"megatree" -- must
+        # not accidentally match, toppers are a separate family (bug-192 era
+        # distinction preserved in corpus_recipes.py).
+        result = _place_picture_effects(
+            props=[_prop("Mega Topper", "Custom")],
             image_catalog=["Images/a.gif"],
             effect_library=library,
             duration_ms=60_000,
@@ -67,23 +94,23 @@ class TestPlacePictureEffects:
         assert placements[0].start_ms == 0
         assert placements[-1].end_ms == 60_000
         for p in placements:
-            assert p.parameters["E_FILEPICKER_Pictures_Filename"] in {
+            assert p.parameters["E_TEXTCTRL_Pictures_Filename"] in {
                 "Images/a.gif", "Images/b.gif"
             }
 
     def test_multiple_props_can_get_different_offsets(self):
         library = load_effect_library()
         result = _place_picture_effects(
-            props=[_prop("Matrix1", "Matrix"), _prop("Tree1", "Tree")],
+            props=[_prop("Matrix1", "Matrix"), _prop("Mega Tree", "Custom")],
             image_catalog=["Images/a.gif", "Images/b.gif", "Images/c.gif"],
             effect_library=library,
             duration_ms=_PICTURE_SEGMENT_MS,
             variation_seed=0,
         )
-        assert set(result) == {"Matrix1", "Tree1"}
+        assert set(result) == {"Matrix1", "Mega Tree"}
         # Each prop gets exactly one segment spanning the whole (short) duration.
         assert len(result["Matrix1"]) == 1
-        assert len(result["Tree1"]) == 1
+        assert len(result["Mega Tree"]) == 1
 
     def test_deterministic_for_same_seed(self):
         library = load_effect_library()
@@ -97,8 +124,8 @@ class TestPlacePictureEffects:
             props=props, image_catalog=catalog, effect_library=library,
             duration_ms=60_000, variation_seed=42,
         )
-        first_files = [p.parameters["E_FILEPICKER_Pictures_Filename"] for p in first["Matrix1"]]
-        second_files = [p.parameters["E_FILEPICKER_Pictures_Filename"] for p in second["Matrix1"]]
+        first_files = [p.parameters["E_TEXTCTRL_Pictures_Filename"] for p in first["Matrix1"]]
+        second_files = [p.parameters["E_TEXTCTRL_Pictures_Filename"] for p in second["Matrix1"]]
         assert first_files == second_files
 
 

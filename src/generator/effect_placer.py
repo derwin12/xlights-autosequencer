@@ -3148,6 +3148,11 @@ def _place_video_effect(
 # rather than showing one static image for the whole song.
 _PICTURE_SEGMENT_MS = 20_000
 
+# Name tokens identifying mega tree props — matches corpus_recipes.py's
+# megatree PropFamilyRecipe.match_tokens so eligibility stays consistent
+# with how the rest of the generator identifies this family.
+_MEGATREE_NAME_TOKENS = ("megatree", "mega_tree", "mega tree")
+
 
 def _place_picture_effects(
     props: list[Any],
@@ -3156,16 +3161,21 @@ def _place_picture_effects(
     duration_ms: int,
     variation_seed: int,
 ) -> dict[str, list[EffectPlacement]]:
-    """Place Pictures effects on suitable props, rotating through ``image_catalog``.
+    """Place Pictures effects on Matrix/Mega Tree props, rotating through ``image_catalog``.
 
     Song-scoped, same rationale as ``_place_video_effect``/``_place_singing_faces``:
     fires once per generation, not part of the per-section theme/pool rotation.
-    Eligibility follows the ``Pictures`` effect's ``prop_suitability`` rating
-    (matrix/tree favored, ``not_recommended`` types like arch/radial skipped).
-    Each eligible prop gets its own image sequence, cycling through the full
-    catalog in ``_PICTURE_SEGMENT_MS``-long segments across the whole song, with
-    a per-prop rotation offset (seeded by ``variation_seed`` + prop name) so
-    multiple props don't all show the same image at the same time.
+    Eligibility is deliberately narrow (Matrix display type or a Mega Tree name
+    match) rather than the ``Pictures`` effect's broader ``prop_suitability``
+    rating: reviewing the reference corpus (2026-07-15) showed only Matrix/Mega
+    Tree props carry real varied Pictures content — every other prop family
+    (stars, canes, snowflakes, mini trees) that had any Pictures placement at
+    all just repeated the exact same single decorative image, not meaningful
+    per-prop content. Each eligible prop gets its own image sequence, cycling
+    through the full catalog in ``_PICTURE_SEGMENT_MS``-long segments across
+    the whole song, with a per-prop rotation offset (seeded by
+    ``variation_seed`` + prop name) so multiple props don't all show the same
+    image at the same time.
     """
     if not image_catalog or duration_ms <= 0:
         return {}
@@ -3175,9 +3185,8 @@ def _place_picture_effects(
 
     eligible = [
         p for p in props
-        if pictures_def.prop_suitability.get(
-            prop_type_for_display_as(getattr(p, "display_as", "")), "possible"
-        ) != "not_recommended"
+        if getattr(p, "display_as", "") == "Matrix"
+        or any(tok in getattr(p, "name", "").lower() for tok in _MEGATREE_NAME_TOKENS)
     ]
     if not eligible:
         return {}
@@ -3201,7 +3210,7 @@ def _place_picture_effects(
                 start_ms=start,
                 end_ms=end,
                 parameters={
-                    "E_FILEPICKER_Pictures_Filename": filename,
+                    "E_TEXTCTRL_Pictures_Filename": filename,
                 },
                 color_palette=["#FFFFFF"],
             ))
