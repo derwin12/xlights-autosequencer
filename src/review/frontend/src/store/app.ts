@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Screen = 'library' | 'drop' | 'analyze' | 'timeline' | 'theme' | 'export';
+export type Screen = 'library' | 'drop' | 'analyze' | 'timeline' | 'theme' | 'pictures' | 'export';
 
 interface AppState {
   screen: Screen;

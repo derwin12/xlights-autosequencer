@@ -14,6 +14,7 @@ import { Drop } from 'src/screens/Drop';
 import { Analyze } from 'src/screens/Analyze';
 import { Timeline } from 'src/screens/Timeline';
 import { Theme } from 'src/screens/Theme';
+import { Pictures } from 'src/screens/Pictures';
 import { Export } from 'src/screens/Export';
 import { Library } from 'src/screens/Library';
 import { debounce } from 'src/hooks/usePersist';
@@ -49,7 +50,14 @@ interface ImageSuggestion {
   start_ms: number;
   end_ms: number;
   matched_file: string;
+  matched_tag: string;
   score: number;
+}
+
+interface ImageTopic {
+  word: string;
+  start_ms: number;
+  end_ms: number;
 }
 
 interface Analysis {
@@ -60,6 +68,7 @@ interface Analysis {
   detectors: { name: string; library: string; status: string; confidence: number | null; error: string | null }[];
   completed_at: string;
   image_suggestions?: ImageSuggestion[];
+  image_topics?: ImageTopic[];
   [key: string]: unknown;
 }
 
@@ -74,7 +83,7 @@ interface AppData {
   layoutXmlPath: string | null;
 }
 
-const SCREENS: Screen[] = ['library', 'drop', 'analyze', 'timeline', 'theme', 'export'];
+const SCREENS: Screen[] = ['library', 'drop', 'analyze', 'timeline', 'theme', 'pictures', 'export'];
 
 // ── cache purge dialog ────────────────────────────────────────────────────────
 
@@ -458,15 +467,20 @@ export default function App() {
     setScreen('theme');
   }, [setScreen]);
 
-  // THEME → EXPORT
+  // THEME → PICTURES
   const handleThemed = useCallback(() => {
     if (data.song) {
       const updatedSong = { ...data.song, status: 'themed' as const };
       setData((d) => ({ ...d, song: updatedSong }));
       upsertSong(updatedSong);
     }
-    setScreen('export');
+    setScreen('pictures');
   }, [data.song, setScreen, upsertSong]);
+
+  // PICTURES → EXPORT
+  const handlePicturesContinue = useCallback(() => {
+    setScreen('export');
+  }, [setScreen]);
 
   // Library: selecting a song (FR-003 — route by status)
   const handleSelectSong = useCallback((song: Song, targetScreen: string) => {
@@ -613,9 +627,25 @@ export default function App() {
             themes={themes}
             sections={analysis.detected_sections}
             assignments={assignments}
-            imageSuggestions={analysis.image_suggestions}
             onThemed={handleThemed}
             onAssignmentChange={handleAssignmentChange}
+          />
+        );
+
+      case 'pictures':
+        if (!song) return <PlaceholderScreen label="Drop a song first" onDrop={() => setScreen('drop')} />;
+        if (!analysis) {
+          const isLoading = song.status === 'analyzed' || song.status === 'themed';
+          return isLoading
+            ? <PlaceholderScreen label="Loading analysis…" onDrop={() => {}} loading />
+            : <PlaceholderScreen label="Analysis required" onDrop={() => setScreen('analyze')} />;
+        }
+        return (
+          <Pictures
+            song={song}
+            imageSuggestions={analysis.image_suggestions ?? []}
+            imageTopics={analysis.image_topics ?? []}
+            onContinue={handlePicturesContinue}
           />
         );
 

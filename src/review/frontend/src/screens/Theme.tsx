@@ -35,29 +35,13 @@ interface Song {
   duration_ms: number;
 }
 
-interface ImageSuggestion {
-  word: string;
-  start_ms: number;
-  end_ms: number;
-  matched_file: string;
-  score: number;
-}
-
 interface ThemeScreenProps {
   song: Song;
   themes: Theme[];
   sections: Section[];
   assignments: Assignment[];
-  imageSuggestions?: ImageSuggestion[];
   onThemed: () => void;
   onAssignmentChange: (assignment: Assignment) => void;
-}
-
-function formatTimestamp(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 const DEFAULT_OVERRIDES: ParameterOverrides = {
@@ -187,7 +171,6 @@ export function Theme({
   themes,
   sections,
   assignments,
-  imageSuggestions,
   onThemed,
   onAssignmentChange,
 }: ThemeScreenProps) {
@@ -369,28 +352,6 @@ export function Theme({
           )}
         </Inspector>
       </div>
-
-      {imageSuggestions && imageSuggestions.length > 0 && (
-        <div className={styles.pictureSuggestions}>
-          <h3 className={styles.pictureSuggestionsTitle}>Picture suggestions</h3>
-          <p className={styles.pictureSuggestionsHint}>
-            These lyric words matched a filename already in your show's <code>Images</code> folder.
-            This is informational only — it doesn't change generation. Drop new images into{' '}
-            <code>Images</code> (subfolders OK) and they'll be picked up automatically the next
-            time you export; matching a lyric to a specific moment isn't wired up yet.
-          </p>
-          <ul className={styles.pictureSuggestionsList}>
-            {imageSuggestions.map((s, i) => (
-              <li key={`${s.word}-${s.start_ms}-${i}`} className={styles.pictureSuggestionItem}>
-                <span className={styles.pictureSuggestionTime}>{formatTimestamp(s.start_ms)}</span>
-                <span className={styles.pictureSuggestionWord}>&ldquo;{s.word}&rdquo;</span>
-                <span className={styles.pictureSuggestionArrow}>&rarr;</span>
-                <span className={styles.pictureSuggestionFile}>{s.matched_file}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {editState && (
         <EditDialog
