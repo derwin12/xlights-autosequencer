@@ -37,6 +37,33 @@
 
 > **Windows:** `scripts/install.sh` only supports macOS and Linux — Vamp/madmom require a Linux build toolchain. On Windows, build and run inside a Linux container instead; `.devcontainer/Dockerfile` in this repo already builds the full stack (Vamp SDK, QM plugins, madmom) from source for a Linux container and can be adapted for that purpose.
 
+### Simple 5-Step Approach to Installation (Docker / Dev Container)
+
+The entire toolchain (Python, ffmpeg, Vamp plugins, whisperx, xLights AppImage)
+is already captured in `.devcontainer/`, so duplicating a working setup on a
+new machine doesn't require manually reinstalling any of it:
+
+1. **Install prerequisites** — [Docker Desktop](https://www.docker.com/products/docker-desktop/),
+   [VS Code](https://code.visualstudio.com/), and the
+   [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
+   This is the only manual setup step.
+2. **Clone the repo** — `git clone https://github.com/derwin12/xlight-autosequencer.git`.
+   This pulls the code *and* the full `.devcontainer/` build recipe in one step.
+3. **Open the folder in VS Code and "Reopen in Container"** — VS Code reads
+   `devcontainer.json` and builds `.devcontainer/Dockerfile`, producing an
+   identical environment. This is the slow step (the Vamp plugins compile
+   from source) but it's fully unattended.
+4. **Build the frontend once** — `cd src/review/frontend && npm install && npm run build`.
+   The built bundle is gitignored, so this has to happen on every machine.
+5. **Start the app** — `scripts/startapp.sh` (kills any stale process and
+   launches `xlight-review` at `http://localhost:5000`).
+
+This reproduces the code and toolchain, not your data — the uploaded image
+library, song library entries, and cached stems/analysis all live under
+`~/.xlight/` (inside the container, or wherever `XLIGHT_STATE_HOME` points)
+and aren't tracked in git. To carry those over too, copy that directory from
+the old machine to the new one as a 6th step.
+
 ### Install
 
 ```bash

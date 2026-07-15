@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T23:03:47.038Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T23:14:20.820Z
 > Files: 554 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -9,7 +9,7 @@
 - `CLAUDE.md` — OpenWolf (~9905 tok)
 - `LICENSE` — Project license (~291 tok)
 - `pyproject.toml` — Automatically generate xLights sequences from audio files (~1070 tok)
-- `README.md` — Project documentation (~4621 tok)
+- `README.md` — Project documentation (~5048 tok)
 - `run_cli.py` (~20 tok)
 
 ## .claude/
