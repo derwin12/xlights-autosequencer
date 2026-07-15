@@ -336,6 +336,17 @@ def build_plan(
     if config.picture_effects and config.vocal_words:
         word_image_matches = suggest_images_for_words(config.vocal_words)
         if word_image_matches:
+            # Bug-243 follow-up: Pictures must land above whatever layer the
+            # per-section theme/rotation content already occupies on its
+            # target group, or xsq_writer's per-layer overlap remover clips
+            # the burst down to whatever gap happens to exist between two
+            # already-scheduled rotation effects.
+            existing_layers: dict[str, int] = {}
+            for a in assignments:
+                for gname, placements in a.group_effects.items():
+                    for p in placements:
+                        if p.layer > existing_layers.get(gname, -1):
+                            existing_layers[gname] = p.layer
             picture_effects = _place_picture_effects(
                 props=effect_props,
                 groups=groups,
@@ -343,6 +354,7 @@ def build_plan(
                 duration_ms=hierarchy.duration_ms,
                 variation_seed=config.variation_seed,
                 word_image_matches=word_image_matches,
+                existing_layers=existing_layers,
             )
 
     # 5. Value curves — generate for each placement when curves are enabled

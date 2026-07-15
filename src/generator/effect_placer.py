@@ -3172,12 +3172,29 @@ def _place_picture_effects(
     duration_ms: int,
     variation_seed: int,
     word_image_matches: list[dict] | None = None,
+    existing_layers: dict[str, int] | None = None,
 ) -> dict[str, list[EffectPlacement]]:
-    """Place Pictures effects as a layer-1 accent overlay on Matrix/Mega Tree
+    """Place Pictures effects as a top-layer accent overlay on Matrix/Mega Tree
     props, timed to lyric-image matches (``word_image_matches``, from
     ``image_catalog.suggest_images_for_words``) rather than a fixed clock —
     every burst corresponds to a specific matched lyric word. Returns ``{}``
     when there are no matches; there is no generic filler/rotation content.
+
+    ``existing_layers`` maps each target group/model name to the highest
+    xLights EffectLayer index already occupied there by the per-section
+    theme/rotation content (see ``plan.py``'s call site, which derives it
+    from ``assignment.group_effects`` before this runs). Each burst is
+    placed one layer above that (bug-243 follow-up, 2026-07-15): a fixed
+    ``layer=1`` used to collide with whatever theme layer a given tier-6
+    group's rotation pool already occupies -- for a densely-packed pool
+    (Ripple/Shockwave/Pinwheel placements running nearly back-to-back for
+    the whole song), xsq_writer's per-layer overlap remover then trimmed
+    the burst down to whatever sliver of gap existed before the next
+    already-scheduled rotation effect (observed: 6000ms bursts clipped to
+    100-275ms in a real generated .xsq -- present in the file but far too
+    brief to be visible). Placing one layer above whatever the group
+    already uses guarantees no collision regardless of how many layers a
+    given theme's composition occupies.
 
     Song-scoped, same rationale as ``_place_video_effect``/``_place_singing_faces``:
     fires once per generation, not part of the per-section theme/pool rotation.
@@ -3242,6 +3259,11 @@ def _place_picture_effects(
         group = min(candidates, key=lambda g: (len(g.members), g.name), default=None)
         targets[name] = group.name if group is not None else name
 
+    picture_layer_by_target: dict[str, int] = {
+        target_name: (existing_layers or {}).get(target_name, 0) + 1
+        for target_name in set(targets.values())
+    }
+
     matches = sorted(
         (
             m for m in (word_image_matches or [])
@@ -3288,7 +3310,7 @@ def _place_picture_effects(
                     "E_SLIDER_Pictures_EndScale": _PICTURE_SCALE_PERCENT,
                 },
                 color_palette=["#FFFFFF"],
-                layer=1,
+                layer=picture_layer_by_target[target_name],
                 fade_in_ms=_PICTURE_FADE_MS,
                 fade_out_ms=_PICTURE_FADE_MS,
             ))

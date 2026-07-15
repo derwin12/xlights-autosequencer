@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T21:16:54.007Z",
+    "lastScanned": "2026-07-15T21:33:12.558Z",
     "fileCount": 625,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "9f1de10db9a330d33acce90c25598f9d1936e22fbc42cd2825074607865a4327",
-    "storeUpdatedAt": "2026-07-15T21:16:54.022Z"
+    "renderedHash": "5073ad8930cd70123b04b07f6cb498bb34c409adacfb1a8e7c2f027cc839608b",
+    "storeUpdatedAt": "2026-07-15T21:33:12.573Z"
   },
   "files": {
     ".DS_Store": {
@@ -3404,11 +3404,11 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 43303,
-      "hash": "dbc68a9faf90ec2f",
-      "size": 151777,
-      "mtimeMs": 1784150210890.5364,
-      "updatedAt": "2026-07-15T21:16:51.051Z",
+      "tokens": 43686,
+      "hash": "436b414198bd1d9e",
+      "size": 153115,
+      "mtimeMs": 1784151160430.406,
+      "updatedAt": "2026-07-15T21:32:40.599Z",
       "source": "hook",
       "symbols": [
         {
@@ -3618,8 +3618,8 @@
           "name": "_place_per_trigger",
           "kind": "fn",
           "startLine": 2236,
-          "endLine": 3402,
-          "tokens": 13436
+          "endLine": 3424,
+          "tokens": 13812
         }
       ]
     },
@@ -4302,11 +4302,11 @@
     },
     "tests/unit/test_generator/test_picture_effects.py": {
       "description": "Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement.",
-      "tokens": 5246,
-      "hash": "efa53db75c6b881a",
-      "size": 18358,
-      "mtimeMs": 1784150213857.9763,
-      "updatedAt": "2026-07-15T21:16:54.006Z",
+      "tokens": 5726,
+      "hash": "82d1ce1b9c2db7e2",
+      "size": 20040,
+      "mtimeMs": 1784151192417.046,
+      "updatedAt": "2026-07-15T21:33:12.557Z",
       "source": "hook",
       "symbols": [
         {
@@ -4341,35 +4341,35 @@
           "name": "TestPlacePictureEffects",
           "kind": "class",
           "startLine": 43,
-          "endLine": 320,
-          "tokens": 3357
+          "endLine": 354,
+          "tokens": 3828
         },
         {
           "name": "TestPictureEffectsConfigFlag",
           "kind": "class",
-          "startLine": 321,
-          "endLine": 337,
+          "startLine": 355,
+          "endLine": 371,
           "tokens": 153
         },
         {
           "name": "TestImageLibraryStorage",
           "kind": "class",
-          "startLine": 338,
-          "endLine": 366,
+          "startLine": 372,
+          "endLine": 400,
           "tokens": 356
         },
         {
           "name": "TestSuggestImagesForWords",
           "kind": "class",
-          "startLine": 367,
-          "endLine": 406,
+          "startLine": 401,
+          "endLine": 440,
           "tokens": 510
         },
         {
           "name": "TestFindUnmatchedTopics",
           "kind": "class",
-          "startLine": 407,
-          "endLine": 438,
+          "startLine": 441,
+          "endLine": 472,
           "tokens": 361
         }
       ]
@@ -4484,11 +4484,11 @@
     },
     "src/generator/plan.py": {
       "description": "Plan builder — orchestrates the full sequence generation pipeline.",
-      "tokens": 9981,
-      "hash": "b3adb9330446f1c4",
-      "size": 34984,
-      "mtimeMs": 1784127266868.52,
-      "updatedAt": "2026-07-15T14:54:27.002Z",
+      "tokens": 10257,
+      "hash": "9adf6e048e28082b",
+      "size": 35953,
+      "mtimeMs": 1784151169553.797,
+      "updatedAt": "2026-07-15T21:32:49.708Z",
       "source": "hook",
       "symbols": [
         {
@@ -4509,63 +4509,63 @@
           "name": "build_plan",
           "kind": "fn",
           "startLine": 97,
-          "endLine": 404,
-          "tokens": 4070
+          "endLine": 419,
+          "tokens": 4339
         },
         {
           "name": "_audible_end_ms",
           "kind": "fn",
-          "startLine": 405,
-          "endLine": 424,
+          "startLine": 420,
+          "endLine": 439,
           "tokens": 219
         },
         {
           "name": "_place_end_of_song_fade",
           "kind": "fn",
-          "startLine": 425,
-          "endLine": 468,
+          "startLine": 440,
+          "endLine": 483,
           "tokens": 490
         },
         {
           "name": "_populate_assignment_decisions",
           "kind": "fn",
-          "startLine": 469,
-          "endLine": 567,
+          "startLine": 484,
+          "endLine": 582,
           "tokens": 1263
         },
         {
           "name": "_derive_anchor_palette",
           "kind": "fn",
-          "startLine": 568,
-          "endLine": 588,
+          "startLine": 583,
+          "endLine": 603,
           "tokens": 260
         },
         {
           "name": "_section_energies_from_story",
           "kind": "fn",
-          "startLine": 589,
-          "endLine": 630,
+          "startLine": 604,
+          "endLine": 645,
           "tokens": 446
         },
         {
           "name": "_write_plan_json",
           "kind": "fn",
-          "startLine": 631,
-          "endLine": 650,
+          "startLine": 646,
+          "endLine": 665,
           "tokens": 223
         },
         {
           "name": "generate_sequence",
           "kind": "fn",
-          "startLine": 651,
-          "endLine": 694,
+          "startLine": 666,
+          "endLine": 709,
           "tokens": 426
         },
         {
           "name": "regenerate_sections",
           "kind": "fn",
-          "startLine": 695,
-          "endLine": 824,
+          "startLine": 710,
+          "endLine": 839,
           "tokens": 1518
         }
       ]

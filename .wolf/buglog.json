@@ -4127,6 +4127,26 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-246",
+      "timestamp": "2026-07-15",
+      "error_message": "User: 'the pictures did not get placed into the top layer of Matrix' -- screenshot showed the Pictures thumbnail sitting under an opaque 'On' effect that masked it",
+      "file": "src/generator/effect_placer.py, src/generator/plan.py",
+      "root_cause": "_place_picture_effects hardcoded layer=1 for every burst. Layer 1 on a tier-6 group is not spare -- it is the theme composition's primary rotation layer, packed with near-back-to-back placements (Ripple/Shockwave/Pinwheel etc, ~470 for a 200s song) or an opaque On-effect mask, depending on the theme. Colliding with that layer caused two symptoms: xsq_writer._remove_overlaps_per_layer clipped bursts from the intended 6000ms down to 100-275ms slivers (invisible), and/or an opaque layer above it fully masked the burst since xLights renders higher layers on top with no transparency for On.",
+      "fix": "Compute the highest EffectLayer index already used per target group from assignment.group_effects (available before _place_picture_effects runs) and place each burst one layer above that, guaranteeing it is topmost regardless of theme layer count. Added existing_layers param to _place_picture_effects; plan.py computes and passes it. Tests: test_burst_placed_above_existing_layers_not_fixed_layer_1, test_burst_layer_defaults_to_1_when_target_has_no_existing_layers.",
+      "tags": [
+        "generator",
+        "pictures-effect",
+        "layer-collision",
+        "py"
+      ],
+      "related_bugs": [
+        "bug-184",
+        "bug-243"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }
