@@ -51,8 +51,8 @@ pip install -e ".[all]"
 # PyTorch (required for stem separation and phonemes)
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 
-# nltk data (for phoneme analysis)
-python -c "import nltk; nltk.download('cmudict')"
+# nltk data (for phoneme analysis + lyric part-of-speech tagging)
+python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_perceptron_tagger_eng')"
 ```
 
 > **macOS Python.org installer:** Run `open "/Applications/Python 3.12/Install Certificates.command"` once for SSL certs.

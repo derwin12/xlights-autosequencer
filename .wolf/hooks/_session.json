@@ -61,6 +61,11 @@
       "count": 1,
       "tokens": 0,
       "first_read": "2026-07-15T22:30:36.709Z"
+    },
+    "H:/Github/xlight-autosequencer/README.md": {
+      "count": 1,
+      "tokens": 4601,
+      "first_read": "2026-07-15T23:03:39.462Z"
     }
   },
   "files_written": [
@@ -255,19 +260,32 @@
       "action": "edit",
       "tokens": 194,
       "at": "2026-07-15T22:43:21.326Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/README.md",
+      "action": "edit",
+      "tokens": 47,
+      "at": "2026-07-15T23:03:47.060Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/cerebrum.md",
+      "action": "edit",
+      "tokens": 232,
+      "at": "2026-07-15T23:04:18.770Z"
     }
   ],
   "edit_counts": {
     "src/generator/effect_placer.py": 15,
     "tests/unit/test_generator/test_picture_effects.py": 10,
     ".wolf/hooks/stop.js": 1,
-    ".wolf/cerebrum.md": 2,
+    ".wolf/cerebrum.md": 3,
     "src/generator/plan.py": 2,
-    "src/generator/models.py": 2
+    "src/generator/models.py": 2,
+    "README.md": 1
   },
-  "anatomy_hits": 7,
+  "anatomy_hits": 8,
   "anatomy_misses": 5,
   "repeated_reads_warned": 43,
   "cerebrum_warnings": 0,
-  "stop_count": 45
+  "stop_count": 48
 }

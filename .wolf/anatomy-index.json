@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T22:43:21.303Z",
+    "lastScanned": "2026-07-15T23:03:47.038Z",
     "fileCount": 554,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "0222cbd513358db26e308fb1efe9cb5acd6de9970d7ceadc1067f99d1c0511f3",
-    "storeUpdatedAt": "2026-07-15T22:43:21.320Z"
+    "renderedHash": "71b52b8a5ca78b58e4b5732d41b957f4729f064f9e261a35d593c514821083d0",
+    "storeUpdatedAt": "2026-07-15T23:03:47.054Z"
   },
   "files": {
     ".claude/commands/pre-mortem.md": {
@@ -15168,12 +15168,12 @@
     },
     "README.md": {
       "description": "Project documentation",
-      "tokens": 4601,
-      "hash": "fc4e2cbec4cfd370",
-      "size": 19028,
-      "mtimeMs": 1784069137605.4766,
-      "updatedAt": "2026-07-15T22:00:00.360Z",
-      "source": "scan"
+      "tokens": 4621,
+      "hash": "102bb25e5f10997e",
+      "size": 19108,
+      "mtimeMs": 1784156626895.7522,
+      "updatedAt": "2026-07-15T23:03:47.038Z",
+      "source": "hook"
     },
     "run_cli.py": {
       "description": "",
