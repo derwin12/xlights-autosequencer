@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T21:33:12.558Z",
+    "lastScanned": "2026-07-15T21:34:44.609Z",
     "fileCount": 625,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "5073ad8930cd70123b04b07f6cb498bb34c409adacfb1a8e7c2f027cc839608b",
-    "storeUpdatedAt": "2026-07-15T21:33:12.573Z"
+    "renderedHash": "39afbafe13682d62981e02a4e3b8d7b7a6c8b63ca4e58ac71d95e6e0acab460b",
+    "storeUpdatedAt": "2026-07-15T21:34:44.624Z"
   },
   "files": {
     ".DS_Store": {
@@ -3404,11 +3404,11 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 43686,
-      "hash": "436b414198bd1d9e",
-      "size": 153115,
-      "mtimeMs": 1784151160430.406,
-      "updatedAt": "2026-07-15T21:32:40.599Z",
+      "tokens": 43702,
+      "hash": "16579cf88345905b",
+      "size": 153172,
+      "mtimeMs": 1784151271474.6533,
+      "updatedAt": "2026-07-15T21:34:31.620Z",
       "source": "hook",
       "symbols": [
         {
@@ -3618,8 +3618,8 @@
           "name": "_place_per_trigger",
           "kind": "fn",
           "startLine": 2236,
-          "endLine": 3424,
-          "tokens": 13812
+          "endLine": 3425,
+          "tokens": 13828
         }
       ]
     },
@@ -4302,11 +4302,11 @@
     },
     "tests/unit/test_generator/test_picture_effects.py": {
       "description": "Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement.",
-      "tokens": 5726,
-      "hash": "82d1ce1b9c2db7e2",
-      "size": 20040,
-      "mtimeMs": 1784151192417.046,
-      "updatedAt": "2026-07-15T21:33:12.557Z",
+      "tokens": 5860,
+      "hash": "826e12813c0a7d5b",
+      "size": 20508,
+      "mtimeMs": 1784151284469.9402,
+      "updatedAt": "2026-07-15T21:34:44.608Z",
       "source": "hook",
       "symbols": [
         {
@@ -4341,35 +4341,35 @@
           "name": "TestPlacePictureEffects",
           "kind": "class",
           "startLine": 43,
-          "endLine": 354,
-          "tokens": 3828
+          "endLine": 360,
+          "tokens": 3960
         },
         {
           "name": "TestPictureEffectsConfigFlag",
           "kind": "class",
-          "startLine": 355,
-          "endLine": 371,
+          "startLine": 361,
+          "endLine": 377,
           "tokens": 153
         },
         {
           "name": "TestImageLibraryStorage",
           "kind": "class",
-          "startLine": 372,
-          "endLine": 400,
+          "startLine": 378,
+          "endLine": 406,
           "tokens": 356
         },
         {
           "name": "TestSuggestImagesForWords",
           "kind": "class",
-          "startLine": 401,
-          "endLine": 440,
+          "startLine": 407,
+          "endLine": 446,
           "tokens": 510
         },
         {
           "name": "TestFindUnmatchedTopics",
           "kind": "class",
-          "startLine": 441,
-          "endLine": 472,
+          "startLine": 447,
+          "endLine": 478,
           "tokens": 361
         }
       ]

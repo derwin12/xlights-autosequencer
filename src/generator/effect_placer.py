@@ -3305,6 +3305,7 @@ def _place_picture_effects(
                     "E_TEXTCTRL_Pictures_Filename": filename,
                     "E_CHECKBOX_Pictures_TransparentBlack": "1",
                     "E_CHOICE_Pictures_Direction": direction,
+                    "E_CHOICE_Scaling": "Scale To Fit",
                     "E_TEXTCTRL_Pictures_Speed": _PICTURE_SPEED,
                     "E_SLIDER_Pictures_StartScale": _PICTURE_SCALE_PERCENT,
                     "E_SLIDER_Pictures_EndScale": _PICTURE_SCALE_PERCENT,

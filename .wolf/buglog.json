@@ -4147,6 +4147,27 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-247",
+      "timestamp": "2026-07-15",
+      "error_message": "User pasted xLights clipboard-format Pictures effect string showing E_CHOICE_Scaling=Scale To Fit -- our generated Pictures placements never set E_CHOICE_Scaling at all",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "The Pictures effect parameter dict built by _place_picture_effects set direction/speed/scale-percent/transparent-black but never E_CHOICE_Scaling. xLights defaults that field to rendering the image at native pixel size instead of fit-to-buffer, so on a Matrix buffer much larger than a typical library image the picture rendered too small to read as an accent.",
+      "fix": "Added E_CHOICE_Scaling=\"Scale To Fit\" to the Pictures placement parameters dict.",
+      "tags": [
+        "generator",
+        "pictures-effect",
+        "scaling",
+        "py"
+      ],
+      "related_bugs": [
+        "bug-184",
+        "bug-243",
+        "bug-246"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

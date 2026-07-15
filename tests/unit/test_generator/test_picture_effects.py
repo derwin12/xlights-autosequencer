@@ -238,6 +238,12 @@ class TestPlacePictureEffects:
         assert placement.parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/snowman.gif"
         assert placement.parameters["E_CHECKBOX_Pictures_TransparentBlack"] == "1"
         assert placement.parameters["E_CHOICE_Pictures_Direction"] in _PICTURE_DIRECTIONS
+        # Without an explicit scaling mode, xLights' Pictures effect defaults
+        # to rendering the image at its native pixel size rather than fit to
+        # the buffer -- on a Matrix buffer far larger than a typical library
+        # image, that renders it too small to read as an accent (user report,
+        # 2026-07-15, screenshot showed the burst present but imperceptible).
+        assert placement.parameters["E_CHOICE_Scaling"] == "Scale To Fit"
         assert placement.parameters["E_TEXTCTRL_Pictures_Speed"] == _PICTURE_SPEED
         assert placement.parameters["E_SLIDER_Pictures_StartScale"] == _PICTURE_SCALE_PERCENT
         assert placement.parameters["E_SLIDER_Pictures_EndScale"] == _PICTURE_SCALE_PERCENT
