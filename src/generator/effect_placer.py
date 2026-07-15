@@ -3157,7 +3157,12 @@ _PICTURE_FADE_MS = 800
 # to the sequence, not overwhelm it.
 _PICTURE_SCALE_PERCENT = 55
 _PICTURE_SPEED = 3
-_PICTURE_DIRECTIONS = ("left", "right", "up", "down")
+# All 8 cardinal/diagonal xLights Pictures_Direction pan directions (user
+# request, 2026-07-15: the original 4 felt monotonous burst-to-burst).
+_PICTURE_DIRECTIONS = (
+    "left", "right", "up", "down",
+    "up-left", "up-right", "down-left", "down-right",
+)
 
 # Name tokens identifying mega tree props — matches corpus_recipes.py's
 # megatree PropFamilyRecipe.match_tokens so eligibility stays consistent

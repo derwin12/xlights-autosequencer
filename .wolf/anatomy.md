@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T21:42:28.840Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T21:57:02.077Z
 > Files: 626 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -1084,7 +1084,7 @@
   - class `PropFamilyRecipe` L70-719 (~9498 tok)
   - fn `recipe_for_group` L720-775 (~667 tok)
   - fn `section_qualifies` L776-782 (~99 tok)
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~43819 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~43880 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -1114,7 +1114,7 @@
   - fn `_humanize_group_name` L1936-1943 (~87 tok)
   - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
   - fn `_place_per_beat` L2176-2235 (~743 tok)
-  - fn `_place_per_trigger` L2236-3431 (~13943 tok)
+  - fn `_place_per_trigger` L2236-3436 (~14002 tok)
 - `image_catalog.py` — Global image library for xLights Pictures effects. (~2192 tok)
   - fn `_state_home` L27-33 (~46 tok)
   - fn `_images_root` L34-37 (~22 tok)

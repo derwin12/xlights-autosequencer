@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T21:42:28.840Z",
+    "lastScanned": "2026-07-15T21:57:02.077Z",
     "fileCount": 626,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "c958de242bcb4cbee5ffb0e9650c56c2a02eae2775e850af3e991c1a802f9798",
-    "storeUpdatedAt": "2026-07-15T21:42:28.856Z"
+    "renderedHash": "e772c982af86a8a31637d2121aa4cc21c18a2f8046726ef5cfc02cb80b6f7bb7",
+    "storeUpdatedAt": "2026-07-15T21:57:02.093Z"
   },
   "files": {
     ".DS_Store": {
@@ -3404,11 +3404,11 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 43819,
-      "hash": "33f8a06c83d59a5d",
-      "size": 153583,
-      "mtimeMs": 1784151634730.2383,
-      "updatedAt": "2026-07-15T21:40:34.862Z",
+      "tokens": 43880,
+      "hash": "0b805bd338603ed7",
+      "size": 153794,
+      "mtimeMs": 1784152621940.1042,
+      "updatedAt": "2026-07-15T21:57:02.076Z",
       "source": "hook",
       "symbols": [
         {
@@ -3618,8 +3618,8 @@
           "name": "_place_per_trigger",
           "kind": "fn",
           "startLine": 2236,
-          "endLine": 3431,
-          "tokens": 13943
+          "endLine": 3436,
+          "tokens": 14002
         }
       ]
     },
