@@ -391,6 +391,25 @@ def write_xsq(
             return (int(name[:2]), name)
         return (99, name)
 
+    def _buffer_style_for_group(name: str) -> str | None:
+        """Return the B_CHOICE_BufferStyle xLights should apply for a group,
+        or None when tier convention leaves it unset (tiers 01-03, other
+        than the 01_BASE_All(_FADES) override canvases).
+
+        xLights derives an effect's actually-applied buffer style from each
+        EFFECT's own settings string (the EffectDB entry _serialize_effect_params
+        builds), not from EffectLayer's separate "settings" attribute -- an
+        effect with no B_CHOICE_BufferStyle key falls back to "Default"
+        regardless of what the layer says. Must be folded into every
+        placement's own params, not set once at the layer level.
+        """
+        if name in ("01_BASE_All", "01_BASE_All_FADES"):
+            return "Default"
+        tier_num = int(name[:2]) if len(name) >= 2 and name[:2].isdigit() else 0
+        if tier_num >= 4:
+            return "Per Model Default"
+        return None
+
     all_placements: dict[str, list[EffectPlacement]] = {
         k: unordered[k] for k in sorted(unordered, key=_tier_sort_key)
     }
@@ -407,10 +426,11 @@ def write_xsq(
     effect_db_list: list[str] = []
     placement_cache: dict[int, tuple[int, int]] = {}  # id(p) -> (effect_ref, palette_ref)
 
-    for placements in all_placements.values():
+    for group_name, placements in all_placements.items():
+        buffer_style = _buffer_style_for_group(group_name)
         for p in placements:
             pal_idx = _ensure_palette(p.color_palette, palette_index, palette_list, p.music_sparkles)
-            eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list)
+            eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list, buffer_style)
             placement_cache[id(p)] = (eff_idx, pal_idx)
 
     # Build XML tree
@@ -521,18 +541,19 @@ def write_xsq(
         for p in placements:
             layers_map.setdefault(getattr(p, "layer", 0), []).append(p)
 
+        # 01_BASE_All is a whole-house wash group — render as a single unified canvas.
+        # Tiers 4+ (BEAT / PROP / COMPOUND / HERO) use "Per Model Default" so each
+        # individual prop in the group renders the effect on its own pixel layout rather
+        # than across the group's bounding box.  Lower tiers (01–03) render as a unified
+        # group. The value that actually takes effect in xLights is folded into each
+        # effect's own EffectDB entry (see _buffer_style_for_group / _serialize_effect_params);
+        # this layer-level attribute is set alongside it for the layer's own display default.
+        group_buffer_style = _buffer_style_for_group(group_name)
+
         for layer_idx in sorted(layers_map.keys()):
             layer_el = ET.SubElement(model_el, "EffectLayer")
-            # 01_BASE_All is a whole-house wash group — render as a single unified canvas.
-            # Tiers 4+ (BEAT / PROP / COMPOUND / HERO) use "Per Model Default" so each
-            # individual prop in the group renders the effect on its own pixel layout rather
-            # than across the group's bounding box.  Lower tiers (01–03) render as a unified
-            # group.
-            tier_num = int(group_name[:2]) if len(group_name) >= 2 and group_name[:2].isdigit() else 0
-            if group_name in ("01_BASE_All", "01_BASE_All_FADES"):
-                layer_el.set("settings", "B_CHOICE_BufferStyle=Default")
-            elif tier_num >= 4:
-                layer_el.set("settings", "B_CHOICE_BufferStyle=Per Model Default")
+            if group_buffer_style is not None:
+                layer_el.set("settings", f"B_CHOICE_BufferStyle={group_buffer_style}")
             for p in sorted(layers_map[layer_idx], key=lambda p: p.start_ms):
                 effect_el = ET.SubElement(layer_el, "Effect")
 
@@ -605,11 +626,16 @@ def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
     return ",".join(parts)
 
 
-def _serialize_effect_params(placement: EffectPlacement) -> str:
+def _serialize_effect_params(
+    placement: EffectPlacement, buffer_style: str | None = None,
+) -> str:
     """Serialize effect parameters to xLights comma-separated format.
 
     Merges xLights defaults for the effect so all required params are present.
-    Theme/user overrides take precedence over defaults.
+    Theme/user overrides take precedence over defaults. ``buffer_style``, when
+    given, is folded in as B_CHOICE_BufferStyle -- this is the value xLights
+    actually applies (see _buffer_style_for_group); a group-level EffectLayer
+    "settings" attribute alone has no effect on rendering.
     """
     # Start with xLights defaults for this effect
     defaults = dict(_XLIGHTS_EFFECT_DEFAULTS.get(placement.effect_name, {}))
@@ -620,6 +646,9 @@ def _serialize_effect_params(placement: EffectPlacement) -> str:
             defaults[key] = "1" if val else "0"
         else:
             defaults[key] = str(val)
+
+    if buffer_style is not None:
+        defaults["B_CHOICE_BufferStyle"] = buffer_style
 
     # Add fades
     if placement.fade_in_ms > 0:
@@ -701,9 +730,10 @@ def _ensure_effect_entry(
     placement: EffectPlacement,
     index: dict[str, int],
     effect_list: list[str],
+    buffer_style: str | None = None,
 ) -> int:
     """Add effect params to dedup index if not already present. Return index."""
-    key = _serialize_effect_params(placement)
+    key = _serialize_effect_params(placement, buffer_style)
     if key not in index:
         index[key] = len(effect_list)
         effect_list.append(key)

@@ -199,18 +199,39 @@ preconditions, and 16-song corpus results.
 - Consider per-prop-type affinity: arches look best with Chase/Wave, mini-trees with
   Spirals/Fire, candy canes with Single Strand/Bars.
 
-### Crash/Transient Detector for Whole-House Accent (01_BASE_All_FADES) — IMPLEMENTED 2026-07-14
-- **Shipped**: `src/analyzer/crash_accents.py::detect_crash_accents()` runs
-  librosa `onset_strength` on the full-mix audio (finer native resolution
-  than the coarse `bbc_energy` curve `energy_impacts` uses), keeping frames
-  that clear both the song's own 95th percentile AND a 4x-over-median ratio
-  floor, collapsing candidates within 10s to their strongest peak, and
-  hard-capping at 5 marks/song. Wired into `run_orchestrator` (Stage 8, right
-  after `energy_impacts`/`drops`/`gaps`) and stored on
-  `HierarchyResult.crash_accents`. Generator side:
-  `effect_placer.py::_place_crash_accents()` places a ~700ms "Shockwave Full
-  Fast" variant on `01_BASE_All_FADES` for each mark, skipping any mark
-  within 500ms of a vocal word (`config.vocal_words`) or at/after the
+### Crash/Transient Detector for Whole-House Accent (01_BASE_All_FADES) — IMPLEMENTED 2026-07-14, RECALIBRATED 2026-07-15
+- **Shipped (current)**: `src/analyzer/crash_accents.py::detect_crash_accents()`
+  runs librosa `onset_strength` on a **treble-band-only** (>=4000Hz) spectrogram
+  of the full-mix audio, peak-picks genuine local maxima at least 10s apart
+  (`scipy.signal.find_peaks`), and keeps only peaks that clear BOTH a 6x-over-
+  median ratio floor AND a pre-transient RMS floor (the 500ms immediately
+  before the peak must average >=40% of the song's median RMS). Hard-capped
+  at 5 marks/song. Wired into `run_orchestrator` (Stage 8, right after
+  `energy_impacts`/`drops`/`gaps`) and stored on `HierarchyResult.crash_accents`.
+- **First version was wrong, caught by testing on the real target song**
+  (Dream On/Aerosmith): a full-spectrum-onset + 95th-percentile/4x-ratio
+  design (i) missed both known crashes (50.85s, ~190s — only 1.2-2.5x the
+  song's level) and (ii) instead flagged the track's very first audio frame,
+  which is the *quietest* half-second in the song (RMS ~0.05 vs track RMS
+  ~0.22) but produces the single largest full-spectrum spectral-flux value in
+  the track purely from transitioning out of near-silence. Two fixes:
+  treble-band-only onset (a cymbal crash is specifically bright/high-frequency,
+  unlike an ordinary loud low/mid-weighted hit, so this isolated the ~190s
+  crash as a clear standout: 6.17x vs the next-loudest moment's 5.66x) and the
+  pre-transient RMS floor (cleanly separates "crash within ongoing music" from
+  "cold open out of silence": real crashes measured 77-95% of median pre-RMS,
+  the false positive measured 1%).
+- **50.85s is accepted as a miss.** Even after both fixes, it only measured
+  ~3.5x locally and sits mid-pack among ~14 similarly-loud moments in the same
+  song — no clean statistical gap separates "the one crash a listener noticed"
+  from "an ordinary loud drum/guitar hit" at that strength. Per explicit user
+  decision (2026-07-15, "ship for the clear case only"): tuned so only a
+  single, dramatically-isolated treble transient qualifies; quieter crashes
+  like this one are deliberately left undetected rather than loosening the
+  floor and admitting several false positives elsewhere in the same song.
+- Generator side: `effect_placer.py::_place_crash_accents()` places a ~700ms
+  "Shockwave Full Fast" variant on `01_BASE_All_FADES` for each mark, skipping
+  any mark within 500ms of a vocal word (`config.vocal_words`) or at/after the
   existing end-of-song fade's start boundary (computed via `_audible_end_ms`
   in `plan.py`, passed in as `fade_exclusion_start_ms`). Gated by
   `GenerationConfig.crash_accents` (default `True`). Tests:

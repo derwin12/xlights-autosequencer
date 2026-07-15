@@ -310,6 +310,68 @@ class TestXsqWriter:
             assert names.index("08_HERO_Star") < names.index("01_BASE_All")
             assert names.index("08_HERO_Star") < names.index("01_BASE_All_FADES")
 
+    def test_buffer_style_is_baked_into_each_effects_own_params(self, tmp_path: Path) -> None:
+        """xLights derives the buffer style it actually applies from each
+        effect's OWN EffectDB settings string, not from the EffectLayer's
+        separate "settings" attribute -- confirmed against the real corpus
+        (every sampled reference .xsqz has B_CHOICE_BufferStyle baked into
+        each effect's own params, sorted first alphabetically) and against
+        a generated file where a tier-6 group's effects had no
+        B_CHOICE_BufferStyle key at all despite the EffectLayer "settings"
+        attribute saying Per Model Default -- xLights showed "Default" on
+        import. Every placement's own EffectDB entry must carry the key."""
+        plan = _make_plan()
+        for name, expected in (
+            ("06_PROP_Test", "Per Model Default"),
+            ("08_HERO_Test", "Per Model Default"),
+            ("01_BASE_All", "Default"),
+            ("01_BASE_All_FADES", "Default"),
+        ):
+            plan.sections[0].group_effects[name] = [
+                EffectPlacement(
+                    effect_name="On", xlights_id="On", model_or_group=name,
+                    start_ms=0, end_ms=5000, parameters={},
+                    color_palette=["#FFFFFF"],
+                )
+            ]
+        root = _write_and_parse(plan, tmp_path)
+        effectdb = [ef.text or "" for ef in root.find("EffectDB")]
+
+        effects_el = root.find("ElementEffects")
+        for group_name, expected in (
+            ("06_PROP_Test", "Per Model Default"),
+            ("08_HERO_Test", "Per Model Default"),
+            ("01_BASE_All", "Default"),
+            ("01_BASE_All_FADES", "Default"),
+        ):
+            group_el = next(e for e in effects_el if e.get("name") == group_name)
+            effect_el = group_el.find("EffectLayer").find("Effect")
+            ref = int(effect_el.get("ref"))
+            assert f"B_CHOICE_BufferStyle={expected}" in effectdb[ref], (
+                f"{group_name}: expected B_CHOICE_BufferStyle={expected} in "
+                f"'{effectdb[ref]}'"
+            )
+
+    def test_tier_1_to_3_non_override_groups_get_no_buffer_style_key(self, tmp_path: Path) -> None:
+        """Tiers 01-03 (other than the 01_BASE_All(_FADES) override
+        canvases) render as a unified group with no explicit buffer style
+        override -- matches pre-existing behavior, not part of this fix."""
+        plan = _make_plan()
+        plan.sections[0].group_effects["02_GEO_Test"] = [
+            EffectPlacement(
+                effect_name="On", xlights_id="On", model_or_group="02_GEO_Test",
+                start_ms=0, end_ms=5000, parameters={},
+                color_palette=["#FFFFFF"],
+            )
+        ]
+        root = _write_and_parse(plan, tmp_path)
+        effectdb = [ef.text or "" for ef in root.find("EffectDB")]
+        effects_el = root.find("ElementEffects")
+        group_el = next(e for e in effects_el if e.get("name") == "02_GEO_Test")
+        effect_el = group_el.find("EffectLayer").find("Effect")
+        ref = int(effect_el.get("ref"))
+        assert "B_CHOICE_BufferStyle" not in effectdb[ref]
+
     def test_other_groups_stay_marked_as_model(self, tmp_path: Path) -> None:
         """Only 01_BASE_All(_FADES) get the modelGroup fix -- every other
         group name (e.g. tier-6 PROP groups) keeps type="model" as before,

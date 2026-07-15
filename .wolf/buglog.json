@@ -3345,6 +3345,26 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-14"
+    },
+    {
+      "id": "bug-202",
+      "timestamp": "2026-07-15",
+      "error_message": "User: \"all of these items need to have their effects marked as Per Model Default and not simply Default\" -- xLights showed 04_BEAT/06_PROP/08_HERO groups as Default on import despite the .xsq XML already having B_CHOICE_BufferStyle=Per Model Default on each EffectLayer settings attribute (the bug-197 fix).",
+      "file": "src/generator/xsq_writer.py",
+      "root_cause": "xLights derives the buffer style it actually APPLIES from each individual effect's own EffectDB settings string (built by _serialize_effect_params), not from the parent EffectLayer's separate \"settings\" attribute. _serialize_effect_params never included B_CHOICE_BufferStyle at all, so every effect implicitly had no buffer-style key and xLights fell back to \"Default\" on import regardless of the (cosmetic-only) layer-level attribute. Confirmed by diffing a user-provided xLights \"Copy Format\" clipboard export against our own EffectDB text for the same effect, and cross-checked against 12 real reference .xsqz files -- all of them bake B_CHOICE_BufferStyle into every effect's own param string (sorted first alphabetically, exactly where our dict-sort would place it).",
+      "fix": "Extracted _buffer_style_for_group(name) as the single source of truth (Default for 01_BASE_All(_FADES), Per Model Default for tier>=4, None for tiers 01-03 otherwise). _serialize_effect_params() and _ensure_effect_entry() now accept buffer_style and fold B_CHOICE_BufferStyle into each placement's own EffectDB entry (the dedup-building loop now iterates group_name too, so it can look up the right style per group). The EffectLayer-level settings attribute is kept in sync for the layer's own display default but is no longer the only place the value is set.",
+      "tags": [
+        "generator",
+        "xsq_writer",
+        "buffer-style",
+        "effectdb",
+        "per-model-default"
+      ],
+      "related_bugs": [
+        "bug-197"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

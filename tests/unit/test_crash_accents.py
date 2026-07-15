@@ -73,3 +73,19 @@ class TestDetectCrashAccents:
         marks = detect_crash_accents(audio, _SR)
         times = [m.time_ms for m in marks]
         assert times == sorted(times)
+
+    def test_burst_out_of_silence_is_excluded(self):
+        """A transient out of near-silence (e.g. the track's own cold open)
+        must NOT fire, even if it is the largest onset-strength value in
+        the whole track -- confirmed on a real song (2026-07-14): the
+        first-ever version of this detector flagged the very first audio
+        frame as a "crash" because transitioning out of near-silence
+        produces a huge relative spectral-flux spike despite being the
+        quietest moment in the song. The pre-transient RMS floor exists
+        specifically to reject this."""
+        audio = _ambient(15.0)
+        audio[: int(0.3 * _SR)] = 0.0
+        end = int(0.05 * _SR)
+        audio[:end] += 0.95 * np.random.default_rng(7).standard_normal(end)
+        assert detect_crash_accents(audio, _SR) == []
+
