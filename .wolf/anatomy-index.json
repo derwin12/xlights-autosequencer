@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T23:14:20.820Z",
-    "fileCount": 554,
+    "lastScanned": "2026-07-15T23:27:19.436Z",
+    "fileCount": 558,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "4f002e8ade16b22cd9f1af3ad061f9fcfb69f21d48bf06d967ae6202cb974d55",
-    "storeUpdatedAt": "2026-07-15T23:14:20.836Z"
+    "renderedHash": "b99708b1e58012fdee3425cb9a442090f009f3cfd1326e65e1890f8c5b07c59a",
+    "storeUpdatedAt": "2026-07-15T23:27:19.453Z"
   },
   "files": {
     ".claude/commands/pre-mortem.md": {
@@ -15186,11 +15186,11 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 44325,
-      "hash": "c9ae28f1279b01b0",
-      "size": 155350,
-      "mtimeMs": 1784155401157.373,
-      "updatedAt": "2026-07-15T22:43:21.302Z",
+      "tokens": 44475,
+      "hash": "01f7d00868e51ce6",
+      "size": 155875,
+      "mtimeMs": 1784157983778.3848,
+      "updatedAt": "2026-07-15T23:26:23.923Z",
       "source": "hook",
       "symbols": [
         {
@@ -15386,21 +15386,21 @@
           "name": "_place_corpus_recipe",
           "kind": "fn",
           "startLine": 1944,
-          "endLine": 2175,
-          "tokens": 3056
+          "endLine": 2182,
+          "tokens": 3204
         },
         {
           "name": "_place_per_beat",
           "kind": "fn",
-          "startLine": 2176,
-          "endLine": 2235,
+          "startLine": 2183,
+          "endLine": 2242,
           "tokens": 743
         },
         {
           "name": "_place_per_trigger",
           "kind": "fn",
-          "startLine": 2236,
-          "endLine": 3459,
+          "startLine": 2243,
+          "endLine": 3466,
           "tokens": 14441
         }
       ]
@@ -15476,6 +15476,365 @@
           "startLine": 516,
           "endLine": 547,
           "tokens": 361
+        }
+      ]
+    },
+    "src/generator/xsq_writer.py": {
+      "description": "XSQ writer — serializes a SequencePlan to xLights .xsq XML format.",
+      "tokens": 13087,
+      "hash": "c89f355c856b3f2b",
+      "size": 45864,
+      "mtimeMs": 1784157769514.6409,
+      "updatedAt": "2026-07-15T23:22:49.778Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "write_xsq",
+          "kind": "fn",
+          "startLine": 277,
+          "endLine": 658,
+          "tokens": 5347
+        },
+        {
+          "name": "_serialize_palette",
+          "kind": "fn",
+          "startLine": 659,
+          "endLine": 688,
+          "tokens": 388
+        },
+        {
+          "name": "_serialize_effect_params",
+          "kind": "fn",
+          "startLine": 689,
+          "endLine": 746,
+          "tokens": 792
+        },
+        {
+          "name": "_strip_storage_prefix",
+          "kind": "fn",
+          "startLine": 747,
+          "endLine": 758,
+          "tokens": 136
+        },
+        {
+          "name": "_encode_value_curve",
+          "kind": "fn",
+          "startLine": 759,
+          "endLine": 784,
+          "tokens": 284
+        },
+        {
+          "name": "_ensure_palette",
+          "kind": "fn",
+          "startLine": 785,
+          "endLine": 798,
+          "tokens": 111
+        },
+        {
+          "name": "_ensure_effect_entry",
+          "kind": "fn",
+          "startLine": 799,
+          "endLine": 812,
+          "tokens": 120
+        },
+        {
+          "name": "parse_xsq",
+          "kind": "fn",
+          "startLine": 813,
+          "endLine": 884,
+          "tokens": 709
+        },
+        {
+          "name": "remove_effects_in_range",
+          "kind": "fn",
+          "startLine": 885,
+          "endLine": 895,
+          "tokens": 141
+        },
+        {
+          "name": "_remove_overlaps_per_layer",
+          "kind": "fn",
+          "startLine": 896,
+          "endLine": 913,
+          "tokens": 222
+        },
+        {
+          "name": "_remove_overlaps",
+          "kind": "fn",
+          "startLine": 914,
+          "endLine": 937,
+          "tokens": 260
+        },
+        {
+          "name": "_emit_timing_layer",
+          "kind": "fn",
+          "startLine": 938,
+          "endLine": 968,
+          "tokens": 335
+        },
+        {
+          "name": "_build_lyric_layers",
+          "kind": "fn",
+          "startLine": 969,
+          "endLine": 1018,
+          "tokens": 580
+        },
+        {
+          "name": "_collect_timing_tracks",
+          "kind": "fn",
+          "startLine": 1019,
+          "endLine": 1056,
+          "tokens": 392
+        },
+        {
+          "name": "fseq_guidance",
+          "kind": "fn",
+          "startLine": 1057,
+          "endLine": 1063,
+          "tokens": 71
+        }
+      ]
+    },
+    "tests/integration/test_palette_restraint.py": {
+      "description": "Integration tests for palette restraint across the generator pipeline.",
+      "tokens": 1542,
+      "hash": "76cb93b0c6cb9d35",
+      "size": 5397,
+      "mtimeMs": 1784157784263.216,
+      "updatedAt": "2026-07-15T23:23:04.450Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "TestMusicSparklesXsqSerialization",
+          "kind": "class",
+          "startLine": 21,
+          "endLine": 52,
+          "tokens": 440
+        },
+        {
+          "name": "TestPaletteDedup",
+          "kind": "class",
+          "startLine": 53,
+          "endLine": 80,
+          "tokens": 320
+        },
+        {
+          "name": "TestEndToEndPaletteRestraint",
+          "kind": "class",
+          "startLine": 81,
+          "endLine": 132,
+          "tokens": 556
+        }
+      ]
+    },
+    "src/generator/corpus_recipes.py": {
+      "description": "Declares from",
+      "tokens": 11461,
+      "hash": "3fd64f0008aa1973",
+      "size": 40214,
+      "mtimeMs": 1784157961500.6,
+      "updatedAt": "2026-07-15T23:26:01.667Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "PropFamilyRecipe",
+          "kind": "class",
+          "startLine": 70,
+          "endLine": 729,
+          "tokens": 9647
+        },
+        {
+          "name": "recipe_for_group",
+          "kind": "fn",
+          "startLine": 730,
+          "endLine": 785,
+          "tokens": 667
+        },
+        {
+          "name": "section_qualifies",
+          "kind": "fn",
+          "startLine": 786,
+          "endLine": 792,
+          "tokens": 99
+        }
+      ]
+    },
+    "tests/unit/test_generator/test_corpus_recipes.py": {
+      "description": "Tests for corpus-derived prop-family recipes (tier-6 PROP placement).",
+      "tokens": 18726,
+      "hash": "32cacf8f5e7936f6",
+      "size": 67252,
+      "mtimeMs": 1784158039299.6233,
+      "updatedAt": "2026-07-15T23:27:19.435Z",
+      "source": "hook",
+      "symbols": [
+        {
+          "name": "_make_effect",
+          "kind": "fn",
+          "startLine": 23,
+          "endLine": 37,
+          "tokens": 143
+        },
+        {
+          "name": "_make_library",
+          "kind": "fn",
+          "startLine": 38,
+          "endLine": 46,
+          "tokens": 73
+        },
+        {
+          "name": "_make_variant_library",
+          "kind": "fn",
+          "startLine": 47,
+          "endLine": 59,
+          "tokens": 116
+        },
+        {
+          "name": "_make_section",
+          "kind": "fn",
+          "startLine": 60,
+          "endLine": 67,
+          "tokens": 84
+        },
+        {
+          "name": "_make_hierarchy",
+          "kind": "fn",
+          "startLine": 68,
+          "endLine": 82,
+          "tokens": 179
+        },
+        {
+          "name": "_make_assignment",
+          "kind": "fn",
+          "startLine": 83,
+          "endLine": 120,
+          "tokens": 376
+        },
+        {
+          "name": "_place",
+          "kind": "fn",
+          "startLine": 121,
+          "endLine": 141,
+          "tokens": 257
+        },
+        {
+          "name": "TestRecipeMatching",
+          "kind": "class",
+          "startLine": 142,
+          "endLine": 208,
+          "tokens": 864
+        },
+        {
+          "name": "TestSectionQualifies",
+          "kind": "class",
+          "startLine": 209,
+          "endLine": 225,
+          "tokens": 183
+        },
+        {
+          "name": "TestCorpusRecipePlacement",
+          "kind": "class",
+          "startLine": 226,
+          "endLine": 409,
+          "tokens": 2868
+        },
+        {
+          "name": "TestMegatreeColorOverMask",
+          "kind": "class",
+          "startLine": 410,
+          "endLine": 480,
+          "tokens": 1050
+        },
+        {
+          "name": "TestCaneRecipe",
+          "kind": "class",
+          "startLine": 481,
+          "endLine": 602,
+          "tokens": 1871
+        },
+        {
+          "name": "TestHouseLineRecipes",
+          "kind": "class",
+          "startLine": 603,
+          "endLine": 701,
+          "tokens": 1486
+        },
+        {
+          "name": "TestMatrixRecipe",
+          "kind": "class",
+          "startLine": 702,
+          "endLine": 768,
+          "tokens": 913
+        },
+        {
+          "name": "TestMinitreeRecipe",
+          "kind": "class",
+          "startLine": 769,
+          "endLine": 830,
+          "tokens": 803
+        },
+        {
+          "name": "TestMaskSparkles",
+          "kind": "class",
+          "startLine": 831,
+          "endLine": 884,
+          "tokens": 799
+        },
+        {
+          "name": "TestVividMaskColor",
+          "kind": "class",
+          "startLine": 885,
+          "endLine": 942,
+          "tokens": 801
+        },
+        {
+          "name": "TestPlacementProgressCallback",
+          "kind": "class",
+          "startLine": 943,
+          "endLine": 979,
+          "tokens": 432
+        },
+        {
+          "name": "TestHeroRecipePlacement",
+          "kind": "class",
+          "startLine": 980,
+          "endLine": 1023,
+          "tokens": 568
+        },
+        {
+          "name": "TestOffBackdrop",
+          "kind": "class",
+          "startLine": 1024,
+          "endLine": 1095,
+          "tokens": 923
+        },
+        {
+          "name": "TestIcicleRecipe",
+          "kind": "class",
+          "startLine": 1096,
+          "endLine": 1167,
+          "tokens": 941
+        },
+        {
+          "name": "TestMegaTopperRecipe",
+          "kind": "class",
+          "startLine": 1168,
+          "endLine": 1217,
+          "tokens": 671
+        },
+        {
+          "name": "TestStarRecipe",
+          "kind": "class",
+          "startLine": 1218,
+          "endLine": 1308,
+          "tokens": 1232
+        },
+        {
+          "name": "TestMatrixMotionRotation",
+          "kind": "class",
+          "startLine": 1309,
+          "endLine": 1367,
+          "tokens": 868
         }
       ]
     }

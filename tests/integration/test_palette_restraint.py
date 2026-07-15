@@ -24,18 +24,25 @@ class TestMusicSparklesXsqSerialization:
     def test_sparkles_zero_not_in_palette_string(self):
         pal_str = _serialize_palette(["#FF0000", "#00FF00"], music_sparkles=0)
         assert "SparkleFrequency" not in pal_str
+        assert "MusicSparkles" not in pal_str
 
     def test_sparkles_nonzero_in_palette_string(self):
+        # bug (2026-07-15): the checkbox is what actually enables sparkles in
+        # xLights -- the slider value alone did nothing without it, so every
+        # prior sparkle placement silently rendered with sparkles off.
         pal_str = _serialize_palette(["#FF0000", "#00FF00"], music_sparkles=50)
+        assert "C_CHECKBOX_MusicSparkles=1" in pal_str
         assert "C_SLIDER_SparkleFrequency=50" in pal_str
 
     def test_sparkles_at_end_of_palette(self):
         pal_str = _serialize_palette(["#FF0000"], music_sparkles=80)
         parts = pal_str.split(",")
+        assert parts[-2] == "C_CHECKBOX_MusicSparkles=1"
         assert parts[-1] == "C_SLIDER_SparkleFrequency=80"
 
     def test_sparkles_100_max(self):
         pal_str = _serialize_palette(["#FF0000"], music_sparkles=100)
+        assert "C_CHECKBOX_MusicSparkles=1" in pal_str
         assert "C_SLIDER_SparkleFrequency=100" in pal_str
 
 

@@ -2040,7 +2040,10 @@ def _place_corpus_recipe(
     # the top layer with LayerMethod "2 is Unmask", so the motion effect on
     # the layer below only contributes shape/brightness while the On supplies
     # the color. Falls back to the flat single-layer form when the catalog
-    # has no On definition.
+    # has no On definition. When recipe.mask_sparkles is set (horizontal/
+    # vertical/cane/minitree, user request 2026-07-15, matching a real
+    # xLights clipboard paste), the On block also gets MusicSparkles at the
+    # same deterministic energy-scaled frequency tier-1 BASE already uses.
     on_def = (
         effect_library.effects.get("On") if recipe.color_over_mask else None
     )
@@ -2116,6 +2119,8 @@ def _place_corpus_recipe(
                     instance_index=bar_idx,
                 )
                 color_layer.layer = 0
+                if recipe.mask_sparkles:
+                    color_layer.music_sparkles = 15 + round(section.energy_score * 0.5)
                 placements.append(color_layer)
         else:
             color = _vivid_mask_color(theme_palette, variation_seed, group.name)
@@ -2124,6 +2129,8 @@ def _place_corpus_recipe(
                 on_params, [color], layer.blend_mode, "section",
             )
             color_layer.layer = 0
+            if recipe.mask_sparkles:
+                color_layer.music_sparkles = 15 + round(section.energy_score * 0.5)
             placements.append(color_layer)
 
     # Optional sustained motion layer beneath the per-beat bursts (matrix

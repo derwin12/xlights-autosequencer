@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T23:14:20.820Z
-> Files: 554 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T23:27:19.436Z
+> Files: 558 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -2176,7 +2176,11 @@
 
 ## src/generator/
 
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~44325 tok)
+- `corpus_recipes.py` — Declares from (~11461 tok)
+  - class `PropFamilyRecipe` L70-729 (~9647 tok)
+  - fn `recipe_for_group` L730-785 (~667 tok)
+  - fn `section_qualifies` L786-792 (~99 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~44475 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -2204,12 +2208,60 @@
   - fn `_resolve_palette` L1838-1881 (~533 tok)
   - fn `_place_per_bar` L1882-1935 (~642 tok)
   - fn `_humanize_group_name` L1936-1943 (~87 tok)
-  - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
-  - fn `_place_per_beat` L2176-2235 (~743 tok)
-  - fn `_place_per_trigger` L2236-3459 (~14441 tok)
+  - fn `_place_corpus_recipe` L1944-2182 (~3204 tok)
+  - fn `_place_per_beat` L2183-2242 (~743 tok)
+  - fn `_place_per_trigger` L2243-3466 (~14441 tok)
+- `xsq_writer.py` — XSQ writer — serializes a SequencePlan to xLights .xsq XML format. (~13087 tok)
+  - fn `write_xsq` L277-658 (~5347 tok)
+  - fn `_serialize_palette` L659-688 (~388 tok)
+  - fn `_serialize_effect_params` L689-746 (~792 tok)
+  - fn `_strip_storage_prefix` L747-758 (~136 tok)
+  - fn `_encode_value_curve` L759-784 (~284 tok)
+  - fn `_ensure_palette` L785-798 (~111 tok)
+  - fn `_ensure_effect_entry` L799-812 (~120 tok)
+  - fn `parse_xsq` L813-884 (~709 tok)
+  - fn `remove_effects_in_range` L885-895 (~141 tok)
+  - fn `_remove_overlaps_per_layer` L896-913 (~222 tok)
+  - fn `_remove_overlaps` L914-937 (~260 tok)
+  - fn `_emit_timing_layer` L938-968 (~335 tok)
+  - fn `_build_lyric_layers` L969-1018 (~580 tok)
+  - fn `_collect_timing_tracks` L1019-1056 (~392 tok)
+  - fn `fseq_guidance` L1057-1063 (~71 tok)
+
+## tests/integration/
+
+- `test_palette_restraint.py` — Integration tests for palette restraint across the generator pipeline. (~1542 tok)
+  - class `TestMusicSparklesXsqSerialization` L21-52 (~440 tok)
+  - class `TestPaletteDedup` L53-80 (~320 tok)
+  - class `TestEndToEndPaletteRestraint` L81-132 (~556 tok)
 
 ## tests/unit/test_generator/
 
+- `test_corpus_recipes.py` — Tests for corpus-derived prop-family recipes (tier-6 PROP placement). (~18726 tok)
+  - fn `_make_effect` L23-37 (~143 tok)
+  - fn `_make_library` L38-46 (~73 tok)
+  - fn `_make_variant_library` L47-59 (~116 tok)
+  - fn `_make_section` L60-67 (~84 tok)
+  - fn `_make_hierarchy` L68-82 (~179 tok)
+  - fn `_make_assignment` L83-120 (~376 tok)
+  - fn `_place` L121-141 (~257 tok)
+  - class `TestRecipeMatching` L142-208 (~864 tok)
+  - class `TestSectionQualifies` L209-225 (~183 tok)
+  - class `TestCorpusRecipePlacement` L226-409 (~2868 tok)
+  - class `TestMegatreeColorOverMask` L410-480 (~1050 tok)
+  - class `TestCaneRecipe` L481-602 (~1871 tok)
+  - class `TestHouseLineRecipes` L603-701 (~1486 tok)
+  - class `TestMatrixRecipe` L702-768 (~913 tok)
+  - class `TestMinitreeRecipe` L769-830 (~803 tok)
+  - class `TestMaskSparkles` L831-884 (~799 tok)
+  - class `TestVividMaskColor` L885-942 (~801 tok)
+  - class `TestPlacementProgressCallback` L943-979 (~432 tok)
+  - class `TestHeroRecipePlacement` L980-1023 (~568 tok)
+  - class `TestOffBackdrop` L1024-1095 (~923 tok)
+  - class `TestIcicleRecipe` L1096-1167 (~941 tok)
+  - class `TestMegaTopperRecipe` L1168-1217 (~671 tok)
+  - class `TestStarRecipe` L1218-1308 (~1232 tok)
+  - class `TestMatrixMotionRotation` L1309-1367 (~868 tok)
 - `test_picture_effects.py` — Tests for the Pictures effect: image library storage + Matrix/Mega Tree placement. (~6874 tok)
   - fn `_prop` L28-31 (~34 tok)
   - fn `_group` L32-35 (~39 tok)

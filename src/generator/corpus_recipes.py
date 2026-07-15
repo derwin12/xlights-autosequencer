@@ -193,6 +193,12 @@ class PropFamilyRecipe:
     # (see color_cycle_bars/color_cycle_beats on the megatree/cane/
     # horizontal/vertical recipes below).
     color_over_mask: bool = False
+    # Add MusicSparkles to the color_over_mask "On" layer (user request,
+    # 2026-07-15, matching a real xLights clipboard paste of an On effect
+    # with C_CHECKBOX_MusicSparkles=1). Only set on horizontal/vertical/cane/
+    # minitree -- the other color_over_mask families (matrix, megatree, star,
+    # megatopper, icicle) weren't part of the request and are left alone.
+    mask_sparkles: bool = False
 
 
 # Mined presets — near-unanimous across all 12 reference packages:
@@ -504,6 +510,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_SPIRALS_CANE,
         color_over_mask=True,
+        mask_sparkles=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,
         # Chase direction rotation mined across all 12 corpus songs (2150
@@ -544,6 +551,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_LIGHTNING_FLICKER,
         color_over_mask=True,
+        mask_sparkles=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,
         # Chase direction rotation mined across all 10 corpus songs (1213
@@ -571,6 +579,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_LIGHTNING_FLICKER,
         color_over_mask=True,
+        mask_sparkles=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,
         # Chase direction rotation mined across all 9 corpus songs (1276
@@ -642,6 +651,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_MINITREE,
         alt_parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
+        mask_sparkles=True,
     ),
     # Stars — mined from the same 12 packages (docs/star_sequencing_corpus/,
     # 15.2k placements over 12 songs, the largest family). One idiom across

@@ -662,7 +662,12 @@ def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
     Always fills all 8 palette slots — theme colors first, then defaults.
     xLights expects C_BUTTON entries grouped before C_CHECKBOX entries.
     Only the slots with theme colors get C_CHECKBOX enabled.
-    When music_sparkles > 0, appends C_SLIDER_MusicSparkles={value}.
+    When music_sparkles > 0, appends C_CHECKBOX_MusicSparkles=1 and
+    C_SLIDER_SparkleFrequency={value} -- both are required (bug, 2026-07-15):
+    a real xLights palette string with sparkles active always carries the
+    checkbox alongside the slider, and without it the slider value alone
+    does nothing, so every prior sparkle placement (tier-1 BASE, palette-
+    restraint pool effects) rendered with sparkles silently off.
     """
     padded = list(colors[:8])
     active_count = len(padded)
@@ -676,6 +681,7 @@ def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
     ]
     parts = buttons + checkboxes
     if music_sparkles > 0:
+        parts.append("C_CHECKBOX_MusicSparkles=1")
         parts.append(f"C_SLIDER_SparkleFrequency={music_sparkles}")
     return ",".join(parts)
 

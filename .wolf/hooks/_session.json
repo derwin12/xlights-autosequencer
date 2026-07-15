@@ -8,8 +8,8 @@
       "first_read": "2026-07-15T21:08:35.551Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/effect_placer.py": {
-      "count": 24,
-      "tokens": 44287,
+      "count": 30,
+      "tokens": 44397,
       "first_read": "2026-07-15T21:08:46.120Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/plan.py": {
@@ -38,8 +38,8 @@
       "first_read": "2026-07-15T21:22:53.482Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/xsq_writer.py": {
-      "count": 2,
-      "tokens": 12665,
+      "count": 4,
+      "tokens": 0,
       "first_read": "2026-07-15T21:31:04.620Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/models.py": {
@@ -48,8 +48,8 @@
       "first_read": "2026-07-15T21:41:59.713Z"
     },
     "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py": {
-      "count": 3,
-      "tokens": 11312,
+      "count": 7,
+      "tokens": 11429,
       "first_read": "2026-07-15T21:45:13.942Z"
     },
     "H:/Github/xlight-autosequencer/src/effects/builtin_effects.json": {
@@ -76,6 +76,21 @@
       "count": 1,
       "tokens": 4226,
       "first_read": "2026-07-15T23:11:18.205Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/integration/test_palette_restraint.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-15T23:22:53.440Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/integration/test_generator_equivalence.py": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-07-15T23:23:13.297Z"
+    },
+    "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_corpus_recipes.py": {
+      "count": 5,
+      "tokens": 0,
+      "first_read": "2026-07-15T23:26:34.903Z"
     }
   },
   "files_written": [
@@ -288,20 +303,84 @@
       "action": "edit",
       "tokens": 583,
       "at": "2026-07-15T23:14:20.842Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/xsq_writer.py",
+      "action": "edit",
+      "tokens": 345,
+      "at": "2026-07-15T23:22:49.826Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/integration/test_palette_restraint.py",
+      "action": "edit",
+      "tokens": 341,
+      "at": "2026-07-15T23:23:04.483Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py",
+      "action": "edit",
+      "tokens": 127,
+      "at": "2026-07-15T23:25:29.830Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py",
+      "action": "edit",
+      "tokens": 62,
+      "at": "2026-07-15T23:25:46.868Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py",
+      "action": "edit",
+      "tokens": 84,
+      "at": "2026-07-15T23:25:53.516Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py",
+      "action": "edit",
+      "tokens": 84,
+      "at": "2026-07-15T23:25:57.699Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/corpus_recipes.py",
+      "action": "edit",
+      "tokens": 46,
+      "at": "2026-07-15T23:26:01.695Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/effect_placer.py",
+      "action": "edit",
+      "tokens": 268,
+      "at": "2026-07-15T23:26:13.452Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/src/generator/effect_placer.py",
+      "action": "edit",
+      "tokens": 200,
+      "at": "2026-07-15T23:26:23.946Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/tests/unit/test_generator/test_corpus_recipes.py",
+      "action": "edit",
+      "tokens": 1064,
+      "at": "2026-07-15T23:27:19.459Z"
     }
   ],
   "edit_counts": {
-    "src/generator/effect_placer.py": 15,
+    "src/generator/effect_placer.py": 17,
     "tests/unit/test_generator/test_picture_effects.py": 10,
     ".wolf/hooks/stop.js": 1,
     ".wolf/cerebrum.md": 3,
     "src/generator/plan.py": 2,
     "src/generator/models.py": 2,
-    "README.md": 2
+    "README.md": 2,
+    "src/generator/xsq_writer.py": 1,
+    "tests/integration/test_palette_restraint.py": 1,
+    "src/generator/corpus_recipes.py": 5,
+    "tests/unit/test_generator/test_corpus_recipes.py": 1
   },
   "anatomy_hits": 10,
-  "anatomy_misses": 5,
-  "repeated_reads_warned": 44,
+  "anatomy_misses": 8,
+  "repeated_reads_warned": 61,
   "cerebrum_warnings": 0,
-  "stop_count": 54
+  "stop_count": 56
 }

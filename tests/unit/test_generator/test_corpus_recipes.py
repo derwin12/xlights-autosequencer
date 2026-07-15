@@ -820,6 +820,65 @@ class TestMinitreeRecipe:
         assert all(p.layer == 1 for p in masks)
 
 
+# ── MusicSparkles on the color_over_mask "On" layer ──────────────────────────
+# User request (2026-07-15), matching a real xLights clipboard paste of an
+# On effect with C_CHECKBOX_MusicSparkles=1. Only horizontal/vertical/cane/
+# minitree opted in (PropFamilyRecipe.mask_sparkles) -- megatree and matrix
+# also use color_over_mask but weren't part of the request and must stay
+# unaffected.
+
+
+class TestMaskSparkles:
+    def test_cane_on_layer_gets_sparkles(self) -> None:
+        result = _place(_make_section(label="chorus", energy=80), _CANE_GROUP,
+                        library_names=_LIBRARY_WITH_ON)
+        ons = [p for p in result["06_PROP_Candy_Cane"] if p.effect_name == "On"]
+        assert ons
+        assert all(p.music_sparkles > 0 for p in ons)
+
+    def test_horizontal_and_vertical_on_layer_gets_sparkles(self) -> None:
+        for group in (_HORIZONTAL_GROUP, _VERTICAL_GROUP):
+            result = _place(_make_section(label="chorus", energy=80), group,
+                            library_names=_LIBRARY_WITH_ON)
+            ons = [p for p in result[group.name] if p.effect_name == "On"]
+            assert ons
+            assert all(p.music_sparkles > 0 for p in ons)
+
+    def test_minitree_on_layer_gets_sparkles(self) -> None:
+        result = _place(_make_section(label="chorus", energy=80), _MINITREE_GROUP,
+                        library_names=_LIBRARY_WITH_ON)
+        ons = [p for p in result["06_PROP_Tree"] if p.effect_name == "On"]
+        assert ons
+        assert all(p.music_sparkles > 0 for p in ons)
+
+    def test_megatree_on_layer_not_affected(self) -> None:
+        # Also color_over_mask, but not part of the request -- must stay off.
+        result = _place(_make_section(label="chorus", energy=80), _MEGATREE_GROUP,
+                        library_names=_LIBRARY_WITH_ON)
+        ons = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "On"]
+        assert ons
+        assert all(p.music_sparkles == 0 for p in ons)
+
+    def test_matrix_on_layer_not_affected(self) -> None:
+        result = _place(_make_section(label="chorus", energy=80), _MATRIX_GROUP,
+                        library_names=_LIBRARY_WITH_ON + ("Pinwheel", "Lightning", "Ripple", "Spirals"))
+        ons = [p for p in result["06_PROP_Matrix"] if p.effect_name == "On"]
+        assert ons
+        assert all(p.music_sparkles == 0 for p in ons)
+
+    def test_sparkle_frequency_scales_with_energy(self) -> None:
+        # Same deterministic formula as tier-1 BASE's unconditional sparkles:
+        # 15 + round(energy_score * 0.5).
+        low = _place(_make_section(label="chorus", energy=20), _CANE_GROUP,
+                     library_names=_LIBRARY_WITH_ON)
+        high = _place(_make_section(label="chorus", energy=100), _CANE_GROUP,
+                      library_names=_LIBRARY_WITH_ON)
+        low_on = [p for p in low["06_PROP_Candy_Cane"] if p.effect_name == "On"][0]
+        high_on = [p for p in high["06_PROP_Candy_Cane"] if p.effect_name == "On"][0]
+        assert low_on.music_sparkles == 15 + round(20 * 0.5)
+        assert high_on.music_sparkles == 15 + round(100 * 0.5)
+
+
 # ── vivid unmask color selection ─────────────────────────────────────────────
 
 

@@ -4383,6 +4383,23 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-253",
+      "timestamp": "2026-07-15",
+      "error_message": "User requested MusicSparkles on the On mask effect for Horizontal Lines/Vertical Lines/Canes/Trees; investigation found the existing MusicSparkles feature (tier-1 BASE, palette-restraint pool) never actually worked in xLights",
+      "file": "src/generator/xsq_writer.py, src/generator/corpus_recipes.py, src/generator/effect_placer.py",
+      "root_cause": "_serialize_palette only ever emitted C_SLIDER_SparkleFrequency, never C_CHECKBOX_MusicSparkles=1. A real xLights clipboard paste (user-provided) confirmed both are required -- the checkbox is what actually enables sparkles; the slider value alone does nothing without it. Confirmed via golden .xsq fixtures (tests/fixtures/xsq/048_golden/) and the existing test suite: SparkleFrequency values were asserted present but MusicSparkles checkbox absence was never checked, so every previously-shipped sparkle placement (tier-1 BASE unconditional sparkles, palette-restraint pool effects) silently rendered with sparkles off.",
+      "fix": "_serialize_palette now emits C_CHECKBOX_MusicSparkles=1 alongside the slider when music_sparkles>0 (fixes ALL existing sparkle usage, not just the new feature). Added PropFamilyRecipe.mask_sparkles (corpus_recipes.py), set True only on horizontal/vertical/cane/minitree per user request (not megatree/matrix/star/megatopper/icicle, which share the same color_over_mask On-layer idiom but weren't requested). _place_corpus_recipe applies the same deterministic energy-scaled frequency formula tier-1 BASE already uses (15 + energy_score*0.5) to the On color layer when recipe.mask_sparkles is set. Regenerated tests/fixtures/xsq/048_golden/*.xsq via the documented capture_goldens one-shot procedure -- also absorbed pre-existing unrelated palette-color drift in those goldens, confirmed (by stashing all changes and re-running) to predate this session entirely.",
+      "tags": [
+        "generator",
+        "sparkles",
+        "corpus-recipes",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }
