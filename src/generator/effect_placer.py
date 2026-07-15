@@ -3146,13 +3146,15 @@ def _place_video_effect(
 
 # How long a lyric-matched image stays on screen per burst, and the minimum
 # cooldown before the *same* image can repeat on a target (distinct images
-# only need to not overlap in time -- see the placement loop below). Matched
-# words often cluster within a second or two of each other, and a word that
-# recurs often across the song (e.g. a repeated chorus line) would otherwise
-# flicker the same picture over and over instead of leaving room for rarer,
-# differently-imaged matches nearby.
+# only need to not overlap in time -- see the placement loop below). A word
+# that recurs often across the song (e.g. "sing" through a repeated chorus)
+# can generate a match every single time it's sung; a short cooldown just
+# thinned out the closest repeats and still let one image dominate the whole
+# song. User request (2026-07-15): stay selective -- the same picture should
+# resurface only a handful of times across a whole song, not every time its
+# word comes up.
 _PICTURE_BURST_MS = 6_000
-_PICTURE_MIN_GAP_MS = 5_000
+_PICTURE_MIN_GAP_MS = 90_000
 _PICTURE_FADE_MS = 800
 # Start the burst this far ahead of the matched word's own start time, so the
 # image (plus its fade-in) is already fully visible by the moment the lyric

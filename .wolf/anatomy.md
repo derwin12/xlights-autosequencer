@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T22:34:16.290Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T22:43:21.303Z
 > Files: 554 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -2176,7 +2176,7 @@
 
 ## src/generator/
 
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~44287 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~44325 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -2206,7 +2206,7 @@
   - fn `_humanize_group_name` L1936-1943 (~87 tok)
   - fn `_place_corpus_recipe` L1944-2175 (~3056 tok)
   - fn `_place_per_beat` L2176-2235 (~743 tok)
-  - fn `_place_per_trigger` L2236-3457 (~14403 tok)
+  - fn `_place_per_trigger` L2236-3459 (~14441 tok)
 
 ## tests/unit/test_generator/
 

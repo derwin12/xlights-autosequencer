@@ -4357,6 +4357,32 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-252",
+      "timestamp": "2026-07-15",
+      "error_message": "User shared a match list showing 'sing' matching sing.png ~15 times across the song (chorus repeats), asking for the Pictures overlay to be more selective and not overuse a single image",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "Not a bug -- a selectivity/taste request. _PICTURE_MIN_GAP_MS=5000 (5s) was long enough to prevent literal flicker but far too short to keep a frequently-recurring lyric word from resurfacing its image many times across a whole song.",
+      "fix": "Raised _PICTURE_MIN_GAP_MS from 5_000 to 90_000 (90s) per user choice (\"much longer cooldown between repeats\" over a once-per-song-per-image rule or a hard total-burst cap). Same-image cooldown only; different images still only need to not overlap in time (bug-251).",
+      "tags": [
+        "generator",
+        "pictures-effect",
+        "selectivity",
+        "py"
+      ],
+      "related_bugs": [
+        "bug-184",
+        "bug-243",
+        "bug-246",
+        "bug-247",
+        "bug-248",
+        "bug-249",
+        "bug-250",
+        "bug-251"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }
