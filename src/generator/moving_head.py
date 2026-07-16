@@ -11,10 +11,14 @@ real physical fixture to garbage positions, which is why moving-head props
 are excluded from every generic tier in grouper.generate_groups() and only
 ever receive placements from this module.
 
-v1 scope (deliberately minimal): one static white wash placement per
-section, dimmer fully on, no pan/tilt movement. No fan-out, no motion
-paths, no per-head choreography -- those are natural follow-ups once this
-renders correctly against real hardware.
+v1 shipped a continuous static white wash placement per song section
+(dimmer fully on, no movement) alongside the crash-accent punch below.
+Removed 2026-07-16: with the wash always on, the MH group was lit for the
+entire song regardless of energy/mood, which didn't read well -- the group
+now only lights up for the rare `place_moving_head_crash_accents` punch and
+its warmup. A gated wash (e.g. only during high-energy sections) plus a
+variety of effect-setting choices to rotate through is deferred future
+work, not implemented here -- see CLAUDE.md Future Work.
 
 Always white, never a theme/section color, by design (user request,
 2026-07-16) -- and not just for simplicity. Reading
@@ -65,35 +69,6 @@ _COMMA_ESCAPE = "&comma;"
 # Hue 0.0, saturation 0.0, value 1.0 -- pure white. See the module
 # docstring for why this is a fixed constant rather than a derived color.
 _COLOR_WHITE = _COMMA_ESCAPE.join(("0.000000", "0.000000", "1.000000"))
-
-
-def _build_head_settings(head_count: int) -> str:
-    heads = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
-    return (
-        "Pan: 0.0;Tilt: 0;PanOffset: 0;TiltOffset: 0.0;"
-        "Groupings: 1.0;Cycles: 1.0;"
-        f"Heads: {heads};"
-        f"Dimmer: {_DIMMER_FULL_ON};"
-        # "Wheel:" (not "Color:") for a genuine color-wheel fixture --
-        # confirmed against the user's real MH-1..MH-4 (configured as
-        # DmxColorAbilityWheel). Reading RenderMovingHead() in the real
-        # xLights source shows "AutoShutter: true" is only ever consulted
-        # inside the has_color_wheel branch (i.e. only when the command is
-        # "Wheel:", never "Color:") -- pairing "Color:" with "AutoShutter"
-        # would silently do nothing.
-        f"Wheel: {_COLOR_WHITE};"
-        "AutoShutter: true;"
-        # Confirmed by reading MovingHeadEffect::RenderMovingHead(): this
-        # "Shutter: On" per-head command is what opens the shutter (writes
-        # the model's configured ShutterOnValue to its shutter channel) --
-        # the top-level E_CHECKBOX_MHShutterEnable/E_CHECKBOX_AUTO_SHUTTER
-        # checkboxes are UI-only (MovingHeadPanel::UpdateColorSettings() is
-        # what appends this text when the user ticks "Enable Shutter"); the
-        # renderer never reads the checkboxes themselves. Without it the
-        # shutter stays closed and the fixture is dark regardless of
-        # Wheel/Dimmer.
-        "Shutter: On"
-    )
 
 
 def _build_parameters(
@@ -148,40 +123,6 @@ def _build_parameters(
     for i in range(1, _MAX_HEAD_SLOTS + 1):
         params[f"E_TEXTCTRL_MH{i}_Settings"] = per_head_settings if i <= head_count else ""
     return params
-
-
-def place_moving_head_effects(
-    layout: Layout,
-    assignments: list[SectionAssignment],
-) -> dict[str, list[EffectPlacement]]:
-    """Place a static white wash "Moving Head" effect per section, per group.
-
-    Song-scoped rather than folded into the per-section `place_effects()`
-    pass: moving-head groups aren't in the tiered `groups` list at all (see
-    grouper.generate_groups), so there's no tier/recipe machinery for them
-    to plug into. Returns {} when the layout has no moving-head groups.
-    """
-    mh_groups = find_moving_head_groups(layout)
-    if not mh_groups or not assignments:
-        return {}
-
-    result: dict[str, list[EffectPlacement]] = {}
-    for mh_group in mh_groups:
-        per_head_settings = _build_head_settings(len(mh_group.head_names))
-        params = _build_parameters(mh_group, per_head_settings)
-        placements = [
-            EffectPlacement(
-                effect_name="Moving Head",
-                xlights_id="eff_MOVINGHEAD",
-                model_or_group=mh_group.name,
-                start_ms=assignment.section.start_ms,
-                end_ms=assignment.section.end_ms,
-                parameters=dict(params),
-            )
-            for assignment in assignments
-        ]
-        result[mh_group.name] = placements
-    return result
 
 
 # Rare whole-house crash accent (see src/analyzer/crash_accents.py and
@@ -262,14 +203,10 @@ def place_moving_head_crash_accents(
     exactly (same lead-in/duration, same vocal/fade exclusion windows) so
     the two accents land together -- see that function's docstring for the
     rationale behind the exclusion windows themselves. ``existing_placements``
-    is normally the wash dict from ``place_moving_head_effects``: when the
-    punch's warmup window doesn't overlap anything already scheduled on
-    that group (a gap in an otherwise continuous wash, or wash disabled),
-    a warmup placement (see ``_build_warmup_head_settings``) is inserted so
-    the heads are already fanned out and dark before the punch opens the
-    shutter, instead of visibly snapping into position while lit. Returns
-    {} when the layout has no moving-head group or there are no crash
-    marks.
+    lets a future gated wash suppress the warmup where it already covers the
+    punch's lead-in window; with no wash currently placed, every crash mark
+    gets its own warmup. Returns {} when the layout has no moving-head group
+    or there are no crash marks.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups or not hierarchy.crash_accents:
