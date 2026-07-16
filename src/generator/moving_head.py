@@ -11,18 +11,28 @@ real physical fixture to garbage positions, which is why moving-head props
 are excluded from every generic tier in grouper.generate_groups() and only
 ever receive placements from this module.
 
-v1 scope (deliberately minimal): one static color-wash placement per
-section, matching the group's theme/anchor color, dimmer fully on, no
-pan/tilt movement. No fan-out, no motion paths, no per-head choreography --
-those are natural follow-ups once this renders correctly against real
-hardware.
+v1 scope (deliberately minimal): one static white wash placement per
+section, dimmer fully on, no pan/tilt movement. No fan-out, no motion
+paths, no per-head choreography -- those are natural follow-ups once this
+renders correctly against real hardware.
+
+Always white, never a theme/section color, by design (user request,
+2026-07-16) -- and not just for simplicity. Reading
+DmxColorAbilityWheel::GetDMXWheelValue() in the real xLights source
+(src-core/models/DMX/DmxColorAbilityWheel.cpp) showed a color-wheel
+fixture only recognizes a commanded color if its hue
+lands within ~0.01 (about 3.6 degrees) of one of the fixture's own
+configured wheel-slot hues; anything else silently falls through to
+whatever the wheel defaults to at DMX 0 (white, on the fixtures tested).
+Confirmed against real hardware: a pure-red placement (hue 0.0) rendered
+correctly, but a green placement (hue ~0.357) rendered as white because
+it didn't land close enough to that fixture's configured green slot.
+Arbitrary theme-derived hues are therefore fundamentally unreliable on a
+wheel-type fixture -- white sidesteps the problem entirely.
 """
 from __future__ import annotations
 
-import colorsys
-
 from src.generator.models import EffectPlacement, SectionAssignment
-from src.grouper.grouper import PowerGroup
 from src.grouper.layout import Layout, MovingHeadGroup, find_moving_head_groups
 
 # "Dimmer: x1,y1,x2,y2,..." is a value-curve point list, not an opaque bit
@@ -49,45 +59,46 @@ _MAX_HEAD_SLOTS = 8
 # written as "&comma;" rather than ",".
 _COMMA_ESCAPE = "&comma;"
 
-
-def _hex_to_hsv(hex_color: str) -> tuple[float, float, float]:
-    hex_color = hex_color.lstrip("#")
-    r = int(hex_color[0:2], 16) / 255.0
-    g = int(hex_color[2:4], 16) / 255.0
-    b = int(hex_color[4:6], 16) / 255.0
-    return colorsys.rgb_to_hsv(r, g, b)
+# Hue 0.0, saturation 0.0, value 1.0 -- pure white. See the module
+# docstring for why this is a fixed constant rather than a derived color.
+_COLOR_WHITE = _COMMA_ESCAPE.join(("0.000000", "0.000000", "1.000000"))
 
 
-def _build_head_settings(hue: float, sat: float, val: float, head_count: int) -> str:
+def _build_head_settings(head_count: int) -> str:
     heads = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
-    color = _COMMA_ESCAPE.join(f"{c:.6f}" for c in (hue, sat, val))
     return (
         "Pan: 0.0;Tilt: 0;PanOffset: 0;TiltOffset: 0.0;"
         "Groupings: 1.0;Cycles: 1.0;"
         f"Heads: {heads};"
         f"Dimmer: {_DIMMER_FULL_ON};"
-        f"Color: {color};"
-        # Confirmed by reading MovingHeadEffect::RenderMovingHead() in the
-        # real xLights source: this "Shutter: On" per-head command is the
-        # ONLY thing that opens the shutter (writes the model's configured
-        # ShutterOnValue to its shutter channel) -- the top-level
-        # E_CHECKBOX_MHShutterEnable/E_CHECKBOX_AUTO_SHUTTER checkboxes are
-        # UI-only (MovingHeadPanel::UpdateColorSettings() is what appends
-        # this text when the user ticks "Enable Shutter"); the renderer
-        # never reads the checkboxes themselves. Without this command the
+        # "Wheel:" (not "Color:") for a genuine color-wheel fixture --
+        # confirmed against the user's real MH-1..MH-4 (configured as
+        # DmxColorAbilityWheel). Reading RenderMovingHead() in the real
+        # xLights source shows "AutoShutter: true" is only ever consulted
+        # inside the has_color_wheel branch (i.e. only when the command is
+        # "Wheel:", never "Color:") -- pairing "Color:" with "AutoShutter"
+        # would silently do nothing.
+        f"Wheel: {_COLOR_WHITE};"
+        "AutoShutter: true;"
+        # Confirmed by reading MovingHeadEffect::RenderMovingHead(): this
+        # "Shutter: On" per-head command is what opens the shutter (writes
+        # the model's configured ShutterOnValue to its shutter channel) --
+        # the top-level E_CHECKBOX_MHShutterEnable/E_CHECKBOX_AUTO_SHUTTER
+        # checkboxes are UI-only (MovingHeadPanel::UpdateColorSettings() is
+        # what appends this text when the user ticks "Enable Shutter"); the
+        # renderer never reads the checkboxes themselves. Without it the
         # shutter stays closed and the fixture is dark regardless of
-        # Color/Dimmer.
+        # Wheel/Dimmer.
         "Shutter: On"
     )
 
 
-def _build_parameters(mh_group: MovingHeadGroup, hex_color: str) -> dict[str, str]:
-    hue, sat, val = _hex_to_hsv(hex_color)
-    per_head_settings = _build_head_settings(hue, sat, val, len(mh_group.head_names))
+def _build_parameters(mh_group: MovingHeadGroup) -> dict[str, str]:
+    per_head_settings = _build_head_settings(len(mh_group.head_names))
     params: dict[str, str] = {
         "B_CHOICE_BufferStyle": "Per Model Default",
         "E_NOTEBOOK1": "Position",
-        "E_NOTEBOOK2": "Color",
+        "E_NOTEBOOK2": "ColorWheel",
         "E_SLIDER_MHPan": "0",
         "E_SLIDER_MHTilt": "0",
         "E_SLIDER_MHPanOffset": "0",
@@ -130,19 +141,11 @@ def _build_parameters(mh_group: MovingHeadGroup, hex_color: str) -> dict[str, st
     return params
 
 
-def _section_wash_color(assignment: SectionAssignment) -> str:
-    if assignment.anchor_palette:
-        return assignment.anchor_palette[0]
-    if assignment.theme.palette:
-        return assignment.theme.palette[0]
-    return "#FFFFFF"
-
-
 def place_moving_head_effects(
     layout: Layout,
     assignments: list[SectionAssignment],
 ) -> dict[str, list[EffectPlacement]]:
-    """Place a static color-wash "Moving Head" effect per section, per group.
+    """Place a static white wash "Moving Head" effect per section, per group.
 
     Song-scoped rather than folded into the per-section `place_effects()`
     pass: moving-head groups aren't in the tiered `groups` list at all (see
@@ -155,16 +158,17 @@ def place_moving_head_effects(
 
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
-        placements: list[EffectPlacement] = []
-        for assignment in assignments:
-            color = _section_wash_color(assignment)
-            placements.append(EffectPlacement(
+        params = _build_parameters(mh_group)
+        placements = [
+            EffectPlacement(
                 effect_name="Moving Head",
                 xlights_id="eff_MOVINGHEAD",
                 model_or_group=mh_group.name,
                 start_ms=assignment.section.start_ms,
                 end_ms=assignment.section.end_ms,
-                parameters=_build_parameters(mh_group, color),
-            ))
+                parameters=dict(params),
+            )
+            for assignment in assignments
+        ]
         result[mh_group.name] = placements
     return result
