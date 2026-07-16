@@ -434,13 +434,25 @@
       "action": "edit",
       "tokens": 211,
       "at": "2026-07-16T00:11:04.715Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/hooks/shared.js",
+      "action": "edit",
+      "tokens": 520,
+      "at": "2026-07-16T00:13:20.130Z"
+    },
+    {
+      "file": "H:/Github/xlight-autosequencer/.wolf/cerebrum.md",
+      "action": "edit",
+      "tokens": 264,
+      "at": "2026-07-16T00:13:46.028Z"
     }
   ],
   "edit_counts": {
     "src/generator/effect_placer.py": 21,
     "tests/unit/test_generator/test_picture_effects.py": 10,
     ".wolf/hooks/stop.js": 1,
-    ".wolf/cerebrum.md": 3,
+    ".wolf/cerebrum.md": 4,
     "src/generator/plan.py": 4,
     "src/generator/models.py": 2,
     "README.md": 2,
@@ -448,11 +460,12 @@
     "tests/integration/test_palette_restraint.py": 1,
     "src/generator/corpus_recipes.py": 5,
     "tests/unit/test_generator/test_corpus_recipes.py": 4,
-    "tests/unit/test_generator/test_end_of_song_fade.py": 2
+    "tests/unit/test_generator/test_end_of_song_fade.py": 2,
+    ".wolf/hooks/shared.js": 1
   },
   "anatomy_hits": 10,
   "anatomy_misses": 9,
   "repeated_reads_warned": 76,
   "cerebrum_warnings": 0,
-  "stop_count": 59
+  "stop_count": 62
 }

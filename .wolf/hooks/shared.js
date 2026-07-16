@@ -621,20 +621,25 @@ export function countSemanticEntries(wolfDir) {
         const todayPrefix = `| ${today}`;
         const sessionHeader = /^##\s*Session:\s*(\d{4}-\d{2}-\d{2})/;
         let count = 0;
-        // Rows count as "today" either when the row itself is date-prefixed
-        // (`| 2026-07-15 | ...`) or when it's a bare `| HH:MM | ... |` row
-        // under a `## Session: 2026-07-15 ...` header — this project's
-        // actual convention groups entries under a dated session header
-        // rather than repeating the date on every row.
-        let inTodaySession = false;
+        // Rows count as "current session" either when the row itself is
+        // date-prefixed with today's UTC date (`| 2026-07-15 | ...`) or when
+        // it falls after the LAST `## Session: ...` header in the file,
+        // regardless of that header's own date (bug, 2026-07-16: comparing
+        // the header's date to the hook's UTC "today" broke the moment a
+        // long-running session crossed midnight UTC while the header still
+        // carried the session's start-time date/timezone -- a semantic
+        // summary written correctly late in a session was silently not
+        // counted). The file's own session boundaries are the source of
+        // truth for "this session," not a wall-clock date comparison.
+        let inCurrentSession = false;
         for (const line of content.split("\n")) {
             const headerMatch = line.match(sessionHeader);
             if (headerMatch) {
-                inTodaySession = headerMatch[1] === today;
+                inCurrentSession = true;
                 continue;
             }
-            const isTodayRow = line.startsWith(todayPrefix) || (inTodaySession && line.startsWith("|"));
-            if (isTodayRow && !mechanical.test(line) && !tableFurniture.test(line))
+            const isCurrentRow = line.startsWith(todayPrefix) || (inCurrentSession && line.startsWith("|"));
+            if (isCurrentRow && !mechanical.test(line) && !tableFurniture.test(line))
                 count++;
         }
         return count;
