@@ -396,6 +396,11 @@ def write_xsq(
             _copied_pictures[src] = dest_name
             placement.parameters["E_TEXTCTRL_Pictures_Filename"] = dest_name
 
+    # Song-scoped Moving Head color-wash placements (DMX fixture groups) --
+    # same rationale as vocal_effects.
+    for group_name, placements in plan.moving_head_effects.items():
+        unordered.setdefault(group_name, []).extend(placements)
+
     # Song-scoped Video placement (imported video clip on a matrix). Its
     # E_FILEPICKERCTRL_Video_Filename holds an absolute path into
     # ~/.xlight/library/ — a devcontainer-only location with no host

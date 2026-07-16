@@ -519,3 +519,41 @@ class TestDisplayTypeFallback:
         props = [custom("01 Warlock A"), custom("07 Forest B", x=50.0)]
         groups = generate_groups(props)
         assert not any(g.name == "06_PROP_Custom" for g in groups)
+
+
+class TestMovingHeadExclusion:
+    """Moving-head DMX fixtures must never enter a generic tier: their pixels
+    are placeholders for Pan/Tilt/Gobo/etc. channels, so any ordinary RGB
+    effect placed via the tiered pipeline would write garbage into those
+    channels. See src/generator/moving_head.py for their dedicated pass."""
+
+    def _moving_head(self, name: str) -> Prop:
+        return Prop(
+            name=name, display_as="DmxMovingHeadAdv",
+            world_x=0.0, world_y=0.0, world_z=0.0,
+            scale_x=1.0, scale_y=1.0, parm1=16, parm2=1, sub_models=[],
+        )
+
+    def test_excluded_from_whole_house_canvas(self):
+        props = [make_prop("Arch 1"), make_prop("Arch 2"),
+                 self._moving_head("MH1"), self._moving_head("MH2")]
+        groups = generate_groups(props)
+        base = next(g for g in groups if g.name == "01_BASE_All")
+        assert "MH1" not in base.members
+        assert "MH2" not in base.members
+        assert "Arch 1" in base.members
+
+    def test_excluded_from_tier6_prop_type_family(self):
+        # Same stem ("MH") would otherwise family these into 06_PROP_MH.
+        props = [make_prop("Arch 1"), make_prop("Arch 2"),
+                 self._moving_head("MH1"), self._moving_head("MH2")]
+        groups = generate_groups(props)
+        assert not any(g.name == "06_PROP_MH" for g in groups)
+
+    def test_no_group_contains_a_moving_head_model(self):
+        props = [make_prop("Arch 1"), make_prop("Arch 2"),
+                 self._moving_head("MH1"), self._moving_head("MH2")]
+        groups = generate_groups(props)
+        for g in groups:
+            assert "MH1" not in g.members
+            assert "MH2" not in g.members

@@ -16,7 +16,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from src.grouper.layout import Prop, dominant_prop_type
+from src.grouper.layout import MOVING_HEAD_DISPLAY_AS, Prop, dominant_prop_type
 
 # SubModel names that imply a radial structure where successive members
 # are concentric rings or rotational spokes.  When a Custom prop's subModels
@@ -84,6 +84,14 @@ def generate_groups(
     """
     active_tiers = PROFILE_TIERS.get(profile, ALL_TIERS) if profile else ALL_TIERS
     groups: list[PowerGroup] = []
+
+    # Moving-head DMX fixtures are not RGB pixel props -- their "pixels" are
+    # placeholders for Pan/Tilt/Gobo/etc. DMX channels, so routing them
+    # through any generic tier (even the tier-1 whole-house wash) would
+    # write ordinary RGB effect output straight into those channels,
+    # snapping a real fixture's pan/tilt to garbage values. They get their
+    # own dedicated placement pass (see generator/moving_head.py) instead.
+    props = [p for p in props if p.display_as != MOVING_HEAD_DISPLAY_AS]
 
     if 1 in active_tiers:
         groups.extend(_tier1_canvas(props))

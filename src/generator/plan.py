@@ -29,6 +29,7 @@ from src.generator.effect_placer import (
 )
 from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
+from src.generator.moving_head import place_moving_head_effects
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
 from src.story.builder import load_song_story
@@ -46,7 +47,7 @@ from src.generator.value_curves import generate_value_curves
 from src.generator.xsq_writer import write_xsq
 from src.grouper.classifier import classify_props, normalize_coords
 from src.grouper.grouper import PowerGroup, generate_groups
-from src.grouper.layout import Prop, parse_layout
+from src.grouper.layout import Layout, Prop, parse_layout
 from src.themes.library import ThemeLibrary, load_theme_library
 
 
@@ -102,6 +103,7 @@ def build_plan(
     effect_library: EffectLibrary,
     theme_library: ThemeLibrary,
     progress_cb: Callable[[str, float], None] | None = None,
+    layout: Optional[Layout] = None,
 ) -> SequencePlan:
     """Build a SequencePlan from all upstream data.
 
@@ -361,6 +363,16 @@ def build_plan(
                 existing_layers=existing_layers,
             )
 
+    # 5f. Static color-wash placements on DMX moving-head fixture groups
+    # (config.moving_head_effects). Song-scoped, same rationale as
+    # vocal_effects/video_effects/crash_effects/picture_effects -- moving-head
+    # groups aren't part of `groups` at all (excluded in generate_groups so
+    # they never receive generic RGB placements), so this is their only
+    # placement source.
+    moving_head_effects: dict[str, list] = {}
+    if config.moving_head_effects and layout is not None:
+        moving_head_effects = place_moving_head_effects(layout, assignments)
+
     # 5. Value curves — generate for each placement when curves are enabled
     if config.curves_mode != "none":
         for assignment in assignments:
@@ -413,6 +425,7 @@ def build_plan(
         video_effects=video_effects,
         crash_effects=crash_effects,
         picture_effects=picture_effects,
+        moving_head_effects=moving_head_effects,
     )
 
 
@@ -770,7 +783,7 @@ def generate_sequence(config: GenerationConfig) -> Path:
     theme_library = load_theme_library(effect_library=effect_library, variant_library=variant_library)
 
     # Build plan
-    plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library)
+    plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library, layout=layout)
 
     # Write XSQ with timing tracks
     output_name = config.audio_path.stem + ".xsq"

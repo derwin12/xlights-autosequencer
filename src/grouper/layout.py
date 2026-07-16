@@ -113,11 +113,54 @@ class Prop:
     face_definitions: list[str] = field(default_factory=list)
 
 
+# DisplayAs value for xLights' DMX moving-head fixture model. Not part of
+# DISPLAY_AS_TO_PROP_TYPE / the 6 canonical prop-suitability keys -- a moving
+# head is not an RGB pixel prop (its "pixels" are DMX channel placeholders
+# for Pan/Tilt/Gobo/etc.), so it must never be routed through the generic
+# prop_suitability effect-selection pipeline. See find_moving_head_groups().
+MOVING_HEAD_DISPLAY_AS = "DmxMovingHeadAdv"
+
+
+@dataclass(frozen=True)
+class MovingHeadGroup:
+    """An xLights modelGroup made up entirely of moving-head fixtures.
+
+    ``head_names`` preserves the group's authored ``models=`` order, which
+    is also the order xLights numbers MH1_Settings..MHN_Settings in the
+    Moving Head effect.
+    """
+    name: str
+    head_names: tuple[str, ...]
+
+
 @dataclass
 class Layout:
     props: list[Prop]
     source_path: Path
     raw_tree: ET.ElementTree
+
+
+def find_moving_head_groups(layout: Layout) -> list[MovingHeadGroup]:
+    """Find modelGroups made up entirely of moving-head fixtures.
+
+    A group with a mix of moving-head and regular RGB models is skipped
+    (there's no single group_effects target that's fully DMX or fully RGB
+    for it), so a malformed layout produces no placements rather than a
+    partially-wrong one.
+    """
+    moving_head_names = {p.name for p in layout.props if p.display_as == MOVING_HEAD_DISPLAY_AS}
+    if not moving_head_names:
+        return []
+    groups: list[MovingHeadGroup] = []
+    for group_elem in layout.raw_tree.getroot().findall(".//modelGroup"):
+        models_attr = group_elem.get("models", "")
+        member_names = [m for m in models_attr.split(",") if m]
+        if member_names and all(m in moving_head_names for m in member_names):
+            groups.append(MovingHeadGroup(
+                name=group_elem.get("name", ""),
+                head_names=tuple(member_names),
+            ))
+    return groups
 
 
 def parse_layout(path: str | Path) -> Layout:
