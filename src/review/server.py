@@ -28,9 +28,10 @@ def _adapt_hierarchy_for_ui(data: dict) -> dict:
 
     The existing JS UI expects a flat ``timing_tracks`` list.  This function
     assembles one from all hierarchy levels so the timeline still renders.
-    Non-2.0.0 data is returned unchanged.
+    Non-hierarchy (non-2.x) data is returned unchanged.
     """
-    if data.get("schema_version") != "2.0.0":
+    from src.analyzer.result import is_hierarchy_schema
+    if not is_hierarchy_schema(data.get("schema_version")):
         return data
 
     tracks = []
@@ -324,8 +325,9 @@ def _progress_generator(job: AnalysisJob):
 def _hierarchy_summary_for_server(json_path: Path) -> dict | None:
     """Load a _hierarchy.json and return a summary dict for the library API."""
     try:
+        from src.analyzer.result import is_hierarchy_schema
         data = json.loads(json_path.read_text(encoding="utf-8"))
-        if data.get("schema_version") != "2.0.0":
+        if not is_hierarchy_schema(data.get("schema_version")):
             return None
         v = data.get("validation", {})
         dur_ms = data.get("duration_ms", 0)
@@ -950,8 +952,9 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
             return jsonify({"error": str(exc)}), 500
 
         # Validate schema — must look like an actual hierarchy result
-        if data.get("schema_version") != "2.0.0":
-            return jsonify({"error": "Not a valid hierarchy file (missing schema_version 2.0.0)"}), 400
+        from src.analyzer.result import is_hierarchy_schema
+        if not is_hierarchy_schema(data.get("schema_version")):
+            return jsonify({"error": "Not a valid hierarchy file (missing 2.x schema_version)"}), 400
 
         mp3_path = data.get("source_file", "")
         if not mp3_path or not Path(mp3_path).exists():

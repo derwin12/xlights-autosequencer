@@ -1,55 +1,62 @@
-"""Rare whole-house crash/transient detection.
+"""Rare whole-house crash/transient detection (cymbal-stem isolation score).
 
-Distinct from ``derive_energy_impacts`` (src/analyzer/derived.py): that
-detector averages energy over a 1-second window and is tuned for
-section-level energy jumps. It was verified (2026-07-14, against a real
-cached hierarchy for Dream On/Aerosmith, 201.9s) to dilute genuine
-sub-second percussive transients well below its 1.8x threshold -- two
-known audible crashes (50.85s, ~190s) both measured only ~1.3x with that
-windowing.
+Third design (2026-07-16). History, because this module has been wrong twice:
 
-This module was itself recalibrated once against that same song after an
-initial full-spectrum onset-strength design failed two ways: it missed
-both known crashes (their full-spectrum ratio was only ~1.2-2.5x the
-song's own level) while flagging the song's very first audio frame as the
-single largest spectral-flux value in the track -- an edge artifact, not a
-crash: that moment is the *quietest* half-second in the whole song (RMS
-~0.05 vs a track RMS of ~0.22), but transitioning out of near-silence
-produces a huge relative onset-strength spike regardless of loudness.
+1. **v1 (2026-07-14)**: full-spectrum onset strength on the full mix.
+   Failed both ways on its own target song (Dream On/Aerosmith): missed both
+   known crashes and flagged the track's cold open — the quietest moment in
+   the song — because transitioning out of near-silence produces the largest
+   relative spectral-flux spike in the track.
 
-Two changes fixed that:
-  1. A **treble-band-only** (>=4000Hz) onset envelope instead of
-     full-spectrum -- a cymbal-style crash is specifically bright/
-     high-frequency, unlike an ordinary loud low/mid-weighted hit
-     (kick, snare, guitar chord), so this feature discriminates a genuine
-     crash from merely-loud passages far better. On the validated song it
-     isolated the ~190s crash as the single strongest, clearly-separated
-     treble transient in the entire track.
-  2. A **pre-transient RMS floor**: require the 500ms immediately before
-     a candidate to already carry real energy (>=40% of the song's
-     median RMS). This is what actually distinguishes "a crash within
-     ongoing music" from "the song's cold open out of silence" -- the
-     false-positive frame's pre-transient RMS was 1% of median; both real
-     crashes were 77-95%.
+2. **v2 (recalibration, 2026-07-14/15)**: treble-band (>=4000Hz) onset
+   envelope on the full mix + a pre-transient RMS floor + a 6.0x ratio
+   floor. Fixed the cold-open false positive, but bug-266 (2026-07-16)
+   showed it never worked on the real generation audio: the 10s min-gap was
+   applied inside ``find_peaks`` candidate-picking, so a stronger nearby
+   peak (186.31s) suppressed the true crash (190.21s) before it was ever
+   scored, and 5 unrelated moments cleared the "rare" floor — the "single
+   6.17x standout" of its validation did not reproduce across rips. The
+   full-mix treble band was the underlying problem: vocal sibilance and
+   bright guitar compress the gap between "hero crash" and "loud moment".
 
-Even after both fixes, the weaker of the two known crashes (50.85s) did
-not clear a ratio floor high enough to avoid also admitting several
-merely-loud (not user-flagged) moments elsewhere in the same song --
-there is no clean statistical gap between "the one crash a listener
-noticed" and "an ordinary loud drum/guitar hit" at that signal strength.
-Per explicit user decision (2026-07-14): tune for the clear, cleanly
-isolated case only (a single treble transient dramatically above
-everything else in the song) and accept missing quieter crashes like
-50.85s, rather than loosening the floor and admitting false positives.
-`_RATIO_FLOOR` reflects that -- it is deliberately high enough that most
-songs, and even the weaker of this module's own two ground-truth crashes,
-produce zero marks. See CLAUDE.md -> "Crash/Transient Detector for
-Whole-House Accent" for the full background.
+3. **v3 (this design)**: isolation-scored envelope analysis on a
+   **cymbal-isolated stem** (drumsep chained on the demucs drums stem — see
+   src/analyzer/drum_stems.py). Validated 2026-07-16 on 6 user-confirmed
+   Dream On crashes: all 6 rank top-6 with a clean score gap on a
+   crash-isolated stem — including the 50.85s crash v2 formally accepted as
+   undetectable — and 5/6 top-5 on a combined cymbals stem, while the outro's
+   wall-of-continuous-cymbals moments (which swamped every full-mix
+   formulation) score near zero. Two features carry the discrimination:
 
-Vocal-proximity exclusion is intentionally NOT applied here -- it depends
-on WhisperX word timing, which is a generator-side input
-(``GenerationConfig.vocal_words``) not available during hierarchy
-analysis. See ``src/generator/effect_placer.py::_place_crash_accents``.
+   - **isolation**: envelope peak height over the median cymbal-stem level
+     in the preceding 8s. A hero crash erupts out of local cymbal-silence;
+     a crash inside an already-crashing outro does not.
+   - **wash area**: envelope area above the pre-crash background, bounded
+     6s. A hero crash stays bright for seconds; ordinary hits are narrow.
+     (Raw area alone was tested and rejected: with no isolation term it
+     degenerates into "how loud is the loudest section".)
+
+   Score = log1p(isolation) x log1p(wash_area / median wash_area). Kept
+   from v2, verbatim: the full-mix pre-transient RMS floor — the cold-open
+   false positive must stay dead. Changed from v2: the min-gap is enforced
+   post-scoring (keep the higher-scored of any conflicting pair) and
+   shrunk to 3s (the confirmed 122.0s/125.0s pair is 3s apart), and the
+   cap is 6 (raised from 5 per user decision 2026-07-16; Dream On
+   legitimately has 6 confirmed crashes). Known accepted miss: the 163.5s
+   crash rides a tom fill and drumsep routes its energy to the toms/snare
+   stems, so it never becomes a candidate on the platillos stem.
+
+Rare by design: the absolute score floor means most songs emit zero marks.
+No cymbals stem available -> the orchestrator emits no marks at all; for
+this feature zero marks beats wrong marks.
+
+Vocal-proximity exclusion is intentionally NOT applied here — it depends on
+WhisperX word timing, which is a generator-side input
+(``GenerationConfig.vocal_words``). See
+``src/generator/effect_placer.py::_place_crash_accents``.
+
+See openspec/changes/crash-stem-impact-score/design.html for the full
+evidence table, and CLAUDE.md -> "Crash/Transient Detector" for background.
 """
 from __future__ import annotations
 
@@ -59,79 +66,165 @@ from src.analyzer.result import TimingMark
 
 _HOP_LENGTH = 512
 _N_FFT = 2048
+# Even on a cymbals stem, restrict the envelope to >=4kHz: drumsep leaks
+# some low/mid kit content into platillos, and the band cut restored the
+# range-ranking on the locally-separated stem (5/6 confirmed crashes in the
+# top 6 vs 4/6 full-band, validated 2026-07-16).
 _TREBLE_FMIN_HZ = 4000.0
-# A candidate's own onset-strength value must clear this multiple of the
-# song's median treble-onset level. Calibrated so only a single, cleanly
-# isolated extreme transient qualifies (validated song: the true crash hit
-# 6.17x; the next-loudest ordinary moment in the same song was 5.66x and
-# is meant to stay excluded).
-_RATIO_FLOOR = 6.0
-# The 500ms immediately before a candidate must average at least this
-# fraction of the song's median full-mix RMS -- excludes a transient that
-# is really just the transition out of near-silence (e.g. the track's own
-# cold open), which produces a large *relative* spectral-flux spike despite
-# being the quietest moment in the song.
+# Envelope smoothing (~35ms at 44.1kHz) so a crash wash reads as one lobe.
+_SMOOTH_FRAMES = 3
+# Candidate spacing for peak-picking. Deliberately SHORT — this is not the
+# output rarity constraint (that is the score floor + cap). bug-266:
+# applying 10s here suppressed the true crash behind a stronger neighbor
+# before it was ever scored.
+_CANDIDATE_GAP_S = 3.0
+# Local background: median cymbal envelope over this window before the peak
+# (with a small gap so the crash's own attack doesn't contaminate it).
+_PRE_BG_WINDOW_S = 8.0
+_PRE_BG_GAP_S = 0.3
+# Wash integration bound.
+_WASH_WINDOW_S = 6.0
+# Absolute score floor. Calibrated on a 6-song local panel (2026-07-16,
+# drumsep stems): Dream On's 6 confirmed crashes score 7.51-10.61 and its
+# first non-confirmed candidate 6.17, so 7.0 keeps all confirmed marks with
+# margin; across the panel it yields 6/3/2/1/0/0 marks (cymbal-heavy rock ->
+# percussive country -> pop/chiptune), honoring rare-by-design without
+# dropping validated ground truth. See the change dir's validation notes.
+_SCORE_FLOOR = 7.0
+# The 500ms of FULL MIX immediately before a candidate must average at least
+# this fraction of the song's median full-mix RMS — kept verbatim from v2:
+# excludes a transient that is really the transition out of near-silence
+# (e.g. the track's own cold open).
 _PRE_TRANSIENT_RMS_FLOOR_RATIO = 0.4
 _PRE_TRANSIENT_WINDOW_MS = 500
-# Crashes are rare by design -- never allow two marks closer than this.
-_MIN_GAP_MS = 10_000
-# Hard cap regardless of how many candidates pass the thresholds above.
-_MAX_MARKS = 5
+# Minimum spacing between emitted marks, enforced post-scoring (the
+# higher-scored of a conflicting pair wins). 3s, not 10s: Dream On's
+# user-confirmed crashes at 122.0s and 125.0s are only 3s apart — a 10s gap
+# would drop real ground truth.
+_MIN_GAP_MS = 3_000
+# Hard cap regardless of how many candidates clear the score floor
+# (6 = the validated song's confirmed crash count; user decision 2026-07-16).
+_MAX_MARKS = 6
 
 
-def detect_crash_accents(audio: np.ndarray, sample_rate: int) -> list[TimingMark]:
-    """Return up to `_MAX_MARKS` rare, cleanly-isolated percussive transients.
+def detect_crash_accents(
+    cymbals: np.ndarray,
+    cymbals_sample_rate: int,
+    full_mix: np.ndarray,
+    full_mix_sample_rate: int,
+) -> list[TimingMark]:
+    """Return up to ``_MAX_MARKS`` rare, isolated cymbal-crash transients.
 
-    Each candidate is a genuine local maximum (at least `_MIN_GAP_MS` from
-    any other) of the treble-band (>=4000Hz) onset-strength envelope that
-    clears both `_RATIO_FLOOR` over the song's own median and the
-    pre-transient RMS floor.
+    *cymbals* is a cymbal-isolated mono stem (drum_stems.separate_cymbals);
+    *full_mix* is the original song audio, used only for the cold-open
+    pre-transient RMS guard.
     """
-    if audio.size == 0:
+    if cymbals.size == 0 or full_mix.size == 0:
         return []
 
     import librosa
     from scipy.signal import find_peaks
 
-    stft = np.abs(librosa.stft(audio, n_fft=_N_FFT, hop_length=_HOP_LENGTH))
-    freqs = librosa.fft_frequencies(sr=sample_rate, n_fft=_N_FFT)
-    treble_stft = stft[freqs >= _TREBLE_FMIN_HZ, :]
-    onset_env = librosa.onset.onset_strength(
-        S=librosa.amplitude_to_db(treble_stft, ref=np.max),
-        sr=sample_rate,
-        hop_length=_HOP_LENGTH,
+    stft = np.abs(librosa.stft(cymbals, n_fft=_N_FFT, hop_length=_HOP_LENGTH))
+    freqs = librosa.fft_frequencies(sr=cymbals_sample_rate, n_fft=_N_FFT)
+    env = stft[freqs >= _TREBLE_FMIN_HZ, :].sum(axis=0)
+    if env.size == 0 or float(env.max()) <= 0.0:
+        return []
+    kernel = np.ones(_SMOOTH_FRAMES) / _SMOOTH_FRAMES
+    env = np.convolve(env, kernel, mode="same")
+
+    frames_per_s = cymbals_sample_rate / _HOP_LENGTH
+    env_floor = float(np.median(env))
+    height_floor = max(env_floor * 3.0, float(np.percentile(env, 90)))
+    if height_floor <= 0.0:
+        return []
+
+    # Two-tier peak picking. The LOW bar collects every ordinary hit — its
+    # wash areas form the normalization distribution, so a song with a
+    # single hero crash doesn't end up normalized against itself (median of
+    # one == its own area == score zero). Only HIGH-bar peaks are scored as
+    # crash candidates.
+    dist_indices, _ = find_peaks(
+        env,
+        distance=max(1, int(_CANDIDATE_GAP_S * frames_per_s)),
+        height=env_floor,
     )
-    rms = librosa.feature.rms(y=audio, hop_length=_HOP_LENGTH)[0]
-    n = min(len(onset_env), len(rms))
-    if n == 0:
+    if dist_indices.size == 0:
         return []
-    onset_env = onset_env[:n]
-    rms = rms[:n]
-
-    median_onset = float(np.median(onset_env))
-    median_rms = float(np.median(rms))
-    if median_onset <= 0 or median_rms <= 0:
+    peak_indices = dist_indices[env[dist_indices] >= height_floor]
+    if peak_indices.size == 0:
         return []
 
-    min_gap_frames = max(1, int(round(_MIN_GAP_MS / 1000 * sample_rate / _HOP_LENGTH)))
-    lead_frames = max(1, int(round(_PRE_TRANSIENT_WINDOW_MS / 1000 * sample_rate / _HOP_LENGTH)))
+    mix_rms = librosa.feature.rms(y=full_mix, hop_length=_HOP_LENGTH)[0]
+    mix_median_rms = float(np.median(mix_rms))
+    if mix_median_rms <= 0.0:
+        return []
+    mix_frames_per_s = full_mix_sample_rate / _HOP_LENGTH
+    mix_lead_frames = max(1, int(_PRE_TRANSIENT_WINDOW_MS / 1000 * mix_frames_per_s))
 
-    peak_indices, _ = find_peaks(onset_env, distance=min_gap_frames)
+    pre_bg_frames = int(_PRE_BG_WINDOW_S * frames_per_s)
+    pre_gap_frames = int(_PRE_BG_GAP_S * frames_per_s)
+    wash_frames = int(_WASH_WINDOW_S * frames_per_s)
 
-    candidates: list[tuple[int, float]] = []
-    for i in peak_indices:
-        val = float(onset_env[i])
-        if val / median_onset < _RATIO_FLOOR:
+    def _wash_area(p: int, pre_bg: float) -> float:
+        area = 0.0
+        for j in range(p, min(len(env), p + wash_frames)):
+            v = float(env[j]) - pre_bg
+            if v <= 0.0:
+                break
+            area += v
+        return area
+
+    def _pre_background(p: int) -> float:
+        pre = env[max(0, p - pre_bg_frames):max(1, p - pre_gap_frames)]
+        return float(np.median(pre)) if pre.size else env_floor
+
+    # Normalization distribution: wash areas of every ordinary peak.
+    all_areas = np.array([_wash_area(p, _pre_background(p)) for p in dist_indices])
+    positive = all_areas[all_areas > 0]
+    if positive.size == 0:
+        return []
+    median_area = float(np.median(positive))
+
+    # Score the strong candidates.
+    candidates: list[tuple[float, float, float]] = []  # (time_s, isolation, area)
+    for p in peak_indices:
+        time_s = p * _HOP_LENGTH / cymbals_sample_rate
+
+        pre_bg = _pre_background(p)
+        isolation = float(env[p]) / (pre_bg + env_floor * 0.1 + 1e-9)
+        area = _wash_area(p, pre_bg)
+
+        # Cold-open guard on the full mix.
+        mix_frame = int(time_s * mix_frames_per_s)
+        pre_mix = mix_rms[max(0, mix_frame - mix_lead_frames):mix_frame]
+        pre_mix_mean = float(pre_mix.mean()) if pre_mix.size else 0.0
+        if pre_mix_mean / mix_median_rms < _PRE_TRANSIENT_RMS_FLOOR_RATIO:
             continue
-        pre_window = rms[max(0, i - lead_frames):i]
-        pre_mean = float(pre_window.mean()) if pre_window.size else 0.0
-        if pre_mean / median_rms < _PRE_TRANSIENT_RMS_FLOOR_RATIO:
+
+        candidates.append((time_s, isolation, area))
+
+    if not candidates:
+        return []
+
+    scored = sorted(
+        ((float(np.log1p(iso) * np.log1p(area / median_area)), t)
+         for t, iso, area in candidates),
+        reverse=True,
+    )
+
+    # Post-scoring selection: score floor, then greedy min-gap, then cap.
+    accepted_ms: list[int] = []
+    for score, time_s in scored:
+        if score < _SCORE_FLOOR:
+            break
+        time_ms = int(round(time_s * 1000))
+        if any(abs(time_ms - a) < _MIN_GAP_MS for a in accepted_ms):
             continue
-        time_ms = int(round(i * _HOP_LENGTH * 1000 / sample_rate))
-        candidates.append((time_ms, val))
+        accepted_ms.append(time_ms)
+        if len(accepted_ms) >= _MAX_MARKS:
+            break
 
-    candidates.sort(key=lambda c: c[1], reverse=True)
-    top = candidates[:_MAX_MARKS]
-    top.sort(key=lambda c: c[0])
-
-    return [TimingMark(time_ms=t, confidence=None, label="crash") for t, _ in top]
+    accepted_ms.sort()
+    return [TimingMark(time_ms=t, confidence=None, label="crash")
+            for t in accepted_ms]

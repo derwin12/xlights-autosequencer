@@ -22,7 +22,11 @@ if TYPE_CHECKING:
     from src.analyzer.result import HierarchyResult, TimingTrack, ValueCurve
     from src.analyzer.stems import StemSet
 
-SCHEMA_VERSION = "2.0.0"
+# 2.1.0 (2026-07-16): crash_accents now come from the cymbal-stem isolation
+# detector (crash-stem-impact-score change); the bump invalidates both
+# pre-feature caches (missing field -> silent placement skip, bug-265) and
+# 07-14..07-16 caches carrying the broken v2 detector's marks (bug-266).
+SCHEMA_VERSION = "2.1.0"
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -656,10 +660,26 @@ def run_orchestrator(
     else:
         warnings.append("L0 Special Moments: skipped — bbc_energy not available")
 
-    from src.analyzer.crash_accents import detect_crash_accents
-    crash_accents = detect_crash_accents(audio, sr)
-    if crash_accents:
-        print(f"L0 Crash accents: {len(crash_accents)} rare transient(s)")
+    # Crash accents need a cymbal-isolated stem (drumsep chained on the
+    # demucs drums stem) — the full mix and the full drum kit were both
+    # validated insufficient (bug-266; see crash_accents.py docstring).
+    # No cymbals stem -> no marks: zero marks beats wrong marks.
+    crash_accents: list["TimingMark"] = []
+    _drums_arr = stems.get("drums") if stems is not None else None
+    if _drums_arr is not None and _drums_arr.size > 1:
+        from src.analyzer.crash_accents import detect_crash_accents
+        from src.analyzer.drum_stems import separate_cymbals
+        _cym = separate_cymbals(_drums_arr, stems.sample_rate,
+                                cache_dir=_stem_cache.stem_dir)
+        if _cym is not None:
+            _cym_arr, _cym_sr = _cym
+            crash_accents = detect_crash_accents(_cym_arr, _cym_sr, audio, sr)
+            if crash_accents:
+                print(f"L0 Crash accents: {len(crash_accents)} rare transient(s)")
+        else:
+            warnings.append("L0 Crash accents: skipped — cymbal separation unavailable")
+    else:
+        warnings.append("L0 Crash accents: skipped — drums stem unavailable")
 
     # ── Stage 9: Interaction analysis ────────────────────────────────────────
     interactions = None
@@ -790,6 +810,8 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
     """Write a multi-layer .xtiming file from HierarchyResult."""
     import xml.etree.ElementTree as ET
 
+    from src.analyzer.result import TimingTrack
+
     xtiming_path = _xtiming_path(audio_path)
     xtiming_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -799,6 +821,14 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
     _add_mark_layer(root, "beats", result.beats)
     _add_mark_layer(root, "half_bars", result.half_bars)
     _add_mark_layer(root, "bars", result.bars)
+    if result.crash_accents:
+        _add_mark_layer(
+            root, "crash_accents",
+            TimingTrack(name="crash_accents", algorithm_name="derived",
+                        element_type="crash", marks=result.crash_accents,
+                        quality_score=0.0),
+            fixed_width_ms=700,
+        )
     _add_section_layer(root, "sections", result.sections)
 
     for stem_name, track in result.events.items():
@@ -811,7 +841,8 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
         tree.write(fh, encoding="unicode", xml_declaration=False)
 
 
-def _add_mark_layer(root, name: str, track: "TimingTrack | None") -> None:
+def _add_mark_layer(root, name: str, track: "TimingTrack | None",
+                    fixed_width_ms: int | None = None) -> None:
     import xml.etree.ElementTree as ET
     if not track or not track.marks:
         return
@@ -822,7 +853,12 @@ def _add_mark_layer(root, name: str, track: "TimingTrack | None") -> None:
     marks = track.marks
     for i, mark in enumerate(marks):
         start = mark.time_ms
-        end = marks[i + 1].time_ms if i + 1 < len(marks) else start + 50
+        if fixed_width_ms is not None:
+            # Sparse accent marks (e.g. crashes) should not stretch to the
+            # next mark — that could be a minute away.
+            end = start + fixed_width_ms
+        else:
+            end = marks[i + 1].time_ms if i + 1 < len(marks) else start + 50
         label = mark.label or track.element_type
         ET.SubElement(layer, "Effect").attrib.update({
             "label": label, "starttime": str(start), "endtime": str(end),

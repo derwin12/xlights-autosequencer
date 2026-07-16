@@ -1583,8 +1583,9 @@ def _load_hierarchy_summary(json_path: Path) -> dict | None:
     """Load a _hierarchy.json and extract the summary fields needed for the library table."""
     try:
         import json as _json
+        from src.analyzer.result import is_hierarchy_schema
         data = _json.loads(json_path.read_text(encoding="utf-8"))
-        if data.get("schema_version") != "2.0.0":
+        if not is_hierarchy_schema(data.get("schema_version")):
             return None
         v = data.get("validation", {})
         dur_ms = data.get("duration_ms", 0)
@@ -1982,7 +1983,8 @@ def chord_stats_cmd(analysis_json: str) -> None:
     duration_ms = 0
     estimated_bpm = 0.0
 
-    if data.get("schema_version") == "2.0.0":
+    from src.analyzer.result import is_hierarchy_schema
+    if is_hierarchy_schema(data.get("schema_version")):
         # Hierarchy format — chords are in the top-level "chords" field
         source_name = Path(data.get("source_file", analysis_json)).name
         duration_ms = data.get("duration_ms", 0)

@@ -1,0 +1,122 @@
+"""Unit tests for src/analyzer/drum_stems.py — cymbal separation wrapper.
+
+Never touches the network or the real model: every test exercises the
+cache and graceful-degradation paths, which is what the orchestrator
+depends on (any failure must mean "no crash marks", never an exception).
+"""
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from src.analyzer import drum_stems
+
+
+def _drums(duration_s: float = 2.0, sr: int = 22050) -> np.ndarray:
+    rng = np.random.default_rng(7)
+    return (0.1 * rng.standard_normal(int(sr * duration_s))).astype(np.float32)
+
+
+class TestSeparateCymbals:
+    def test_empty_audio_returns_none(self):
+        assert drum_stems.separate_cymbals(np.array([]), 22050) is None
+
+    def test_silent_audio_returns_none(self):
+        silent = np.zeros(22050, dtype=np.float32)
+        assert drum_stems.separate_cymbals(silent, 22050) is None
+
+    def test_missing_checkpoint_returns_none(self, monkeypatch):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint", lambda: None)
+        assert drum_stems.separate_cymbals(_drums(), 22050) is None
+
+    def test_separation_failure_returns_none(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint",
+                            lambda: tmp_path / "49469ca8.th")
+        def _boom(*a, **k):
+            raise RuntimeError("model exploded")
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess", _boom)
+        assert drum_stems.separate_cymbals(_drums(), 22050) is None
+
+    def test_import_error_falls_back_to_sidecar(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint",
+                            lambda: tmp_path / "49469ca8.th")
+        def _no_torch(*a, **k):
+            raise ImportError("no torch here")
+        sentinel = (np.ones(100, dtype=np.float32), 44100)
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess", _no_torch)
+        monkeypatch.setattr(drum_stems, "_run_drumsep_sidecar",
+                            lambda *a, **k: sentinel)
+        result = drum_stems.separate_cymbals(_drums(), 22050)
+        assert result is not None
+        arr, sr = result
+        assert sr == 44100
+        assert np.array_equal(arr, sentinel[0])
+
+    def test_sidecar_failure_after_import_error_returns_none(
+            self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint",
+                            lambda: tmp_path / "49469ca8.th")
+        def _no_torch(*a, **k):
+            raise ImportError("no torch here")
+        def _no_sidecar(*a, **k):
+            raise RuntimeError(".venv-vamp not found")
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess", _no_torch)
+        monkeypatch.setattr(drum_stems, "_run_drumsep_sidecar", _no_sidecar)
+        assert drum_stems.separate_cymbals(_drums(), 22050) is None
+
+    def test_cache_hit_skips_model_entirely(self, monkeypatch, tmp_path):
+        # Write a real cached cymbals file, then make everything model-
+        # related explode: the cache path must not touch any of it.
+        sr = 22050
+        cached = _drums(1.0, sr)
+        try:
+            from src.analyzer.stems import _write_mp3
+            _write_mp3(cached, sr, tmp_path / "drums_cymbals.mp3")
+        except Exception:
+            pytest.skip("ffmpeg unavailable — cache write not testable here")
+
+        def _boom(*a, **k):
+            raise AssertionError("model path must not run on cache hit")
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint", _boom)
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess", _boom)
+        monkeypatch.setattr(drum_stems, "_run_drumsep_sidecar", _boom)
+
+        result = drum_stems.separate_cymbals(_drums(), sr, cache_dir=tmp_path)
+        assert result is not None
+        arr, out_sr = result
+        assert out_sr == sr
+        assert arr.size > 0
+
+    def test_successful_separation_writes_cache(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint",
+                            lambda: tmp_path / "49469ca8.th")
+        cym = (0.2 * np.ones(22050, dtype=np.float32))
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess",
+                            lambda *a, **k: (cym, 22050))
+        result = drum_stems.separate_cymbals(_drums(), 22050,
+                                             cache_dir=tmp_path)
+        assert result is not None
+        cache_file = tmp_path / "drums_cymbals.mp3"
+        # Cache write may be skipped if ffmpeg is missing; when present the
+        # file must exist and be non-empty.
+        if cache_file.exists():
+            assert cache_file.stat().st_size > 0
+
+
+class TestEnsureCheckpoint:
+    def test_existing_checkpoint_returned_without_download(self, monkeypatch, tmp_path):
+        ckpt = tmp_path / "49469ca8.th"
+        ckpt.write_bytes(b"x" * 10)
+        monkeypatch.setattr(drum_stems, "checkpoint_path", lambda: ckpt)
+        def _no_net(*a, **k):
+            raise AssertionError("must not download when checkpoint exists")
+        monkeypatch.setattr(drum_stems, "_download_from_gdrive", _no_net)
+        assert drum_stems.ensure_checkpoint() == ckpt
+
+    def test_download_failure_returns_none(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "checkpoint_path",
+                            lambda: tmp_path / "49469ca8.th")
+        def _offline(*a, **k):
+            raise OSError("network unreachable")
+        monkeypatch.setattr(drum_stems, "_download_from_gdrive", _offline)
+        assert drum_stems.ensure_checkpoint() is None

@@ -297,7 +297,8 @@ def chord_stats_cmd(analysis_json: str) -> None:
     duration_ms = 0
     estimated_bpm = 0.0
 
-    if data.get("schema_version") == "2.0.0":
+    from src.analyzer.result import is_hierarchy_schema
+    if is_hierarchy_schema(data.get("schema_version")):
         # Hierarchy format — chords are in the top-level "chords" field
         source_name = Path(data.get("source_file", analysis_json)).name
         duration_ms = data.get("duration_ms", 0)

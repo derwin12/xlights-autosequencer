@@ -1,0 +1,156 @@
+<meta charset="utf-8">
+<title>Design: crash-stem impact score</title>
+<link rel="stylesheet" href="../_design.css">
+
+<h1>Design: crash-stem impact score</h1>
+<p class="meta">2026-07-16 &middot; bugs 265/266 &middot; supersedes the 2026-07-15 recalibration of <code>src/analyzer/crash_accents.py</code></p>
+
+<h2>Goal</h2>
+<p>Make audible "hero" cymbal crashes actually reach generated sequences: fix the
+stale-cache silent skip and the peak-suppression bug, and replace the overfit
+full-mix treble detector with a cymbal-stem isolation score validated 6/6 on
+user-confirmed Dream On ground truth.</p>
+
+<h2>Evidence base (2026-07-16 prototyping)</h2>
+<table>
+<tr><th>Signal source</th><th>Result on 6 confirmed Dream On crashes</th></tr>
+<tr><td>Full mix, &ge;6kHz band (shipped approach's signal)</td><td>50.85s not even a candidate; 190.2s rank 26. Unusable.</td></tr>
+<tr><td>Full drum-kit stem (what demucs htdemucs_6s provides)</td><td>Full band: misses 51.1s, no gap. &ge;6kHz: one miss, one rank-19, false positives interleaved.</td></tr>
+<tr><td>Combined cymbals stem (crash+ride+hh summed)</td><td>5/6 in top 5, gap 7.44 &rarr; 5.55; 103.7s falls to rank 9.</td></tr>
+<tr><td><b>Crash-isolated stem</b></td><td><b>6/6 as the top 6, clean gap 10.26 &rarr; 6.19.</b></td></tr>
+</table>
+<p>Scoring used throughout: per envelope peak,
+<code>score = log1p(isolation) &times; log1p(wash_area / median_wash_area)</code>, where
+<i>isolation</i> = peak height over the median stem envelope in the preceding 8s
+(a hero crash erupts out of local cymbal-silence; the outro's wall-of-cymbals
+moments — which swamped every full-mix formulation — score near zero), and
+<i>wash_area</i> = area above the pre-crash background, bounded 6s (a hero crash
+stays bright; ordinary hits are narrow). Raw envelope area alone was tested and
+rejected: on this song it degenerates into "how loud is the outro".</p>
+
+<h2>Approach</h2>
+<ol>
+<li><b>Cymbal separation stage</b> — new <code>src/analyzer/drum_stems.py</code>:
+<code>separate_cymbals(drums_audio, sr, cache_dir) -&gt; np.ndarray | None</code>.
+Round-1 implementation: a drumsep-class drum-kit separation checkpoint loaded
+through the <i>existing</i> demucs/torch optional dependency (one model download,
+cached like other torch hub assets). Output cached as
+<code>.stems/&lt;md5&gt;/drums_cymbals.wav</code> beside the existing demucs stems.
+Returns <code>None</code> (never raises) when demucs/torch or the checkpoint is
+unavailable.
+<br><b>Alternative considered:</b> the <code>audio-separator</code> pip package with a
+roformer drum-kit checkpoint (closer to the mvsep MT-7 quality used in
+prototyping). Rejected for round 1: a new heavyweight dependency before the
+demucs-checkpoint route's quality is proven insufficient. Task 2 explicitly
+validates local cymbal-stem quality against the user's mvsep reference stems;
+if ranking degrades materially, revisit.</li>
+<li><b>Detector rewrite</b> — <code>detect_crash_accents(cymbals, sample_rate,
+full_mix) -&gt; list[TimingMark]</code> (signature change; sole production caller is
+<code>orchestrator.py</code>). Pipeline: full-band STFT envelope of the cymbals stem,
+3-frame smoothing &rarr; <code>find_peaks</code> with a <i>short</i> 3s distance (candidate
+spacing only) &rarr; per-candidate isolation + wash-area score as above &rarr; gates:
+<ul>
+<li>absolute score floor — <b>final: 7.0</b>, calibrated on a 6-song local
+panel (drumsep stems, 2026-07-16): Dream On's confirmed crashes score
+7.51–10.61 vs 6.17 for its first non-confirmed candidate; panel yields
+6/3/2/1/0/0 marks (Dream On / 1999 / Chattahoochee / Raining Tacos /
+Smooth Criminal / 8bitSlash). Smooth Criminal's quiet-intro transient
+(score 13.3) is correctly killed by the pre-RMS guard;</li>
+<li>full-mix pre-transient RMS floor &ge; 0.4 of median (kept verbatim from the
+shipped fix — the cold-open false positive must stay dead);</li>
+<li><b>10s min-gap enforced post-scoring</b> (keep the higher-scored of any
+conflicting pair) — this is the bug-266 fix; the constraint no longer
+suppresses candidates before they are scored;</li>
+<li>hard cap 6 marks/song (raised from 5 per user decision 2026-07-16 —
+Dream On legitimately has 6 confirmed crashes; "a handful per song is the
+ceiling" still holds).</li>
+</ul>
+No cymbals stem &rarr; return <code>[]</code>. <b>Alternative considered:</b> keep the
+full-mix treble detector as a fallback when stems are unavailable — rejected:
+it demonstrably produces 5 wrong marks on its own validation song; for a
+rare-by-design feature, zero marks beats wrong marks.</li>
+<li><b>Cache invalidation</b> — bump <code>SCHEMA_VERSION</code> to <code>"2.1.0"</code>.
+Pre-feature caches (missing field) and 07-14..07-16 caches (broken detector's
+marks) both re-analyze. This requires fixing six brittle exact-string readers
+(listed below) to a major-version check (<code>schema_version.startswith("2.")</code>
+semantics via <code>src/schema_check.py</code>), which also un-mines the field for
+every future minor bump. <b>Alternative considered:</b> targeted invalidation
+(<code>if "crash_accents" not in data: return None</code>) without a version bump —
+rejected: it would not invalidate the 07-14..07-16 caches that contain the
+broken detector's five bogus marks, and it leaves the exact-string landmines
+in place.</li>
+<li><b>Review-UI visibility</b> — emit the marks additionally as a derived L0
+<code>TimingTrack</code> (name <code>crash_accents</code>, algorithm <code>derived</code>), same
+pattern as <code>eighth_notes</code>, so the track is visible in the review UI and
+exports. <code>HierarchyResult.crash_accents</code> stays the generator's source of
+truth (placement code untouched).</li>
+</ol>
+
+<h2>Files touched</h2>
+<table>
+<tr><th>Path</th><th>Change</th></tr>
+<tr><td><code>src/analyzer/drum_stems.py</code></td><td>added — cymbal separation + cache</td></tr>
+<tr><td><code>src/analyzer/crash_accents.py</code></td><td>modified — detector rewrite, new signature</td></tr>
+<tr><td><code>src/analyzer/orchestrator.py</code></td><td>modified — SCHEMA_VERSION 2.1.0; Stage-8 wiring (drums stem &rarr; cymbals &rarr; detector); derived timing track</td></tr>
+<tr><td><code>src/cli/review.py:300</code></td><td>modified — 2.x major-version check</td></tr>
+<tr><td><code>src/cli_old.py:1587,1985</code></td><td>modified — 2.x major-version check</td></tr>
+<tr><td><code>src/review/server.py:33,328,953</code></td><td>modified — 2.x major-version check</td></tr>
+<tr><td><code>tests/unit/test_crash_accents.py</code></td><td>modified — rewritten for new signature/semantics</td></tr>
+<tr><td><code>tests/unit/test_drum_stems.py</code></td><td>added — cache + graceful-degradation paths</td></tr>
+<tr><td><code>CLAUDE.md</code> (crash-detector TODO section)</td><td>modified — superseded note</td></tr>
+<tr><td><code>docs/segment-classification-changelog.md</code></td><td>untouched — no section/classification logic changes</td></tr>
+</table>
+
+<h2>Regression surface</h2>
+<ul>
+<li><code>detect_crash_accents</code> (signature change): callers via grep —
+<code>src/analyzer/orchestrator.py:660</code> (updated), <code>tests/unit/test_crash_accents.py</code>
+(rewritten). No other callers in <code>src/</code> or <code>tests/</code>.</li>
+<li><code>SCHEMA_VERSION</code> / <code>"2.0.0"</code> literals: writers —
+<code>orchestrator.py:736</code>; readers — <code>orchestrator._load_cache</code>,
+<code>src/cli/review.py:300</code>, <code>src/cli_old.py:1587,1985</code>,
+<code>src/review/server.py:33,328,953</code>. All six readers updated to accept 2.x;
+existing test fixtures that write <code>"2.0.0"</code> JSON therefore remain valid and are
+deliberately not mass-edited.</li>
+<li><code>HierarchyResult.crash_accents</code> field and consumers
+(<code>plan.py:319</code>, <code>effect_placer._place_crash_accents</code>,
+<code>result.py</code> to/from_dict, placement tests): untouched — same field, same
+<code>TimingMark</code> shape, same <code>label="crash"</code>.</li>
+<li><code>src/analyzer/stems.py</code> (<code>StemSeparator</code>/<code>StemCache</code>): untouched;
+the cymbals file lives beside, not inside, the demucs <code>StemSet</code> manifest so
+existing stem-cache loading is unaffected.</li>
+<li>Acceptance gate: analyzer baseline includes no crash-accent track today; the
+new derived track and schema bump require <code>xlight-evaluate snapshot-analyzer</code>
+reconciliation in-env (see historical echo on demucs drift below).</li>
+</ul>
+
+<h2>Historical echoes</h2>
+<ul>
+<li><b>bug-265</b> (2026-07-16): stale cache silently skips placement — fixed here by the schema bump.</li>
+<li><b>bug-266</b> (2026-07-16): min-gap candidate suppression hides the true crash — fixed here by post-scoring gap enforcement.</li>
+<li><b>bug-201 / cerebrum 2026-07-14</b>: original ship; keeps its two hard-won guards (treble/cymbal specificity, cold-open pre-RMS floor) — the pre-RMS floor is carried over verbatim.</li>
+<li><b>Cerebrum 2026-07-14</b> (<code>derive_energy_impacts</code>): do not touch its 1.8x threshold — this design doesn't.</li>
+<li><b>Cerebrum 2026-06-02</b>: demucs stem output varies across torch versions/hardware — therefore no golden-pinning of cymbal-stem audio; corpus validation asserts rank/count invariants, not sample-exact stems, and gate reconciliation goes through <code>snapshot-analyzer</code>.</li>
+<li><b>Cerebrum Do-Not-Repeat 2026-04-19</b>: audit callers of every modified public symbol — done above.</li>
+<li><b>Cerebrum 2026-07-15 (bug-192 echo)</b>: forgotten wiring silently no-ops a feature — the schema bump exists precisely to prevent the silent-no-op cache variant of this.</li>
+</ul>
+
+<h2>Validation plan &amp; results (2026-07-16)</h2>
+<ol>
+<li><b>Done.</b> Local drumsep separation on Dream On: 5/6 confirmed crashes
+detected (50.97, 103.7, 121.95, 125.02, 190.15) plus 66.29 (user confirmed
+the song is cymbal-heavy). The 163.5s crash rides a tom fill drumsep routes
+to toms/redoblante — v3's accepted miss. Two detector fixes fell out of this
+step: the min-gap shrank to 3s (the confirmed 122/125 pair is 3s apart) and
+the normalization distribution now comes from all ordinary peaks, not just
+strong candidates (a lone hero crash used to normalize against itself and
+zero its own score).</li>
+<li><b>Done</b> (6-song local panel in place of the 22-song corpus, which
+lives in the devcontainer): 6/3/2/1/0/0 marks at floor 7.0 — see above.</li>
+<li><b>Done.</b> Fresh end-to-end on Dream On: hierarchy 2.1.0 with
+crash_accents, crash layer in .xtiming, Shockwaves on
+<code>01_BASE_All_FADES</code> outside the fade window (see conversation log
+/ STATUS.md for the run output).</li>
+<li><code>xlight-evaluate gate</code> — full analyzer tier requires the
+devcontainer's .venv-vamp; unit + generator suites run green on this host.</li>
+</ol>

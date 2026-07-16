@@ -2,11 +2,33 @@
 
 > Single source of truth for resuming work. Read this FIRST when starting a session.
 > Update this file at the end of every work phase so the next `/clear` resumes in 1 read.
-> Last updated: 2026-07-15
+> Last updated: 2026-07-16
 
 ---
 
 ## ✅ Done
+
+- **Crash-accent detector v3 — crash-stem impact score (2026-07-16, bugs 265/266 fixed).**
+  User reported the 3:10 Dream On crash never appeared in any generated .xsq. Two root
+  causes found and fixed: (1) `SCHEMA_VERSION` was never bumped when `crash_accents`
+  was added, so pre-feature hierarchy caches silently skipped placement (bug-265) —
+  now 2.1.0, and six hard-coded `== "2.0.0"` readers were converted to
+  `src/analyzer/result.py::is_hierarchy_schema()` (accepts any 2.x); (2) the v2
+  detector's 10s min-gap inside `find_peaks` suppressed the true crash behind a
+  stronger neighbor before scoring (bug-266). v3 detector: drumsep cymbal separation
+  chained on the demucs drums stem (new `src/analyzer/drum_stems.py`, checkpoint
+  auto-downloads to `~/.xlight/models/drumsep/49469ca8.th`, torch>=2.6 needs
+  `safe_globals([HDemucs])`), isolation x wash-area score on the >=4kHz platillos
+  band, floor 7.0, 3s post-scoring min-gap, cap 6 (user raised from 5). Validated:
+  5/6 user-confirmed Dream On crashes detected (163.5s rides a tom fill drumsep
+  routes to toms/snare — accepted miss); 6-song panel yields 6/3/2/1/0/0 marks.
+  End-to-end verified: generated .xsq has 6 Shockwaves on `01_BASE_All_FADES` incl.
+  190.15s, clear of the end-of-song fade. Marks also export as a `crash_accents`
+  .xtiming layer. Design: `openspec/changes/crash-stem-impact-score/`.
+  **Note for next session:** all hierarchy caches re-analyze on next use (intended);
+  first analysis per song now also runs drumsep (~70s CPU, cached as
+  `.stems/<md5>/drums_cymbals.mp3`). Remaining task 7: run the full
+  `xlight-evaluate gate` analyzer tier + `snapshot-analyzer` in the devcontainer.
 
 - **Lyric-matched images wired into Pictures placement (bug-209/214 fast-follow, 2026-07-15).** `image_catalog.suggest_images_for_words()` now returns a `stored_path` key per suggestion (additive, existing `analysis.py`/`Pictures.tsx` consumers unaffected). `effect_placer._place_picture_effects()` gained an optional `word_image_matches` param: when a per-prop segment's time window overlaps a lyric-matched word, that word's image is used for the segment instead of the seeded rotation pick (earliest-starting match wins on overlap ties; falls back to rotation otherwise). `plan.py`'s 5e block computes `suggest_images_for_words(config.vocal_words)` once and passes it through. Added `logger.info` summary (`N/M segments lyric-matched`) plus per-override `logger.debug` lines for validation. 8 new tests in `test_picture_effects.py`, 406 generator-suite tests pass, no regressions.
 - **Pictures effect support shipped and hardened (bug-209 → bug-213 → bug-214).** `effect_placer._place_picture_effects()` places Pictures effects song-scoped (like `_place_video_effect`), cycling eligible props through an image library in 20s segments across the song, seeded by `variation_seed`+prop name so props don't sync to the same image. New `GenerationConfig.picture_effects` flag (default True); new `SequencePlan.picture_effects` field. Three corrections landed the same day:

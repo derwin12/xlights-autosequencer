@@ -199,8 +199,31 @@ preconditions, and 16-song corpus results.
 - Consider per-prop-type affinity: arches look best with Chase/Wave, mini-trees with
   Spirals/Fire, candy canes with Single Strand/Bars.
 
-### Crash/Transient Detector for Whole-House Accent (01_BASE_All_FADES) — IMPLEMENTED 2026-07-14, RECALIBRATED 2026-07-15
-- **Shipped (current)**: `src/analyzer/crash_accents.py::detect_crash_accents()`
+### Crash/Transient Detector for Whole-House Accent (01_BASE_All_FADES) — REDESIGNED 2026-07-16 (v3)
+- **Shipped (current, v3 — crash-stem impact score)**: the full-mix treble
+  detector below was replaced 2026-07-16 after bug-265/bug-266 showed it had
+  never placed a single effect (stale-cache silent skip: `SCHEMA_VERSION`
+  wasn't bumped when `crash_accents` was added; and the 10s min-gap inside
+  `find_peaks` suppressed the true crash behind a stronger neighbor).
+  v3: `detect_crash_accents(cymbals, cym_sr, full_mix, mix_sr)` scores
+  envelope peaks on a **cymbal-isolated stem** — drumsep (`49469ca8.th`,
+  auto-downloaded to `~/.xlight/models/drumsep/`) chained on the demucs
+  drums stem via `src/analyzer/drum_stems.py::separate_cymbals()`, cached as
+  `.stems/<md5>/drums_cymbals.mp3`. Score = log1p(isolation over the prior
+  8s local background) x log1p(wash area / median ordinary-peak area), >=4kHz
+  band, absolute floor 5.0, 3s min-gap post-scoring, cap 6, full-mix
+  pre-transient RMS guard kept from v2. Validated on 6 user-confirmed Dream
+  On crashes: 5/6 detected incl. both original ground-truth crashes (the 50.85s
+  "accepted miss" below is now DETECTED; the 163.5s crash rides a tom fill that
+  drumsep routes to toms/snare — the accepted miss of v3). No cymbals stem →
+  zero marks (zero beats wrong). Hierarchy schema bumped to 2.1.0; readers
+  now accept any 2.x (`src/analyzer/result.py::is_hierarchy_schema`).
+  Marks also export as a `crash_accents` .xtiming layer (700ms fixed width).
+  See `openspec/changes/crash-stem-impact-score/`.
+- Historical write-up of v1/v2 below, kept for context.
+
+### Crash/Transient Detector — v2 history (2026-07-14/15, superseded)
+- **Shipped (superseded)**: `src/analyzer/crash_accents.py::detect_crash_accents()`
   runs librosa `onset_strength` on a **treble-band-only** (>=4000Hz) spectrogram
   of the full-mix audio, peak-picks genuine local maxima at least 10s apart
   (`scipy.signal.find_peaks`), and keeps only peaks that clear BOTH a 6x-over-

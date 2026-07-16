@@ -530,15 +530,32 @@ class RepetitionGroup:
 
 # ── HierarchyResult ────────────────────────────────────────────────────────────
 
+HIERARCHY_SCHEMA_MAJOR = "2"
+
+
+def is_hierarchy_schema(version: object) -> bool:
+    """True if *version* denotes a hierarchy-result JSON this code can read.
+
+    Readers accept any 2.x: minor bumps add fields that ``from_dict``
+    defaults safely (e.g. 2.0.0 -> 2.1.0 for the crash-accent detector
+    change). Exact-string checks broke every reader on the first minor bump
+    — don't reintroduce them. Cache *reuse* in
+    ``orchestrator._load_cache`` is deliberately stricter (exact match), so
+    a minor bump still forces re-analysis.
+    """
+    return (isinstance(version, str)
+            and version.split(".", 1)[0] == HIERARCHY_SCHEMA_MAJOR)
+
+
 @dataclass
 class HierarchyResult:
-    """Structured output of the hierarchy orchestrator (schema_version 2.0.0).
+    """Structured output of the hierarchy orchestrator (schema_version 2.x).
 
     Replaces AnalysisResult as the primary output for the new zero-flag pipeline.
     One field per hierarchy level (L0–L6) plus metadata.
     """
 
-    schema_version: str                          # "2.0.0"
+    schema_version: str                          # "2.x" (orchestrator.SCHEMA_VERSION)
     source_file: str
     source_hash: str                             # MD5 of file content (cache key)
     duration_ms: int
