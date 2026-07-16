@@ -352,6 +352,41 @@ class TestXsqWriter:
                 f"'{effectdb[ref]}'"
             )
 
+    def test_strobe_and_marquee_get_per_model_default_on_all_group(self, tmp_path: Path) -> None:
+        """Strobe/Marquee look wrong stretched across the ALL group's unified
+        canvas, so they render Per Model Default even though every other
+        effect on 01_BASE_All(_FADES) uses the group's "Default" style."""
+        plan = _make_plan()
+        for name in ("01_BASE_All", "01_BASE_All_FADES"):
+            plan.sections[0].group_effects[name] = [
+                EffectPlacement(
+                    effect_name="Strobe", xlights_id="Strobe", model_or_group=name,
+                    start_ms=0, end_ms=1000, parameters={},
+                    color_palette=["#FFFFFF"],
+                ),
+                EffectPlacement(
+                    effect_name="Marquee", xlights_id="Marquee", model_or_group=name,
+                    start_ms=1000, end_ms=2000, parameters={},
+                    color_palette=["#FFFFFF"],
+                ),
+                EffectPlacement(
+                    effect_name="On", xlights_id="On", model_or_group=name,
+                    start_ms=2000, end_ms=3000, parameters={},
+                    color_palette=["#FFFFFF"],
+                ),
+            ]
+        root = _write_and_parse(plan, tmp_path)
+        effectdb = [ef.text or "" for ef in root.find("EffectDB")]
+        effects_el = root.find("ElementEffects")
+
+        for group_name in ("01_BASE_All", "01_BASE_All_FADES"):
+            group_el = next(e for e in effects_el if e.get("name") == group_name)
+            effect_els = group_el.find("EffectLayer").findall("Effect")
+            by_name = {e.get("name"): int(e.get("ref")) for e in effect_els}
+            assert f"B_CHOICE_BufferStyle=Per Model Default" in effectdb[by_name["Strobe"]]
+            assert f"B_CHOICE_BufferStyle=Per Model Default" in effectdb[by_name["Marquee"]]
+            assert "B_CHOICE_BufferStyle=Default" in effectdb[by_name["On"]]
+
     def test_tier_1_to_3_non_override_groups_get_no_buffer_style_key(self, tmp_path: Path) -> None:
         """Tiers 01-03 (other than the 01_BASE_All(_FADES) override
         canvases) render as a unified group with no explicit buffer style
@@ -1008,6 +1043,25 @@ class TestStemOnsetTimingTracks:
         tracks = _collect_timing_tracks(hierarchy)
         assert "Onsets (drums)" in tracks
         assert "Onsets (vocals)" not in tracks
+
+    def test_onsets_tracks_are_hidden_from_the_timing_display_list(self, tmp_path: Path) -> None:
+        """Onsets (<stem>) tracks exist only to bind stem-aware effect
+        triggers -- they clutter xLights' timing-track list, so they're
+        written visible="0" while Beats/Bars/Sections/Chords stay visible."""
+        hierarchy = _make_hierarchy_with_stems(["drums", "vocals"])
+        hierarchy.beats = TimingTrack(
+            name="beats", algorithm_name="test", element_type="beat",
+            marks=[TimingMark(time_ms=100, confidence=0.9)], quality_score=0.8,
+        )
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, hierarchy=hierarchy)
+        root = ET.parse(out).getroot()
+
+        display_els = {e.get("name"): e for e in root.find("DisplayElements").findall("Element")
+                       if e.get("type") == "timing"}
+        assert display_els["Onsets (drums)"].get("visible") == "0"
+        assert display_els["Onsets (vocals)"].get("visible") == "0"
+        assert display_els["Beats"].get("visible") == "1"
 
 
 class TestLyricsTimingTrack:

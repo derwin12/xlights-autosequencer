@@ -469,6 +469,18 @@ def write_xsq(
             return "Per Model Default"
         return None
 
+    # Strobe and Marquee render as a per-model effect even on the whole-house
+    # ALL canvases, where every other effect uses the group's unified "Default"
+    # buffer style -- those two look wrong stretched across the group's
+    # bounding box (Strobe flattens to a single flash, Marquee's scrolling
+    # marquee reads as one prop instead of many).
+    _ALL_GROUP_PER_MODEL_EFFECTS = {"Strobe", "Marquee"}
+
+    def _buffer_style_for_placement(group_name: str, effect_name: str) -> str | None:
+        if group_name in ("01_BASE_All", "01_BASE_All_FADES") and effect_name in _ALL_GROUP_PER_MODEL_EFFECTS:
+            return "Per Model Default"
+        return _buffer_style_for_group(group_name)
+
     all_placements: dict[str, list[EffectPlacement]] = {
         k: unordered[k] for k in sorted(unordered, key=_tier_sort_key)
     }
@@ -486,8 +498,8 @@ def write_xsq(
     placement_cache: dict[int, tuple[int, int]] = {}  # id(p) -> (effect_ref, palette_ref)
 
     for group_name, placements in all_placements.items():
-        buffer_style = _buffer_style_for_group(group_name)
         for p in placements:
+            buffer_style = _buffer_style_for_placement(group_name, p.effect_name)
             pal_idx = _ensure_palette(p.color_palette, palette_index, palette_list, p.music_sparkles)
             eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list, buffer_style)
             placement_cache[id(p)] = (eff_idx, pal_idx)
@@ -581,7 +593,7 @@ def write_xsq(
         elem = ET.SubElement(display_el, "Element")
         elem.set("type", "timing")
         elem.set("name", track_name)
-        elem.set("visible", "1")
+        elem.set("visible", "0" if track_name.startswith("Onsets") else "1")
         elem.set("collapsed", "0")
         elem.set("active", "1" if track_name == "Beats" else "0")
 
