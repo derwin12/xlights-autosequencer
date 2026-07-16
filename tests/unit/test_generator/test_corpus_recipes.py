@@ -730,6 +730,17 @@ class TestMatrixRecipe:
         assert spins[0].start_ms == 0
         assert spins[-1].end_ms == section.end_ms
 
+    def test_matrix_secondary_spirals_alternate_flip_horizontal(self) -> None:
+        # User request (2026-07-15): identical back-to-back sustained
+        # Spirals spins on the matrix's secondary motion layer read as
+        # repetitive -- every other one flips.
+        section = _make_section(label="chorus")
+        result = _place(section, _MATRIX_GROUP, library_names=_LIBRARY_WITH_ON)
+        spins = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Spirals"]
+        assert len(spins) == 2
+        assert "B_CHOICE_BufferTransform" not in spins[0].parameters
+        assert spins[1].parameters["B_CHOICE_BufferTransform"] == "Flip Horizontal"
+
     def test_matrix_alternate_is_pinwheel_with_mined_preset(self) -> None:
         result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
                         variation_seed=3,

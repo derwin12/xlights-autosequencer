@@ -4465,6 +4465,41 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-15"
+    },
+    {
+      "id": "bug-264",
+      "timestamp": "2026-07-16T00:10:38.144Z",
+      "error_message": "Significant refactor of ",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 20\u219228 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-16T00:10:38.144Z"
+    },
+    {
+      "id": "bug-256",
+      "timestamp": "2026-07-15",
+      "error_message": "User: '1999 (Prince)' Matrix's sustained secondary Spirals layer looked repetitive -- confirmed via the actual generated .xsq: 97 back-to-back ~2s Spirals segments, all with identical parameters",
+      "file": "src/generator/effect_placer.py",
+      "root_cause": "Not a bug -- follow-up to bug-254. The matrix recipe's secondary sustained-motion layer (recipe.secondary_effect_name, e.g. Spirals) was a separate code path from the primary per-beat loop and never got the alternating flip added in bug-254.",
+      "fix": "Same _FLIP_TRANSFORM_EFFECTS check applied to the secondary-layer placement loop: every other segment (odd instance_index, that layer's own beats-per-segment stride) gets B_CHOICE_BufferTransform=\"Flip Horizontal\" when recipe.secondary_effect_name is in the flip set. Unlike the primary loop, not gated on stride==1 since this layer's pacing is independent of the primary loop's bar-relative one.",
+      "tags": [
+        "generator",
+        "corpus-recipes",
+        "buffer-transform",
+        "py"
+      ],
+      "related_bugs": [
+        "bug-254"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-15"
     }
   ]
 }

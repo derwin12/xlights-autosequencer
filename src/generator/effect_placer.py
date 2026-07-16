@@ -2155,7 +2155,12 @@ def _place_corpus_recipe(
     # Optional sustained motion layer beneath the per-beat bursts (matrix
     # idiom — the reference matrices run 2-3 motion layers under the On
     # color layer). One white segment per secondary_beats_per_placement
-    # beats so the spin persists between bursts.
+    # beats so the spin persists between bursts. Same alternating Flip
+    # Horizontal as the primary per-beat loop above (user request,
+    # 2026-07-15: identical back-to-back Spirals segments here read as
+    # repetitive too) -- every other segment flips regardless of stride,
+    # since this layer's pacing is its own beats-per-segment setting, not
+    # the primary loop's bar-relative one.
     bottom_layer_idx = mask_layer_idx
     secondary_def = (
         effect_library.effects.get(recipe.secondary_effect_name)
@@ -2175,10 +2180,18 @@ def _place_corpus_recipe(
             )
             if end <= start:
                 continue
+            secondary_instance_index = j // stride
+            bar_params = secondary_params
+            if (
+                recipe.secondary_effect_name in _FLIP_TRANSFORM_EFFECTS
+                and secondary_instance_index % 2 == 1
+            ):
+                bar_params = dict(secondary_params)
+                bar_params["B_CHOICE_BufferTransform"] = "Flip Horizontal"
             p = _make_placement(
                 secondary_def, group.name, start, end,
-                secondary_params, list(recipe.palette), layer.blend_mode,
-                "bar", instance_index=j // stride, preserve_directions=True,
+                bar_params, list(recipe.palette), layer.blend_mode,
+                "bar", instance_index=secondary_instance_index, preserve_directions=True,
             )
             p.layer = bottom_layer_idx
             placements.append(p)

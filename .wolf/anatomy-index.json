@@ -1,12 +1,12 @@
 {
   "version": 1,
   "meta": {
-    "lastScanned": "2026-07-15T23:52:12.764Z",
+    "lastScanned": "2026-07-16T00:11:04.691Z",
     "fileCount": 560,
     "hits": 0,
     "misses": 0,
-    "renderedHash": "cd63e6446404e2498d09bdaf61aa3714329570c12ebf6dad74e4918c816a1ea1",
-    "storeUpdatedAt": "2026-07-15T23:52:12.781Z"
+    "renderedHash": "551c69b18758ff4cea3adabf3f9baea280d26692514430de852ee0d33c934aa3",
+    "storeUpdatedAt": "2026-07-16T00:11:04.709Z"
   },
   "files": {
     ".claude/commands/pre-mortem.md": {
@@ -15186,11 +15186,11 @@
     },
     "src/generator/effect_placer.py": {
       "description": "Effect placement engine — maps theme layers to power groups and timing tracks.",
-      "tokens": 44750,
-      "hash": "fe6fc9daca29e6da",
-      "size": 156838,
-      "mtimeMs": 1784158579745.6519,
-      "updatedAt": "2026-07-15T23:36:19.894Z",
+      "tokens": 44964,
+      "hash": "d888543c5eef3055",
+      "size": 157586,
+      "mtimeMs": 1784160648946.933,
+      "updatedAt": "2026-07-16T00:10:49.111Z",
       "source": "hook",
       "symbols": [
         {
@@ -15386,21 +15386,21 @@
           "name": "_place_corpus_recipe",
           "kind": "fn",
           "startLine": 1954,
-          "endLine": 2201,
-          "tokens": 3299
+          "endLine": 2214,
+          "tokens": 3509
         },
         {
           "name": "_place_per_beat",
           "kind": "fn",
-          "startLine": 2202,
-          "endLine": 2261,
+          "startLine": 2215,
+          "endLine": 2274,
           "tokens": 743
         },
         {
           "name": "_place_per_trigger",
           "kind": "fn",
-          "startLine": 2262,
-          "endLine": 3485,
+          "startLine": 2275,
+          "endLine": 3498,
           "tokens": 14441
         }
       ]
@@ -15661,11 +15661,11 @@
     },
     "tests/unit/test_generator/test_corpus_recipes.py": {
       "description": "Tests for corpus-derived prop-family recipes (tier-6 PROP placement).",
-      "tokens": 20186,
-      "hash": "929075f75b8d351b",
-      "size": 72425,
-      "mtimeMs": 1784158669984.8958,
-      "updatedAt": "2026-07-15T23:37:50.131Z",
+      "tokens": 20379,
+      "hash": "0c3f88ecad7d8100",
+      "size": 73100,
+      "mtimeMs": 1784160664540.611,
+      "updatedAt": "2026-07-16T00:11:04.690Z",
       "source": "hook",
       "symbols": [
         {
@@ -15763,84 +15763,84 @@
           "name": "TestMatrixRecipe",
           "kind": "class",
           "startLine": 702,
-          "endLine": 768,
-          "tokens": 913
+          "endLine": 779,
+          "tokens": 1103
         },
         {
           "name": "TestMinitreeRecipe",
           "kind": "class",
-          "startLine": 769,
-          "endLine": 830,
+          "startLine": 780,
+          "endLine": 841,
           "tokens": 803
         },
         {
           "name": "TestMaskSparkles",
           "kind": "class",
-          "startLine": 831,
-          "endLine": 891,
+          "startLine": 842,
+          "endLine": 902,
           "tokens": 937
         },
         {
           "name": "TestFlipTransformAlternation",
           "kind": "class",
-          "startLine": 892,
-          "endLine": 952,
+          "startLine": 903,
+          "endLine": 963,
           "tokens": 912
         },
         {
           "name": "TestVividMaskColor",
           "kind": "class",
-          "startLine": 953,
-          "endLine": 1010,
+          "startLine": 964,
+          "endLine": 1021,
           "tokens": 801
         },
         {
           "name": "TestPlacementProgressCallback",
           "kind": "class",
-          "startLine": 1011,
-          "endLine": 1047,
+          "startLine": 1022,
+          "endLine": 1058,
           "tokens": 432
         },
         {
           "name": "TestHeroRecipePlacement",
           "kind": "class",
-          "startLine": 1048,
-          "endLine": 1091,
+          "startLine": 1059,
+          "endLine": 1102,
           "tokens": 568
         },
         {
           "name": "TestOffBackdrop",
           "kind": "class",
-          "startLine": 1092,
-          "endLine": 1163,
+          "startLine": 1103,
+          "endLine": 1174,
           "tokens": 923
         },
         {
           "name": "TestIcicleRecipe",
           "kind": "class",
-          "startLine": 1164,
-          "endLine": 1235,
+          "startLine": 1175,
+          "endLine": 1246,
           "tokens": 941
         },
         {
           "name": "TestMegaTopperRecipe",
           "kind": "class",
-          "startLine": 1236,
-          "endLine": 1285,
+          "startLine": 1247,
+          "endLine": 1296,
           "tokens": 671
         },
         {
           "name": "TestStarRecipe",
           "kind": "class",
-          "startLine": 1286,
-          "endLine": 1376,
+          "startLine": 1297,
+          "endLine": 1387,
           "tokens": 1232
         },
         {
           "name": "TestMatrixMotionRotation",
           "kind": "class",
-          "startLine": 1377,
-          "endLine": 1435,
+          "startLine": 1388,
+          "endLine": 1446,
           "tokens": 868
         }
       ]

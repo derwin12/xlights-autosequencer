@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-15T23:52:12.764Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-16T00:11:04.691Z
 > Files: 560 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -2180,7 +2180,7 @@
   - class `PropFamilyRecipe` L70-729 (~9647 tok)
   - fn `recipe_for_group` L730-785 (~667 tok)
   - fn `section_qualifies` L786-792 (~99 tok)
-- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~44750 tok)
+- `effect_placer.py` — Effect placement engine — maps theme layers to power groups and timing tracks. (~44964 tok)
   - fn `_darken_palette_hsl` L109-146 (~466 tok)
   - fn `_vivid_mask_color` L147-183 (~464 tok)
   - fn `_saturated_colors` L184-203 (~194 tok)
@@ -2208,9 +2208,9 @@
   - fn `_resolve_palette` L1848-1891 (~533 tok)
   - fn `_place_per_bar` L1892-1945 (~642 tok)
   - fn `_humanize_group_name` L1946-1953 (~87 tok)
-  - fn `_place_corpus_recipe` L1954-2201 (~3299 tok)
-  - fn `_place_per_beat` L2202-2261 (~743 tok)
-  - fn `_place_per_trigger` L2262-3485 (~14441 tok)
+  - fn `_place_corpus_recipe` L1954-2214 (~3509 tok)
+  - fn `_place_per_beat` L2215-2274 (~743 tok)
+  - fn `_place_per_trigger` L2275-3498 (~14441 tok)
 - `plan.py` — Plan builder — orchestrates the full sequence generation pipeline. (~11189 tok)
   - fn `read_song_metadata` L53-88 (~292 tok)
   - fn `_first_tag` L89-96 (~64 tok)
@@ -2251,7 +2251,7 @@
 
 ## tests/unit/test_generator/
 
-- `test_corpus_recipes.py` — Tests for corpus-derived prop-family recipes (tier-6 PROP placement). (~20186 tok)
+- `test_corpus_recipes.py` — Tests for corpus-derived prop-family recipes (tier-6 PROP placement). (~20379 tok)
   - fn `_make_effect` L23-37 (~143 tok)
   - fn `_make_library` L38-46 (~73 tok)
   - fn `_make_variant_library` L47-59 (~116 tok)
@@ -2265,18 +2265,18 @@
   - class `TestMegatreeColorOverMask` L410-480 (~1050 tok)
   - class `TestCaneRecipe` L481-602 (~1871 tok)
   - class `TestHouseLineRecipes` L603-701 (~1486 tok)
-  - class `TestMatrixRecipe` L702-768 (~913 tok)
-  - class `TestMinitreeRecipe` L769-830 (~803 tok)
-  - class `TestMaskSparkles` L831-891 (~937 tok)
-  - class `TestFlipTransformAlternation` L892-952 (~912 tok)
-  - class `TestVividMaskColor` L953-1010 (~801 tok)
-  - class `TestPlacementProgressCallback` L1011-1047 (~432 tok)
-  - class `TestHeroRecipePlacement` L1048-1091 (~568 tok)
-  - class `TestOffBackdrop` L1092-1163 (~923 tok)
-  - class `TestIcicleRecipe` L1164-1235 (~941 tok)
-  - class `TestMegaTopperRecipe` L1236-1285 (~671 tok)
-  - class `TestStarRecipe` L1286-1376 (~1232 tok)
-  - class `TestMatrixMotionRotation` L1377-1435 (~868 tok)
+  - class `TestMatrixRecipe` L702-779 (~1103 tok)
+  - class `TestMinitreeRecipe` L780-841 (~803 tok)
+  - class `TestMaskSparkles` L842-902 (~937 tok)
+  - class `TestFlipTransformAlternation` L903-963 (~912 tok)
+  - class `TestVividMaskColor` L964-1021 (~801 tok)
+  - class `TestPlacementProgressCallback` L1022-1058 (~432 tok)
+  - class `TestHeroRecipePlacement` L1059-1102 (~568 tok)
+  - class `TestOffBackdrop` L1103-1174 (~923 tok)
+  - class `TestIcicleRecipe` L1175-1246 (~941 tok)
+  - class `TestMegaTopperRecipe` L1247-1296 (~671 tok)
+  - class `TestStarRecipe` L1297-1387 (~1232 tok)
+  - class `TestMatrixMotionRotation` L1388-1446 (~868 tok)
 - `test_end_of_song_fade.py` — Tests for the end-of-song fade over trailing silence (01_BASE_All_FADES). (~3872 tok)
   - fn `_make_effect` L14-28 (~123 tok)
   - fn `_make_library` L29-37 (~73 tok)
