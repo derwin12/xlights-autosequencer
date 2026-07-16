@@ -313,6 +313,18 @@ def build_plan(
     if config.video_path is not None:
         video_effects = _place_video_effect(props, config.video_path, hierarchy.duration_ms)
 
+    # 5d0. Static color-wash placements on DMX moving-head fixture groups
+    # (config.moving_head_effects). Song-scoped, same rationale as
+    # vocal_effects/video_effects -- moving-head groups aren't part of
+    # `groups` at all (excluded in generate_groups so they never receive
+    # generic RGB placements), so this is their only placement source.
+    # Computed before crash accents below so place_moving_head_crash_accents
+    # can check whether a crash mark's warmup window already has wash
+    # coverage.
+    moving_head_effects: dict[str, list] = {}
+    if config.moving_head_effects and layout is not None:
+        moving_head_effects = place_moving_head_effects(layout, assignments)
+
     # 5d. Rare whole-house crash accents (config.crash_accents). Song-scoped,
     # same rationale as vocal_effects/video_effects. Computed here (before
     # transitions/end-of-song fade) so the fade's own start boundary can be
@@ -336,6 +348,7 @@ def build_plan(
             for gname, placements in place_moving_head_crash_accents(
                 layout, hierarchy, config.vocal_words,
                 fade_exclusion_start_ms=fade_exclusion_start_ms,
+                existing_placements=moving_head_effects,
             ).items():
                 crash_effects.setdefault(gname, []).extend(placements)
 
@@ -371,16 +384,6 @@ def build_plan(
                 word_image_matches=word_image_matches,
                 existing_layers=existing_layers,
             )
-
-    # 5f. Static color-wash placements on DMX moving-head fixture groups
-    # (config.moving_head_effects). Song-scoped, same rationale as
-    # vocal_effects/video_effects/crash_effects/picture_effects -- moving-head
-    # groups aren't part of `groups` at all (excluded in generate_groups so
-    # they never receive generic RGB placements), so this is their only
-    # placement source.
-    moving_head_effects: dict[str, list] = {}
-    if config.moving_head_effects and layout is not None:
-        moving_head_effects = place_moving_head_effects(layout, assignments)
 
     # 5. Value curves — generate for each placement when curves are enabled
     if config.curves_mode != "none":

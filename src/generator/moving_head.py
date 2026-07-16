@@ -197,6 +197,17 @@ _CRASH_EFFECT_DURATION_MS = 700
 _CRASH_VOCAL_EXCLUSION_MS = 500
 _CRASH_TILT_DEG = "30"
 _CRASH_PAN_OFFSET_DEG = "40"
+# The punch starts this long before the crash mark and still ends
+# _CRASH_EFFECT_DURATION_MS after it (user request, 2026-07-16), matching
+# effect_placer._CRASH_LEAD_MS exactly so the two accents land together.
+_CRASH_LEAD_MS = 1000
+# A moving head can't snap Pan/Tilt instantly -- if nothing else is
+# already lighting/positioning this group right before the punch, a silent
+# "warmup" placement (Pan/Tilt/PanOffset only, no Dimmer/Wheel/Shutter)
+# runs immediately before it so the heads are already fanned out and dark
+# by the time the punch opens the shutter, instead of visibly snapping
+# into position while lit.
+_WARMUP_DURATION_MS = 500
 
 
 def _build_crash_head_settings(head_count: int) -> str:
@@ -213,25 +224,58 @@ def _build_crash_head_settings(head_count: int) -> str:
     )
 
 
+def _build_warmup_head_settings(head_count: int) -> str:
+    """Same Pan/Tilt/PanOffset pose as ``_build_crash_head_settings``, with
+    no Dimmer/Wheel/AutoShutter/Shutter commands. Confirmed by reading
+    RenderMovingHead() in the real xLights source: omitting those commands
+    leaves ``has_dimmers``/``shutter_open`` false, so the render never
+    touches the dimmer or shutter channels at all -- they simply keep
+    whatever value was already there (dark, if nothing else is active).
+    """
+    heads = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    return (
+        f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG};"
+        f"PanOffset: {_CRASH_PAN_OFFSET_DEG};TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {heads}"
+    )
+
+
+def _has_overlap(
+    placements: list[EffectPlacement], start_ms: int, end_ms: int,
+) -> bool:
+    return any(p.start_ms < end_ms and p.end_ms > start_ms for p in placements)
+
+
 def place_moving_head_crash_accents(
     layout: Layout,
     hierarchy: HierarchyResult,
     vocal_words: Optional[list[dict]],
     fade_exclusion_start_ms: Optional[int] = None,
+    existing_placements: Optional[dict[str, list[EffectPlacement]]] = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place a short fan-out Pan/Tilt punch on the moving-head group at each
-    rare crash mark from ``hierarchy.crash_accents``.
+    rare crash mark from ``hierarchy.crash_accents``, preceded by a silent
+    warmup placement when nothing already covers that lead-in window.
 
     Mirrors effect_placer._place_crash_accents' timing and exclusion rules
-    exactly (same duration, same vocal/fade exclusion windows) so the two
-    accents land together -- see that function's docstring for the
-    rationale behind the exclusion windows themselves. Returns {} when the
-    layout has no moving-head group or there are no crash marks.
+    exactly (same lead-in/duration, same vocal/fade exclusion windows) so
+    the two accents land together -- see that function's docstring for the
+    rationale behind the exclusion windows themselves. ``existing_placements``
+    is normally the wash dict from ``place_moving_head_effects``: when the
+    punch's warmup window doesn't overlap anything already scheduled on
+    that group (a gap in an otherwise continuous wash, or wash disabled),
+    a warmup placement (see ``_build_warmup_head_settings``) is inserted so
+    the heads are already fanned out and dark before the punch opens the
+    shutter, instead of visibly snapping into position while lit. Returns
+    {} when the layout has no moving-head group or there are no crash
+    marks.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups or not hierarchy.crash_accents:
         return {}
 
+    existing_placements = existing_placements or {}
     word_spans = [
         (int(w["start_ms"]), int(w["end_ms"]))
         for w in (vocal_words or [])
@@ -251,20 +295,43 @@ def place_moving_head_crash_accents(
             mh_group, per_head_settings,
             slider_tilt="300", slider_pan_offset="400", slider_cycles="10",
         )
+        warmup_settings = _build_warmup_head_settings(len(mh_group.head_names))
+        warmup_params = _build_parameters(
+            mh_group, warmup_settings,
+            slider_tilt="300", slider_pan_offset="400",
+        )
+        group_existing = existing_placements.get(mh_group.name, [])
+
         placements: list[EffectPlacement] = []
         for mark in hierarchy.crash_accents:
             if _near_vocal(mark.time_ms):
                 continue
             if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
                 continue
+            start_ms = max(0, mark.time_ms - _CRASH_LEAD_MS)
             end_ms = min(mark.time_ms + _CRASH_EFFECT_DURATION_MS, hierarchy.duration_ms)
-            if end_ms <= mark.time_ms:
+            if end_ms <= start_ms:
                 continue
+
+            warmup_end_ms = start_ms
+            warmup_start_ms = max(0, warmup_end_ms - _WARMUP_DURATION_MS)
+            if warmup_start_ms < warmup_end_ms and not _has_overlap(
+                group_existing, warmup_start_ms, warmup_end_ms
+            ):
+                placements.append(EffectPlacement(
+                    effect_name="Moving Head",
+                    xlights_id="eff_MOVINGHEAD",
+                    model_or_group=mh_group.name,
+                    start_ms=warmup_start_ms,
+                    end_ms=warmup_end_ms,
+                    parameters=dict(warmup_params),
+                ))
+
             placements.append(EffectPlacement(
                 effect_name="Moving Head",
                 xlights_id="eff_MOVINGHEAD",
                 model_or_group=mh_group.name,
-                start_ms=mark.time_ms,
+                start_ms=start_ms,
                 end_ms=end_ms,
                 parameters=dict(params),
             ))

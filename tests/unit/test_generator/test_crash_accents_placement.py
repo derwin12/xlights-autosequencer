@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 from src.analyzer.result import HierarchyResult, TimingMark
 from src.generator.effect_placer import (
     _CRASH_EFFECT_DURATION_MS,
+    _CRASH_LEAD_MS,
     _CRASH_VOCAL_EXCLUSION_MS,
     _place_crash_accents,
 )
@@ -64,8 +65,8 @@ class TestPlaceCrashAccents:
         p = placements[0]
         assert p.effect_name == "Shockwave"
         assert p.model_or_group == "01_BASE_All_FADES"
-        assert p.start_ms == 50_850
-        assert abs((p.end_ms - p.start_ms) - _CRASH_EFFECT_DURATION_MS) <= 25
+        assert abs(p.start_ms - (50_850 - _CRASH_LEAD_MS)) <= 25
+        assert abs(p.end_ms - (50_850 + _CRASH_EFFECT_DURATION_MS)) <= 25
         assert p.parameters == {"E_SLIDER_Shockwave_End_Radius": "100"}
 
     def test_excludes_crash_near_vocal_word(self):
@@ -107,7 +108,7 @@ class TestPlaceCrashAccents:
             vocal_words=None, variant_library=_variant_library(),
         )
         placements = result["01_BASE_All_FADES"]
-        assert sorted(p.start_ms for p in placements) == [10_000, 50_000]
+        assert sorted(p.start_ms + _CRASH_LEAD_MS for p in placements) == [10_000, 50_000]
 
 
 class TestCrashAccentsConfigFlag:

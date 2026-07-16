@@ -1,14 +1,17 @@
 """Tests for moving_head.place_moving_head_crash_accents (fan-out Pan/Tilt
 punch on the moving-head group, matching effect_placer._place_crash_accents'
-Shockwave at the same marks)."""
+Shockwave at the same marks, plus an optional dark warmup lead-in)."""
 from __future__ import annotations
 
 from pathlib import Path
 
 from src.analyzer.result import HierarchyResult, TimingMark
+from src.generator.models import EffectPlacement
 from src.generator.moving_head import (
     _CRASH_EFFECT_DURATION_MS,
+    _CRASH_LEAD_MS,
     _CRASH_VOCAL_EXCLUSION_MS,
+    _WARMUP_DURATION_MS,
     place_moving_head_crash_accents,
 )
 from src.grouper.layout import parse_layout
@@ -27,6 +30,14 @@ def _hierarchy(crash_times_ms: list[int], duration_ms: int = 200_000) -> Hierarc
     )
 
 
+def _punch(placements: list[EffectPlacement]) -> EffectPlacement:
+    return next(p for p in placements if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"])
+
+
+def _warmup(placements: list[EffectPlacement]) -> EffectPlacement:
+    return next(p for p in placements if "Shutter: On" not in p.parameters["E_TEXTCTRL_MH1_Settings"])
+
+
 class TestPlaceMovingHeadCrashAccents:
     def test_no_crash_marks_returns_empty(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
@@ -38,27 +49,61 @@ class TestPlaceMovingHeadCrashAccents:
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
         assert result == {}
 
-    def test_places_moving_head_punch_on_the_group(self):
+    def test_punch_starts_before_mark_and_ends_after_it(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
         assert set(result) == {"MH GRP"}
-        placements = result["MH GRP"]
-        assert len(placements) == 1
-        p = placements[0]
+        p = _punch(result["MH GRP"])
         assert p.effect_name == "Moving Head"
         assert p.model_or_group == "MH GRP"
-        assert p.start_ms == 50_850
-        assert abs((p.end_ms - p.start_ms) - _CRASH_EFFECT_DURATION_MS) <= 25
+        assert abs(p.start_ms - (50_850 - _CRASH_LEAD_MS)) <= 25
+        assert abs(p.end_ms - (50_850 + _CRASH_EFFECT_DURATION_MS)) <= 25
 
     def test_fans_out_pan_and_tilts_up_per_head(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
-        settings = result["MH GRP"][0].parameters["E_TEXTCTRL_MH1_Settings"]
+        settings = _punch(result["MH GRP"]).parameters["E_TEXTCTRL_MH1_Settings"]
         assert "Tilt: 30" in settings
         assert "PanOffset: 40" in settings
         assert "Wheel: 0.000000&comma;0.000000&comma;1.000000" in settings
         assert "AutoShutter: true" in settings
         assert "Shutter: On" in settings
+
+    def test_warmup_inserted_when_nothing_already_there(self):
+        # No existing_placements passed -> the warmup window is a gap,
+        # so a silent (no Dimmer/Wheel/Shutter) lead-in should precede
+        # the punch, ending exactly where the punch starts.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        placements = result["MH GRP"]
+        assert len(placements) == 2
+        punch = _punch(placements)
+        warmup = _warmup(placements)
+        settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
+        assert "Tilt: 30" in settings
+        assert "PanOffset: 40" in settings
+        assert "Dimmer:" not in settings
+        assert "Wheel:" not in settings
+        assert "Shutter:" not in settings
+        assert warmup.end_ms == punch.start_ms
+        assert abs((warmup.end_ms - warmup.start_ms) - _WARMUP_DURATION_MS) <= 25
+
+    def test_warmup_skipped_when_wash_already_covers_the_window(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        mark_ms = 50_850
+        punch_start = mark_ms - _CRASH_LEAD_MS
+        existing = {
+            "MH GRP": [EffectPlacement(
+                effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                model_or_group="MH GRP", start_ms=0, end_ms=punch_start + 1000,
+            )],
+        }
+        result = place_moving_head_crash_accents(
+            layout, _hierarchy([mark_ms]), vocal_words=None, existing_placements=existing,
+        )
+        placements = result["MH GRP"]
+        assert len(placements) == 1
+        assert "Shutter: On" in placements[0].parameters["E_TEXTCTRL_MH1_Settings"]
 
     def test_excludes_crash_near_vocal_word(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
@@ -84,5 +129,5 @@ class TestPlaceMovingHeadCrashAccents:
     def test_multiple_crash_marks_each_placed(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([10_000, 50_000]), vocal_words=None)
-        placements = result["MH GRP"]
-        assert sorted(p.start_ms for p in placements) == [10_000, 50_000]
+        punches = [p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]]
+        assert sorted(p.start_ms + _CRASH_LEAD_MS for p in punches) == [10_000, 50_000]
