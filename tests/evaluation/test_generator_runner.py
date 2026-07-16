@@ -135,6 +135,51 @@ def test_run_pipeline_threads_video_path_into_config(monkeypatch, tmp_path):
     assert config.video_path == video
 
 
+def test_run_pipeline_passes_layout_into_build_plan(monkeypatch, tmp_path):
+    """build_plan's layout kwarg must receive the parsed Layout object, not
+    the default None -- Moving Head placement is gated on
+    `config.moving_head_effects and layout is not None` (src/generator/
+    plan.py), so a dropped layout arg silently skips Moving Head effects
+    even when the imported layout has a valid MH group."""
+    from types import SimpleNamespace
+
+    captured: dict = {}
+    fake_layout = SimpleNamespace(props=[])
+
+    monkeypatch.setattr("src.analyzer.orchestrator.run_orchestrator",
+                        lambda *a, **k: object())
+    monkeypatch.setattr("src.grouper.layout.parse_layout",
+                        lambda p: fake_layout)
+    monkeypatch.setattr("src.grouper.classifier.normalize_coords", lambda props: None)
+    monkeypatch.setattr("src.grouper.classifier.classify_props", lambda props: None)
+    monkeypatch.setattr("src.grouper.grouper.generate_groups", lambda props: [])
+    monkeypatch.setattr("src.effects.library.load_effect_library", lambda: object())
+    monkeypatch.setattr("src.variants.library.load_variant_library",
+                        lambda **k: object())
+    monkeypatch.setattr("src.themes.library.load_theme_library", lambda **k: object())
+
+    def fake_build_plan(config, *a, **k):
+        captured["layout"] = k.get("layout")
+        return object()
+
+    def fake_write_xsq(plan, output_path, **k):
+        Path(output_path).write_bytes(b"<xsequence/>")
+
+    monkeypatch.setattr("src.generator.plan.build_plan", fake_build_plan)
+    monkeypatch.setattr("src.generator.xsq_writer.write_xsq", fake_write_xsq)
+
+    from src.evaluation.generator_runner import _run_pipeline
+
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"x")
+    layout_path = tmp_path / "l.xml"
+    layout_path.write_bytes(b"<x/>")
+
+    _run_pipeline(audio, layout_path, seed=1)
+
+    assert captured["layout"] is fake_layout
+
+
 def test_run_raises_generator_error_on_missing_audio(tmp_path):
     """run() must raise GeneratorError when audio_path does not exist."""
     from src.evaluation.generator_runner import GeneratorError, run

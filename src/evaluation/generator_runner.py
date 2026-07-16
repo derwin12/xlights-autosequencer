@@ -170,7 +170,7 @@ def _run_pipeline(
 
         # Build plan
         plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library,
-                          progress_cb=progress_cb)
+                          progress_cb=progress_cb, layout=layout)
 
         # Write .xsq to a temp file, then read back as bytes
         output_path = Path(tmp_dir) / "output.xsq"
