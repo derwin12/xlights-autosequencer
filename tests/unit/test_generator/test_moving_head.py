@@ -85,3 +85,13 @@ class TestPlaceMovingHeadEffects:
         assert placement.parameters["E_CHECKBOX_AUTO_SHUTTER"] == "1"
         assert placement.parameters["E_SLIDER_MHPan"] == "0"
         assert placement.parameters["E_SLIDER_MHTilt"] == "0"
+
+    def test_shutter_enable_checkbox_set(self):
+        # Newer xLights builds gate the shutter DMX channel behind this
+        # checkbox -- without it the shutter never opens regardless of
+        # Dimmer, so real hardware stays dark (confirmed against real
+        # xLights, 2026-07-16).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment(0, 1000, ["#ff0000"])]
+        placement = place_moving_head_effects(layout, assignments)["MH GRP"][0]
+        assert placement.parameters["E_CHECKBOX_MHShutterEnable"] == "1"

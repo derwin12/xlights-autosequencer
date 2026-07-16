@@ -79,6 +79,13 @@ def _build_parameters(mh_group: MovingHeadGroup, hex_color: str) -> dict[str, st
         "E_CHECKBOX_MHIgnorePan": "0",
         "E_CHECKBOX_MHIgnoreTilt": "0",
         "E_CHECKBOX_AUTO_SHUTTER": "1",
+        # Newer xLights builds gate the shutter DMX channel behind this
+        # checkbox; without it the shutter never opens regardless of
+        # Dimmer/Auto Shutter, so real hardware stays dark. Confirmed
+        # against real xLights (user, 2026-07-16) -- makes the shutter
+        # choreography seen in the vendor examples' separate "MH Shutters"
+        # channel model unnecessary for this pipeline.
+        "E_CHECKBOX_MHShutterEnable": "1",
         "E_TEXTCTRL_MHPathDef": "",
     }
     for i in range(1, len(mh_group.head_names) + 1):
