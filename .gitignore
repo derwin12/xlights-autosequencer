@@ -76,15 +76,8 @@ mad_russian_christmas/
 # Claude Code local state (per-user tooling)
 .claude/
 
-# OpenWolf — ignore transient runtime state only; team-shared docs/config stay tracked
-.wolf/memory.md
-.wolf/cron-state.json
-.wolf/daemon.log
-.wolf/designqc-report.json
-.wolf/designqc-captures/
-.wolf/suggestions.json
-.wolf/token-ledger.json
-.wolf/dashboard-token
+# OpenWolf — local tooling state, not shared via git
+.wolf/
 
 # User song data (audio, analysis, generated sequences)
 songs/
