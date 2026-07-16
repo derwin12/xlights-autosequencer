@@ -25,12 +25,21 @@ from src.generator.models import EffectPlacement, SectionAssignment
 from src.grouper.grouper import PowerGroup
 from src.grouper.layout import Layout, MovingHeadGroup, find_moving_head_groups
 
-# Confirmed-working "dimmer fully on, no ramp" command from a real rendered
-# moving-head sequence -- the trailing 4 floats are an internal xLights
-# encoding we don't have documented, so this reuses the exact observed
-# bit pattern rather than guessing at one. Commas are pre-escaped (see
-# _COMMA_ESCAPE below).
-_DIMMER_FULL_ON = "0.000000&comma;0.000000&comma;1.000000&comma;0.000000"
+# "Dimmer: x1,y1,x2,y2,..." is a value-curve point list, not an opaque bit
+# pattern -- confirmed by reading MovingHeadEffect::CalculateDimmer() in the
+# real xLights source (H:\XlightsSourceDir\xLights\src-core\effects\
+# MovingHeadEffect.cpp): x is position (0-1) across the effect's duration,
+# y is dimmer output (0-1, i.e. 0-255). Two points (0,1) and (1,1) is a flat
+# curve at 100% for the whole effect -- "dimmer fully on". Matches a real
+# working effect the user copied out of xLights (2026-07-16) against their
+# own MH-1..MH-4 fixtures. Commas are pre-escaped (see _COMMA_ESCAPE below).
+_DIMMER_FULL_ON = "0.000000&comma;1.000000&comma;1.000000&comma;1.000000"
+
+# xLights always writes all 8 MH{n}_Settings slots regardless of how many
+# heads are actually in the group (confirmed in the same real working
+# effect: a 4-head group still had MH5_Settings..MH8_Settings present, just
+# empty) -- unused slots get an empty string.
+_MAX_HEAD_SLOTS = 8
 
 # The top-level effect settings string xLights writes is itself
 # comma-delimited ("key1=val1,key2=val2,..."), so any literal comma inside
@@ -53,11 +62,22 @@ def _build_head_settings(hue: float, sat: float, val: float, head_count: int) ->
     heads = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     color = _COMMA_ESCAPE.join(f"{c:.6f}" for c in (hue, sat, val))
     return (
-        f"Color: {color};"
-        f"Dimmer: {_DIMMER_FULL_ON};"
         "Pan: 0.0;Tilt: 0;PanOffset: 0;TiltOffset: 0.0;"
         "Groupings: 1.0;Cycles: 1.0;"
-        f"Heads: {heads}"
+        f"Heads: {heads};"
+        f"Dimmer: {_DIMMER_FULL_ON};"
+        f"Color: {color};"
+        # Confirmed by reading MovingHeadEffect::RenderMovingHead() in the
+        # real xLights source: this "Shutter: On" per-head command is the
+        # ONLY thing that opens the shutter (writes the model's configured
+        # ShutterOnValue to its shutter channel) -- the top-level
+        # E_CHECKBOX_MHShutterEnable/E_CHECKBOX_AUTO_SHUTTER checkboxes are
+        # UI-only (MovingHeadPanel::UpdateColorSettings() is what appends
+        # this text when the user ticks "Enable Shutter"); the renderer
+        # never reads the checkboxes themselves. Without this command the
+        # shutter stays closed and the fixture is dark regardless of
+        # Color/Dimmer.
+        "Shutter: On"
     )
 
 
@@ -86,10 +106,27 @@ def _build_parameters(mh_group: MovingHeadGroup, hex_color: str) -> dict[str, st
         # choreography seen in the vendor examples' separate "MH Shutters"
         # channel model unnecessary for this pipeline.
         "E_CHECKBOX_MHShutterEnable": "1",
+        # Motion-pattern preset (Circle/Figure8/...) -- disabled in v1
+        # (no motion), but xLights always writes these keys with defaults
+        # regardless of whether the pattern is enabled.
+        "E_CHECKBOX_MHPatternEnable": "0",
+        "E_CHOICE_MHPattern": "Circle",
+        "E_SLIDER_MHPatternHeight": "45",
+        "E_SLIDER_MHPatternPhaseOffset": "0",
+        "E_SLIDER_MHPatternRotation": "0",
+        "E_SLIDER_MHPatternStartOffset": "0",
+        "E_SLIDER_MHPatternWidth": "90",
+        "E_SLIDER_MHPatternXOffset": "0",
+        "E_SLIDER_MHPatternYOffset": "0",
         "E_TEXTCTRL_MHPathDef": "",
+        "T_CHECKBOX_Canvas": "0",
+        "T_CHECKBOX_LayerMorph": "0",
+        "T_CHOICE_LayerMethod": "Normal",
+        "T_SLIDER_EffectLayerMix": "0",
     }
-    for i in range(1, len(mh_group.head_names) + 1):
-        params[f"E_TEXTCTRL_MH{i}_Settings"] = per_head_settings
+    head_count = len(mh_group.head_names)
+    for i in range(1, _MAX_HEAD_SLOTS + 1):
+        params[f"E_TEXTCTRL_MH{i}_Settings"] = per_head_settings if i <= head_count else ""
     return params
 
 

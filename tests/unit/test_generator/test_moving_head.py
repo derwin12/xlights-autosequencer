@@ -53,7 +53,6 @@ class TestPlaceMovingHeadEffects:
         placement = place_moving_head_effects(layout, assignments)["MH GRP"][0]
         assert "E_TEXTCTRL_MH1_Settings" in placement.parameters
         assert "E_TEXTCTRL_MH2_Settings" in placement.parameters
-        assert "E_TEXTCTRL_MH3_Settings" not in placement.parameters
         for key in ("E_TEXTCTRL_MH1_Settings", "E_TEXTCTRL_MH2_Settings"):
             # Commas inside a TEXTCTRL value must be escaped as &comma; --
             # the outer settings string is itself comma-delimited, so a
@@ -61,7 +60,18 @@ class TestPlaceMovingHeadEffects:
             # after it (confirmed against a real rendered sequence).
             assert "Heads: 1&comma;2" in placement.parameters[key]
             assert "," not in placement.parameters[key]
-            assert "Dimmer: 0.000000&comma;0.000000&comma;1.000000&comma;0.000000" in placement.parameters[key]
+            assert "Dimmer: 0.000000&comma;1.000000&comma;1.000000&comma;1.000000" in placement.parameters[key]
+            assert "Shutter: On" in placement.parameters[key]
+
+    def test_unused_head_slots_are_present_but_empty(self):
+        # xLights always writes all 8 MH{n}_Settings slots regardless of
+        # group size (confirmed against a real working 4-head effect where
+        # MH5..MH8_Settings were present but empty).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment(0, 1000, ["#ff0000"])]
+        placement = place_moving_head_effects(layout, assignments)["MH GRP"][0]
+        for i in range(3, 9):
+            assert placement.parameters[f"E_TEXTCTRL_MH{i}_Settings"] == ""
 
     def test_color_derived_from_anchor_palette_when_present(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
