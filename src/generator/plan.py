@@ -29,7 +29,7 @@ from src.generator.effect_placer import (
 )
 from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
-from src.generator.moving_head import place_moving_head_effects
+from src.generator.moving_head import place_moving_head_crash_accents, place_moving_head_effects
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
 from src.story.builder import load_song_story
@@ -329,6 +329,15 @@ def build_plan(
             variant_library=variant_library,
             fade_exclusion_start_ms=fade_exclusion_start_ms,
         )
+        # Matching fan-out Moving Head punch at the same marks (config.
+        # moving_head_effects) -- same duration/exclusion rules as the
+        # Shockwave above, see place_moving_head_crash_accents.
+        if config.moving_head_effects and layout is not None:
+            for gname, placements in place_moving_head_crash_accents(
+                layout, hierarchy, config.vocal_words,
+                fade_exclusion_start_ms=fade_exclusion_start_ms,
+            ).items():
+                crash_effects.setdefault(gname, []).extend(placements)
 
     # 5e. Library images on Matrix/Mega Tree props, timed to lyric matches
     # (config.picture_effects). Song-scoped, same rationale as

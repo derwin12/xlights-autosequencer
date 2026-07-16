@@ -1,0 +1,88 @@
+"""Tests for moving_head.place_moving_head_crash_accents (fan-out Pan/Tilt
+punch on the moving-head group, matching effect_placer._place_crash_accents'
+Shockwave at the same marks)."""
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.analyzer.result import HierarchyResult, TimingMark
+from src.generator.moving_head import (
+    _CRASH_EFFECT_DURATION_MS,
+    _CRASH_VOCAL_EXCLUSION_MS,
+    place_moving_head_crash_accents,
+)
+from src.grouper.layout import parse_layout
+
+FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "grouper"
+
+
+def _hierarchy(crash_times_ms: list[int], duration_ms: int = 200_000) -> HierarchyResult:
+    return HierarchyResult(
+        schema_version="2.0.0",
+        source_file="song.mp3",
+        source_hash="abc123",
+        duration_ms=duration_ms,
+        estimated_bpm=120.0,
+        crash_accents=[TimingMark(time_ms=t, confidence=None, label="crash") for t in crash_times_ms],
+    )
+
+
+class TestPlaceMovingHeadCrashAccents:
+    def test_no_crash_marks_returns_empty(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([]), vocal_words=None)
+        assert result == {}
+
+    def test_no_moving_head_group_returns_empty(self):
+        layout = parse_layout(FIXTURES / "simple_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        assert result == {}
+
+    def test_places_moving_head_punch_on_the_group(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        assert set(result) == {"MH GRP"}
+        placements = result["MH GRP"]
+        assert len(placements) == 1
+        p = placements[0]
+        assert p.effect_name == "Moving Head"
+        assert p.model_or_group == "MH GRP"
+        assert p.start_ms == 50_850
+        assert abs((p.end_ms - p.start_ms) - _CRASH_EFFECT_DURATION_MS) <= 25
+
+    def test_fans_out_pan_and_tilts_up_per_head(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        settings = result["MH GRP"][0].parameters["E_TEXTCTRL_MH1_Settings"]
+        assert "Tilt: 30" in settings
+        assert "PanOffset: 40" in settings
+        assert "Wheel: 0.000000&comma;0.000000&comma;1.000000" in settings
+        assert "AutoShutter: true" in settings
+        assert "Shutter: On" in settings
+
+    def test_excludes_crash_near_vocal_word(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        vocal_words = [{"start_ms": 50_500, "end_ms": 51_000}]
+        result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=vocal_words)
+        assert result == {}
+
+    def test_keeps_crash_far_from_vocal_word(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        vocal_words = [{"start_ms": 10_000, "end_ms": 10_500}]
+        far_time = 10_500 + _CRASH_VOCAL_EXCLUSION_MS + 1000
+        result = place_moving_head_crash_accents(layout, _hierarchy([far_time]), vocal_words=vocal_words)
+        assert set(result) == {"MH GRP"}
+
+    def test_excludes_crash_at_or_after_fade_start(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(
+            layout, _hierarchy([190_000], duration_ms=201_900), vocal_words=None,
+            fade_exclusion_start_ms=189_000,
+        )
+        assert result == {}
+
+    def test_multiple_crash_marks_each_placed(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([10_000, 50_000]), vocal_words=None)
+        placements = result["MH GRP"]
+        assert sorted(p.start_ms for p in placements) == [10_000, 50_000]

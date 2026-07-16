@@ -32,6 +32,9 @@ wheel-type fixture -- white sidesteps the problem entirely.
 """
 from __future__ import annotations
 
+from typing import Optional
+
+from src.analyzer.result import HierarchyResult
 from src.generator.models import EffectPlacement, SectionAssignment
 from src.grouper.layout import Layout, MovingHeadGroup, find_moving_head_groups
 
@@ -93,18 +96,24 @@ def _build_head_settings(head_count: int) -> str:
     )
 
 
-def _build_parameters(mh_group: MovingHeadGroup) -> dict[str, str]:
-    per_head_settings = _build_head_settings(len(mh_group.head_names))
+def _build_parameters(
+    mh_group: MovingHeadGroup,
+    per_head_settings: str,
+    *,
+    slider_tilt: str = "0",
+    slider_pan_offset: str = "0",
+    slider_cycles: str = "1",
+) -> dict[str, str]:
     params: dict[str, str] = {
         "B_CHOICE_BufferStyle": "Per Model Default",
         "E_NOTEBOOK1": "Position",
         "E_NOTEBOOK2": "ColorWheel",
         "E_SLIDER_MHPan": "0",
-        "E_SLIDER_MHTilt": "0",
-        "E_SLIDER_MHPanOffset": "0",
+        "E_SLIDER_MHTilt": slider_tilt,
+        "E_SLIDER_MHPanOffset": slider_pan_offset,
         "E_SLIDER_MHTiltOffset": "0",
         "E_SLIDER_MHGroupings": "1",
-        "E_SLIDER_MHCycles": "1",
+        "E_SLIDER_MHCycles": slider_cycles,
         "E_SLIDER_MHPathScale": "0",
         "E_SLIDER_MHTimeOffset": "0",
         "E_CHECKBOX_MHIgnorePan": "0",
@@ -158,7 +167,8 @@ def place_moving_head_effects(
 
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
-        params = _build_parameters(mh_group)
+        per_head_settings = _build_head_settings(len(mh_group.head_names))
+        params = _build_parameters(mh_group, per_head_settings)
         placements = [
             EffectPlacement(
                 effect_name="Moving Head",
@@ -171,4 +181,93 @@ def place_moving_head_effects(
             for assignment in assignments
         ]
         result[mh_group.name] = placements
+    return result
+
+
+# Rare whole-house crash accent (see src/analyzer/crash_accents.py and
+# effect_placer._place_crash_accents, which places a matching Shockwave on
+# 01_BASE_All_FADES at the same marks) -- a short fan-out Pan/Tilt punch on
+# the moving-head group, same duration/exclusion rules as the Shockwave so
+# the two land together. Static pose (no path/pattern), confirmed against
+# a real working effect the user copied out of xLights (2026-07-16): with
+# Cycles/PathDef/Pattern all inactive, RenderMovingHead() never touches
+# pan_pos/tilt_pos again after CalculatePosition(), so the fanned pose
+# holds for the whole placement rather than animating.
+_CRASH_EFFECT_DURATION_MS = 700
+_CRASH_VOCAL_EXCLUSION_MS = 500
+_CRASH_TILT_DEG = "30"
+_CRASH_PAN_OFFSET_DEG = "40"
+
+
+def _build_crash_head_settings(head_count: int) -> str:
+    heads = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    return (
+        f"Dimmer: {_DIMMER_FULL_ON};"
+        f"Wheel: {_COLOR_WHITE};"
+        "AutoShutter: true;"
+        "Shutter: On;"
+        f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG};"
+        f"PanOffset: {_CRASH_PAN_OFFSET_DEG};TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {heads}"
+    )
+
+
+def place_moving_head_crash_accents(
+    layout: Layout,
+    hierarchy: HierarchyResult,
+    vocal_words: Optional[list[dict]],
+    fade_exclusion_start_ms: Optional[int] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a short fan-out Pan/Tilt punch on the moving-head group at each
+    rare crash mark from ``hierarchy.crash_accents``.
+
+    Mirrors effect_placer._place_crash_accents' timing and exclusion rules
+    exactly (same duration, same vocal/fade exclusion windows) so the two
+    accents land together -- see that function's docstring for the
+    rationale behind the exclusion windows themselves. Returns {} when the
+    layout has no moving-head group or there are no crash marks.
+    """
+    mh_groups = find_moving_head_groups(layout)
+    if not mh_groups or not hierarchy.crash_accents:
+        return {}
+
+    word_spans = [
+        (int(w["start_ms"]), int(w["end_ms"]))
+        for w in (vocal_words or [])
+        if int(w["end_ms"]) > int(w["start_ms"])
+    ]
+
+    def _near_vocal(time_ms: int) -> bool:
+        return any(
+            start - _CRASH_VOCAL_EXCLUSION_MS <= time_ms <= end + _CRASH_VOCAL_EXCLUSION_MS
+            for start, end in word_spans
+        )
+
+    result: dict[str, list[EffectPlacement]] = {}
+    for mh_group in mh_groups:
+        per_head_settings = _build_crash_head_settings(len(mh_group.head_names))
+        params = _build_parameters(
+            mh_group, per_head_settings,
+            slider_tilt="300", slider_pan_offset="400", slider_cycles="10",
+        )
+        placements: list[EffectPlacement] = []
+        for mark in hierarchy.crash_accents:
+            if _near_vocal(mark.time_ms):
+                continue
+            if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
+                continue
+            end_ms = min(mark.time_ms + _CRASH_EFFECT_DURATION_MS, hierarchy.duration_ms)
+            if end_ms <= mark.time_ms:
+                continue
+            placements.append(EffectPlacement(
+                effect_name="Moving Head",
+                xlights_id="eff_MOVINGHEAD",
+                model_or_group=mh_group.name,
+                start_ms=mark.time_ms,
+                end_ms=end_ms,
+                parameters=dict(params),
+            ))
+        if placements:
+            result[mh_group.name] = placements
     return result
