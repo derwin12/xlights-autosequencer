@@ -300,6 +300,32 @@ preconditions, and 16-song corpus results.
   `_place_video_effect`), not routed through the per-section pipeline, and
   must not collide in time/layer with the existing end-of-song fade.
 
+### Moving Head — Gated Wash with Effect-Setting Variety
+- **Current state (2026-07-16)**: `src/generator/moving_head.py` only places
+  effects at rare crash-accent marks (short fan-out Pan/Tilt punch + silent
+  warmup, via `place_moving_head_crash_accents`). The v1 continuous
+  per-section white wash (`place_moving_head_effects`) was removed the same
+  day — it lit the DMX Moving Head group for the entire song regardless of
+  energy/mood, which didn't read well once seen against real hardware. See
+  the module's docstring for the removal rationale.
+- **Deferred follow-up (explicit user decision, 2026-07-16)**: a wash should
+  come back, but gated to specific conditions (e.g. only during high-energy
+  sections/choruses/drops) rather than firing on every section
+  unconditionally. Before rebuilding it, first come up with **a variety of
+  effect settings to choose/rotate between** (different Pan/Tilt poses,
+  dimmer levels, maybe motion patterns) instead of the single hard-coded
+  full-white/full-dimmer/no-movement setting v1 used everywhere — a gated
+  wash that still always looks identical would just be a smaller version of
+  the same problem.
+- `place_moving_head_crash_accents`'s `existing_placements` parameter already
+  supports this: it's meant to receive whatever wash placements exist so the
+  crash punch's warmup can skip inserting when the wash already covers that
+  window (see `test_warmup_skipped_when_wash_already_covers_the_window` in
+  `tests/unit/test_generator/test_moving_head_crash_accents.py`, still
+  passing even with no wash currently produced) — wire a future gated-wash
+  dict into `plan.py`'s `moving_head_effects` variable (currently hard-coded
+  to `{}`) and pass it through the same call.
+
 ### QM Segmenter Boundary Merging
 - The `_merge_qm_boundaries` function uses a simple 2-second minimum gap to avoid
   micro-sections. A better approach would weight QM boundaries by the energy change
