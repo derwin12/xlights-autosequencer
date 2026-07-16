@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xlights_rgbeffects>
+    <!-- Two regular RGB props alongside a moving-head fixture group -->
+    <model name="Arch 1" DisplayAs="Arch" WorldPosX="0.0" WorldPosY="0.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+    <model name="Arch 2" DisplayAs="Arch" WorldPosX="50.0" WorldPosY="0.0" WorldPosZ="0.0"
+           ScaleX="2.0" ScaleY="1.0" parm1="1" parm2="50" />
+    <model name="MH1" DisplayAs="DmxMovingHeadAdv" WorldPosX="10.0" WorldPosY="10.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="1.0" parm1="16" parm2="1" />
+    <model name="MH2" DisplayAs="DmxMovingHeadAdv" WorldPosX="20.0" WorldPosY="10.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="1.0" parm1="16" parm2="1" />
+    <modelGroup name="MH GRP" DisplayAs="ModelGroup" models="MH1,MH2" />
+</xlights_rgbeffects>

@@ -3433,6 +3433,12 @@ _CRASH_EFFECT_DURATION_MS = 700
 # accent; per user design decision (2026-07-14) losing a true-positive crash
 # this way is preferred over letting vocal transients through as false hits.
 _CRASH_VOCAL_EXCLUSION_MS = 500
+# The effect starts this long before the actual crash mark and still ends
+# _CRASH_EFFECT_DURATION_MS after it (user request, 2026-07-16) -- the
+# build/lead-in gives the flash room to peak right as the crash sound
+# hits, rather than snapping on exactly at the mark. Vocal/fade exclusion
+# checks still key off the mark's true timestamp, not this shifted start.
+_CRASH_LEAD_MS = 1000
 
 
 def _place_crash_accents(
@@ -3445,7 +3451,10 @@ def _place_crash_accents(
     """Place a short Shockwave on ``01_BASE_All_FADES`` at each rare crash
     mark from ``hierarchy.crash_accents``.
 
-    Excludes marks within ``_CRASH_VOCAL_EXCLUSION_MS`` of any vocal word,
+    Starts ``_CRASH_LEAD_MS`` before the mark and ends
+    ``_CRASH_EFFECT_DURATION_MS`` after it, so the flash builds into and
+    peaks at the actual crash sound. Excludes marks within
+    ``_CRASH_VOCAL_EXCLUSION_MS`` of any vocal word,
     and marks at or after ``fade_exclusion_start_ms`` (the same group's
     existing end-of-song Min-blend fade -- see ``plan._place_end_of_song_fade``
     -- covers that span and a Shockwave there would collide with it).
@@ -3479,14 +3488,15 @@ def _place_crash_accents(
             continue
         if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
             continue
+        start_ms = max(0, mark.time_ms - _CRASH_LEAD_MS)
         end_ms = min(mark.time_ms + _CRASH_EFFECT_DURATION_MS, hierarchy.duration_ms)
-        if end_ms <= mark.time_ms:
+        if end_ms <= start_ms:
             continue
         placements.append(EffectPlacement(
             effect_name="Shockwave",
             xlights_id="Shockwave",
             model_or_group="01_BASE_All_FADES",
-            start_ms=mark.time_ms,
+            start_ms=start_ms,
             end_ms=end_ms,
             parameters=params,
             color_palette=["#FFFFFF"],

@@ -29,6 +29,7 @@ from src.generator.effect_placer import (
 )
 from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
+from src.generator.moving_head import place_moving_head_crash_accents, place_moving_head_effects
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
 from src.story.builder import load_song_story
@@ -46,7 +47,7 @@ from src.generator.value_curves import generate_value_curves
 from src.generator.xsq_writer import write_xsq
 from src.grouper.classifier import classify_props, normalize_coords
 from src.grouper.grouper import PowerGroup, generate_groups
-from src.grouper.layout import Prop, parse_layout
+from src.grouper.layout import Layout, Prop, parse_layout
 from src.themes.library import ThemeLibrary, load_theme_library
 
 
@@ -102,6 +103,7 @@ def build_plan(
     effect_library: EffectLibrary,
     theme_library: ThemeLibrary,
     progress_cb: Callable[[str, float], None] | None = None,
+    layout: Optional[Layout] = None,
 ) -> SequencePlan:
     """Build a SequencePlan from all upstream data.
 
@@ -311,6 +313,18 @@ def build_plan(
     if config.video_path is not None:
         video_effects = _place_video_effect(props, config.video_path, hierarchy.duration_ms)
 
+    # 5d0. Static color-wash placements on DMX moving-head fixture groups
+    # (config.moving_head_effects). Song-scoped, same rationale as
+    # vocal_effects/video_effects -- moving-head groups aren't part of
+    # `groups` at all (excluded in generate_groups so they never receive
+    # generic RGB placements), so this is their only placement source.
+    # Computed before crash accents below so place_moving_head_crash_accents
+    # can check whether a crash mark's warmup window already has wash
+    # coverage.
+    moving_head_effects: dict[str, list] = {}
+    if config.moving_head_effects and layout is not None:
+        moving_head_effects = place_moving_head_effects(layout, assignments)
+
     # 5d. Rare whole-house crash accents (config.crash_accents). Song-scoped,
     # same rationale as vocal_effects/video_effects. Computed here (before
     # transitions/end-of-song fade) so the fade's own start boundary can be
@@ -327,6 +341,16 @@ def build_plan(
             variant_library=variant_library,
             fade_exclusion_start_ms=fade_exclusion_start_ms,
         )
+        # Matching fan-out Moving Head punch at the same marks (config.
+        # moving_head_effects) -- same duration/exclusion rules as the
+        # Shockwave above, see place_moving_head_crash_accents.
+        if config.moving_head_effects and layout is not None:
+            for gname, placements in place_moving_head_crash_accents(
+                layout, hierarchy, config.vocal_words,
+                fade_exclusion_start_ms=fade_exclusion_start_ms,
+                existing_placements=moving_head_effects,
+            ).items():
+                crash_effects.setdefault(gname, []).extend(placements)
 
     # 5e. Library images on Matrix/Mega Tree props, timed to lyric matches
     # (config.picture_effects). Song-scoped, same rationale as
@@ -413,6 +437,7 @@ def build_plan(
         video_effects=video_effects,
         crash_effects=crash_effects,
         picture_effects=picture_effects,
+        moving_head_effects=moving_head_effects,
     )
 
 
@@ -770,7 +795,7 @@ def generate_sequence(config: GenerationConfig) -> Path:
     theme_library = load_theme_library(effect_library=effect_library, variant_library=variant_library)
 
     # Build plan
-    plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library)
+    plan = build_plan(config, hierarchy, props, groups, effect_library, theme_library, layout=layout)
 
     # Write XSQ with timing tracks
     output_name = config.audio_path.stem + ".xsq"

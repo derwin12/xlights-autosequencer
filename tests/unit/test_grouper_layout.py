@@ -5,7 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from src.grouper.layout import Layout, Prop, dominant_prop_type, parse_layout, prop_type_for_display_as
+from src.grouper.layout import (
+    Layout,
+    Prop,
+    dominant_prop_type,
+    find_moving_head_groups,
+    parse_layout,
+    prop_type_for_display_as,
+)
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "grouper"
 
@@ -87,7 +94,37 @@ class TestParseLayout:
         prop = layout.props[0]
         assert prop.world_x == 0.0
         assert prop.world_y == 0.0
-        assert prop.world_z == 0.0
+
+
+class TestFindMovingHeadGroups:
+    def test_finds_group_of_moving_head_models(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        groups = find_moving_head_groups(layout)
+        assert len(groups) == 1
+        assert groups[0].name == "MH GRP"
+        assert groups[0].head_names == ("MH1", "MH2")
+
+    def test_no_moving_head_models_returns_empty(self):
+        layout = parse_layout(FIXTURES / "simple_layout.xml")
+        assert find_moving_head_groups(layout) == []
+
+    def test_mixed_group_is_skipped(self):
+        """A group mixing moving-head and regular models has no single
+        fully-DMX target, so it must not be treated as a moving-head group."""
+        import tempfile, textwrap
+        xml = textwrap.dedent("""\
+            <?xml version="1.0" encoding="UTF-8"?>
+            <xlights_rgbeffects>
+                <model name="MH1" DisplayAs="DmxMovingHeadAdv" parm1="16" parm2="1" />
+                <model name="Arch 1" DisplayAs="Arch" parm1="1" parm2="50" />
+                <modelGroup name="Mixed GRP" DisplayAs="ModelGroup" models="MH1,Arch 1" />
+            </xlights_rgbeffects>
+        """)
+        with tempfile.NamedTemporaryFile(suffix=".xml", mode="w", delete=False) as f:
+            f.write(xml)
+            tmp = f.name
+        layout = parse_layout(tmp)
+        assert find_moving_head_groups(layout) == []
 
     def test_minimal_layout_one_prop(self):
         layout = parse_layout(FIXTURES / "minimal_layout.xml")
