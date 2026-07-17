@@ -95,16 +95,24 @@ class TestPlaceMovingHeadMoves:
             for p in placements:
                 assert (p.end_ms - p.start_ms) <= _MAX_MOVE_DURATION_MS + 25
 
-    def test_heads_settings_use_single_head_slot(self):
-        # Per-head placements always write "Heads: 1" into MH1_Settings --
-        # the group-index number in that field (e.g. "Heads: 2" on MH2's own
-        # placement) is a copy-paste artifact in the reference sequence, not
-        # meaningful behavior (user confirmation, 2026-07-17).
+    def test_per_head_placement_uses_its_own_group_position_slot(self):
+        # A per-head placement fills exactly ONE of the 8 MH{n}_Settings
+        # slots -- but which one, and what its "Heads:" field says, must
+        # match the model's own position in the group (MH2 -> slot 2,
+        # "Heads: 2"), not always slot 1/"Heads: 1". Reversed 2026-07-17:
+        # a real generated .xsq showed MH-2's placement silently failed to
+        # render (needed a manual click in xLights to fix) when written
+        # into slot 1/"Heads: 1" -- diffing before/after the click showed
+        # the fix was moving it to slot 2/"Heads: 2".
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("chorus", 0, 15_000, 40, variation_seed=2)]
         result = place_moving_head_moves(layout, assignments)
         mh2_placement = result["MH2"][0]
-        assert "Heads: 1" in mh2_placement.parameters["E_TEXTCTRL_MH1_Settings"]
+        params = mh2_placement.parameters
+        assert params["E_TEXTCTRL_MH1_Settings"] == ""
+        assert "Heads: 2" in params["E_TEXTCTRL_MH2_Settings"]
+        for slot in range(3, 9):
+            assert params[f"E_TEXTCTRL_MH{slot}_Settings"] == ""
 
     def test_multiple_qualifying_sections_rotate_moves(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")

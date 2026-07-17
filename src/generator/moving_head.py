@@ -355,16 +355,22 @@ def _build_group_move_parameters(
 
 
 def _build_per_head_move_parameters(
-    pose: "_HeadPose", jitter_pan: float, jitter_tilt: float,
+    pose: "_HeadPose", jitter_pan: float, jitter_tilt: float, head_index: int,
 ) -> dict[str, str]:
-    """A single head's own placement: only slot 1 is filled, and its
-    "Heads:" field always says just "1" -- a per-head placement always
-    describes exactly one head, itself. (A group-index number here, e.g.
-    "Heads: 2" on MH-2's own placement, is a copy-paste artifact in the
-    reference sequence, not meaningful behavior -- user confirmation,
-    2026-07-17.)"""
-    settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field="1")
-    return _build_parameters({1: settings})
+    """A single head's own placement: the settings go into the
+    ``E_TEXTCTRL_MH{head_index}_Settings`` slot matching that model's own
+    position within the group, with ``Heads: {head_index}`` -- NOT always
+    slot 1 / "Heads: 1". Reversed 2026-07-17 after real-hardware testing:
+    a prior instruction here called the group-index number "a copy-paste
+    artifact" and said to always use slot 1/"Heads: 1", but a real
+    generated .xsq showed MH-2/MH-3 placements written that way silently
+    failed to render until manually clicked in xLights -- diffing the
+    file before/after clicking showed the fix was moving the settings
+    into slot N with "Heads: N" (matching the model's group position, and
+    matching the original MH Samples.xsq reference this module was mined
+    from in the first place)."""
+    settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field=str(head_index))
+    return _build_parameters({head_index: settings})
 
 
 def _pose_start_pan(pose: _HeadPose) -> float:
@@ -409,10 +415,10 @@ def _build_group_warmup_parameters(
 
 
 def _build_per_head_warmup_parameters(
-    pose: _HeadPose, jitter_pan: float, jitter_tilt: float,
+    pose: _HeadPose, jitter_pan: float, jitter_tilt: float, head_index: int,
 ) -> dict[str, str]:
-    settings = _build_move_warmup_settings(pose, jitter_pan, jitter_tilt, heads_field="1")
-    return _build_parameters({1: settings})
+    settings = _build_move_warmup_settings(pose, jitter_pan, jitter_tilt, heads_field=str(head_index))
+    return _build_parameters({head_index: settings})
 
 
 # "Strong and powerful" gate (user-confirmed 2026-07-17): the song's own
@@ -606,12 +612,13 @@ def place_moving_head_moves(
                     channel_owner[h] = move_placement
             else:
                 for head_idx, head_name in enumerate(mh_group.head_names):
+                    head_index = head_idx + 1  # 1-based: matches this model's own MH{N}_Settings slot
                     pose = move.poses[head_idx % len(move.poses)]
                     start_ms = _open_warmup_gap(channel_owner[head_name], natural_start_ms)
                     if start_ms >= natural_end_ms:
                         continue
-                    move_params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt)
-                    warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt)
+                    move_params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt, head_index)
+                    warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
                     move_placement = _add_with_warmup(
                         by_target, head_name, warmup_params, move_params, start_ms, natural_end_ms,
                     )
