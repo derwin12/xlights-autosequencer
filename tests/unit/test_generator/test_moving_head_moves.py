@@ -171,16 +171,24 @@ class TestPlaceMovingHeadMoves:
         result = place_moving_head_moves(layout, assignments)
         assert len(result["MH1"]) == 1
 
-    def test_warmup_skipped_for_back_to_back_qualifying_sections(self):
+    def test_warmup_still_fits_for_back_to_back_qualifying_sections(self):
+        # No natural gap between the two sections -- the first section's
+        # own move gets its tail trimmed back to open a full warmup
+        # window for the second, rather than the warmup being skipped
+        # (user request, 2026-07-17: prefer shrinking the earlier effect
+        # over silently having no warmup at all).
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [
             _assignment("chorus", 0, 15_000, 40, variation_seed=2),
             _assignment("chorus", 15_000, 30_000, 40, variation_seed=2),
         ]
         result = place_moving_head_moves(layout, assignments)
-        # No gap between the two sections -> no room/need for a second
-        # warmup; exactly one placement per section, no warmups at all.
-        assert len(result["MH1"]) == 2
+        placements = result["MH1"]
+        assert len(placements) == 3  # section0 move (trimmed), section1 warmup, section1 move
+        first_move, warmup, second_move = placements
+        assert first_move.end_ms == 14_500  # trimmed back from its natural 15_000
+        assert warmup.start_ms == 14_500 and warmup.end_ms == 15_000
+        assert second_move.start_ms == 15_000  # not delayed -- the trim alone opened the gap
 
     def test_group_and_per_head_placements_never_overlap(self):
         # Realistic, non-overlapping sections. variation_seed=0:
@@ -202,31 +210,36 @@ class TestPlaceMovingHeadMoves:
                     f"overlap: group [{g.start_ms},{g.end_ms}) vs head [{h.start_ms},{h.end_ms})"
                 )
 
-    def test_per_head_move_delayed_when_group_move_overlaps_its_natural_start(self):
+    def test_per_head_move_trims_prior_group_moves_tail_to_open_warmup_gap(self):
         # Adversarial input: section 1 (per_head move) is given a start
         # time that overlaps section 0's (group move) natural end -- e.g.
-        # a hypothetical rounding/boundary bug upstream. The per-head move
-        # must be pushed to start no earlier than the group move's actual
-        # end, never overlap it (user's "start the other later" compromise,
-        # 2026-07-17).
+        # a hypothetical rounding/boundary bug upstream. Rather than
+        # delaying the per-head move, the group move's tail gets trimmed
+        # back to open a full warmup window right before the per-head
+        # move's own natural start (user preference, 2026-07-17).
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [
-            _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move, ends 15_000
-            _assignment("chorus", 10_000, 25_000, 40, variation_seed=0),  # per_head l_r_static, overlaps by 5s
+            _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move, natural end 15_000
+            _assignment("chorus", 10_000, 25_000, 40, variation_seed=0),  # per_head l_r_static, natural start 10_000
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
-        assert group_move.end_ms == 15_000
+        assert group_move.end_ms == 9_500  # trimmed back from its natural 15_000
         mh1_placements = result["MH1"]
-        assert len(mh1_placements) == 1  # delayed past the group's end -> no room for a warmup either
-        assert mh1_placements[0].start_ms == 15_000
-        assert not (group_move.start_ms < mh1_placements[0].end_ms and group_move.end_ms > mh1_placements[0].start_ms)
+        assert len(mh1_placements) == 2  # warmup + move -- not delayed, the trim alone was enough
+        warmup, move = mh1_placements
+        assert warmup.start_ms == 9_500 and warmup.end_ms == 10_000
+        assert move.start_ms == 10_000  # its own natural start, unmoved
+        assert not (group_move.start_ms < move.end_ms and group_move.end_ms > move.start_ms)
 
-    def test_group_move_delayed_when_per_head_move_overlaps_its_natural_start(self):
-        # Symmetric to the above: a per-head move first (variation_seed=1,
-        # section 0 -> static pool idx1 "l_r_static"), then a group move
-        # (variation_seed=3, section 1 -> dynamic pool idx0 "fan_pan_move")
-        # whose natural start overlaps the per-head move's end.
+    def test_group_move_never_overlaps_prior_per_head_moves_across_all_heads(self):
+        # Symmetric to the above, and exercising the multi-owner case: a
+        # per-head move first (variation_seed=1, section 0 -> static pool
+        # idx1 "l_r_static", giving MH1 and MH2 each their OWN distinct
+        # placement object), then a group move (variation_seed=3, section
+        # 1 -> dynamic pool idx0 "fan_pan_move") whose natural start
+        # overlaps both of them -- every distinct owner must get trimmed,
+        # not just whichever ends latest.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [
             _assignment("chorus", 0, 15_000, 40, variation_seed=1),

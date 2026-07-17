@@ -56,7 +56,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.analyzer.result import HierarchyResult
-from src.generator.models import EffectPlacement, SectionAssignment
+from src.generator.models import EffectPlacement, SectionAssignment, frame_align
 from src.grouper.layout import Layout, find_moving_head_groups
 
 # "Dimmer: x1,y1,x2,y2,..." is a value-curve point list, not an opaque bit
@@ -444,17 +444,15 @@ def _add_with_warmup(
     move_params: dict[str, str],
     start_ms: int,
     end_ms: int,
-    occupied_until_ms: int,
-) -> None:
-    """Append ``target``'s move placement, preceded by a silent warmup
-    unless the gap left after ``occupied_until_ms`` is too small to fit
-    one. ``occupied_until_ms`` is the latest time this target's actual
-    DMX channel(s) are occupied by ANY prior placement -- group or
-    per-head (see the ``channel_end`` tracking in place_moving_head_moves)
-    -- not just prior placements under this exact ``target`` key, since a
-    per-head move and a group move ultimately drive the same channels."""
+) -> EffectPlacement:
+    """Append ``target``'s move placement, preceded by a silent warmup.
+    Callers are expected to have already made room for the full warmup
+    window via ``_open_warmup_gap`` before calling this -- it does not
+    re-check for conflicts itself. Returns the move placement (not the
+    warmup) so the caller can track it as this head's new channel owner.
+    """
     existing = by_target.setdefault(target, [])
-    warmup_start_ms = max(occupied_until_ms, start_ms - _WARMUP_DURATION_MS)
+    warmup_start_ms = max(0, start_ms - _WARMUP_DURATION_MS)
     if warmup_start_ms < start_ms:
         existing.append(EffectPlacement(
             effect_name="Moving Head",
@@ -464,14 +462,51 @@ def _add_with_warmup(
             end_ms=start_ms,
             parameters=warmup_params,
         ))
-    existing.append(EffectPlacement(
+    move_placement = EffectPlacement(
         effect_name="Moving Head",
         xlights_id="eff_MOVINGHEAD",
         model_or_group=target,
         start_ms=start_ms,
         end_ms=end_ms,
         parameters=move_params,
-    ))
+    )
+    existing.append(move_placement)
+    return move_placement
+
+
+# The previous move keeps at least this much of its own duration when its
+# tail is trimmed back to make room for the next move's warmup -- a
+# sanity floor, not expected to bite in practice (sections are gated to
+# >= _MIN_SECTION_DURATION_MS, far longer than one warmup).
+_MIN_TRIMMED_MOVE_DURATION_MS = 1000
+
+
+def _open_warmup_gap(prev_placement: Optional[EffectPlacement], desired_start_ms: int) -> int:
+    """Make room for a full warmup window ending at ``desired_start_ms``
+    by trimming ``prev_placement``'s tail (mutated in place) rather than
+    delaying the upcoming move -- user preference, 2026-07-17: shrinking
+    the effect that's already playing reads better than visibly pushing
+    the next one's start off its own section boundary. Falls back to
+    (partly) delaying ``desired_start_ms`` only if trimming alone would
+    cut ``prev_placement`` below ``_MIN_TRIMMED_MOVE_DURATION_MS`` -- "a
+    bit of both" for the rare case a single trim can't open the whole gap.
+
+    Returns the actual start time the upcoming move should use.
+    """
+    if prev_placement is None:
+        return desired_start_ms
+    desired_warmup_start_ms = desired_start_ms - _WARMUP_DURATION_MS
+    if prev_placement.end_ms <= desired_warmup_start_ms:
+        return desired_start_ms  # already enough natural gap, nothing to trim
+
+    floor_ms = prev_placement.start_ms + _MIN_TRIMMED_MOVE_DURATION_MS
+    new_end_ms = max(floor_ms, desired_warmup_start_ms)
+    if new_end_ms < prev_placement.end_ms:
+        prev_placement.end_ms = frame_align(new_end_ms)
+    if prev_placement.end_ms > desired_warmup_start_ms:
+        # The floor blocked a full trim -- push the remainder onto the start.
+        return prev_placement.end_ms + _WARMUP_DURATION_MS
+    return desired_start_ms
 
 
 def place_moving_head_moves(
@@ -496,13 +531,25 @@ def place_moving_head_moves(
     channels, so the two must never touch in time, even at an exact
     boundary -- confirmed by the user finding an overlap warning in real
     xLights between "Moving Heads Group" and MH-1..MH-4 placements
-    abutting with no gap (2026-07-17). ``channel_end`` tracks, per
-    physical head, the latest time its channels are occupied by ANY
-    placement so far (a group move stamps every head; a per-head move
-    stamps just its own) -- a move whose natural section-derived start
-    would land before that time gets pushed later instead (the "start the
-    other later" half of the user's compromise), and is dropped entirely
-    if the forced push would eat the whole section.
+    abutting with no gap (2026-07-17). ``channel_owner`` tracks, per
+    physical head, the most recent placement occupying its channels so
+    far (a group move becomes every head's owner; a per-head move
+    becomes just its own).
+
+    Every move also needs a full, uninterrupted warmup window right
+    before it -- without one, a move immediately following another (any
+    combination of group/per-head, or even the same target back-to-back)
+    would start exactly where the prior one ends, leaving no silent
+    lead-in at all: the head then visibly slews to its new pose instead
+    of pre-positioning in the dark (user-observed in real xLights,
+    2026-07-17: "the light will travel as it reaches the starting
+    point"). ``_open_warmup_gap`` opens that room by trimming the prior
+    occupant's own tail (mutated in place) -- the user's stated
+    preference over delaying the upcoming move, since shrinking a move
+    that's already playing reads better than visibly pushing the next
+    one off its section boundary -- falling back to a partial delay only
+    if the prior occupant is too short to safely trim. A move is dropped
+    entirely if there's no room for it at all after this.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups:
@@ -511,7 +558,9 @@ def place_moving_head_moves(
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
         by_target: dict[str, list[EffectPlacement]] = {}
-        channel_end: dict[str, int] = {name: 0 for name in mh_group.head_names}
+        channel_owner: dict[str, Optional[EffectPlacement]] = {
+            name: None for name in mh_group.head_names
+        }
         for section_index, assignment in enumerate(assignments):
             section = assignment.section
             role = (section.label or "").lower()
@@ -532,34 +581,41 @@ def place_moving_head_moves(
 
             if move.target == "group":
                 heads = mh_group.head_names
-                min_start_ms = max((channel_end[h] for h in heads), default=0)
-                start_ms = max(natural_start_ms, min_start_ms)
+                # A prior GROUP move leaves every head sharing ONE owner
+                # object; a prior PER-HEAD move leaves each head with its
+                # OWN distinct object -- dedupe by identity (EffectPlacement
+                # isn't hashable), but trim every distinct owner (not just
+                # whichever ends latest), since a group move touches every
+                # head's channel and each one needs its own tail opened up.
+                owners_by_id = {
+                    id(channel_owner[h]): channel_owner[h] for h in heads if channel_owner[h] is not None
+                }
+                start_ms = natural_start_ms
+                for owner in owners_by_id.values():
+                    start_ms = max(start_ms, _open_warmup_gap(owner, natural_start_ms))
                 if start_ms >= natural_end_ms:
-                    continue  # no room left after the forced gap
+                    continue  # no room left after opening the warmup gap
                 head_count = len(heads)
                 pose = move.poses[0]
                 move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
                 warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
-                _add_with_warmup(
-                    by_target, mh_group.name, warmup_params, move_params,
-                    start_ms, natural_end_ms, min_start_ms,
+                move_placement = _add_with_warmup(
+                    by_target, mh_group.name, warmup_params, move_params, start_ms, natural_end_ms,
                 )
                 for h in heads:
-                    channel_end[h] = natural_end_ms
+                    channel_owner[h] = move_placement
             else:
                 for head_idx, head_name in enumerate(mh_group.head_names):
                     pose = move.poses[head_idx % len(move.poses)]
-                    min_start_ms = channel_end[head_name]
-                    start_ms = max(natural_start_ms, min_start_ms)
+                    start_ms = _open_warmup_gap(channel_owner[head_name], natural_start_ms)
                     if start_ms >= natural_end_ms:
                         continue
                     move_params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt)
                     warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt)
-                    _add_with_warmup(
-                        by_target, head_name, warmup_params, move_params,
-                        start_ms, natural_end_ms, min_start_ms,
+                    move_placement = _add_with_warmup(
+                        by_target, head_name, warmup_params, move_params, start_ms, natural_end_ms,
                     )
-                    channel_end[head_name] = natural_end_ms
+                    channel_owner[head_name] = move_placement
         for target, placements in by_target.items():
             if placements:
                 result.setdefault(target, []).extend(placements)
