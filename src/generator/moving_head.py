@@ -549,17 +549,18 @@ def _resolve_warmup(
     given every distinct placement currently occupying the channel(s) it
     needs (``owners`` may contain ``None`` entries for untouched heads).
 
-    Prefers a full ``_PREFERRED_WARMUP_DURATION_MS`` (3s) warmup, trimming
-    the tail of whichever owner(s) block it (mutated in place) rather than
-    delaying the move -- user preference, 2026-07-17: shrinking an effect
-    that's already playing reads better than visibly pushing the next one
-    off its own section boundary. When a full 3s isn't achievable (an
-    owner's own floor limits how far it can be trimmed), uses however much
-    room IS achievable instead of dropping straight to the floor value --
-    only falling back to (partly) delaying the move to guarantee
-    ``_MIN_WARMUP_DURATION_MS`` when even a maximal trim can't reach that
-    much ("3s or the max available up to 3s, otherwise the defined
-    length").
+    The full ``_PREFERRED_WARMUP_DURATION_MS`` (3s) is used ONLY when
+    nothing needs to be shortened to get it -- no owner at all, or the
+    natural gap before ``desired_start_ms`` already covers it. The moment
+    an existing Moving Head placement is actually in the way (the natural
+    gap is under the defined minimum), it is trimmed (mutated in place)
+    down to open ONLY the defined ``_MIN_WARMUP_DURATION_MS`` -- never up
+    to 3s -- reserving the longer warmup for genuinely idle stretches
+    (user correction, 2026-07-17: a prior version of this trimmed existing
+    effects by up to 3s to chase the preferred length, which visibly
+    shortened them far more than necessary). Falls back to (partly)
+    delaying the move to still guarantee ``_MIN_WARMUP_DURATION_MS`` only
+    if even a maximal trim (down to an owner's own floor) can't reach it.
 
     Returns (start_ms, warmup_duration_ms).
     """
@@ -567,8 +568,17 @@ def _resolve_warmup(
     if not real_owners:
         return desired_start_ms, max(0, min(_PREFERRED_WARMUP_DURATION_MS, desired_start_ms))
 
+    latest_end_ms = max(o.end_ms for o in real_owners)
+    natural_gap_ms = desired_start_ms - latest_end_ms
+    if natural_gap_ms >= _PREFERRED_WARMUP_DURATION_MS:
+        return desired_start_ms, _PREFERRED_WARMUP_DURATION_MS  # nothing in the way for the full 3s
+    if natural_gap_ms >= _MIN_WARMUP_DURATION_MS:
+        return desired_start_ms, natural_gap_ms  # no trim needed, use the natural gap as-is
+
+    # An effect is genuinely in the way -- only ever trim it down to open
+    # the defined minimum, not the full 3s.
     achievable_ms = min(
-        _PREFERRED_WARMUP_DURATION_MS,
+        _MIN_WARMUP_DURATION_MS,
         min(desired_start_ms - _best_trimmable_end_ms(o) for o in real_owners),
     )
     if achievable_ms >= _MIN_WARMUP_DURATION_MS:

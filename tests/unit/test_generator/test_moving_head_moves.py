@@ -196,11 +196,12 @@ class TestPlaceMovingHeadMoves:
         placements = result["MH1"]
         assert len(placements) == 3  # section0 move (trimmed), section1 warmup, section1 move
         first_move, warmup, second_move = placements
-        # There's ample room to trim (14s of section0 available above the
-        # 1s floor), so the full preferred 3s warmup is used, not just
-        # the defined minimum.
-        assert first_move.end_ms == 12_000  # trimmed back from its natural 15_000 by 3s
-        assert warmup.start_ms == 12_000 and warmup.end_ms == 15_000
+        # section0's move is genuinely in the way (zero natural gap), so
+        # it's trimmed down to open ONLY the defined minimum -- never up
+        # to the full 3s (user correction, 2026-07-17: reserve the longer
+        # warmup for stretches where nothing needs to be shortened).
+        assert first_move.end_ms == 14_250  # trimmed back from its natural 15_000 by 750ms
+        assert warmup.start_ms == 14_250 and warmup.end_ms == 15_000
         assert second_move.start_ms == 15_000  # not delayed -- the trim alone opened the gap
 
     def test_group_and_per_head_placements_never_overlap(self):
@@ -237,13 +238,14 @@ class TestPlaceMovingHeadMoves:
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
-        # Ample room to trim (14s of the group move available above the
-        # 1s floor), so the full preferred 3s warmup is used.
-        assert group_move.end_ms == 7_000  # trimmed back from its natural 15_000 by 3s
+        # The group move is genuinely in the way (0 natural gap at
+        # 10_000), so it's trimmed down to open ONLY the defined minimum,
+        # never up to the full 3s.
+        assert group_move.end_ms == 9_250  # trimmed back from its natural 15_000 by 750ms
         mh1_placements = result["MH1"]
         assert len(mh1_placements) == 2  # warmup + move -- not delayed, the trim alone was enough
         warmup, move = mh1_placements
-        assert warmup.start_ms == 7_000 and warmup.end_ms == 10_000
+        assert warmup.start_ms == 9_250 and warmup.end_ms == 10_000
         assert move.start_ms == 10_000  # its own natural start, unmoved
         assert not (group_move.start_ms < move.end_ms and group_move.end_ms > move.start_ms)
 
