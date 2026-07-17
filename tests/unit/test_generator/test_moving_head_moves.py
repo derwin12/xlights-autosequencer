@@ -194,8 +194,8 @@ class TestPlaceMovingHeadMoves:
         placements = result["MH1"]
         assert len(placements) == 3  # section0 move (trimmed), section1 warmup, section1 move
         first_move, warmup, second_move = placements
-        assert first_move.end_ms == 14_500  # trimmed back from its natural 15_000
-        assert warmup.start_ms == 14_500 and warmup.end_ms == 15_000
+        assert first_move.end_ms == 14_250  # trimmed back from its natural 15_000 by _WARMUP_DURATION_MS
+        assert warmup.start_ms == 14_250 and warmup.end_ms == 15_000
         assert second_move.start_ms == 15_000  # not delayed -- the trim alone opened the gap
 
     def test_group_and_per_head_placements_never_overlap(self):
@@ -232,11 +232,11 @@ class TestPlaceMovingHeadMoves:
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
-        assert group_move.end_ms == 9_500  # trimmed back from its natural 15_000
+        assert group_move.end_ms == 9_250  # trimmed back from its natural 15_000 by _WARMUP_DURATION_MS
         mh1_placements = result["MH1"]
         assert len(mh1_placements) == 2  # warmup + move -- not delayed, the trim alone was enough
         warmup, move = mh1_placements
-        assert warmup.start_ms == 9_500 and warmup.end_ms == 10_000
+        assert warmup.start_ms == 9_250 and warmup.end_ms == 10_000
         assert move.start_ms == 10_000  # its own natural start, unmoved
         assert not (group_move.start_ms < move.end_ms and group_move.end_ms > move.start_ms)
 

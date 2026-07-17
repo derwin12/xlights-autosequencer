@@ -686,8 +686,11 @@ _CRASH_LEAD_MS = 1000
 # right before the punch, a silent "warmup" placement (Pan/Tilt/PanOffset
 # only, no Dimmer/Wheel/Shutter) runs immediately before it so the heads
 # are already fanned out and dark by the time the punch opens the
-# shutter, instead of visibly snapping into position while lit.
-_WARMUP_DURATION_MS = 500
+# shutter, instead of visibly snapping into position while lit. 750ms
+# (up from an original 500ms, user request 2026-07-17: the fixture needs
+# 50% more time to physically reach the fanned position before the
+# shutter opens).
+_WARMUP_DURATION_MS = 750
 
 
 def _build_crash_head_settings(head_count: int) -> str:
