@@ -262,24 +262,56 @@ def _format_pan(deg: float) -> str:
     return f"Pan: {deg:.1f}"
 
 
-def _format_pan_vc(start_deg: float, end_deg: float) -> str:
+def _pan_vc_descriptor(start_deg: float, end_deg: float) -> str:
     return (
-        "Pan VC: Active=TRUE|Id=ID_VALUECURVE_MHPan|Type=Ramp|"
+        "Active=TRUE|Id=ID_VALUECURVE_MHPan|Type=Ramp|"
         f"Min=-1800.00|Max=1800.00|P1={start_deg * 10:.2f}|"
         f"P2={end_deg * 10:.2f}|RV=TRUE|"
     )
+
+
+def _format_pan_vc(start_deg: float, end_deg: float) -> str:
+    return f"Pan VC: {_pan_vc_descriptor(start_deg, end_deg)}"
 
 
 def _format_tilt(deg: float) -> str:
     return f"Tilt: {deg:.1f}"
 
 
-def _format_tilt_vc(lo_deg: float, hi_deg: float, lo2_deg: float) -> str:
+def _tilt_vc_descriptor(lo_deg: float, hi_deg: float, lo2_deg: float) -> str:
     return (
-        "Tilt VC: Active=TRUE|Id=ID_VALUECURVE_MHTilt|Type=Ramp Up/Down|"
+        "Active=TRUE|Id=ID_VALUECURVE_MHTilt|Type=Ramp Up/Down|"
         f"Min=-1800.00|Max=1800.00|P1={lo_deg * 10:.2f}|"
         f"P2={hi_deg * 10:.2f}|P3={lo2_deg * 10:.2f}|RV=TRUE|"
     )
+
+
+def _format_tilt_vc(lo_deg: float, hi_deg: float, lo2_deg: float) -> str:
+    return f"Tilt VC: {_tilt_vc_descriptor(lo_deg, hi_deg, lo2_deg)}"
+
+
+def _vc_top_level_params(pose: "_HeadPose", jitter_pan: float, jitter_tilt: float) -> dict[str, str]:
+    """Whenever a pose's Pan or Tilt comes from a value curve, xLights
+    also expects a top-level ``E_VALUECURVE_MHPan``/``E_VALUECURVE_MHTilt``
+    key on the effect itself, mirroring the same curve descriptor written
+    into the per-head text -- confirmed present on every VC-driven effect
+    in the reference sequence (MH Samples.xsq) and absent on every
+    static-pose effect. This module never wrote it; real-world testing
+    (2026-07-17) found a generated Pan-VC effect didn't show its curve in
+    the xLights UI at all -- clicking the effect only dropped an unrelated
+    cosmetic key (B_CHOICE_BufferStyle), never adding this one, confirming
+    it's the actual missing piece rather than something xLights
+    self-repairs on selection."""
+    extra: dict[str, str] = {}
+    if pose.pan_vc is not None:
+        start_deg, end_deg = pose.pan_vc
+        extra["E_VALUECURVE_MHPan"] = _pan_vc_descriptor(start_deg + jitter_pan, end_deg + jitter_pan)
+    if pose.tilt_vc is not None:
+        lo_deg, hi_deg, lo2_deg = pose.tilt_vc
+        extra["E_VALUECURVE_MHTilt"] = _tilt_vc_descriptor(
+            lo_deg + jitter_tilt, hi_deg + jitter_tilt, lo2_deg + jitter_tilt,
+        )
+    return extra
 
 
 def _build_pose_settings(pose: _HeadPose, jitter_pan: float, jitter_tilt: float, heads_field: str) -> str:
@@ -351,7 +383,9 @@ def _build_group_move_parameters(
     heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field)
     per_head = {i: settings for i in range(1, head_count + 1)}
-    return _build_parameters(per_head, slider_pan_offset=f"{pose.pan_offset:.1f}")
+    params = _build_parameters(per_head, slider_pan_offset=f"{pose.pan_offset:.1f}")
+    params.update(_vc_top_level_params(pose, jitter_pan, jitter_tilt))
+    return params
 
 
 def _build_per_head_move_parameters(
@@ -370,7 +404,9 @@ def _build_per_head_move_parameters(
     matching the original MH Samples.xsq reference this module was mined
     from in the first place)."""
     settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field=str(head_index))
-    return _build_parameters({head_index: settings})
+    params = _build_parameters({head_index: settings})
+    params.update(_vc_top_level_params(pose, jitter_pan, jitter_tilt))
+    return params
 
 
 def _pose_start_pan(pose: _HeadPose) -> float:

@@ -261,3 +261,60 @@ class TestPlaceMovingHeadMoves:
                 assert not (g.start_ms < h.end_ms and g.end_ms > h.start_ms), (
                     f"overlap: head [{h.start_ms},{h.end_ms}) vs group [{g.start_ms},{g.end_ms})"
                 )
+
+    def test_pan_vc_move_gets_matching_top_level_valuecurve_key(self):
+        # variation_seed=1, dynamic pool -> "l_r_sweep" (per_head, Pan VC).
+        # xLights doesn't recognize/display a per-head Pan VC unless the
+        # effect also carries a top-level E_VALUECURVE_MHPan key mirroring
+        # it -- confirmed missing from every generated Pan-VC effect and
+        # present on every VC-driven effect in the reference sequence
+        # (real-world testing, 2026-07-17: a generated effect's curve
+        # never showed in the xLights UI, even after clicking).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=1)]
+        result = place_moving_head_moves(layout, assignments)
+        move = result["MH1"][-1]
+        params = move.parameters
+        assert "E_VALUECURVE_MHPan" in params
+        # The top-level descriptor must mirror the same curve written
+        # into the per-head text (same Min/Max/P1/P2), just without the
+        # "Pan VC: " prefix.
+        assert f"Pan VC: {params['E_VALUECURVE_MHPan']}" in params["E_TEXTCTRL_MH1_Settings"]
+        assert "E_VALUECURVE_MHTilt" not in params
+
+    def test_tilt_vc_move_gets_matching_top_level_valuecurve_key(self):
+        # variation_seed=3, dynamic pool -> "u_d_tilt" (per_head, Tilt VC).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=3)]
+        result = place_moving_head_moves(layout, assignments)
+        move = result["MH1"][-1]
+        params = move.parameters
+        assert "E_VALUECURVE_MHTilt" in params
+        assert "E_VALUECURVE_MHPan" not in params
+
+    def test_group_fan_move_gets_matching_top_level_valuecurve_key(self):
+        # variation_seed=0, dynamic pool -> "fan_pan_move" (group, Tilt VC).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0)]
+        result = place_moving_head_moves(layout, assignments)
+        move = result["MH GRP"][-1]
+        assert "E_VALUECURVE_MHTilt" in move.parameters
+
+    def test_static_pose_move_gets_no_top_level_valuecurve_key(self):
+        # variation_seed=2, static pool -> "r_static" (no VC at all).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 15_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments)
+        move = result["MH1"][-1]
+        assert "E_VALUECURVE_MHPan" not in move.parameters
+        assert "E_VALUECURVE_MHTilt" not in move.parameters
+
+    def test_warmup_never_gets_a_top_level_valuecurve_key(self):
+        # A warmup is always a static pre-position, even for a VC move --
+        # it must never carry an active value curve of its own.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("verse", 10_000, 25_000, _STRONG_ENERGY_GATE, variation_seed=1)]
+        result = place_moving_head_moves(layout, assignments)
+        warmup = result["MH1"][0]
+        assert "E_VALUECURVE_MHPan" not in warmup.parameters
+        assert "E_VALUECURVE_MHTilt" not in warmup.parameters
