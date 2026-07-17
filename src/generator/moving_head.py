@@ -27,7 +27,13 @@ strong (top energy tier or chorus/drop role, user-confirmed 2026-07-17) so
 most of the song stays dark, matching the same "rare, not continuous"
 design constraint that killed the v1 wash. A small deterministic pan/tilt
 jitter (keyed off variation_seed + section_index) keeps repeated strong
-sections from looking identical.
+sections from looking identical. Every pose's Dimmer defaults to an
+instant full-on (not the reference's soft fade-in) per user request
+2026-07-17. Each move is preceded by a silent warmup lead-in
+(``_add_with_warmup``) pre-positioned to the move's own starting Pan/Tilt
+angle, so heads are already aimed correctly and dark before the move
+itself opens the shutter -- the same mechanic the crash punch already
+used, generalized to every move.
 
 Always white, never a theme/section color, by design (user request,
 2026-07-16) -- and not just for simplicity. Reading
@@ -61,16 +67,6 @@ from src.grouper.layout import Layout, find_moving_head_groups
 # _COMMA_ESCAPE below).
 _DIMMER_FULL_ON = "0.000000&comma;1.000000&comma;1.000000&comma;1.000000"
 
-# The four distinct dimmer-curve shapes actually used across all 34 effect
-# definitions in the reference sequence (MH Samples.xsq). Every static
-# pose / sweep / tilt-oscillation move uses the soft fade-in shape below
-# (off for the first ~13% of the effect, then held on) rather than an
-# instant snap-to-full -- mined verbatim, not derived.
-_DIMMER_FADE_IN = (
-    "0.000000&comma;-0.017241&comma;0.000000&comma;0.000000&comma;"
-    "0.131964&comma;0.000000&comma;0.132964&comma;1.000000&comma;"
-    "1.000000&comma;1.000000"
-)
 # "Stagger" chase moves alternate which half of the effect a head is lit
 # for. MID: on from ~13% to ~52% of the effect (an "early/middle" pulse).
 _DIMMER_MID_PULSE = (
@@ -180,7 +176,7 @@ class _HeadPose:
     tilt: Optional[float] = None
     tilt_vc: Optional[tuple[float, float, float]] = None  # (lo, hi, lo), Ramp Up/Down
     pan_offset: float = 0.0
-    dimmer: str = _DIMMER_FADE_IN
+    dimmer: str = _DIMMER_FULL_ON
 
 
 @dataclass(frozen=True)
@@ -371,6 +367,54 @@ def _build_per_head_move_parameters(
     return _build_parameters({1: settings})
 
 
+def _pose_start_pan(pose: _HeadPose) -> float:
+    """The pan angle a pose is AT when its effect begins -- the ramp's
+    start point for a sweep, or the static angle otherwise."""
+    return pose.pan_vc[0] if pose.pan_vc is not None else (pose.pan or 0.0)
+
+
+def _pose_start_tilt(pose: _HeadPose) -> float:
+    """Same as _pose_start_pan, for tilt (Ramp Up/Down's first point)."""
+    return pose.tilt_vc[0] if pose.tilt_vc is not None else (pose.tilt or 0.0)
+
+
+def _build_move_warmup_settings(
+    pose: _HeadPose, jitter_pan: float, jitter_tilt: float, heads_field: str,
+) -> str:
+    """A silent lead-in pose matching the move's own starting Pan/Tilt, with
+    no Dimmer/Wheel/Shutter commands (user request, 2026-07-17: "the pan and
+    tilt need to match the starting position of the subsequent effect").
+    Omitting Dimmer/Wheel/Shutter leaves the render's has_dimmers/shutter_open
+    false (see _build_warmup_head_settings), so the head silently pre-positions
+    in the dark instead of visibly snapping into place once the real move
+    opens the shutter.
+    """
+    pan_deg = _pose_start_pan(pose) + jitter_pan
+    tilt_deg = _pose_start_tilt(pose) + jitter_tilt
+    return (
+        f"{_format_pan(pan_deg)};{_format_tilt(tilt_deg)};"
+        f"PanOffset: {pose.pan_offset:.1f};TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {heads_field}"
+    )
+
+
+def _build_group_warmup_parameters(
+    head_count: int, pose: _HeadPose, jitter_pan: float, jitter_tilt: float,
+) -> dict[str, str]:
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    settings = _build_move_warmup_settings(pose, jitter_pan, jitter_tilt, heads_field)
+    per_head = {i: settings for i in range(1, head_count + 1)}
+    return _build_parameters(per_head, slider_pan_offset=f"{pose.pan_offset:.1f}")
+
+
+def _build_per_head_warmup_parameters(
+    pose: _HeadPose, jitter_pan: float, jitter_tilt: float,
+) -> dict[str, str]:
+    settings = _build_move_warmup_settings(pose, jitter_pan, jitter_tilt, heads_field="1")
+    return _build_parameters({1: settings})
+
+
 # "Strong and powerful" gate (user-confirmed 2026-07-17): the song's own
 # top energy tier, or an explicit chorus/drop role, whichever fires first.
 # Mirrors the precedent set by effect_placer._IMPACT_ENERGY_GATE (80) /
@@ -383,6 +427,47 @@ _STRONG_ROLES = frozenset({"chorus", "drop"})
 _MIN_SECTION_DURATION_MS = 8000
 # Cap so one continuous sweep/fan doesn't drag through a very long section.
 _MAX_MOVE_DURATION_MS = 20000
+# A moving head can't snap Pan/Tilt instantly -- each move gets a silent
+# lead-in placement (Pan/Tilt/PanOffset only, no Dimmer/Wheel/Shutter)
+# immediately before it, pre-positioned to the move's own starting angle
+# (user request, 2026-07-17), so the head is already aimed correctly and
+# dark by the time the real move opens the shutter, instead of visibly
+# snapping into position while lit. Shares the same duration as the crash
+# punch's warmup (``_WARMUP_DURATION_MS``, defined below) -- both are the
+# same "silent pre-position" mechanic.
+
+
+def _add_with_warmup(
+    by_target: dict[str, list[EffectPlacement]],
+    target: str,
+    warmup_params: dict[str, str],
+    move_params: dict[str, str],
+    start_ms: int,
+    end_ms: int,
+) -> None:
+    """Append ``target``'s move placement, preceded by a silent warmup
+    placement unless something already placed on this target covers the
+    warmup window (e.g. back-to-back qualifying sections with no gap --
+    the previous move's own tail already has the head lit/positioned)."""
+    existing = by_target.setdefault(target, [])
+    warmup_start_ms = max(0, start_ms - _WARMUP_DURATION_MS)
+    if warmup_start_ms < start_ms and not _has_overlap(existing, warmup_start_ms, start_ms):
+        existing.append(EffectPlacement(
+            effect_name="Moving Head",
+            xlights_id="eff_MOVINGHEAD",
+            model_or_group=target,
+            start_ms=warmup_start_ms,
+            end_ms=start_ms,
+            parameters=warmup_params,
+        ))
+    existing.append(EffectPlacement(
+        effect_name="Moving Head",
+        xlights_id="eff_MOVINGHEAD",
+        model_or_group=target,
+        start_ms=start_ms,
+        end_ms=end_ms,
+        parameters=move_params,
+    ))
 
 
 def place_moving_head_moves(
@@ -390,7 +475,8 @@ def place_moving_head_moves(
     assignments: list[SectionAssignment],
 ) -> dict[str, list[EffectPlacement]]:
     """Place one gated move per qualifying section on each moving-head
-    group's fixtures.
+    group's fixtures, each preceded by a silent warmup pre-positioning
+    lead-in.
 
     Only sections that are "strong and powerful" -- top energy tier
     (``_STRONG_ENERGY_GATE``) or an explicit chorus/drop role -- get a
@@ -407,7 +493,7 @@ def place_moving_head_moves(
 
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
-        placements: list[EffectPlacement] = []
+        by_target: dict[str, list[EffectPlacement]] = {}
         for section_index, assignment in enumerate(assignments):
             section = assignment.section
             role = (section.label or "").lower()
@@ -427,32 +513,24 @@ def place_moving_head_moves(
             end_ms = min(section.end_ms, start_ms + _MAX_MOVE_DURATION_MS)
 
             if move.target == "group":
-                params = _build_group_move_parameters(
-                    len(mh_group.head_names), move.poses[0], jitter_pan, jitter_tilt,
+                head_count = len(mh_group.head_names)
+                pose = move.poses[0]
+                move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
+                warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
+                _add_with_warmup(
+                    by_target, mh_group.name, warmup_params, move_params, start_ms, end_ms,
                 )
-                placements.append(EffectPlacement(
-                    effect_name="Moving Head",
-                    xlights_id="eff_MOVINGHEAD",
-                    model_or_group=mh_group.name,
-                    start_ms=start_ms,
-                    end_ms=end_ms,
-                    parameters=params,
-                ))
             else:
                 for head_idx, head_name in enumerate(mh_group.head_names):
                     pose = move.poses[head_idx % len(move.poses)]
-                    params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt)
-                    placements.append(EffectPlacement(
-                        effect_name="Moving Head",
-                        xlights_id="eff_MOVINGHEAD",
-                        model_or_group=head_name,
-                        start_ms=start_ms,
-                        end_ms=end_ms,
-                        parameters=params,
-                    ))
-        if placements:
-            for placement in placements:
-                result.setdefault(placement.model_or_group, []).append(placement)
+                    move_params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt)
+                    warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt)
+                    _add_with_warmup(
+                        by_target, head_name, warmup_params, move_params, start_ms, end_ms,
+                    )
+        for target, placements in by_target.items():
+            if placements:
+                result.setdefault(target, []).extend(placements)
     return result
 
 
@@ -463,9 +541,7 @@ def place_moving_head_moves(
 # the two land together. Uses the reference sequence's "Fan Pan-Static"
 # pose (Tilt 78.5, PanOffset 10.5) rather than the earlier hand-built
 # fan-out, swapped 2026-07-17 per user request to base every Moving Head
-# effect on the reference -- but keeps a flat full-on Dimmer (not the
-# reference's soft fade-in) since a crash accent wants an instant flash,
-# not a fade.
+# effect on the reference.
 _CRASH_EFFECT_DURATION_MS = 700
 _CRASH_VOCAL_EXCLUSION_MS = 500
 _CRASH_TILT_DEG = "78.5"
@@ -474,12 +550,12 @@ _CRASH_PAN_OFFSET_DEG = "10.5"
 # _CRASH_EFFECT_DURATION_MS after it (user request, 2026-07-16), matching
 # effect_placer._CRASH_LEAD_MS exactly so the two accents land together.
 _CRASH_LEAD_MS = 1000
-# A moving head can't snap Pan/Tilt instantly -- if nothing else is
-# already lighting/positioning this group right before the punch, a silent
-# "warmup" placement (Pan/Tilt/PanOffset only, no Dimmer/Wheel/Shutter)
-# runs immediately before it so the heads are already fanned out and dark
-# by the time the punch opens the shutter, instead of visibly snapping
-# into position while lit.
+# Shared with the gated moves' own warmup mechanic (_add_with_warmup,
+# above) -- if nothing else is already lighting/positioning this group
+# right before the punch, a silent "warmup" placement (Pan/Tilt/PanOffset
+# only, no Dimmer/Wheel/Shutter) runs immediately before it so the heads
+# are already fanned out and dark by the time the punch opens the
+# shutter, instead of visibly snapping into position while lit.
 _WARMUP_DURATION_MS = 500
 
 

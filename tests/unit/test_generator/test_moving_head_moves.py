@@ -6,9 +6,11 @@ from pathlib import Path
 
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.generator.moving_head import (
+    _DIMMER_FULL_ON,
     _MAX_MOVE_DURATION_MS,
     _MIN_SECTION_DURATION_MS,
     _STRONG_ENERGY_GATE,
+    _WARMUP_DURATION_MS,
     place_moving_head_moves,
 )
 from src.grouper.layout import parse_layout
@@ -123,3 +125,59 @@ class TestPlaceMovingHeadMoves:
         for key in result1:
             for p1, p2 in zip(result1[key], result2[key]):
                 assert p1.parameters == p2.parameters
+
+    def test_move_dimmer_defaults_to_instant_full_on_not_ramped(self):
+        # variation_seed=2 -> "r_static" (a per_head static pose move).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 15_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments)
+        move = result["MH1"][-1]  # last placement for this target is the move itself
+        assert _DIMMER_FULL_ON in move.parameters["E_TEXTCTRL_MH1_Settings"]
+
+    def test_warmup_precedes_static_move_and_matches_its_pose(self):
+        # A gap before the section (starts at 10_000, not 0) so the warmup
+        # has room to fire (nothing already occupies 9_500-10_000).
+        # variation_seed=2, section_index=0 -> "r_static" (Pan 45.0, Tilt 60.0).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 10_000, 25_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments)
+        placements = result["MH1"]
+        assert len(placements) == 2
+        warmup, move = placements
+        assert warmup.end_ms == move.start_ms == 10_000
+        assert abs((warmup.end_ms - warmup.start_ms) - _WARMUP_DURATION_MS) <= 25
+        settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
+        assert "Pan: 45.0" in settings
+        assert "Tilt: 60.0" in settings
+        assert "Dimmer:" not in settings
+        assert "Wheel:" not in settings
+        assert "Shutter:" not in settings
+
+    def test_warmup_matches_sweep_start_angle_not_end_angle(self):
+        # variation_seed=1, dynamic pool -> "l_r_sweep"; head 1's pose sweeps
+        # Pan -45.0 -> 45.0 (jittered -5.0 for this seed/section -> -50.0),
+        # so the warmup should aim at the sweep's start (negative), not its
+        # end (positive, ~40.0).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("verse", 10_000, 25_000, _STRONG_ENERGY_GATE, variation_seed=1)]
+        result = place_moving_head_moves(layout, assignments)
+        warmup = result["MH1"][0]
+        settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
+        assert "Pan: -50.0" in settings
+
+    def test_no_warmup_when_section_starts_at_zero(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 15_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments)
+        assert len(result["MH1"]) == 1
+
+    def test_warmup_skipped_for_back_to_back_qualifying_sections(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 15_000, 40, variation_seed=2),
+            _assignment("chorus", 15_000, 30_000, 40, variation_seed=2),
+        ]
+        result = place_moving_head_moves(layout, assignments)
+        # No gap between the two sections -> no room/need for a second
+        # warmup; exactly one placement per section, no warmups at all.
+        assert len(result["MH1"]) == 2
