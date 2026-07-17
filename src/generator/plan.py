@@ -29,7 +29,10 @@ from src.generator.effect_placer import (
 )
 from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
-from src.generator.moving_head import place_moving_head_crash_accents
+from src.generator.moving_head import (
+    place_moving_head_crash_accents,
+    place_moving_head_moves,
+)
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
 from src.story.builder import load_song_story
@@ -313,14 +316,15 @@ def build_plan(
     if config.video_path is not None:
         video_effects = _place_video_effect(props, config.video_path, hierarchy.duration_ms)
 
-    # 5d0. DMX moving-head fixture groups get no continuous placement --
-    # only the crash-accent punch below (config.moving_head_effects). A
-    # continuous per-section wash shipped in v1 and was removed 2026-07-16
-    # (lit the whole song regardless of energy/mood); see moving_head.py's
-    # module docstring. `moving_head_effects` stays an always-empty dict
-    # for now -- SequencePlan/xsq_writer keep the field wired for whenever
-    # a gated wash ships.
+    # 5d0. DMX moving-head fixture groups (config.moving_head_effects) --
+    # one gated move per section that's genuinely "strong and powerful"
+    # (top energy tier or chorus/drop role), placed per individual head
+    # model (or the group itself for the two "Fan" moves), mined from a
+    # user-provided reference sequence. See moving_head.py's module
+    # docstring for the v1 continuous-wash rationale this replaced.
     moving_head_effects: dict[str, list] = {}
+    if config.moving_head_effects and layout is not None:
+        moving_head_effects = place_moving_head_moves(layout, assignments)
 
     # 5d. Rare whole-house crash accents (config.crash_accents). Song-scoped,
     # same rationale as vocal_effects/video_effects. Computed here (before

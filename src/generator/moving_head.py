@@ -12,13 +12,22 @@ are excluded from every generic tier in grouper.generate_groups() and only
 ever receive placements from this module.
 
 v1 shipped a continuous static white wash placement per song section
-(dimmer fully on, no movement) alongside the crash-accent punch below.
-Removed 2026-07-16: with the wash always on, the MH group was lit for the
-entire song regardless of energy/mood, which didn't read well -- the group
-now only lights up for the rare `place_moving_head_crash_accents` punch and
-its warmup. A gated wash (e.g. only during high-energy sections) plus a
-variety of effect-setting choices to rotate through is deferred future
-work, not implemented here -- see CLAUDE.md Future Work.
+(dimmer fully on, no movement). Removed 2026-07-16: with the wash always
+on, the MH group was lit for the entire song regardless of energy/mood.
+
+v2 (2026-07-17) replaces that with a library of 12 moves mined directly
+from a user-provided vendor reference sequence (``MH Samples.xsq``, 4
+heads, 12 timing-labeled moves). Per the user: static poses, sweeps,
+tilt-oscillation and dimmer "stagger" chases are placed on the *individual*
+head models (MH-1..MH-N), matching the reference -- only the two "Fan"
+moves are placed on the whole group, since the reference does so too (a
+uniform per-head pose that fans out identically via PanOffset needs no
+per-head distinction). Moves are gated to sections that are genuinely
+strong (top energy tier or chorus/drop role, user-confirmed 2026-07-17) so
+most of the song stays dark, matching the same "rare, not continuous"
+design constraint that killed the v1 wash. A small deterministic pan/tilt
+jitter (keyed off variation_seed + section_index) keeps repeated strong
+sections from looking identical.
 
 Always white, never a theme/section color, by design (user request,
 2026-07-16) -- and not just for simplicity. Reading
@@ -32,30 +41,55 @@ Confirmed against real hardware: a pure-red placement (hue 0.0) rendered
 correctly, but a green placement (hue ~0.357) rendered as white because
 it didn't land close enough to that fixture's configured green slot.
 Arbitrary theme-derived hues are therefore fundamentally unreliable on a
-wheel-type fixture -- white sidesteps the problem entirely.
+wheel-type fixture -- white sidesteps the problem entirely. The reference
+sequence is itself all-white, so this carries forward without conflict.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Optional
 
 from src.analyzer.result import HierarchyResult
 from src.generator.models import EffectPlacement, SectionAssignment
-from src.grouper.layout import Layout, MovingHeadGroup, find_moving_head_groups
+from src.grouper.layout import Layout, find_moving_head_groups
 
 # "Dimmer: x1,y1,x2,y2,..." is a value-curve point list, not an opaque bit
 # pattern -- confirmed by reading MovingHeadEffect::CalculateDimmer() in the
 # real xLights source (H:\XlightsSourceDir\xLights\src-core\effects\
 # MovingHeadEffect.cpp): x is position (0-1) across the effect's duration,
-# y is dimmer output (0-1, i.e. 0-255). Two points (0,1) and (1,1) is a flat
-# curve at 100% for the whole effect -- "dimmer fully on". Matches a real
-# working effect the user copied out of xLights (2026-07-16) against their
-# own MH-1..MH-4 fixtures. Commas are pre-escaped (see _COMMA_ESCAPE below).
+# y is dimmer output (0-1, i.e. 0-255). Commas are pre-escaped (see
+# _COMMA_ESCAPE below).
 _DIMMER_FULL_ON = "0.000000&comma;1.000000&comma;1.000000&comma;1.000000"
 
+# The four distinct dimmer-curve shapes actually used across all 34 effect
+# definitions in the reference sequence (MH Samples.xsq). Every static
+# pose / sweep / tilt-oscillation move uses the soft fade-in shape below
+# (off for the first ~13% of the effect, then held on) rather than an
+# instant snap-to-full -- mined verbatim, not derived.
+_DIMMER_FADE_IN = (
+    "0.000000&comma;-0.017241&comma;0.000000&comma;0.000000&comma;"
+    "0.131964&comma;0.000000&comma;0.132964&comma;1.000000&comma;"
+    "1.000000&comma;1.000000"
+)
+# "Stagger" chase moves alternate which half of the effect a head is lit
+# for. MID: on from ~13% to ~52% of the effect (an "early/middle" pulse).
+_DIMMER_MID_PULSE = (
+    "0.000000&comma;-0.017241&comma;0.000000&comma;0.000000&comma;"
+    "0.131964&comma;0.000000&comma;0.132964&comma;1.000000&comma;"
+    "0.521964&comma;1.000000&comma;0.522964&comma;0.000000&comma;"
+    "1.000000&comma;0.000000"
+)
+# LATE: on from ~52% to 100% of the effect (the complementary half).
+_DIMMER_LATE_PULSE = (
+    "0.000000&comma;-0.017241&comma;0.000000&comma;0.000000&comma;"
+    "0.519380&comma;0.005348&comma;0.521964&comma;1.000000&comma;"
+    "1.000000&comma;1.000000"
+)
+
 # xLights always writes all 8 MH{n}_Settings slots regardless of how many
-# heads are actually in the group (confirmed in the same real working
-# effect: a 4-head group still had MH5_Settings..MH8_Settings present, just
-# empty) -- unused slots get an empty string.
+# heads are actually in the group (confirmed in a real working effect: a
+# 4-head group still had MH5_Settings..MH8_Settings present, just empty)
+# -- unused slots get an empty string.
 _MAX_HEAD_SLOTS = 8
 
 # The top-level effect settings string xLights writes is itself
@@ -63,7 +97,8 @@ _MAX_HEAD_SLOTS = 8
 # an E_TEXTCTRL_* value must be escaped or xLights splits the value on it
 # and misparses everything after. Confirmed against a real rendered
 # Moving Head sequence, where every comma inside MH{n}_Settings text is
-# written as "&comma;" rather than ",".
+# written as "&comma;" rather than ",". Value-curve descriptors
+# ("Key: Active=TRUE|...|") use "|" instead, so they need no escaping.
 _COMMA_ESCAPE = "&comma;"
 
 # Hue 0.0, saturation 0.0, value 1.0 -- pure white. See the module
@@ -72,13 +107,15 @@ _COLOR_WHITE = _COMMA_ESCAPE.join(("0.000000", "0.000000", "1.000000"))
 
 
 def _build_parameters(
-    mh_group: MovingHeadGroup,
-    per_head_settings: str,
+    per_head_settings: dict[int, str],
     *,
     slider_tilt: str = "0",
     slider_pan_offset: str = "0",
     slider_cycles: str = "1",
 ) -> dict[str, str]:
+    """``per_head_settings`` maps 1-indexed head slot -> settings text for
+    that slot; slots not present get an empty string (see _MAX_HEAD_SLOTS).
+    """
     params: dict[str, str] = {
         "B_CHOICE_BufferStyle": "Per Model Default",
         "E_NOTEBOOK1": "Position",
@@ -97,13 +134,11 @@ def _build_parameters(
         # Newer xLights builds gate the shutter DMX channel behind this
         # checkbox; without it the shutter never opens regardless of
         # Dimmer/Auto Shutter, so real hardware stays dark. Confirmed
-        # against real xLights (user, 2026-07-16) -- makes the shutter
-        # choreography seen in the vendor examples' separate "MH Shutters"
-        # channel model unnecessary for this pipeline.
+        # against real xLights (user, 2026-07-16).
         "E_CHECKBOX_MHShutterEnable": "1",
-        # Motion-pattern preset (Circle/Figure8/...) -- disabled in v1
-        # (no motion), but xLights always writes these keys with defaults
-        # regardless of whether the pattern is enabled.
+        # Motion-pattern preset (Circle/Figure8/...) -- unused by any move
+        # in this module (all motion comes from Pan/Tilt value curves
+        # instead), but xLights always writes these keys with defaults.
         "E_CHECKBOX_MHPatternEnable": "0",
         "E_CHOICE_MHPattern": "Circle",
         "E_SLIDER_MHPatternHeight": "45",
@@ -119,25 +154,322 @@ def _build_parameters(
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
     }
-    head_count = len(mh_group.head_names)
     for i in range(1, _MAX_HEAD_SLOTS + 1):
-        params[f"E_TEXTCTRL_MH{i}_Settings"] = per_head_settings if i <= head_count else ""
+        params[f"E_TEXTCTRL_MH{i}_Settings"] = per_head_settings.get(i, "")
     return params
+
+
+# ---------------------------------------------------------------------------
+# Move library -- mined verbatim from MH Samples.xsq (4 heads, 12 timing-
+# labeled moves, 2026-07-17). Pan/Tilt/PanOffset values are in degrees;
+# xLights' own value-curve encoding stores degrees*10 (Min/Max=-1800/1800),
+# which _format_pan/_format_tilt below convert to.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _HeadPose:
+    """One head's Pan/Tilt/Dimmer recipe for a single move.
+
+    Exactly one of (pan, pan_vc) and one of (tilt, tilt_vc) is set --
+    static angle vs. a value-curve sweep. ``pan_offset`` is only ever
+    non-zero for the two whole-group "Fan" moves.
+    """
+    pan: Optional[float] = None
+    pan_vc: Optional[tuple[float, float]] = None  # (start_deg, end_deg), Ramp
+    tilt: Optional[float] = None
+    tilt_vc: Optional[tuple[float, float, float]] = None  # (lo, hi, lo), Ramp Up/Down
+    pan_offset: float = 0.0
+    dimmer: str = _DIMMER_FADE_IN
+
+
+@dataclass(frozen=True)
+class _Move:
+    name: str
+    target: str  # "group" | "per_head"
+    # target="per_head": one pose per physical head role (cycled if the
+    # real group has more/fewer heads than the reference's 4).
+    # target="group": a single pose applied identically to every head.
+    poses: tuple[_HeadPose, ...]
+
+
+# The reference's 4 head roles, in the same "L pair / R pair" arrangement
+# observed in every static/crisscross move (mined, not derived): heads 1-2
+# fan left by default, heads 3-4 fan right.
+MOVE_LIBRARY: dict[str, _Move] = {
+    "l_r_static": _Move("l_r_static", "per_head", (
+        _HeadPose(pan=-45.0, tilt=60.0), _HeadPose(pan=-45.0, tilt=60.0),
+        _HeadPose(pan=45.0, tilt=60.0), _HeadPose(pan=45.0, tilt=60.0),
+    )),
+    "l_static": _Move("l_static", "per_head", (
+        _HeadPose(pan=-45.0, tilt=60.0), _HeadPose(pan=-45.0, tilt=60.0),
+        _HeadPose(pan=-45.0, tilt=60.0), _HeadPose(pan=-45.0, tilt=60.0),
+    )),
+    "r_static": _Move("r_static", "per_head", (
+        _HeadPose(pan=45.0, tilt=60.0), _HeadPose(pan=45.0, tilt=60.0),
+        _HeadPose(pan=45.0, tilt=60.0), _HeadPose(pan=45.0, tilt=60.0),
+    )),
+    "l_r_crisscross": _Move("l_r_crisscross", "per_head", (
+        _HeadPose(pan=45.0, tilt=60.0), _HeadPose(pan=-45.0, tilt=60.0),
+        _HeadPose(pan=45.0, tilt=60.0), _HeadPose(pan=-45.0, tilt=60.0),
+    )),
+    "ll_rr_crisscross": _Move("ll_rr_crisscross", "per_head", (
+        _HeadPose(pan=45.0, tilt=60.0), _HeadPose(pan=45.0, tilt=60.0),
+        _HeadPose(pan=-45.0, tilt=60.0), _HeadPose(pan=-45.0, tilt=60.0),
+    )),
+    "l_r_sweep": _Move("l_r_sweep", "per_head", (
+        _HeadPose(pan_vc=(-45.0, 45.0), tilt=60.0),
+        _HeadPose(pan_vc=(45.0, -45.0), tilt=60.0),
+        _HeadPose(pan_vc=(-45.0, 45.0), tilt=60.0),
+        _HeadPose(pan_vc=(-45.0, 45.0), tilt=60.0),
+    )),
+    "r_l_sweep": _Move("r_l_sweep", "per_head", (
+        _HeadPose(pan_vc=(45.0, -45.0), tilt=60.0),
+        _HeadPose(pan_vc=(45.0, -45.0), tilt=60.0),
+        _HeadPose(pan_vc=(45.0, -45.0), tilt=60.0),
+        _HeadPose(pan_vc=(45.0, -45.0), tilt=60.0),
+    )),
+    "u_d_tilt": _Move("u_d_tilt", "per_head", tuple(
+        _HeadPose(pan=-45.0, tilt_vc=(25.0, 80.0, 25.0)) for _ in range(4)
+    )),
+    "stagger_o_i": _Move("stagger_o_i", "per_head", (
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
+    )),
+    "stagger_i_o": _Move("stagger_i_o", "per_head", (
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
+    )),
+    "fan_pan_static": _Move("fan_pan_static", "group", (
+        _HeadPose(pan=0.0, tilt=78.5, pan_offset=10.5),
+    )),
+    "fan_pan_move": _Move("fan_pan_move", "group", (
+        _HeadPose(pan=0.0, tilt_vc=(25.0, 80.0, 25.0), pan_offset=10.5),
+    )),
+}
+
+# Rotation pools for the two gate tiers (see place_moving_head_moves).
+# Top-energy sections get the more dynamic motion moves; chorus/drop
+# sections that don't clear the energy gate get static/stagger variety.
+_DYNAMIC_MOVES = ("fan_pan_move", "l_r_sweep", "r_l_sweep", "u_d_tilt")
+_STATIC_MOVES = (
+    "fan_pan_static", "l_r_static", "r_static", "l_static",
+    "l_r_crisscross", "ll_rr_crisscross", "stagger_o_i", "stagger_i_o",
+)
+
+
+def _format_pan(deg: float) -> str:
+    return f"Pan: {deg:.1f}"
+
+
+def _format_pan_vc(start_deg: float, end_deg: float) -> str:
+    return (
+        "Pan VC: Active=TRUE|Id=ID_VALUECURVE_MHPan|Type=Ramp|"
+        f"Min=-1800.00|Max=1800.00|P1={start_deg * 10:.2f}|"
+        f"P2={end_deg * 10:.2f}|RV=TRUE|"
+    )
+
+
+def _format_tilt(deg: float) -> str:
+    return f"Tilt: {deg:.1f}"
+
+
+def _format_tilt_vc(lo_deg: float, hi_deg: float, lo2_deg: float) -> str:
+    return (
+        "Tilt VC: Active=TRUE|Id=ID_VALUECURVE_MHTilt|Type=Ramp Up/Down|"
+        f"Min=-1800.00|Max=1800.00|P1={lo_deg * 10:.2f}|"
+        f"P2={hi_deg * 10:.2f}|P3={lo2_deg * 10:.2f}|RV=TRUE|"
+    )
+
+
+def _build_pose_settings(pose: _HeadPose, jitter_pan: float, jitter_tilt: float, heads_field: str) -> str:
+    """One MH{n}_Settings text-DSL value, jittered.
+
+    ``heads_field`` is the comma-joined list of head indices this text
+    applies to -- "1" for an individual head model's own placement
+    (always just itself), or every index in the group ("1,2,3,4") for a
+    group-targeted move, matching the reference sequence's group effects
+    (Fan Pan-Static/-Move), where every slot's text lists all heads
+    redundantly rather than just its own slot number.
+
+    Key order matches the reference sequence's Position-tab effects
+    (Wheel;Shutter;Dimmer;Pan;Tilt;PanOffset;TiltOffset;Groupings;Cycles;
+    Heads) -- MovingHeadEffect parses this as a semicolon-delimited
+    ``Key: value`` DSL, not positionally, so order has no render effect;
+    kept consistent here purely for readability/diffing against the
+    reference.
+    """
+    if pose.pan_vc is not None:
+        start_deg, end_deg = pose.pan_vc
+        pan_part = _format_pan_vc(start_deg + jitter_pan, end_deg + jitter_pan)
+    else:
+        pan_part = _format_pan((pose.pan or 0.0) + jitter_pan)
+
+    if pose.tilt_vc is not None:
+        lo_deg, hi_deg, lo2_deg = pose.tilt_vc
+        tilt_part = _format_tilt_vc(lo_deg + jitter_tilt, hi_deg + jitter_tilt, lo2_deg + jitter_tilt)
+    else:
+        tilt_part = _format_tilt((pose.tilt or 0.0) + jitter_tilt)
+
+    return (
+        f"Wheel: {_COLOR_WHITE};"
+        "Shutter: On;"
+        f"Dimmer: {pose.dimmer};"
+        f"{pan_part};"
+        f"{tilt_part};"
+        f"PanOffset: {pose.pan_offset:.1f};TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {heads_field}"
+    )
+
+
+# Deterministic pan/tilt variety so repeated strong sections don't look
+# identical (user request, 2026-07-17) -- small enough to stay within the
+# reference's own observed safe ranges (pan +-45 base, tilt 25-80 base).
+_PAN_JITTER_DEG = (-10.0, -5.0, 0.0, 5.0, 10.0)
+_TILT_JITTER_DEG = (-5.0, -2.0, 0.0, 2.0, 5.0)
+
+
+def _jitter(variation_seed: int, section_index: int) -> tuple[float, float]:
+    pan = _PAN_JITTER_DEG[(variation_seed + section_index) % len(_PAN_JITTER_DEG)]
+    tilt = _TILT_JITTER_DEG[(variation_seed + section_index * 2) % len(_TILT_JITTER_DEG)]
+    return pan, tilt
+
+
+def _choose_move(section_index: int, variation_seed: int, *, dynamic: bool) -> str:
+    pool = _DYNAMIC_MOVES if dynamic else _STATIC_MOVES
+    return pool[(variation_seed + section_index) % len(pool)]
+
+
+def _build_group_move_parameters(
+    head_count: int, pose: "_HeadPose", jitter_pan: float, jitter_tilt: float,
+) -> dict[str, str]:
+    """A "Fan" move's single pose, written identically into every head's
+    slot on the group effect itself (matches the reference sequence,
+    where all 4 heads carry the exact same Fan Pan-Static/-Move text,
+    each listing every head index)."""
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field)
+    per_head = {i: settings for i in range(1, head_count + 1)}
+    return _build_parameters(per_head, slider_pan_offset=f"{pose.pan_offset:.1f}")
+
+
+def _build_per_head_move_parameters(
+    pose: "_HeadPose", jitter_pan: float, jitter_tilt: float,
+) -> dict[str, str]:
+    """A single head's own placement: only slot 1 is filled, and its
+    "Heads:" field always says just "1" -- a per-head placement always
+    describes exactly one head, itself. (A group-index number here, e.g.
+    "Heads: 2" on MH-2's own placement, is a copy-paste artifact in the
+    reference sequence, not meaningful behavior -- user confirmation,
+    2026-07-17.)"""
+    settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field="1")
+    return _build_parameters({1: settings})
+
+
+# "Strong and powerful" gate (user-confirmed 2026-07-17): the song's own
+# top energy tier, or an explicit chorus/drop role, whichever fires first.
+# Mirrors the precedent set by effect_placer._IMPACT_ENERGY_GATE (80) /
+# _WHOLE_HOUSE_HIGH_ENERGY_GATE (85) for "this section is a standout".
+_STRONG_ENERGY_GATE = 80
+_STRONG_ROLES = frozenset({"chorus", "drop"})
+# A move needs room to read -- shorter sections get skipped rather than
+# truncated (a 10s reference move compressed into 3s reads as a glitch,
+# not a wash).
+_MIN_SECTION_DURATION_MS = 8000
+# Cap so one continuous sweep/fan doesn't drag through a very long section.
+_MAX_MOVE_DURATION_MS = 20000
+
+
+def place_moving_head_moves(
+    layout: Layout,
+    assignments: list[SectionAssignment],
+) -> dict[str, list[EffectPlacement]]:
+    """Place one gated move per qualifying section on each moving-head
+    group's fixtures.
+
+    Only sections that are "strong and powerful" -- top energy tier
+    (``_STRONG_ENERGY_GATE``) or an explicit chorus/drop role -- get a
+    move; everything else stays dark, matching the same rarity design
+    that removed the v1 continuous wash (see module docstring). Static
+    poses, sweeps, tilt-oscillation, and dimmer "stagger" chases are
+    placed per individual head model (mirroring the reference sequence);
+    the two "Fan" moves are placed on the group itself. Returns {} when
+    the layout has no moving-head group or no section qualifies.
+    """
+    mh_groups = find_moving_head_groups(layout)
+    if not mh_groups:
+        return {}
+
+    result: dict[str, list[EffectPlacement]] = {}
+    for mh_group in mh_groups:
+        placements: list[EffectPlacement] = []
+        for section_index, assignment in enumerate(assignments):
+            section = assignment.section
+            role = (section.label or "").lower()
+            is_strong = section.energy_score >= _STRONG_ENERGY_GATE or role in _STRONG_ROLES
+            duration_ms = section.end_ms - section.start_ms
+            if not is_strong or duration_ms < _MIN_SECTION_DURATION_MS:
+                continue
+
+            move_name = _choose_move(
+                section_index, assignment.variation_seed,
+                dynamic=section.energy_score >= _STRONG_ENERGY_GATE,
+            )
+            move = MOVE_LIBRARY[move_name]
+            jitter_pan, jitter_tilt = _jitter(assignment.variation_seed, section_index)
+
+            start_ms = section.start_ms
+            end_ms = min(section.end_ms, start_ms + _MAX_MOVE_DURATION_MS)
+
+            if move.target == "group":
+                params = _build_group_move_parameters(
+                    len(mh_group.head_names), move.poses[0], jitter_pan, jitter_tilt,
+                )
+                placements.append(EffectPlacement(
+                    effect_name="Moving Head",
+                    xlights_id="eff_MOVINGHEAD",
+                    model_or_group=mh_group.name,
+                    start_ms=start_ms,
+                    end_ms=end_ms,
+                    parameters=params,
+                ))
+            else:
+                for head_idx, head_name in enumerate(mh_group.head_names):
+                    pose = move.poses[head_idx % len(move.poses)]
+                    params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt)
+                    placements.append(EffectPlacement(
+                        effect_name="Moving Head",
+                        xlights_id="eff_MOVINGHEAD",
+                        model_or_group=head_name,
+                        start_ms=start_ms,
+                        end_ms=end_ms,
+                        parameters=params,
+                    ))
+        if placements:
+            for placement in placements:
+                result.setdefault(placement.model_or_group, []).append(placement)
+    return result
 
 
 # Rare whole-house crash accent (see src/analyzer/crash_accents.py and
 # effect_placer._place_crash_accents, which places a matching Shockwave on
 # 01_BASE_All_FADES at the same marks) -- a short fan-out Pan/Tilt punch on
 # the moving-head group, same duration/exclusion rules as the Shockwave so
-# the two land together. Static pose (no path/pattern), confirmed against
-# a real working effect the user copied out of xLights (2026-07-16): with
-# Cycles/PathDef/Pattern all inactive, RenderMovingHead() never touches
-# pan_pos/tilt_pos again after CalculatePosition(), so the fanned pose
-# holds for the whole placement rather than animating.
+# the two land together. Uses the reference sequence's "Fan Pan-Static"
+# pose (Tilt 78.5, PanOffset 10.5) rather than the earlier hand-built
+# fan-out, swapped 2026-07-17 per user request to base every Moving Head
+# effect on the reference -- but keeps a flat full-on Dimmer (not the
+# reference's soft fade-in) since a crash accent wants an instant flash,
+# not a fade.
 _CRASH_EFFECT_DURATION_MS = 700
 _CRASH_VOCAL_EXCLUSION_MS = 500
-_CRASH_TILT_DEG = "30"
-_CRASH_PAN_OFFSET_DEG = "40"
+_CRASH_TILT_DEG = "78.5"
+_CRASH_PAN_OFFSET_DEG = "10.5"
 # The punch starts this long before the crash mark and still ends
 # _CRASH_EFFECT_DURATION_MS after it (user request, 2026-07-16), matching
 # effect_placer._CRASH_LEAD_MS exactly so the two accents land together.
@@ -152,33 +484,35 @@ _WARMUP_DURATION_MS = 500
 
 
 def _build_crash_head_settings(head_count: int) -> str:
-    heads = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    # Group-targeted text: every slot lists every head index, matching the
+    # reference sequence's group effects (Fan Pan-Static/-Move) rather
+    # than a per-slot number.
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     return (
         f"Dimmer: {_DIMMER_FULL_ON};"
         f"Wheel: {_COLOR_WHITE};"
-        "AutoShutter: true;"
         "Shutter: On;"
         f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG};"
         f"PanOffset: {_CRASH_PAN_OFFSET_DEG};TiltOffset: 0.0;"
         "Groupings: 1;Cycles: 1.0;"
-        f"Heads: {heads}"
+        f"Heads: {heads_field}"
     )
 
 
 def _build_warmup_head_settings(head_count: int) -> str:
     """Same Pan/Tilt/PanOffset pose as ``_build_crash_head_settings``, with
-    no Dimmer/Wheel/AutoShutter/Shutter commands. Confirmed by reading
+    no Dimmer/Wheel/Shutter commands. Confirmed by reading
     RenderMovingHead() in the real xLights source: omitting those commands
     leaves ``has_dimmers``/``shutter_open`` false, so the render never
     touches the dimmer or shutter channels at all -- they simply keep
     whatever value was already there (dark, if nothing else is active).
     """
-    heads = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     return (
         f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG};"
         f"PanOffset: {_CRASH_PAN_OFFSET_DEG};TiltOffset: 0.0;"
         "Groupings: 1;Cycles: 1.0;"
-        f"Heads: {heads}"
+        f"Heads: {heads_field}"
     )
 
 
@@ -203,10 +537,9 @@ def place_moving_head_crash_accents(
     exactly (same lead-in/duration, same vocal/fade exclusion windows) so
     the two accents land together -- see that function's docstring for the
     rationale behind the exclusion windows themselves. ``existing_placements``
-    lets a future gated wash suppress the warmup where it already covers the
-    punch's lead-in window; with no wash currently placed, every crash mark
-    gets its own warmup. Returns {} when the layout has no moving-head group
-    or there are no crash marks.
+    lets a gated wash (place_moving_head_moves) suppress the warmup where it
+    already covers the punch's lead-in window. Returns {} when the layout has
+    no moving-head group or there are no crash marks.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups or not hierarchy.crash_accents:
@@ -227,14 +560,15 @@ def place_moving_head_crash_accents(
 
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
-        per_head_settings = _build_crash_head_settings(len(mh_group.head_names))
+        head_count = len(mh_group.head_names)
+        crash_settings = _build_crash_head_settings(head_count)
         params = _build_parameters(
-            mh_group, per_head_settings,
+            {i: crash_settings for i in range(1, head_count + 1)},
             slider_tilt="300", slider_pan_offset="400", slider_cycles="10",
         )
-        warmup_settings = _build_warmup_head_settings(len(mh_group.head_names))
+        warmup_settings = _build_warmup_head_settings(head_count)
         warmup_params = _build_parameters(
-            mh_group, warmup_settings,
+            {i: warmup_settings for i in range(1, head_count + 1)},
             slider_tilt="300", slider_pan_offset="400",
         )
         group_existing = existing_placements.get(mh_group.name, [])

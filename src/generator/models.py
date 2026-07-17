@@ -248,7 +248,7 @@ class GenerationConfig:
     tier_selection: bool = True         # Energy/mood-driven single partition tier per section
     crash_accents: bool = True          # Rare whole-house Shockwave on 01_BASE_All_FADES at extreme percussive transients
     picture_effects: bool = True        # Cycle catalog images (show_dir/Images) on matrix/tree props
-    moving_head_effects: bool = True    # Static per-section color wash on DMX moving-head fixture groups
+    moving_head_effects: bool = True    # Gated reference-sequence moves + crash punch on DMX moving-head fixture groups
     # Nominal fields (spec 047) — stored but not read in Phase 3. Phase 4
     # (spec 048 follow-up) will wire them into build_plan/theme_selector so
     # the Brief tab can drop its client-side MOOD_DEFAULTS ruleset.

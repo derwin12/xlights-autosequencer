@@ -63,10 +63,9 @@ class TestPlaceMovingHeadCrashAccents:
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
         settings = _punch(result["MH GRP"]).parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Tilt: 30" in settings
-        assert "PanOffset: 40" in settings
+        assert "Tilt: 78.5" in settings
+        assert "PanOffset: 10.5" in settings
         assert "Wheel: 0.000000&comma;0.000000&comma;1.000000" in settings
-        assert "AutoShutter: true" in settings
         assert "Shutter: On" in settings
 
     def test_warmup_inserted_when_nothing_already_there(self):
@@ -80,8 +79,8 @@ class TestPlaceMovingHeadCrashAccents:
         punch = _punch(placements)
         warmup = _warmup(placements)
         settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Tilt: 30" in settings
-        assert "PanOffset: 40" in settings
+        assert "Tilt: 78.5" in settings
+        assert "PanOffset: 10.5" in settings
         assert "Dimmer:" not in settings
         assert "Wheel:" not in settings
         assert "Shutter:" not in settings
