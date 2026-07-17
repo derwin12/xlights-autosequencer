@@ -68,6 +68,40 @@ class TestPlaceMovingHeadCrashAccents:
         assert "Wheel: 0.000000&comma;0.000000&comma;1.000000" in settings
         assert "Shutter: On" in settings
 
+    def test_punch_dimmer_is_a_random_flicker_not_a_flat_flash(self):
+        # Mined from the user's own preset (mhpresets/Random.xmh, 2026-07-17):
+        # a point list bouncing between near-off and near-on, not a flat
+        # "always on" flash.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        settings = _punch(result["MH GRP"]).parameters["E_TEXTCTRL_MH1_Settings"]
+        # "&comma;" itself ends in a literal ';', so protect it before
+        # splitting on ';' (the real per-command delimiter).
+        safe = settings.replace("&comma;", "\x00")
+        dimmer_value = safe.split("Dimmer: ", 1)[1].split(";", 1)[0]
+        values = [float(v) for v in dimmer_value.replace("\x00", ",").split(",")]
+        assert values[0:2] == [0.0, 1.0]
+        assert values[-2:] == [1.0, 1.0]
+        y_values = values[1::2]
+        assert any(y < 0.2 for y in y_values)  # at least one real dip
+        assert any(y > 0.9 for y in y_values)  # at least one real peak
+
+    def test_punch_dimmer_is_deterministic_per_mark(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result1 = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        result2 = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        settings1 = _punch(result1["MH GRP"]).parameters["E_TEXTCTRL_MH1_Settings"]
+        settings2 = _punch(result2["MH GRP"]).parameters["E_TEXTCTRL_MH1_Settings"]
+        assert settings1 == settings2
+
+    def test_two_crash_marks_get_different_dimmer_flicker(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([10_000, 50_000]), vocal_words=None)
+        punches = [p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]]
+        assert len(punches) == 2
+        settings = [p.parameters["E_TEXTCTRL_MH1_Settings"] for p in punches]
+        assert settings[0] != settings[1]
+
     def test_warmup_inserted_when_nothing_already_there(self):
         # No existing_placements passed and nothing before it on the
         # timeline -> the warmup uses the full preferred length, not a

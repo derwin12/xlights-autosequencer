@@ -746,13 +746,52 @@ _CRASH_LEAD_MS = 1000
 # mark loop below).
 
 
-def _build_crash_head_settings(head_count: int) -> str:
+# Number of down-up notches in the crash punch's randomized flicker
+# Dimmer curve (see _random_dimmer_curve) -- tuned for the punch's own
+# ~700ms duration (_CRASH_EFFECT_DURATION_MS): dense enough to read as a
+# stutter/strobe-burst, not so dense it blurs into an unreadable flicker.
+_CRASH_DIMMER_NOTCH_COUNT = 4
+
+
+def _random_dimmer_curve(seed: int, notch_count: int = _CRASH_DIMMER_NOTCH_COUNT) -> str:
+    """A hand-drawn-style random flicker Dimmer curve -- full-on at both
+    ends, dipping to near-off at ``notch_count`` jittered points in
+    between, mined from the user's own preset (mhpresets/Random.xmh,
+    2026-07-17): a point list, not a parametric curve type, alternating
+    between near-0 and near-1 y-values at irregular x positions rather
+    than a single flat "always on" flash. Deterministic per ``seed`` (the
+    crash mark's own time_ms) so regenerating the same song reproduces
+    the same flicker pattern.
+    """
+    def _jitter(i: int, salt: int) -> float:
+        x = (seed * 2654435761 + i * 40503 + salt * 97) & 0xFFFFFFFF
+        return (x % 1000) / 1000.0
+
+    points: list[tuple[float, float]] = [(0.0, 1.0)]
+    for i in range(notch_count):
+        center = (i + 1) / (notch_count + 1)
+        center += (_jitter(i, 1) - 0.5) * 0.1
+        down_x = max(0.01, min(0.98, center))
+        up_x = min(0.99, down_x + 0.02 + _jitter(i, 2) * 0.03)
+        low_y = _jitter(i, 3) * 0.15
+        points.append((down_x, low_y))
+        points.append((up_x, 1.0))
+    points.append((1.0, 1.0))
+
+    flat: list[str] = []
+    for x, y in points:
+        flat.append(f"{x:.6f}")
+        flat.append(f"{y:.6f}")
+    return _COMMA_ESCAPE.join(flat)
+
+
+def _build_crash_head_settings(head_count: int, dimmer_curve: str) -> str:
     # Group-targeted text: every slot lists every head index, matching the
     # reference sequence's group effects (Fan Pan-Static/-Move) rather
     # than a per-slot number.
     heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     return (
-        f"Dimmer: {_DIMMER_FULL_ON};"
+        f"Dimmer: {dimmer_curve};"
         f"Wheel: {_COLOR_WHITE};"
         "Shutter: On;"
         f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG};"
@@ -832,11 +871,6 @@ def place_moving_head_crash_accents(
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
         head_count = len(mh_group.head_names)
-        crash_settings = _build_crash_head_settings(head_count)
-        params = _build_parameters(
-            {i: crash_settings for i in range(1, head_count + 1)},
-            slider_tilt="300", slider_pan_offset="400", slider_cycles="10",
-        )
         warmup_settings = _build_warmup_head_settings(head_count)
         warmup_params = _build_parameters(
             {i: warmup_settings for i in range(1, head_count + 1)},
@@ -861,6 +895,15 @@ def place_moving_head_crash_accents(
             end_ms = min(mark.time_ms + _CRASH_EFFECT_DURATION_MS, hierarchy.duration_ms)
             if end_ms <= start_ms:
                 continue
+            # Randomized per mark (deterministic on mark.time_ms) so
+            # back-to-back crashes in the same song don't all flicker
+            # identically.
+            dimmer_curve = _random_dimmer_curve(mark.time_ms)
+            crash_settings = _build_crash_head_settings(head_count, dimmer_curve)
+            params = _build_parameters(
+                {i: crash_settings for i in range(1, head_count + 1)},
+                slider_tilt="300", slider_pan_offset="400", slider_cycles="10",
+            )
             # Includes crash marks already placed earlier in this same
             # loop, not just placements from place_moving_head_moves --
             # otherwise a close pair of crash marks could overlap each
