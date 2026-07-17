@@ -181,3 +181,62 @@ class TestPlaceMovingHeadMoves:
         # No gap between the two sections -> no room/need for a second
         # warmup; exactly one placement per section, no warmups at all.
         assert len(result["MH1"]) == 2
+
+    def test_group_and_per_head_placements_never_overlap(self):
+        # Realistic, non-overlapping sections. variation_seed=0:
+        # section 0 (verse, top energy) -> dynamic pool idx0 "fan_pan_move"
+        # (group); section 1 (chorus, low energy) -> static pool idx1
+        # "l_r_static" (per_head). Global invariant: nothing placed on
+        # "MH GRP" may overlap anything placed on MH1/MH2 (same channels).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),
+            _assignment("chorus", 15_000, 30_000, 40, variation_seed=0),
+        ]
+        result = place_moving_head_moves(layout, assignments)
+        group_placements = result.get("MH GRP", [])
+        head_placements = [p for name in ("MH1", "MH2") for p in result.get(name, [])]
+        for g in group_placements:
+            for h in head_placements:
+                assert not (g.start_ms < h.end_ms and g.end_ms > h.start_ms), (
+                    f"overlap: group [{g.start_ms},{g.end_ms}) vs head [{h.start_ms},{h.end_ms})"
+                )
+
+    def test_per_head_move_delayed_when_group_move_overlaps_its_natural_start(self):
+        # Adversarial input: section 1 (per_head move) is given a start
+        # time that overlaps section 0's (group move) natural end -- e.g.
+        # a hypothetical rounding/boundary bug upstream. The per-head move
+        # must be pushed to start no earlier than the group move's actual
+        # end, never overlap it (user's "start the other later" compromise,
+        # 2026-07-17).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move, ends 15_000
+            _assignment("chorus", 10_000, 25_000, 40, variation_seed=0),  # per_head l_r_static, overlaps by 5s
+        ]
+        result = place_moving_head_moves(layout, assignments)
+        group_move = result["MH GRP"][0]
+        assert group_move.end_ms == 15_000
+        mh1_placements = result["MH1"]
+        assert len(mh1_placements) == 1  # delayed past the group's end -> no room for a warmup either
+        assert mh1_placements[0].start_ms == 15_000
+        assert not (group_move.start_ms < mh1_placements[0].end_ms and group_move.end_ms > mh1_placements[0].start_ms)
+
+    def test_group_move_delayed_when_per_head_move_overlaps_its_natural_start(self):
+        # Symmetric to the above: a per-head move first (variation_seed=1,
+        # section 0 -> static pool idx1 "l_r_static"), then a group move
+        # (variation_seed=3, section 1 -> dynamic pool idx0 "fan_pan_move")
+        # whose natural start overlaps the per-head move's end.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 15_000, 40, variation_seed=1),
+            _assignment("verse", 10_000, 25_000, _STRONG_ENERGY_GATE, variation_seed=3),
+        ]
+        result = place_moving_head_moves(layout, assignments)
+        head_placements = [p for name in ("MH1", "MH2") for p in result.get(name, [])]
+        group_placements = result.get("MH GRP", [])
+        for h in head_placements:
+            for g in group_placements:
+                assert not (g.start_ms < h.end_ms and g.end_ms > h.start_ms), (
+                    f"overlap: head [{h.start_ms},{h.end_ms}) vs group [{g.start_ms},{g.end_ms})"
+                )

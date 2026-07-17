@@ -444,14 +444,18 @@ def _add_with_warmup(
     move_params: dict[str, str],
     start_ms: int,
     end_ms: int,
+    occupied_until_ms: int,
 ) -> None:
     """Append ``target``'s move placement, preceded by a silent warmup
-    placement unless something already placed on this target covers the
-    warmup window (e.g. back-to-back qualifying sections with no gap --
-    the previous move's own tail already has the head lit/positioned)."""
+    unless the gap left after ``occupied_until_ms`` is too small to fit
+    one. ``occupied_until_ms`` is the latest time this target's actual
+    DMX channel(s) are occupied by ANY prior placement -- group or
+    per-head (see the ``channel_end`` tracking in place_moving_head_moves)
+    -- not just prior placements under this exact ``target`` key, since a
+    per-head move and a group move ultimately drive the same channels."""
     existing = by_target.setdefault(target, [])
-    warmup_start_ms = max(0, start_ms - _WARMUP_DURATION_MS)
-    if warmup_start_ms < start_ms and not _has_overlap(existing, warmup_start_ms, start_ms):
+    warmup_start_ms = max(occupied_until_ms, start_ms - _WARMUP_DURATION_MS)
+    if warmup_start_ms < start_ms:
         existing.append(EffectPlacement(
             effect_name="Moving Head",
             xlights_id="eff_MOVINGHEAD",
@@ -486,6 +490,19 @@ def place_moving_head_moves(
     placed per individual head model (mirroring the reference sequence);
     the two "Fan" moves are placed on the group itself. Returns {} when
     the layout has no moving-head group or no section qualifies.
+
+    A group-targeted move (e.g. "Fan Pan-Static") and a per-head move on
+    one of that group's members ultimately drive the exact same DMX
+    channels, so the two must never touch in time, even at an exact
+    boundary -- confirmed by the user finding an overlap warning in real
+    xLights between "Moving Heads Group" and MH-1..MH-4 placements
+    abutting with no gap (2026-07-17). ``channel_end`` tracks, per
+    physical head, the latest time its channels are occupied by ANY
+    placement so far (a group move stamps every head; a per-head move
+    stamps just its own) -- a move whose natural section-derived start
+    would land before that time gets pushed later instead (the "start the
+    other later" half of the user's compromise), and is dropped entirely
+    if the forced push would eat the whole section.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups:
@@ -494,6 +511,7 @@ def place_moving_head_moves(
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
         by_target: dict[str, list[EffectPlacement]] = {}
+        channel_end: dict[str, int] = {name: 0 for name in mh_group.head_names}
         for section_index, assignment in enumerate(assignments):
             section = assignment.section
             role = (section.label or "").lower()
@@ -509,25 +527,39 @@ def place_moving_head_moves(
             move = MOVE_LIBRARY[move_name]
             jitter_pan, jitter_tilt = _jitter(assignment.variation_seed, section_index)
 
-            start_ms = section.start_ms
-            end_ms = min(section.end_ms, start_ms + _MAX_MOVE_DURATION_MS)
+            natural_start_ms = section.start_ms
+            natural_end_ms = min(section.end_ms, natural_start_ms + _MAX_MOVE_DURATION_MS)
 
             if move.target == "group":
-                head_count = len(mh_group.head_names)
+                heads = mh_group.head_names
+                min_start_ms = max((channel_end[h] for h in heads), default=0)
+                start_ms = max(natural_start_ms, min_start_ms)
+                if start_ms >= natural_end_ms:
+                    continue  # no room left after the forced gap
+                head_count = len(heads)
                 pose = move.poses[0]
                 move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
                 warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
                 _add_with_warmup(
-                    by_target, mh_group.name, warmup_params, move_params, start_ms, end_ms,
+                    by_target, mh_group.name, warmup_params, move_params,
+                    start_ms, natural_end_ms, min_start_ms,
                 )
+                for h in heads:
+                    channel_end[h] = natural_end_ms
             else:
                 for head_idx, head_name in enumerate(mh_group.head_names):
                     pose = move.poses[head_idx % len(move.poses)]
+                    min_start_ms = channel_end[head_name]
+                    start_ms = max(natural_start_ms, min_start_ms)
+                    if start_ms >= natural_end_ms:
+                        continue
                     move_params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt)
                     warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt)
                     _add_with_warmup(
-                        by_target, head_name, warmup_params, move_params, start_ms, end_ms,
+                        by_target, head_name, warmup_params, move_params,
+                        start_ms, natural_end_ms, min_start_ms,
                     )
+                    channel_end[head_name] = natural_end_ms
         for target, placements in by_target.items():
             if placements:
                 result.setdefault(target, []).extend(placements)
@@ -613,9 +645,17 @@ def place_moving_head_crash_accents(
     exactly (same lead-in/duration, same vocal/fade exclusion windows) so
     the two accents land together -- see that function's docstring for the
     rationale behind the exclusion windows themselves. ``existing_placements``
-    lets a gated wash (place_moving_head_moves) suppress the warmup where it
-    already covers the punch's lead-in window. Returns {} when the layout has
-    no moving-head group or there are no crash marks.
+    is normally the output of place_moving_head_moves -- checked across
+    EVERY key (the group's own name AND every individual head model), not
+    just the group's, since a per-head move and this group-targeted punch
+    drive the same DMX channels (same root issue as place_moving_head_moves'
+    channel_end tracking; user-observed real xLights overlap warning,
+    2026-07-17). A crash mark landing while a per-head move is still
+    running is skipped outright rather than shifted -- unlike the gated
+    moves (anchored to a section, free to slide within it), a crash is
+    anchored to a precise audio transient, so delaying it would drift it
+    off the beat it's meant to land on. Returns {} when the layout has no
+    moving-head group or there are no crash marks.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups or not hierarchy.crash_accents:
@@ -647,7 +687,14 @@ def place_moving_head_crash_accents(
             {i: warmup_settings for i in range(1, head_count + 1)},
             slider_tilt="300", slider_pan_offset="400",
         )
-        group_existing = existing_placements.get(mh_group.name, [])
+        # Every existing placement that touches this group's channels --
+        # the group's own key AND every individual head's, since a
+        # per-head move (place_moving_head_moves) drives the same
+        # channels this punch does.
+        relevant_keys = (mh_group.name, *mh_group.head_names)
+        channel_existing = [
+            p for key in relevant_keys for p in existing_placements.get(key, [])
+        ]
 
         placements: list[EffectPlacement] = []
         for mark in hierarchy.crash_accents:
@@ -659,11 +706,13 @@ def place_moving_head_crash_accents(
             end_ms = min(mark.time_ms + _CRASH_EFFECT_DURATION_MS, hierarchy.duration_ms)
             if end_ms <= start_ms:
                 continue
+            if _has_overlap(channel_existing, start_ms, end_ms):
+                continue  # a per-head move is already driving these channels
 
             warmup_end_ms = start_ms
             warmup_start_ms = max(0, warmup_end_ms - _WARMUP_DURATION_MS)
             if warmup_start_ms < warmup_end_ms and not _has_overlap(
-                group_existing, warmup_start_ms, warmup_end_ms
+                channel_existing, warmup_start_ms, warmup_end_ms
             ):
                 placements.append(EffectPlacement(
                     effect_name="Moving Head",

@@ -88,13 +88,17 @@ class TestPlaceMovingHeadCrashAccents:
         assert abs((warmup.end_ms - warmup.start_ms) - _WARMUP_DURATION_MS) <= 25
 
     def test_warmup_skipped_when_wash_already_covers_the_window(self):
+        # The existing placement ends exactly where the punch itself
+        # starts -- it covers the warmup's lead-in window but does not
+        # reach into the punch's own duration, so only the warmup is
+        # skipped and the punch still fires.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         mark_ms = 50_850
         punch_start = mark_ms - _CRASH_LEAD_MS
         existing = {
             "MH GRP": [EffectPlacement(
                 effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
-                model_or_group="MH GRP", start_ms=0, end_ms=punch_start + 1000,
+                model_or_group="MH GRP", start_ms=0, end_ms=punch_start,
             )],
         }
         result = place_moving_head_crash_accents(
@@ -103,6 +107,25 @@ class TestPlaceMovingHeadCrashAccents:
         placements = result["MH GRP"]
         assert len(placements) == 1
         assert "Shutter: On" in placements[0].parameters["E_TEXTCTRL_MH1_Settings"]
+
+    def test_crash_skipped_entirely_when_a_per_head_move_still_active(self):
+        # A per-head move (e.g. from place_moving_head_moves) running on
+        # MH1 during the crash's own window -- same DMX channels as the
+        # group-targeted punch -- must cancel the crash outright, not just
+        # its warmup (user-observed real xLights overlap, 2026-07-17).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        mark_ms = 50_850
+        punch_start = mark_ms - _CRASH_LEAD_MS
+        existing = {
+            "MH1": [EffectPlacement(
+                effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                model_or_group="MH1", start_ms=0, end_ms=punch_start + 1000,
+            )],
+        }
+        result = place_moving_head_crash_accents(
+            layout, _hierarchy([mark_ms]), vocal_words=None, existing_placements=existing,
+        )
+        assert result == {}
 
     def test_excludes_crash_near_vocal_word(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
