@@ -9,8 +9,9 @@ from src.generator.moving_head import (
     _DIMMER_FULL_ON,
     _MAX_MOVE_DURATION_MS,
     _MIN_SECTION_DURATION_MS,
+    _MIN_WARMUP_DURATION_MS,
+    _PREFERRED_WARMUP_DURATION_MS,
     _STRONG_ENERGY_GATE,
-    _WARMUP_DURATION_MS,
     place_moving_head_moves,
 )
 from src.grouper.layout import parse_layout
@@ -144,7 +145,8 @@ class TestPlaceMovingHeadMoves:
 
     def test_warmup_precedes_static_move_and_matches_its_pose(self):
         # A gap before the section (starts at 10_000, not 0) so the warmup
-        # has room to fire (nothing already occupies 9_500-10_000).
+        # has room to fire -- nothing occupies anything before it, so it
+        # gets the full preferred 3s (_PREFERRED_WARMUP_DURATION_MS).
         # variation_seed=2, section_index=0 -> "r_static" (Pan 45.0, Tilt 60.0).
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("chorus", 10_000, 25_000, 40, variation_seed=2)]
@@ -153,7 +155,7 @@ class TestPlaceMovingHeadMoves:
         assert len(placements) == 2
         warmup, move = placements
         assert warmup.end_ms == move.start_ms == 10_000
-        assert abs((warmup.end_ms - warmup.start_ms) - _WARMUP_DURATION_MS) <= 25
+        assert abs((warmup.end_ms - warmup.start_ms) - _PREFERRED_WARMUP_DURATION_MS) <= 25
         settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
         assert "Pan: 45.0" in settings
         assert "Tilt: 60.0" in settings
@@ -194,8 +196,11 @@ class TestPlaceMovingHeadMoves:
         placements = result["MH1"]
         assert len(placements) == 3  # section0 move (trimmed), section1 warmup, section1 move
         first_move, warmup, second_move = placements
-        assert first_move.end_ms == 14_250  # trimmed back from its natural 15_000 by _WARMUP_DURATION_MS
-        assert warmup.start_ms == 14_250 and warmup.end_ms == 15_000
+        # There's ample room to trim (14s of section0 available above the
+        # 1s floor), so the full preferred 3s warmup is used, not just
+        # the defined minimum.
+        assert first_move.end_ms == 12_000  # trimmed back from its natural 15_000 by 3s
+        assert warmup.start_ms == 12_000 and warmup.end_ms == 15_000
         assert second_move.start_ms == 15_000  # not delayed -- the trim alone opened the gap
 
     def test_group_and_per_head_placements_never_overlap(self):
@@ -232,11 +237,13 @@ class TestPlaceMovingHeadMoves:
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
-        assert group_move.end_ms == 9_250  # trimmed back from its natural 15_000 by _WARMUP_DURATION_MS
+        # Ample room to trim (14s of the group move available above the
+        # 1s floor), so the full preferred 3s warmup is used.
+        assert group_move.end_ms == 7_000  # trimmed back from its natural 15_000 by 3s
         mh1_placements = result["MH1"]
         assert len(mh1_placements) == 2  # warmup + move -- not delayed, the trim alone was enough
         warmup, move = mh1_placements
-        assert warmup.start_ms == 9_250 and warmup.end_ms == 10_000
+        assert warmup.start_ms == 7_000 and warmup.end_ms == 10_000
         assert move.start_ms == 10_000  # its own natural start, unmoved
         assert not (group_move.start_ms < move.end_ms and group_move.end_ms > move.start_ms)
 
@@ -318,3 +325,35 @@ class TestPlaceMovingHeadMoves:
         warmup = result["MH1"][0]
         assert "E_VALUECURVE_MHPan" not in warmup.parameters
         assert "E_VALUECURVE_MHTilt" not in warmup.parameters
+
+    def test_warmup_uses_whatever_partial_room_is_available_up_to_3s(self):
+        # Nothing occupies this head before the section, but the section
+        # itself only starts at 2_000 -- less than the preferred 3s, more
+        # than the defined minimum. The warmup should use exactly what's
+        # available (2s), not clamp down to the defined minimum.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 2_000, 15_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments)
+        warmup, move = result["MH1"]
+        assert warmup.start_ms == 0 and warmup.end_ms == 2_000
+        assert move.start_ms == 2_000
+
+    def test_warmup_falls_back_to_defined_minimum_when_floor_blocks_a_bigger_trim(self):
+        # Adversarial input: section 1 starts only 1_500ms into section 0
+        # (group fan_pan_move), far too little room for even the defined
+        # minimum warmup once section 0's floor (1s past its own start) is
+        # respected. Trims section 0 down to its floor and pushes the
+        # incoming move out just enough to guarantee the defined minimum
+        # warmup -- "a bit of both" (user preference, 2026-07-17).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move
+            _assignment("chorus", 1_500, 25_000, 40, variation_seed=0),  # per_head l_r_static
+        ]
+        result = place_moving_head_moves(layout, assignments)
+        group_move = result["MH GRP"][0]
+        assert group_move.end_ms == 1_000  # trimmed all the way to its own floor
+        warmup, move = result["MH1"]
+        assert warmup.start_ms == 1_000 and warmup.end_ms == 1_750
+        assert (warmup.end_ms - warmup.start_ms) == _MIN_WARMUP_DURATION_MS
+        assert move.start_ms == 1_750  # pushed past its natural 1_500 to guarantee the minimum

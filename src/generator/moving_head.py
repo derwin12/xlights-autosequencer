@@ -486,15 +486,16 @@ def _add_with_warmup(
     move_params: dict[str, str],
     start_ms: int,
     end_ms: int,
+    warmup_duration_ms: int,
 ) -> EffectPlacement:
     """Append ``target``'s move placement, preceded by a silent warmup.
     Callers are expected to have already made room for the full warmup
-    window via ``_open_warmup_gap`` before calling this -- it does not
+    window via ``_resolve_warmup`` before calling this -- it does not
     re-check for conflicts itself. Returns the move placement (not the
     warmup) so the caller can track it as this head's new channel owner.
     """
     existing = by_target.setdefault(target, [])
-    warmup_start_ms = max(0, start_ms - _WARMUP_DURATION_MS)
+    warmup_start_ms = max(0, start_ms - warmup_duration_ms)
     if warmup_start_ms < start_ms:
         existing.append(EffectPlacement(
             effect_name="Moving Head",
@@ -523,32 +524,70 @@ def _add_with_warmup(
 _MIN_TRIMMED_MOVE_DURATION_MS = 1000
 
 
-def _open_warmup_gap(prev_placement: Optional[EffectPlacement], desired_start_ms: int) -> int:
-    """Make room for a full warmup window ending at ``desired_start_ms``
-    by trimming ``prev_placement``'s tail (mutated in place) rather than
-    delaying the upcoming move -- user preference, 2026-07-17: shrinking
-    the effect that's already playing reads better than visibly pushing
-    the next one's start off its own section boundary. Falls back to
-    (partly) delaying ``desired_start_ms`` only if trimming alone would
-    cut ``prev_placement`` below ``_MIN_TRIMMED_MOVE_DURATION_MS`` -- "a
-    bit of both" for the rare case a single trim can't open the whole gap.
+# Preferred warmup length when there's room for it -- gives the fixture a
+# more comfortable, less rushed slew into position (user request,
+# 2026-07-17). ``_MIN_WARMUP_DURATION_MS`` is the floor: used as-is when
+# there's at least that much room, and guaranteed via a partial delay
+# when even a maximal trim can't reach it.
+_PREFERRED_WARMUP_DURATION_MS = 3000
+_MIN_WARMUP_DURATION_MS = 750
 
-    Returns the actual start time the upcoming move should use.
+
+def _best_trimmable_end_ms(owner: EffectPlacement) -> int:
+    """The smallest ``owner.end_ms`` could ever be trimmed to while
+    keeping at least ``_MIN_TRIMMED_MOVE_DURATION_MS`` of its own
+    duration -- never proposes trimming a placement to a size larger
+    than it already is."""
+    floor_ms = owner.start_ms + _MIN_TRIMMED_MOVE_DURATION_MS
+    return min(floor_ms, owner.end_ms)
+
+
+def _resolve_warmup(
+    owners: list[Optional[EffectPlacement]], desired_start_ms: int,
+) -> tuple[int, int]:
+    """Decide the upcoming move's actual start time and warmup duration,
+    given every distinct placement currently occupying the channel(s) it
+    needs (``owners`` may contain ``None`` entries for untouched heads).
+
+    Prefers a full ``_PREFERRED_WARMUP_DURATION_MS`` (3s) warmup, trimming
+    the tail of whichever owner(s) block it (mutated in place) rather than
+    delaying the move -- user preference, 2026-07-17: shrinking an effect
+    that's already playing reads better than visibly pushing the next one
+    off its own section boundary. When a full 3s isn't achievable (an
+    owner's own floor limits how far it can be trimmed), uses however much
+    room IS achievable instead of dropping straight to the floor value --
+    only falling back to (partly) delaying the move to guarantee
+    ``_MIN_WARMUP_DURATION_MS`` when even a maximal trim can't reach that
+    much ("3s or the max available up to 3s, otherwise the defined
+    length").
+
+    Returns (start_ms, warmup_duration_ms).
     """
-    if prev_placement is None:
-        return desired_start_ms
-    desired_warmup_start_ms = desired_start_ms - _WARMUP_DURATION_MS
-    if prev_placement.end_ms <= desired_warmup_start_ms:
-        return desired_start_ms  # already enough natural gap, nothing to trim
+    real_owners = [o for o in owners if o is not None]
+    if not real_owners:
+        return desired_start_ms, max(0, min(_PREFERRED_WARMUP_DURATION_MS, desired_start_ms))
 
-    floor_ms = prev_placement.start_ms + _MIN_TRIMMED_MOVE_DURATION_MS
-    new_end_ms = max(floor_ms, desired_warmup_start_ms)
-    if new_end_ms < prev_placement.end_ms:
-        prev_placement.end_ms = frame_align(new_end_ms)
-    if prev_placement.end_ms > desired_warmup_start_ms:
-        # The floor blocked a full trim -- push the remainder onto the start.
-        return prev_placement.end_ms + _WARMUP_DURATION_MS
-    return desired_start_ms
+    achievable_ms = min(
+        _PREFERRED_WARMUP_DURATION_MS,
+        min(desired_start_ms - _best_trimmable_end_ms(o) for o in real_owners),
+    )
+    if achievable_ms >= _MIN_WARMUP_DURATION_MS:
+        new_end_ms = desired_start_ms - achievable_ms
+        for o in real_owners:
+            if new_end_ms < o.end_ms:
+                o.end_ms = frame_align(new_end_ms)
+        return desired_start_ms, achievable_ms
+
+    # Even a maximal trim can't open the defined minimum -- trim every
+    # owner as far as safely possible and push the move's start out to
+    # guarantee it.
+    start_ms = desired_start_ms
+    for o in real_owners:
+        best_end_ms = _best_trimmable_end_ms(o)
+        if best_end_ms < o.end_ms:
+            o.end_ms = frame_align(best_end_ms)
+        start_ms = max(start_ms, o.end_ms + _MIN_WARMUP_DURATION_MS)
+    return start_ms, _MIN_WARMUP_DURATION_MS
 
 
 def place_moving_head_moves(
@@ -585,12 +624,13 @@ def place_moving_head_moves(
     lead-in at all: the head then visibly slews to its new pose instead
     of pre-positioning in the dark (user-observed in real xLights,
     2026-07-17: "the light will travel as it reaches the starting
-    point"). ``_open_warmup_gap`` opens that room by trimming the prior
-    occupant's own tail (mutated in place) -- the user's stated
-    preference over delaying the upcoming move, since shrinking a move
-    that's already playing reads better than visibly pushing the next
-    one off its section boundary -- falling back to a partial delay only
-    if the prior occupant is too short to safely trim. A move is dropped
+    point"). ``_resolve_warmup`` opens that room (up to 3s when
+    available, see its own docstring) by trimming the prior occupant's
+    own tail (mutated in place) -- the user's stated preference over
+    delaying the upcoming move, since shrinking a move that's already
+    playing reads better than visibly pushing the next one off its
+    section boundary -- falling back to a partial delay only if the
+    prior occupant is too short to safely trim. A move is dropped
     entirely if there's no room for it at all after this.
     """
     mh_groups = find_moving_head_groups(layout)
@@ -632,9 +672,7 @@ def place_moving_head_moves(
                 owners_by_id = {
                     id(channel_owner[h]): channel_owner[h] for h in heads if channel_owner[h] is not None
                 }
-                start_ms = natural_start_ms
-                for owner in owners_by_id.values():
-                    start_ms = max(start_ms, _open_warmup_gap(owner, natural_start_ms))
+                start_ms, warmup_duration_ms = _resolve_warmup(list(owners_by_id.values()), natural_start_ms)
                 if start_ms >= natural_end_ms:
                     continue  # no room left after opening the warmup gap
                 head_count = len(heads)
@@ -642,7 +680,8 @@ def place_moving_head_moves(
                 move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
                 warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
                 move_placement = _add_with_warmup(
-                    by_target, mh_group.name, warmup_params, move_params, start_ms, natural_end_ms,
+                    by_target, mh_group.name, warmup_params, move_params,
+                    start_ms, natural_end_ms, warmup_duration_ms,
                 )
                 for h in heads:
                     channel_owner[h] = move_placement
@@ -650,13 +689,16 @@ def place_moving_head_moves(
                 for head_idx, head_name in enumerate(mh_group.head_names):
                     head_index = head_idx + 1  # 1-based: matches this model's own MH{N}_Settings slot
                     pose = move.poses[head_idx % len(move.poses)]
-                    start_ms = _open_warmup_gap(channel_owner[head_name], natural_start_ms)
+                    start_ms, warmup_duration_ms = _resolve_warmup(
+                        [channel_owner[head_name]], natural_start_ms,
+                    )
                     if start_ms >= natural_end_ms:
                         continue
                     move_params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt, head_index)
                     warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
                     move_placement = _add_with_warmup(
-                        by_target, head_name, warmup_params, move_params, start_ms, natural_end_ms,
+                        by_target, head_name, warmup_params, move_params,
+                        start_ms, natural_end_ms, warmup_duration_ms,
                     )
                     channel_owner[head_name] = move_placement
         for target, placements in by_target.items():
@@ -681,15 +723,15 @@ _CRASH_PAN_OFFSET_DEG = "10.5"
 # _CRASH_EFFECT_DURATION_MS after it (user request, 2026-07-16), matching
 # effect_placer._CRASH_LEAD_MS exactly so the two accents land together.
 _CRASH_LEAD_MS = 1000
-# Shared with the gated moves' own warmup mechanic (_add_with_warmup,
-# above) -- if nothing else is already lighting/positioning this group
-# right before the punch, a silent "warmup" placement (Pan/Tilt/PanOffset
-# only, no Dimmer/Wheel/Shutter) runs immediately before it so the heads
-# are already fanned out and dark by the time the punch opens the
-# shutter, instead of visibly snapping into position while lit. 750ms
-# (up from an original 500ms, user request 2026-07-17: the fixture needs
-# 50% more time to physically reach the fanned position before the
-# shutter opens).
+# The crash punch's own fixed warmup duration -- if nothing else is
+# already lighting/positioning this group right before the punch, a
+# silent "warmup" placement (Pan/Tilt/PanOffset only, no Dimmer/Wheel/
+# Shutter) runs immediately before it so the heads are already fanned out
+# and dark by the time the punch opens the shutter, instead of visibly
+# snapping into position while lit. Unlike the gated moves' own adaptive
+# warmup (_resolve_warmup, up to 3s when there's room), the crash punch
+# keeps a flat duration -- its own lead-in window is only 1s
+# (_CRASH_LEAD_MS) total, no room for a multi-second warmup on top.
 _WARMUP_DURATION_MS = 750
 
 
