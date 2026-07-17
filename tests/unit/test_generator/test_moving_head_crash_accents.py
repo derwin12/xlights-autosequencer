@@ -11,7 +11,7 @@ from src.generator.moving_head import (
     _CRASH_EFFECT_DURATION_MS,
     _CRASH_LEAD_MS,
     _CRASH_VOCAL_EXCLUSION_MS,
-    _WARMUP_DURATION_MS,
+    _PREFERRED_WARMUP_DURATION_MS,
     place_moving_head_crash_accents,
 )
 from src.grouper.layout import parse_layout
@@ -69,9 +69,11 @@ class TestPlaceMovingHeadCrashAccents:
         assert "Shutter: On" in settings
 
     def test_warmup_inserted_when_nothing_already_there(self):
-        # No existing_placements passed -> the warmup window is a gap,
-        # so a silent (no Dimmer/Wheel/Shutter) lead-in should precede
-        # the punch, ending exactly where the punch starts.
+        # No existing_placements passed and nothing before it on the
+        # timeline -> the warmup uses the full preferred length, not a
+        # short fixed one (user-observed real .xsq, 2026-07-17: a fixed
+        # 750ms warmup was needlessly short when the whole timeline
+        # before the mark was wide open).
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
         placements = result["MH GRP"]
@@ -85,7 +87,7 @@ class TestPlaceMovingHeadCrashAccents:
         assert "Wheel:" not in settings
         assert "Shutter:" not in settings
         assert warmup.end_ms == punch.start_ms
-        assert abs((warmup.end_ms - warmup.start_ms) - _WARMUP_DURATION_MS) <= 25
+        assert abs((warmup.end_ms - warmup.start_ms) - _PREFERRED_WARMUP_DURATION_MS) <= 25
 
     def test_warmup_skipped_when_wash_already_covers_the_window(self):
         # The existing placement ends exactly where the punch itself
@@ -107,6 +109,48 @@ class TestPlaceMovingHeadCrashAccents:
         placements = result["MH GRP"]
         assert len(placements) == 1
         assert "Shutter: On" in placements[0].parameters["E_TEXTCTRL_MH1_Settings"]
+
+    def test_warmup_uses_only_the_natural_gap_when_something_precedes_it(self):
+        # An existing placement ends 400ms before the punch's own lead-in
+        # starts -- less than the preferred 3s, so the warmup should use
+        # exactly that 400ms gap rather than the full preferred length
+        # (the crash mark's timing is fixed, so nothing gets trimmed to
+        # open more room; it just uses what's naturally there).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        mark_ms = 50_850
+        punch_start = mark_ms - _CRASH_LEAD_MS
+        existing = {
+            "MH GRP": [EffectPlacement(
+                effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                model_or_group="MH GRP", start_ms=0, end_ms=punch_start - 400,
+            )],
+        }
+        result = place_moving_head_crash_accents(
+            layout, _hierarchy([mark_ms]), vocal_words=None, existing_placements=existing,
+        )
+        placements = result["MH GRP"]
+        warmup = _warmup(placements)
+        assert warmup.start_ms == punch_start - 400
+        assert warmup.end_ms == punch_start
+
+    def test_two_close_crash_marks_warmup_never_overlaps_first_punch(self):
+        # Two crash marks close enough together that the second mark's
+        # preferred 3s warmup would otherwise reach back into the first
+        # mark's own punch -- must be capped by that punch's end, not
+        # just by place_moving_head_moves' placements.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        first_mark, second_mark = 10_000, 12_000  # 2s apart
+        result = place_moving_head_crash_accents(layout, _hierarchy([first_mark, second_mark]), vocal_words=None)
+        placements = sorted(result["MH GRP"], key=lambda p: p.start_ms)
+        assert len(placements) == 4  # mark1: warmup+punch; mark2: a short (300ms) warmup+punch
+        second_warmup = placements[2]
+        assert "Shutter: On" not in second_warmup.parameters["E_TEXTCTRL_MH1_Settings"]
+        assert second_warmup.start_ms == placements[1].end_ms  # starts exactly where the first punch ends
+        for i, p in enumerate(placements):
+            for q in placements[i + 1:]:
+                assert not (p.start_ms < q.end_ms and p.end_ms > q.start_ms), (
+                    f"overlap: [{p.start_ms},{p.end_ms}) vs [{q.start_ms},{q.end_ms})"
+                )
 
     def test_crash_skipped_entirely_when_a_per_head_move_still_active(self):
         # A per-head move (e.g. from place_moving_head_moves) running on

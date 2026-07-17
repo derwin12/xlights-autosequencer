@@ -474,9 +474,10 @@ _MAX_MOVE_DURATION_MS = 20000
 # immediately before it, pre-positioned to the move's own starting angle
 # (user request, 2026-07-17), so the head is already aimed correctly and
 # dark by the time the real move opens the shutter, instead of visibly
-# snapping into position while lit. Shares the same duration as the crash
-# punch's warmup (``_WARMUP_DURATION_MS``, defined below) -- both are the
-# same "silent pre-position" mechanic.
+# snapping into position while lit. Same "silent pre-position" mechanic
+# the crash punch uses further down, just with its own adaptive-length
+# rules (_resolve_warmup, below) instead of the crash punch's simpler
+# natural-gap-only sizing.
 
 
 def _add_with_warmup(
@@ -733,16 +734,16 @@ _CRASH_PAN_OFFSET_DEG = "10.5"
 # _CRASH_EFFECT_DURATION_MS after it (user request, 2026-07-16), matching
 # effect_placer._CRASH_LEAD_MS exactly so the two accents land together.
 _CRASH_LEAD_MS = 1000
-# The crash punch's own fixed warmup duration -- if nothing else is
-# already lighting/positioning this group right before the punch, a
-# silent "warmup" placement (Pan/Tilt/PanOffset only, no Dimmer/Wheel/
-# Shutter) runs immediately before it so the heads are already fanned out
-# and dark by the time the punch opens the shutter, instead of visibly
-# snapping into position while lit. Unlike the gated moves' own adaptive
-# warmup (_resolve_warmup, up to 3s when there's room), the crash punch
-# keeps a flat duration -- its own lead-in window is only 1s
-# (_CRASH_LEAD_MS) total, no room for a multi-second warmup on top.
-_WARMUP_DURATION_MS = 750
+# The crash punch's own silent lead-in -- if nothing else is already
+# lighting/positioning this group right before the punch, a warmup
+# placement (Pan/Tilt/PanOffset only, no Dimmer/Wheel/Shutter) runs
+# immediately before it so the heads are already fanned out and dark by
+# the time the punch opens the shutter, instead of visibly snapping into
+# position while lit. The mark's own timing is fixed (anchored to a real
+# audio transient), so unlike the gated moves nothing here ever gets
+# trimmed or delayed -- the warmup instead adapts to whatever natural gap
+# already exists before it, up to _PREFERRED_WARMUP_DURATION_MS (see the
+# mark loop below).
 
 
 def _build_crash_head_settings(head_count: int) -> str:
@@ -860,14 +861,27 @@ def place_moving_head_crash_accents(
             end_ms = min(mark.time_ms + _CRASH_EFFECT_DURATION_MS, hierarchy.duration_ms)
             if end_ms <= start_ms:
                 continue
-            if _has_overlap(channel_existing, start_ms, end_ms):
+            # Includes crash marks already placed earlier in this same
+            # loop, not just placements from place_moving_head_moves --
+            # otherwise a close pair of crash marks could overlap each
+            # other's punch/warmup undetected.
+            all_prior = channel_existing + placements
+            if _has_overlap(all_prior, start_ms, end_ms):
                 continue  # a per-head move is already driving these channels
 
+            # The crash mark's own timing is sacred (anchored to a real
+            # audio transient) -- unlike the gated moves, nothing here
+            # gets trimmed or delayed to open room. The warmup instead
+            # adapts to whatever natural gap already exists before it,
+            # up to _PREFERRED_WARMUP_DURATION_MS -- a fixed 750ms was
+            # needlessly short when the whole timeline before a mark was
+            # actually wide open (user-observed, 2026-07-17).
             warmup_end_ms = start_ms
-            warmup_start_ms = max(0, warmup_end_ms - _WARMUP_DURATION_MS)
-            if warmup_start_ms < warmup_end_ms and not _has_overlap(
-                channel_existing, warmup_start_ms, warmup_end_ms
-            ):
+            prior_ends = [p.end_ms for p in all_prior if p.end_ms <= warmup_end_ms]
+            gap_ms = warmup_end_ms - max(prior_ends, default=0)
+            warmup_duration_ms = max(0, min(_PREFERRED_WARMUP_DURATION_MS, gap_ms))
+            warmup_start_ms = warmup_end_ms - warmup_duration_ms
+            if warmup_start_ms < warmup_end_ms:
                 placements.append(EffectPlacement(
                     effect_name="Moving Head",
                     xlights_id="eff_MOVINGHEAD",
