@@ -36,12 +36,15 @@ function formatTimestamp(ms: number): string {
 }
 
 function buildImagePrompt(word: string): string {
-  return `pixel art of ${word.toLowerCase()}, 16x16, bold saturated colors, centered on a solid pure black background (#000000), the entire background must be black, no white, no border, no frame`;
+  return `Subject: ${word.toLowerCase()}.
+Style: Minimalist 2D flat 8-bit pixel art illustration. Non-anthropomorphic (no faces or eyes), clean edges, simple cel-shading, limited vibrant color palette, no gradients. Perfectly horizontal and vertical pixel lines.
+Outlines: Soft, colored outlines that match the object's palette (no black outlines).
+Background: Placed on a solid, pure black background (#000000). Completely isolated with no white sticker borders, no outer glow, no drop shadows, and no borders.`;
 }
 
-// Bing strips query parameters from the image-creator URL on load, so the
-// prompt can't be passed in the link — the popup shows it for copy/paste.
-const BING_CREATE_URL = 'https://www.bing.com/images/create/ai-image-generator';
+// Gemini doesn't accept a prompt in the URL either, so the popup keeps the
+// copy/paste flow: copy the prompt, then paste it on the Gemini page.
+const GEMINI_CREATE_URL = 'https://gemini.google.com/app';
 
 async function openExternal(url: string) {
   try {
@@ -332,8 +335,8 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
               onFocus={(e) => e.target.select()}
             />
             <p className={styles.promptHint}>
-              Bing no longer accepts the prompt in the link — copy it, then paste it into the
-              prompt box on the Bing page.
+              Gemini doesn&apos;t accept the prompt in the link — copy it, then paste it into
+              the prompt box on the Gemini page.
             </p>
             <div className={styles.promptActions}>
               <button
@@ -346,9 +349,9 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
               <button
                 type="button"
                 className={styles.createImageBtn}
-                onClick={() => openExternal(BING_CREATE_URL)}
+                onClick={() => openExternal(GEMINI_CREATE_URL)}
               >
-                Open Bing
+                Open Gemini
               </button>
               <button
                 type="button"
