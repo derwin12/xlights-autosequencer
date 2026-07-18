@@ -141,10 +141,11 @@ RUN pip3 install --break-system-packages --no-cache-dir madmom && \
 # torchcodec, which requires CUDA runtime libs (libnvrtc.so) not present in
 # CPU-only containers. whisperx transitively pulls numpy>=2, which breaks
 # madmom's compiled extensions, so re-pin numpy<2 afterwards.
-# Pre-download cmudict so the first runtime Genius alignment doesn't need network.
+# Pre-download cmudict (Genius alignment) and wordnet (image-topic noun
+# filter in src/generator/image_catalog.py) so runtime needs no network.
 RUN pip3 install --break-system-packages --no-cache-dir "whisperx==3.3.0" "nltk>=3.8" && \
   pip3 install --break-system-packages --no-cache-dir --force-reinstall "numpy>=1.24,<2" && \
-  python3 -c "import nltk; nltk.download('cmudict', quiet=True)"
+  python3 -c "import nltk; nltk.download('cmudict', quiet=True); nltk.download('wordnet', quiet=True)"
 
 # ── Vamp Plugins ─────────────────────────────────────────────────────────────
 # Built from source on all architectures. code.soundsoftware.ac.uk (the former

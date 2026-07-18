@@ -3,6 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+import src.generator.image_catalog as image_catalog
 from src.effects.library import load_effect_library
 from src.generator.effect_placer import (
     _PICTURE_BURST_MS,
@@ -10,6 +13,7 @@ from src.generator.effect_placer import (
     _PICTURE_FADE_MS,
     _PICTURE_LEAD_MS,
     _PICTURE_MIN_GAP_MS,
+    _PICTURE_MOTIONS,
     _PICTURE_SCALE_PERCENT,
     _PICTURE_SPEED,
     _place_picture_effects,
@@ -427,7 +431,55 @@ class TestPlacePictureEffects:
         assert first_dir == second_dir
 
 
-class TestPictureEffectsConfigFlag:
+def _motion_of(params: dict) -> str:
+    """Classify a burst's parameters back to its _PICTURE_MOTIONS entry."""
+    for name in ("explode_spin", "shake", "explode", "normal"):
+        motion = _PICTURE_MOTIONS[name]
+        if all(params.get(k) == v for k, v in motion.items()):
+            return name
+    raise AssertionError(f"unclassifiable motion params: {params}")
+
+
+class TestPictureMotionVariants:
+    def _burst_params(self, seed: int) -> dict:
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=seed,
+            word_image_matches=[_match("snowman", 1000)],
+        )
+        return result["Matrix1"][0].parameters
+
+    def test_motion_pick_is_deterministic_for_same_seed(self):
+        assert _motion_of(self._burst_params(7)) == _motion_of(self._burst_params(7))
+
+    def test_normal_burst_carries_no_buffer_transform_keys(self):
+        for seed in range(50):
+            params = self._burst_params(seed)
+            if _motion_of(params) == "normal":
+                assert not any(k.startswith("B_") for k in params)
+                return
+        raise AssertionError("no normal burst in 50 seeds — weighting broken")
+
+    def test_explode_burst_uses_vendor_zoom_ramp(self):
+        for seed in range(200):
+            params = self._burst_params(seed)
+            if _motion_of(params) == "explode":
+                assert params["B_VALUECURVE_Zoom"] == (
+                    "Active=TRUE|Id=ID_VALUECURVE_Zoom|Type=Ramp"
+                    "|Min=0.00|Max=30.00|P2=10.00|RV=TRUE|"
+                )
+                assert "B_VALUECURVE_Rotation" not in params
+                return
+        raise AssertionError("no explode burst in 200 seeds — weighting broken")
+
+    def test_normal_dominates_and_every_motion_occurs(self):
+        seen = [_motion_of(self._burst_params(seed)) for seed in range(300)]
+        assert set(seen) == set(_PICTURE_MOTIONS)
+        assert seen.count("normal") > len(seen) // 2
     def test_flag_defaults_to_true(self):
         config = GenerationConfig(
             audio_path=Path("/fake/song.mp3"),
@@ -564,3 +616,45 @@ class TestFindUnmatchedTopics:
         result = find_unmatched_topics(words, [])
         assert len(result) == 1
         assert result[0]["start_ms"] == 5000
+
+
+_wordnet_available = image_catalog._load_wordnet() is not None
+
+
+class TestImageableTopicFilter:
+    """WordNet noun-dominance filter on suggested topics (_is_imageable)."""
+
+    pytestmark = pytest.mark.skipif(
+        not _wordnet_available, reason="nltk wordnet corpus not available"
+    )
+
+    def test_non_noun_filler_words_excluded(self):
+        words = [
+            {"label": w, "start_ms": i * 1000, "end_ms": i * 1000 + 500}
+            for i, w in enumerate(["high", "found", "some", "seen", "come", "since"])
+        ]
+        assert find_unmatched_topics(words, []) == []
+
+    def test_concrete_nouns_kept(self):
+        words = [
+            {"label": w, "start_ms": i * 1000, "end_ms": i * 1000 + 500}
+            for i, w in enumerate(["snow", "trees", "fire", "star", "heart"])
+        ]
+        kept = {t["word"] for t in find_unmatched_topics(words, [])}
+        assert kept == {"snow", "trees", "fire", "star", "heart"}
+
+    def test_plural_maps_to_noun_lemma(self):
+        words = [{"label": "Reindeers", "start_ms": 0, "end_ms": 500}]
+        result = find_unmatched_topics(words, [])
+        assert [t["word"] for t in result] == ["Reindeers"]
+
+
+class TestImageableFallback:
+    def test_wordnet_unavailable_keeps_current_behavior(self, monkeypatch):
+        monkeypatch.setattr(image_catalog, "_load_wordnet", lambda: None)
+        image_catalog._is_imageable.cache_clear()
+        try:
+            words = [{"label": "found", "start_ms": 0, "end_ms": 500}]
+            assert [t["word"] for t in find_unmatched_topics(words, [])] == ["found"]
+        finally:
+            image_catalog._is_imageable.cache_clear()
