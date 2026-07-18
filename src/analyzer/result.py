@@ -574,6 +574,11 @@ class HierarchyResult:
     # audible end (crash_accents.detect_ending_punches). Zero for songs that
     # fade out; at most a handful for songs that end on hits.
     ending_punches: list[TimingMark] = field(default_factory=list)
+    # Rare guitar/bass riff or fill moments: a burst of bass-band onsets
+    # coinciding with an accelerated chord change — see
+    # src/analyzer/riff_bursts.py. Distinct from crash_accents (isolated
+    # treble transient) and energy_impacts (section-level energy jump).
+    riff_bursts: list[TimingMark] = field(default_factory=list)
 
     # L1: Structure
     sections: list[TimingMark] = field(default_factory=list)
@@ -656,6 +661,7 @@ class HierarchyResult:
             "gaps": [self._mark_to_dict(m) for m in self.gaps],
             "crash_accents": [self._mark_to_dict(m) for m in self.crash_accents],
             "ending_punches": [self._mark_to_dict(m) for m in self.ending_punches],
+            "riff_bursts": [self._mark_to_dict(m) for m in self.riff_bursts],
             "sections": [self._mark_to_dict(m) for m in self.sections],
             "bars": self.bars.to_dict() if self.bars else None,
             "beats": self.beats.to_dict() if self.beats else None,
@@ -721,6 +727,11 @@ class HierarchyResult:
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
                        label=m.get("label"), duration_ms=m.get("duration_ms"))
             for m in d.get("ending_punches", [])
+        ]
+        obj.riff_bursts = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("riff_bursts", [])
         ]
         obj.sections = [
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),

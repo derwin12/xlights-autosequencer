@@ -29,7 +29,10 @@ if TYPE_CHECKING:
 # 2.2.0 (2026-07-18): ending_punches added (crash_accents.detect_ending_punches)
 # — bumped so pre-feature caches re-analyze instead of silently skipping the
 # Moving Head ending flash (the bug-265 lesson).
-SCHEMA_VERSION = "2.2.0"
+# 2.3.0 (2026-07-18): riff_bursts added (riff_bursts.detect_riff_bursts) — same
+# bug-265 reasoning: bump so pre-feature caches re-analyze instead of silently
+# skipping the new Moving Head riff accent.
+SCHEMA_VERSION = "2.3.0"
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -688,6 +691,21 @@ def run_orchestrator(
     else:
         warnings.append("L0 Crash accents: skipped — drums stem unavailable")
 
+    # Riff bursts: bass-band onset burst + accelerated chord change (see
+    # src/analyzer/riff_bursts.py). Uses the demucs bass stem directly — no
+    # extra separation step, unlike crash accents' cymbal isolation.
+    riff_bursts: list["TimingMark"] = []
+    _bass_arr = stems.get("bass") if stems is not None else None
+    if _bass_arr is not None and _bass_arr.size > 1 and chords is not None:
+        from src.analyzer.riff_bursts import detect_riff_bursts
+        riff_bursts = detect_riff_bursts(_bass_arr, stems.sample_rate, chords)
+        if riff_bursts:
+            print(f"L0 Riff bursts: {len(riff_bursts)} moment(s)")
+    elif chords is None:
+        warnings.append("L0 Riff bursts: skipped — chords not available")
+    else:
+        warnings.append("L0 Riff bursts: skipped — bass stem unavailable")
+
     # ── Stage 9: Interaction analysis ────────────────────────────────────────
     interactions = None
     if stems is not None:
@@ -771,6 +789,7 @@ def run_orchestrator(
         gaps=gaps,
         crash_accents=crash_accents,
         ending_punches=ending_punches,
+        riff_bursts=riff_bursts,
         sections=sections,
         bars=bars,
         beats=beats,
@@ -844,6 +863,14 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
                         element_type="crash", marks=result.ending_punches,
                         quality_score=0.0),
             fixed_width_ms=300,
+        )
+    if result.riff_bursts:
+        _add_mark_layer(
+            root, "riff_bursts",
+            TimingTrack(name="riff_bursts", algorithm_name="derived",
+                        element_type="riff", marks=result.riff_bursts,
+                        quality_score=0.0),
+            fixed_width_ms=700,
         )
     _add_section_layer(root, "sections", result.sections)
 

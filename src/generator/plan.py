@@ -34,6 +34,7 @@ from src.generator.moving_head import (
     place_moving_head_crash_accents,
     place_moving_head_ending_punches,
     place_moving_head_moves,
+    place_moving_head_riff_bursts,
 )
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
@@ -372,6 +373,27 @@ def build_plan(
             existing_mh[gname] = existing_mh[gname] + placements
         for gname, placements in place_moving_head_ending_punches(
             layout, hierarchy,
+            fade_exclusion_start_ms=fade_exclusion_start_ms,
+            existing_placements=existing_mh,
+        ).items():
+            crash_effects.setdefault(gname, []).extend(placements)
+
+    # 5d-3. Riff bursts: mid-height fan-out Moving Head punch on each rare
+    # guitar/bass riff or fill (hierarchy.riff_bursts,
+    # riff_bursts.detect_riff_bursts). MH-only accent, no whole-house
+    # counterpart (unlike crash accents' Shockwave) -- gated purely on
+    # config.moving_head_effects, the same toggle place_moving_head_moves
+    # uses, since this feature has no non-MH half.
+    if config.moving_head_effects and layout is not None and hierarchy.riff_bursts:
+        fade_exclusion_start_ms = max(
+            0, min(_audible_end_ms(assignments, hierarchy), hierarchy.duration_ms - _FADE_MIN_MS)
+        )
+        existing_mh = dict(moving_head_effects)
+        for gname, placements in crash_effects.items():
+            existing_mh.setdefault(gname, [])
+            existing_mh[gname] = existing_mh[gname] + placements
+        for gname, placements in place_moving_head_riff_bursts(
+            layout, hierarchy, config.vocal_words,
             fade_exclusion_start_ms=fade_exclusion_start_ms,
             existing_placements=existing_mh,
         ).items():

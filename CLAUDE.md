@@ -326,6 +326,43 @@ preconditions, and 16-song corpus results.
   dict into `plan.py`'s `moving_head_effects` variable (currently hard-coded
   to `{}`) and pass it through the same call.
 
+### Riff/Fill Detector for Moving Head Accent (2026-07-18, single-song validated)
+- **Shipped**: `src/analyzer/riff_bursts.py::detect_riff_bursts(bass_audio,
+  bass_sr, chords)` flags rare guitar/bass riff or fill moments — a burst
+  of >=3 bass-band (20-250Hz, demucs bass stem) onsets within 1.0s AND an
+  accelerated chord change (two adjacent Chordino marks <=0.6s apart)
+  inside that same window. Neither signal alone is selective enough (12
+  raw bass bursts / 21 raw fast-chord-changes in the validation song);
+  the AND of both reproduced exactly the user-confirmed moments and
+  nothing else. Wired into `orchestrator.py` Stage 8 (schema 2.3.0),
+  stored as `HierarchyResult.riff_bursts`, exported as an `riff_bursts`
+  .xtiming layer. Generator side:
+  `moving_head.py::place_moving_head_riff_bursts` places a mid-height
+  wide-fan Pan/Tilt punch (Tilt 45°/PanOffset 25°, deliberately distinct
+  from the crash punch's near-vertical narrow fan at Tilt 78.5°/PanOffset
+  10.5°) at each mark, reusing the exact same warmup/existing_placements/
+  vocal-exclusion machinery as `place_moving_head_crash_accents`. MH-only
+  — no whole-house counterpart (unlike crash accents' Shockwave), gated on
+  `config.moving_head_effects` alone (no new config flag added).
+- **Validation history**: ground truth came from manually scrubbing
+  "bar-guitar-and-a-honky-tonk-crowd" (a real user song) in the xLights
+  timeline UI — the user confirmed 5 moments by ear (~33s, ~43s, ~60.6s,
+  ~96.5s, ~149.3s) after being shown chord-acceleration + bass-burst
+  candidates cross-referenced against the song's own analysis tracks.
+  **Single-song validation only** — unlike crash_accents.py (6-song panel
+  before shipping), this formula has one song's worth of ground truth.
+  Follow-up: run against 2-3 more songs in the local library (any genre
+  with audible guitar/bass fills) and confirm the AND-condition still
+  cleanly separates real riffs from ordinary chord/bass movement before
+  trusting the threshold broadly. If it doesn't generalize, the
+  `_BURST_WINDOW_S`/`_CHORD_ACCEL_GAP_S` constants are the first things to
+  revisit — see the module docstring for the exact formula.
+- Implementation note for future test fixtures on this detector or any
+  other `librosa.onset.onset_detect`-based one: onset detection there is
+  scale-invariant (fires on pure low-amplitude noise, not just real
+  signal) — model "no activity" test fixtures as true silence
+  (`np.zeros`), not quiet Gaussian noise. Full details in cerebrum.md.
+
 ### QM Segmenter Boundary Merging
 - The `_merge_qm_boundaries` function uses a simple 2-second minimum gap to avoid
   micro-sections. A better approach would weight QM boundaries by the energy change
