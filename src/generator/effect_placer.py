@@ -3126,18 +3126,36 @@ def _best_face_definition(prop_name: str, face_definitions: list[str]) -> str:
     return best
 
 
+# Bitmap font for a "*Lyrics*Small*"-named matrix (user request,
+# 2026-07-18): xLights has no numeric font-size slider for the Text
+# effect's bitmap-font mode, only a fixed choice list; "6-5x6 Thin" is
+# 6px tall vs. the default "10-12x12 Bold"'s 12px -- the closest available
+# choice to a literal 50% of the size actually in use
+# (_XLIGHTS_EFFECT_DEFAULTS["Text"]["E_CHOICE_Text_Font"] in xsq_writer.py).
+_LYRIC_TEXT_SMALL_FONT = "6-5x6 Thin"
+
+
 def _place_lyric_text(
     props: list[Any],
     vocal_words: Optional[list[dict]],
 ) -> dict[str, list[EffectPlacement]]:
-    """Place a word-synced Text effect on the largest matrix prop.
+    """Place a word-synced Text effect on every matrix prop named for lyrics.
 
     Uses the xLights Text effect's ``Lyric Track`` mode
     (``E_CHOICE_Text_LyricTrack``) pointed at the "Words" timing track, so
     the matrix displays each sung word as it lands. One placement per
-    contiguous vocal region, on layer 0 — the first (top) render layer of
-    the matrix's own model element. Returns ``{}`` when there are no words
-    or no Matrix props in the layout.
+    contiguous vocal region per target, on layer 0 — the first (top)
+    render layer of the matrix's own model element. Returns ``{}`` when
+    there are no words or no Matrix props in the layout.
+
+    Every matrix prop whose name contains "lyric" (e.g. "Lyrics Matrix",
+    "Lyrics Matrix Small") gets the same placement -- not just the
+    largest one (2026-07-18: previously only ever targeted a single
+    matrix, so a second lyrics-display prop got nothing). A prop whose
+    name also contains "small" renders at ``_LYRIC_TEXT_SMALL_FONT``
+    instead of the catalog default; everything else about the effect is
+    identical between targets. When no prop is named for lyrics at all,
+    falls back to the single largest matrix prop (unchanged behavior).
     """
     result: dict[str, list[EffectPlacement]] = {}
     matrix_props = [p for p in props if getattr(p, "display_as", "") == "Matrix"]
@@ -3148,30 +3166,35 @@ def _place_lyric_text(
     if not regions:
         return result
 
-    # Prefer a matrix the user named for lyrics (e.g. "Lyrics Matrix");
-    # otherwise take the highest-resolution one.
     named = [p for p in matrix_props if "lyric" in p.name.lower()]
-    pool = named or matrix_props
-    target = max(pool, key=lambda p: (getattr(p, "pixel_count", 0), p.name))
-    placements: list[EffectPlacement] = []
-    for start, end in regions:
-        placements.append(EffectPlacement(
-            effect_name="Text",
-            xlights_id="Text",
-            model_or_group=target.name,
-            start_ms=start,
-            end_ms=end,
-            parameters={
-                "E_CHOICE_Text_LyricTrack": _LYRIC_TEXT_TIMING_TRACK,
-            },
-            color_palette=["#FFFFFF"],
-        ))
-    result[target.name] = placements
+    if named:
+        targets = named
+    else:
+        targets = [max(matrix_props, key=lambda p: (getattr(p, "pixel_count", 0), p.name))]
 
-    logger.info(
-        "lyric_text: Text/LyricTrack placed on matrix '%s' over %d vocal region(s)",
-        target.name, len(regions),
-    )
+    for target in targets:
+        parameters: dict[str, Any] = {
+            "E_CHOICE_Text_LyricTrack": _LYRIC_TEXT_TIMING_TRACK,
+        }
+        if "small" in target.name.lower():
+            parameters["E_CHOICE_Text_Font"] = _LYRIC_TEXT_SMALL_FONT
+        placements: list[EffectPlacement] = []
+        for start, end in regions:
+            placements.append(EffectPlacement(
+                effect_name="Text",
+                xlights_id="Text",
+                model_or_group=target.name,
+                start_ms=start,
+                end_ms=end,
+                parameters=dict(parameters),
+                color_palette=["#FFFFFF"],
+            ))
+        result[target.name] = placements
+
+        logger.info(
+            "lyric_text: Text/LyricTrack placed on matrix '%s' over %d vocal region(s)",
+            target.name, len(regions),
+        )
     return result
 
 

@@ -114,3 +114,29 @@ class TestPlaceLyricText:
     def test_no_words_no_placements(self):
         props = [_prop("Matrix Big", display_as="Matrix", pixels=4800)]
         assert _place_lyric_text(props, None) == {}
+
+    def test_multiple_lyric_named_matrices_all_get_placements(self):
+        # 2026-07-18: previously only the single largest matrix ever got
+        # placements; a second lyrics-display prop ("Lyrics Matrix Small")
+        # must get the same treatment, not be silently dropped.
+        props = [
+            _prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
+            _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
+            _prop("Matrix Unrelated", display_as="Matrix", pixels=9999),
+        ]
+        result = _place_lyric_text(props, WORDS)
+        assert set(result) == {"Lyrics Matrix", "Lyrics Matrix Small"}
+        assert len(result["Lyrics Matrix"]) == 2
+        assert len(result["Lyrics Matrix Small"]) == 2
+
+    def test_small_named_matrix_uses_smaller_bitmap_font(self):
+        props = [
+            _prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
+            _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
+        ]
+        result = _place_lyric_text(props, WORDS)
+        assert "E_CHOICE_Text_Font" not in result["Lyrics Matrix"][0].parameters
+        assert result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_Font"] == "6-5x6 Thin"
+        # Everything else about the effect is identical between targets.
+        assert (result["Lyrics Matrix"][0].parameters["E_CHOICE_Text_LyricTrack"]
+                == result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_LyricTrack"])
