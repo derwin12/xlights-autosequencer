@@ -135,6 +135,16 @@ class SectionAssignment:
     accent_policy: AccentPolicy = field(default_factory=AccentPolicy)
     working_set: Optional["WorkingSet"] = None
     section_index: int = 0
+    # Corpus-recipe occurrence index per recipe family: how many earlier
+    # sections in this song qualified for that family's recipe. Drives
+    # rotation-pool selection (occurrence % pool length) so every pool slot
+    # is reachable regardless of song structure — the previous
+    # variation_seed arithmetic aliased with regular section strides and
+    # silently skipped slots (Lightning never fired on 1999/Prince).
+    # Populated by plan._populate_assignment_decisions; when absent
+    # (e.g. assignments built directly in tests) the placer falls back to
+    # the old seed-based index.
+    corpus_occurrence: dict[str, int] = field(default_factory=dict)
     # Song-level anchor palette: 4 dominant colors shared across all sections so the
     # background wash tiers (1-2) feel like a consistent song identity rather than
     # resetting at every section boundary.  Empty list → fall back to theme.palette.

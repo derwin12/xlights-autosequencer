@@ -146,6 +146,15 @@ class PropFamilyRecipe:
     # instead of ping-ponging between two. Empty () -> effect_name /
     # alt_effect_name behavior, unchanged.
     motion_rotation: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = ()
+    # Pool of parameter-override tuples for secondary_effect_name, selected
+    # per qualifying occurrence (occurrence % len) so repeated sections walk
+    # through the mined looks instead of freezing one preset for the whole
+    # song (user report 2026-07-18: 96 identical Spirals on 06_PROP_Matrix).
+    # Entries are complete mined parameter combinations — never re-mix
+    # individual sliders across entries; independent sampling can produce
+    # combos no reference package ever shipped. Empty () ->
+    # secondary_parameter_overrides applies unchanged.
+    secondary_rotation: tuple[tuple[tuple[str, str], ...], ...] = ()
     # Beats per primary-motion segment. Most families place one segment per
     # beat (1); icicles run calmer 2-beat segments (mined medians 0.65-1.98s
     # against 0.44-0.65s beats — 1-4 beat segments, never per-beat bursts).
@@ -300,6 +309,51 @@ _PINWHEEL_MATRIX: tuple[tuple[str, str], ...] = (
 )
 
 
+# Matrix Pinwheel alternate — the second mined family (96 placements):
+# 8 twisted thin arms, slower spin, plain 3D.
+_PINWHEEL_MATRIX_8ARM: tuple[tuple[str, str], ...] = (
+    ("E_CHOICE_Pinwheel_Style", "New Render Method"),
+    ("E_CHOICE_Pinwheel_3D", "3D"),
+    ("E_SLIDER_Pinwheel_Arms", "8"),
+    ("E_SLIDER_Pinwheel_Speed", "10"),
+    ("E_SLIDER_Pinwheel_Thickness", "15"),
+    ("E_SLIDER_Pinwheel_Twist", "20"),
+)
+
+
+# Matrix Shockwave variants — the mined bursts differ mainly in reach
+# (End_Radius/End_Width): small pop 30/20 (860 placements, the corpus
+# mode — _SHOCKWAVE_BURST's 100/35 is the whole-corpus preset), full-screen
+# blast 100/62 (336), unscaled mid ring 50/30 (304, Scale=0).
+_SHOCKWAVE_MATRIX_FULL: tuple[tuple[str, str], ...] = (
+    ("E_NOTEBOOK_Shockwave", "Position"),
+    ("E_CHECKBOX_Shockwave_Blend_Edges", "1"),
+    ("E_CHECKBOX_Shockwave_Scale", "1"),
+    ("E_SLIDER_Shockwave_Accel", "0"),
+    ("E_SLIDER_Shockwave_CenterX", "50"),
+    ("E_SLIDER_Shockwave_CenterY", "50"),
+    ("E_SLIDER_Shockwave_Cycles", "1"),
+    ("E_SLIDER_Shockwave_Start_Radius", "1"),
+    ("E_SLIDER_Shockwave_Start_Width", "5"),
+    ("E_SLIDER_Shockwave_End_Radius", "100"),
+    ("E_SLIDER_Shockwave_End_Width", "62"),
+)
+
+_SHOCKWAVE_MATRIX_MID: tuple[tuple[str, str], ...] = (
+    ("E_NOTEBOOK_Shockwave", "Position"),
+    ("E_CHECKBOX_Shockwave_Blend_Edges", "1"),
+    ("E_CHECKBOX_Shockwave_Scale", "0"),
+    ("E_SLIDER_Shockwave_Accel", "0"),
+    ("E_SLIDER_Shockwave_CenterX", "50"),
+    ("E_SLIDER_Shockwave_CenterY", "50"),
+    ("E_SLIDER_Shockwave_Cycles", "1"),
+    ("E_SLIDER_Shockwave_Start_Radius", "1"),
+    ("E_SLIDER_Shockwave_Start_Width", "5"),
+    ("E_SLIDER_Shockwave_End_Radius", "50"),
+    ("E_SLIDER_Shockwave_End_Width", "30"),
+)
+
+
 # Matrix Ripple preset — mined from 442 Ripple placements on matrix
 # elements, unanimous: imploding circles (Implode 100%, Circle 100%, Old
 # draw style 100%), thin rings (Thickness 12 at 99.5%), slow collapse
@@ -316,15 +370,87 @@ _RIPPLE_MATRIX_IMPLODE: tuple[tuple[str, str], ...] = (
 )
 
 
-# Matrix Spirals preset — mined from 821 Spirals placements on matrix
-# elements: single spiral (63%), 3D (59%), gentle rotation (~+/-30),
-# slow movement, no grow/shrink/blend (88-97%).
+# Matrix Ripple alternate — exploding thin 3D rings (226 placements at
+# thickness 3; the corpus also runs 1 and 100, this is the middle look).
+_RIPPLE_MATRIX_EXPLODE: tuple[tuple[str, str], ...] = (
+    ("E_CHOICE_Ripple_Movement", "Explode"),
+    ("E_CHOICE_Ripple_Object_To_Draw", "Circle"),
+    ("E_CHOICE_Ripple_Draw_Style", "Old"),
+    ("E_SLIDER_Ripple_Thickness", "3"),
+    ("E_TEXTCTRL_Ripple_Cycles", "1"),
+    ("E_CHECKBOX_Ripple3D", "1"),
+    ("E_SLIDER_Ripple_XC", "0"),
+    ("E_SLIDER_Ripple_YC", "0"),
+)
+
+
+# Matrix Spirals presets — re-mined 2026-07-18 from all 873 Spirals
+# placements on matrix elements across the reference packages: 52 distinct
+# full setting combos, 5-25 per song. The pool below carries the five
+# dominant looks as complete mined combinations (never re-mix sliders
+# across presets). _SPIRALS_MATRIX is the thick 3D single spiral
+# (48+29+27 placements; thickness corrected 30 -> 35, the mined mode —
+# 30 never appears in the corpus).
 _SPIRALS_MATRIX: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Spirals_Count", "1"),
     ("E_SLIDER_Spirals_Rotation", "30"),
-    ("E_SLIDER_Spirals_Thickness", "30"),
+    ("E_SLIDER_Spirals_Thickness", "35"),
     ("E_TEXTCTRL_Spirals_Movement", "1"),
     ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+)
+
+
+# Thin twin-spiral pair — the single most common matrix Spirals look
+# (76+76 placements as a +20/-20 mirror pair; the per-placement flip
+# alternation in the placer supplies the mirroring).
+_SPIRALS_MATRIX_TWIN: tuple[tuple[str, str], ...] = (
+    ("E_SLIDER_Spirals_Count", "2"),
+    ("E_SLIDER_Spirals_Rotation", "20"),
+    ("E_SLIDER_Spirals_Thickness", "7"),
+    ("E_TEXTCTRL_Spirals_Movement", "0.7"),
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+)
+
+
+# Fast tight flat spiral (43 placements: rotation -100, thickness 20, 2D).
+_SPIRALS_MATRIX_FAST_FLAT: tuple[tuple[str, str], ...] = (
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "-100"),
+    ("E_SLIDER_Spirals_Thickness", "20"),
+    ("E_TEXTCTRL_Spirals_Movement", "1"),
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+)
+
+
+# Reverse-travel 3D spiral (38+36 placements: negative movement -2).
+_SPIRALS_MATRIX_REVERSE: tuple[tuple[str, str], ...] = (
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "-32"),
+    ("E_SLIDER_Spirals_Thickness", "33"),
+    ("E_TEXTCTRL_Spirals_Movement", "-2"),
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+)
+
+
+# Multi-spiral burst (28 placements: 4 spirals, fast rotation, flat).
+_SPIRALS_MATRIX_MULTI: tuple[tuple[str, str], ...] = (
+    ("E_SLIDER_Spirals_Count", "4"),
+    ("E_SLIDER_Spirals_Rotation", "-100"),
+    ("E_SLIDER_Spirals_Thickness", "20"),
+    ("E_TEXTCTRL_Spirals_Movement", "1"),
+    ("E_CHECKBOX_Spirals_3D", "0"),
     ("E_CHECKBOX_Spirals_Blend", "0"),
     ("E_CHECKBOX_Spirals_Grow", "0"),
     ("E_CHECKBOX_Spirals_Shrink", "0"),
@@ -632,14 +758,29 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_effect_name="Pinwheel",
         parameter_overrides=_SHOCKWAVE_BURST,
         alt_parameter_overrides=_PINWHEEL_MATRIX,
+        # Re-mined 2026-07-18: each effect gets its dominant mined preset
+        # variants, interleaved so consecutive occurrences change effect,
+        # not just preset. Lightning removed — the corpus uses matrix
+        # Lightning as a rare accent (2/14 songs), not a section texture;
+        # it now rides the crash-accent pass (_place_crash_accents).
         motion_rotation=(
             ("Shockwave", _SHOCKWAVE_BURST),
             ("Pinwheel", _PINWHEEL_MATRIX),
-            ("Lightning", _LIGHTNING_FLICKER),
             ("Ripple", _RIPPLE_MATRIX_IMPLODE),
+            ("Shockwave", _SHOCKWAVE_MATRIX_FULL),
+            ("Pinwheel", _PINWHEEL_MATRIX_8ARM),
+            ("Ripple", _RIPPLE_MATRIX_EXPLODE),
+            ("Shockwave", _SHOCKWAVE_MATRIX_MID),
         ),
         secondary_effect_name="Spirals",
         secondary_parameter_overrides=_SPIRALS_MATRIX,
+        secondary_rotation=(
+            _SPIRALS_MATRIX_TWIN,
+            _SPIRALS_MATRIX,
+            _SPIRALS_MATRIX_FAST_FLAT,
+            _SPIRALS_MATRIX_REVERSE,
+            _SPIRALS_MATRIX_MULTI,
+        ),
         color_over_mask=True,
     ),
     PropFamilyRecipe(

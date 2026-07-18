@@ -27,6 +27,7 @@ from src.generator.effect_placer import (
     place_effects,
     restrain_palette,
 )
+from src.generator.corpus_recipes import CORPUS_RECIPES, section_qualifies
 from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
 from src.generator.moving_head import (
@@ -624,10 +625,21 @@ def _populate_assignment_decisions(
     dummy_palette = ["#000000"] * 6
     drum_track_present = hierarchy.events.get("drums") is not None
     last_idx = len(assignments) - 1
+    corpus_family_counts: dict[str, int] = {}
     for idx, assignment in enumerate(assignments):
         section = assignment.section
         assignment.section_index = idx
         assignment.is_final_section = (idx == last_idx)
+
+        # Corpus-recipe rotation: per-family running count of qualifying
+        # sections, consumed by _place_corpus_recipe as the rotation-pool
+        # index (see SectionAssignment.corpus_occurrence).
+        assignment.corpus_occurrence = {}
+        for recipe in CORPUS_RECIPES:
+            if section_qualifies(recipe, section):
+                n = corpus_family_counts.get(recipe.family, 0)
+                assignment.corpus_occurrence[recipe.family] = n
+                corpus_family_counts[recipe.family] = n + 1
 
         # Active tiers — user override (`config.tiers`) wins; else energy/mood-driven
         # selection when enabled; else all tiers.

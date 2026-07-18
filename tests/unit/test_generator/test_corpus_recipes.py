@@ -82,7 +82,8 @@ def _make_hierarchy(beat_times: list[int] | None, duration_ms: int = 8000) -> Hi
 
 def _make_assignment(section: SectionEnergy, layers: list[EffectLayer],
                      variation_seed: int = 0,
-                     active_tiers: frozenset[int] = frozenset({1, 6})) -> SectionAssignment:
+                     active_tiers: frozenset[int] = frozenset({1, 6}),
+                     corpus_occurrence: dict[str, int] | None = None) -> SectionAssignment:
     theme = Theme(
         name="Test Theme", mood="structural", occasion="general", genre="any",
         intent="test", layers=layers, palette=["#ff0000", "#00ff00"],
@@ -91,6 +92,7 @@ def _make_assignment(section: SectionEnergy, layers: list[EffectLayer],
         section=section, theme=theme,
         active_tiers=active_tiers,
         variation_seed=variation_seed,
+        corpus_occurrence=corpus_occurrence or {},
     )
 
 
@@ -123,12 +125,14 @@ def _place(section: SectionEnergy, group: PowerGroup,
            layers: list[EffectLayer] | None = None,
            hierarchy: HierarchyResult | None = None,
            library_names: tuple[str, ...] = _DEFAULT_LIBRARY_NAMES,
-           active_tiers: frozenset[int] = frozenset({1, 6})):
+           active_tiers: frozenset[int] = frozenset({1, 6}),
+           corpus_occurrence: dict[str, int] | None = None):
     layers = layers or [EffectLayer(variant="Color Wash")]
     library = _make_library(*library_names)
     variant_library = _make_variant_library(*library_names)
     assignment = _make_assignment(section, layers, variation_seed=variation_seed,
-                                  active_tiers=active_tiers)
+                                  active_tiers=active_tiers,
+                                  corpus_occurrence=corpus_occurrence)
     return place_effects(
         assignment, [group], library,
         hierarchy if hierarchy is not None else _make_hierarchy(_BEATS),
@@ -725,7 +729,10 @@ class TestMatrixRecipe:
         assert len(spins) == 2
         assert all(p.layer == 2 for p in spins)
         assert all(p.color_palette == ["#FFFFFF"] for p in spins)
-        assert all(p.parameters["E_CHECKBOX_Spirals_3D"] == "1" for p in spins)
+        # seed 0, no occurrence index -> secondary_rotation pool slot 0,
+        # the mined thin twin-spiral pair.
+        assert all(p.parameters["E_SLIDER_Spirals_Count"] == "2" for p in spins)
+        assert all(p.parameters["E_SLIDER_Spirals_Thickness"] == "7" for p in spins)
         # The spins tile the section without gaps
         assert spins[0].start_ms == 0
         assert spins[-1].end_ms == section.end_ms
@@ -752,6 +759,45 @@ class TestMatrixRecipe:
             assert p.parameters["E_CHOICE_Pinwheel_Style"] == "New Render Method"
             assert p.parameters["E_SLIDER_Pinwheel_Arms"] == "2"
             assert "E_SLIDER_Shockwave_End_Radius" not in p.parameters
+
+    def test_motion_rotation_walks_every_slot_via_occurrence(self) -> None:
+        # Regression for the seed-aliasing bug: (variation_seed // 2) % len
+        # could skip pool slots for songs with regular section strides
+        # (Lightning never fired on a real song). Occurrence-driven rotation
+        # must reach every slot in pool order.
+        from src.generator.corpus_recipes import CORPUS_RECIPES
+        recipe = next(r for r in CORPUS_RECIPES if r.family == "matrix")
+        pool = recipe.motion_rotation
+        libs = _LIBRARY_WITH_ON + ("Pinwheel", "Ripple")
+        seen: list[tuple[str, str | None]] = []
+        for occ in range(len(pool)):
+            result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                            library_names=libs,
+                            corpus_occurrence={"matrix": occ})
+            motion = [p for p in result["06_PROP_Matrix"]
+                      if p.effect_name in ("Shockwave", "Pinwheel", "Ripple")
+                      and p.layer == 1]
+            assert motion, f"occurrence {occ} placed no motion effects"
+            names = {p.effect_name for p in motion}
+            assert len(names) == 1
+            radius = motion[0].parameters.get("E_SLIDER_Shockwave_End_Radius")
+            seen.append((names.pop(), radius))
+        expected = [(name, dict(params).get("E_SLIDER_Shockwave_End_Radius"))
+                    for name, params in pool]
+        assert seen == expected
+
+    def test_secondary_pool_cycles_per_occurrence(self) -> None:
+        # Each qualifying occurrence advances the sustained-Spirals preset;
+        # distinguish presets by (Count, Thickness).
+        expected = [("2", "7"), ("1", "35"), ("1", "20"), ("1", "33"), ("4", "20")]
+        for occ, (count, thickness) in enumerate(expected):
+            result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                            library_names=_LIBRARY_WITH_ON,
+                            corpus_occurrence={"matrix": occ})
+            spins = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Spirals"]
+            assert spins, f"occurrence {occ} placed no spins"
+            assert spins[0].parameters["E_SLIDER_Spirals_Count"] == count
+            assert spins[0].parameters["E_SLIDER_Spirals_Thickness"] == thickness
 
     def test_secondary_missing_from_library_still_places_primary(self) -> None:
         # No "Spirals" in the catalog: the recipe degrades to the two-layer
@@ -1394,16 +1440,42 @@ class TestMatrixMotionRotation:
             if p.effect_name not in ("On", "Spirals")
         }
 
-    def test_rotation_walks_all_four_mined_looks(self) -> None:
+    def test_rotation_walks_the_seven_slot_pool(self) -> None:
+        # Seed fallback path: seed s -> slot (s // 2) % 7. The pool
+        # interleaves Shockwave/Pinwheel/Ripple preset variants; Lightning
+        # was moved to the crash-accent pass (2026-07-18).
         assert self._motion_effects(0) == {"Shockwave"}
         assert self._motion_effects(2) == {"Pinwheel"}
-        assert self._motion_effects(4) == {"Lightning"}
-        assert self._motion_effects(6) == {"Ripple"}
-        assert self._motion_effects(8) == {"Shockwave"}  # cycle repeats
+        assert self._motion_effects(4) == {"Ripple"}
+        assert self._motion_effects(6) == {"Shockwave"}
+        assert self._motion_effects(8) == {"Pinwheel"}
+        assert self._motion_effects(10) == {"Ripple"}
+        assert self._motion_effects(12) == {"Shockwave"}
+        assert self._motion_effects(14) == {"Shockwave"}  # cycle repeats
+
+    def test_shockwave_slots_carry_distinct_mined_presets(self) -> None:
+        # Slots 0/3/6 are all Shockwave but different mined reaches.
+        radii = []
+        for seed in (0, 6, 12):
+            result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                            variation_seed=seed, library_names=_LIBRARY_MATRIX)
+            bursts = [p for p in result["06_PROP_Matrix"]
+                      if p.effect_name == "Shockwave"]
+            assert bursts
+            radii.append(dict(bursts[0].parameters)["E_SLIDER_Shockwave_End_Radius"])
+        assert radii == ["100", "100", "50"]
+        widths = []
+        for seed in (0, 6):
+            result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                            variation_seed=seed, library_names=_LIBRARY_MATRIX)
+            bursts = [p for p in result["06_PROP_Matrix"]
+                      if p.effect_name == "Shockwave"]
+            widths.append(dict(bursts[0].parameters)["E_SLIDER_Shockwave_End_Width"])
+        assert widths == ["35", "62"]
 
     def test_ripple_slot_carries_implode_preset(self) -> None:
         result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
-                        variation_seed=6, library_names=_LIBRARY_MATRIX)
+                        variation_seed=4, library_names=_LIBRARY_MATRIX)
         ripples = [p for p in result["06_PROP_Matrix"]
                    if p.effect_name == "Ripple"]
         assert ripples
@@ -1412,20 +1484,16 @@ class TestMatrixMotionRotation:
         assert params["E_TEXTCTRL_Ripple_Cycles"] == "0.2"
         assert params["E_SLIDER_Ripple_Thickness"] == "12"
 
-    def test_lightning_slot_carries_flicker_preset(self) -> None:
-        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
-                        variation_seed=4, library_names=_LIBRARY_MATRIX)
-        bolts = [p for p in result["06_PROP_Matrix"]
-                 if p.effect_name == "Lightning"]
-        assert bolts
-        params = dict(bolts[0].parameters)
-        assert params["E_CHOICE_Lightning_Direction"] == "Up"
-        assert params["E_SLIDER_Number_Bolts"] == "10"
+    def test_lightning_not_in_section_rotation(self) -> None:
+        # Lightning rides the crash-accent pass now, never the per-section
+        # rotation — even with Lightning present in the catalog.
+        for seed in range(0, 16, 2):
+            assert "Lightning" not in self._motion_effects(seed)
 
     def test_missing_rotation_effect_falls_back_to_primary_pair(self) -> None:
-        # A catalog without Lightning must not break the Lightning slot —
+        # A catalog missing a rotation slot's effect must not break the slot —
         # the primary/alt pair takes over (seed 4 -> halved parity 0 -> primary).
-        library = tuple(n for n in _LIBRARY_MATRIX if n != "Lightning")
+        library = tuple(n for n in _LIBRARY_MATRIX if n != "Ripple")
         assert self._motion_effects(4, library=library) == {"Shockwave"}
 
     def test_sustained_spirals_layer_survives_rotation(self) -> None:
@@ -1434,7 +1502,11 @@ class TestMatrixMotionRotation:
         spirals = [p for p in result["06_PROP_Matrix"]
                    if p.effect_name == "Spirals"]
         assert spirals
-        assert dict(spirals[0].parameters)["E_CHECKBOX_Spirals_3D"] == "1"
+        # seed 4 -> secondary pool slot (4 // 2) % 5 = 2, the fast tight
+        # flat spiral.
+        params = dict(spirals[0].parameters)
+        assert params["E_SLIDER_Spirals_Rotation"] == "-100"
+        assert params["E_SLIDER_Spirals_Thickness"] == "20"
 
     def test_families_without_rotation_unchanged(self) -> None:
         # Snowflakes keep the two-effect alternation: seed 4 halves to

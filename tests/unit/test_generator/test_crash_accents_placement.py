@@ -111,6 +111,77 @@ class TestPlaceCrashAccents:
         assert sorted(p.start_ms + _CRASH_LEAD_MS for p in placements) == [10_000, 50_000]
 
 
+def _matrix_group() -> PowerGroup:
+    return PowerGroup(
+        name="06_PROP_Matrix", tier=6, members=["Matrix 1", "Matrix 2"],
+        prop_type="matrix",
+    )
+
+
+class TestCrashAccentMatrixLightning:
+    # Matrix Lightning rides the crash pass (user request 2026-07-18): the
+    # reference corpus uses matrix Lightning as a rare accent, not a
+    # section texture, so it fires with the whole-house Shockwave +
+    # Moving Head punch instead of the recipe's motion rotation.
+
+    def test_lightning_placed_on_matrix_at_crash_mark(self):
+        result = _place_crash_accents(
+            groups=[_fades_group(), _matrix_group()],
+            hierarchy=_hierarchy([50_850]),
+            vocal_words=None, variant_library=_variant_library(),
+        )
+        assert set(result) == {"01_BASE_All_FADES", "06_PROP_Matrix"}
+        bolts = result["06_PROP_Matrix"]
+        assert len(bolts) == 1
+        p = bolts[0]
+        assert p.effect_name == "Lightning"
+        assert p.color_palette == ["#FFFFFF"]
+        assert abs(p.start_ms - (50_850 - _CRASH_LEAD_MS)) <= 25
+        assert abs(p.end_ms - (50_850 + _CRASH_EFFECT_DURATION_MS)) <= 25
+        assert p.parameters["E_CHOICE_Lightning_Direction"] == "Up"
+        assert p.parameters["E_SLIDER_Number_Bolts"] == "10"
+
+    def test_lightning_renders_above_recipe_layers(self):
+        # xLights renders the FIRST EffectLayer on top (bug-248); the accent
+        # must sort below the recipe's layers 0-2.
+        result = _place_crash_accents(
+            groups=[_fades_group(), _matrix_group()],
+            hierarchy=_hierarchy([50_850]),
+            vocal_words=None, variant_library=_variant_library(),
+        )
+        assert all(p.layer < 0 for p in result["06_PROP_Matrix"])
+
+    def test_alternate_marks_rotate_the_bolts(self):
+        result = _place_crash_accents(
+            groups=[_fades_group(), _matrix_group()],
+            hierarchy=_hierarchy([10_000, 50_000]),
+            vocal_words=None, variant_library=_variant_library(),
+        )
+        bolts = sorted(result["06_PROP_Matrix"], key=lambda p: p.start_ms)
+        assert "B_CHOICE_BufferTransform" not in bolts[0].parameters
+        assert bolts[1].parameters["B_CHOICE_BufferTransform"] == "Rotate CC 90"
+
+    def test_lyrics_matrix_excluded(self):
+        lyrics = PowerGroup(
+            name="06_PROP_Lyrics_Matrix", tier=6, members=["Lyrics Matrix"],
+        )
+        result = _place_crash_accents(
+            groups=[_fades_group(), lyrics],
+            hierarchy=_hierarchy([50_850]),
+            vocal_words=None, variant_library=_variant_library(),
+        )
+        assert set(result) == {"01_BASE_All_FADES"}
+
+    def test_vocal_exclusion_applies_to_matrix_too(self):
+        vocal_words = [{"start_ms": 50_500, "end_ms": 51_000}]
+        result = _place_crash_accents(
+            groups=[_fades_group(), _matrix_group()],
+            hierarchy=_hierarchy([50_850]),
+            vocal_words=vocal_words, variant_library=_variant_library(),
+        )
+        assert result == {}
+
+
 class TestCrashAccentsConfigFlag:
     def test_flag_defaults_to_true(self):
         config = GenerationConfig(

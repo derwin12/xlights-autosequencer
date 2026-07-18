@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design: matrix motion variety from mined vendor presets</title>
+<link rel="stylesheet" href="../_design.css">
+</head>
+<body>
+<header>
+  <h1>Matrix motion variety from mined vendor presets</h1>
+  <p class="subtitle">Second-round fix for the repetitive <code>06_PROP_Matrix</code> Spirals layer (bug-256 follow-up) &mdash; plus a verified rotation-aliasing bug fix and Lightning-as-crash-accent.</p>
+</header>
+
+<section>
+  <h2>Goal</h2>
+  <p>Give matrix-group placements the setting-level variety the vendor corpus actually uses (15&ndash;52 distinct combos per effect vs our 3&ndash;4), by rotating through pools of <em>full mined parameter combinations</em>, and fix the seed-aliasing bug that made Lightning unreachable.</p>
+</section>
+
+<section>
+  <h2>Evidence</h2>
+  <table>
+    <thead><tr><th>Effect</th><th>Vendor placements</th><th>Vendor distinct settings</th><th>Ours (1999.xsq)</th></tr></thead>
+    <tbody>
+      <tr><td>Shockwave</td><td>3,742</td><td>15</td><td>3</td></tr>
+      <tr><td>Pinwheel</td><td>1,425</td><td>27</td><td>3</td></tr>
+      <tr><td>Ripple</td><td>1,298</td><td>7</td><td>3</td></tr>
+      <tr><td>Lightning</td><td>1,243</td><td>6</td><td><strong>0 &mdash; never fired</strong></td></tr>
+      <tr><td>Spirals</td><td>873</td><td>52</td><td>4 (one preset &plusmn; flip)</td></tr>
+    </tbody>
+  </table>
+  <p>Observed rotation walk in the real 1999 output: <code>Shockwave(0) &rarr; Pinwheel(1) &rarr; Shockwave(0) &rarr; Ripple(3) &rarr; &hellip;</code> &mdash; slot 2 (Lightning) is unreachable because <code>idx = (variation_seed // 2) % 4</code> aliases with the song's qualifying-section stride. Same failure family as bug-182 and bug-188.</p>
+</section>
+
+<section>
+  <h2>Design &mdash; four parts</h2>
+  <ol>
+    <li><strong>Occurrence-based rotation.</strong> <code>place_effects</code> counts successful corpus-recipe placements per group and passes <code>occurrence_index</code> to <code>_place_corpus_recipe</code>; rotation pools use <code>occurrence_index % len(pool)</code>. Every slot reachable in every song. The bug-182 <code>seed // 2</code> primary/alt parity for non-pool families is untouched.</li>
+    <li><strong>Mined preset pools in <code>motion_rotation</code>.</strong> No type change &mdash; repeated effect names with different mined params. Matrix pool grows 4 &rarr; ~7 entries (Shockwave &times;3 radii/widths, Pinwheel &times;2 arm-styles, Ripple &times;2 implode/explode), interleaved so consecutive occurrences change effect. Lightning removed.</li>
+    <li><strong>New <code>secondary_rotation</code> field.</strong> Pool of parameter tuples for the sustained layer, selected per occurrence. Matrix gets 5 mined Spirals looks (thin twin-pair &mdash; the #1 vendor look &mdash; thick 3D single, fast tight flat, reverse 3D, multi-spiral). Default <code>()</code> keeps every other recipe bit-identical. Per-placement Flip Horizontal alternation (bug-254/256) composes on top.</li>
+    <li><strong>Lightning &rarr; crash-accent pass.</strong> <code>_place_crash_accents</code> adds a Lightning burst on tier-6 matrix groups at each crash mark (same window/exclusions as the whole-house Shockwave and Moving Head punch), alternating the vendor's <code>Rotate CC 90</code> variant. Layer index <em>below</em> the group's existing minimum so it renders on top (bug-248: first <code>EffectLayer</code> wins).</li>
+  </ol>
+  <p><strong>Variability principle:</strong> variety comes from rotating <em>complete mined combinations</em> &mdash; never independent per-parameter sampling, which can produce combos no vendor ever shipped.</p>
+</section>
+
+<section>
+  <h2>Alternatives considered</h2>
+  <ul>
+    <li><em>Per-parameter jitter from mined distributions</em> &mdash; rejected; invents unvendor-like combos.</li>
+    <li><em>Coprime stride on the seed</em> &mdash; rejected; still aliasable, harder to reason about than a counter.</li>
+    <li><em>Rotate the secondary effect itself (Plasma/Fire)</em> &mdash; deferred; mined sustained-layer idiom is overwhelmingly Spirals.</li>
+    <li><em>Fix aliasing but keep Lightning in rotation</em> &mdash; rejected; vendors use matrix Lightning as an accent (2/14 songs), not a section texture, and the user explicitly suggested the crash pairing.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Files touched</h2>
+  <table>
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/generator/corpus_recipes.py</code></td><td>modified &mdash; <code>secondary_rotation</code> field, expanded matrix pools, new preset constants</td></tr>
+      <tr><td><code>src/generator/effect_placer.py</code></td><td>modified &mdash; occurrence counter (4 call sites), <code>_place_corpus_recipe</code> param, crash-pass Lightning</td></tr>
+      <tr><td><code>tests/unit/test_generator/test_corpus_recipes.py</code></td><td>modified &mdash; updated pinned presets + new pool/rotation tests</td></tr>
+      <tr><td><code>tests/unit/test_generator/test_crash_accents_placement.py</code></td><td>modified &mdash; matrix Lightning tests</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Regression surface</h2>
+  <ul>
+    <li><code>PropFamilyRecipe</code>: additive field, default <code>()</code>; constructed only in <code>corpus_recipes.py</code>.</li>
+    <li><code>_place_corpus_recipe</code>: private, 4 call sites in <code>effect_placer.py</code>, no direct test callers (verified by grep) &mdash; tests go through <code>place_effects</code>, whose signature is unchanged and guarded by <code>test_place_effects_signature.py</code>.</li>
+    <li><code>_place_crash_accents</code>: one caller (<code>plan.py:339</code>); additive behavior, existing assertions must keep passing.</li>
+    <li>Non-matrix recipes: bit-identical output (no rotation pools, empty <code>secondary_rotation</code>).</li>
+    <li>Microscope baselines: matrix output changes by design &mdash; re-run panel + matrix manifest, sensitivity gate before re-promoting.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Historical echoes</h2>
+  <ul>
+    <li><strong>bug-182</strong> seed-parity lock-in &rarr; occurrence counter removes the arithmetic for pools.</li>
+    <li><strong>bug-188</strong> Lightning silently never fired (catalog) &rarr; new test asserts every pool slot reachable.</li>
+    <li><strong>bug-197</strong> single repeated effect all song &rarr; same complaint shape, same per-occurrence-rotation philosophy.</li>
+    <li><strong>bug-254/256</strong> flip alternation &rarr; preserved, composes with pools.</li>
+    <li><strong>bug-248</strong> first EffectLayer renders on top &rarr; crash Lightning layer indexing.</li>
+    <li><strong>bug-159</strong> return <code>None</code>, never <code>[]</code> &rarr; preserved.</li>
+    <li><strong>Privacy rule (2026-07-18, tightened)</strong>: no vendor name/prefix anywhere in this change, code, tests, or commits.</li>
+  </ul>
+</section>
+</body>
+</html>

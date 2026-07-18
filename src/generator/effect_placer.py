@@ -9,6 +9,7 @@ from typing import Any, Callable, Optional
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import EffectLibrary
 from src.generator.corpus_recipes import (
+    _LIGHTNING_FLICKER,
     PropFamilyRecipe,
     recipe_for_group,
     section_qualifies,
@@ -873,6 +874,7 @@ def place_effects(
                             group, recipe, layer, section, hierarchy,
                             effect_library, assignment.variation_seed,
                             theme_palette=tier_palette,
+                            occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                         )
                         if recipe_placements:
                             corpus_recipe_done.add(group.name)
@@ -986,6 +988,7 @@ def place_effects(
                                 group, recipe, layer, section, hierarchy,
                                 effect_library, assignment.variation_seed,
                                 theme_palette=tier_palette,
+                                occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1056,6 +1059,7 @@ def place_effects(
                                 group, recipe, layer, section, hierarchy,
                                 effect_library, assignment.variation_seed,
                                 theme_palette=tier_palette,
+                                occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1177,6 +1181,7 @@ def place_effects(
                         group, recipe, layer, section, hierarchy,
                         effect_library, assignment.variation_seed,
                         theme_palette=tier_palette,
+                        occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                     )
                     if recipe_placements:
                         corpus_recipe_done.add(group.name)
@@ -1967,6 +1972,7 @@ def _place_corpus_recipe(
     effect_library: EffectLibrary,
     variation_seed: int,
     theme_palette: list[str] | None = None,
+    occurrence_index: int | None = None,
 ) -> list[EffectPlacement] | None:
     """Place a corpus-mined prop-family idiom: solid-palette segments spanning
     consecutive beats, back-to-back across the section (the mined shows place
@@ -1995,7 +2001,16 @@ def _place_corpus_recipe(
     ):
         effect_name = recipe.label_alt_effect_name
     elif recipe.motion_rotation:
-        idx = (variation_seed // 2) % len(recipe.motion_rotation)
+        # Rotate by qualifying-occurrence count when available: the seed is
+        # the global section index, and (seed // 2) % len aliases with
+        # regular section strides, silently skipping pool slots (verified on
+        # a real song: the walk was 0,1,0,3 — slot 2 unreachable). The seed
+        # form remains only as a fallback for callers that never populate
+        # SectionAssignment.corpus_occurrence.
+        if occurrence_index is not None:
+            idx = occurrence_index % len(recipe.motion_rotation)
+        else:
+            idx = (variation_seed // 2) % len(recipe.motion_rotation)
         rotated_name, rotated_params = recipe.motion_rotation[idx]
         if effect_library.effects.get(rotated_name) is not None:
             effect_name = rotated_name
@@ -2176,7 +2191,18 @@ def _place_corpus_recipe(
     )
     if secondary_def is not None:
         stride = max(1, recipe.secondary_beats_per_placement)
-        secondary_params = dict(recipe.secondary_parameter_overrides)
+        # secondary_rotation pool: pick one complete mined preset per
+        # qualifying occurrence so repeated sections walk through the mined
+        # looks instead of freezing one for the whole song (same occurrence
+        # counter and seed fallback as the motion_rotation branch above).
+        if recipe.secondary_rotation:
+            if occurrence_index is not None:
+                pool_idx = occurrence_index % len(recipe.secondary_rotation)
+            else:
+                pool_idx = (variation_seed // 2) % len(recipe.secondary_rotation)
+            secondary_params = dict(recipe.secondary_rotation[pool_idx])
+        else:
+            secondary_params = dict(recipe.secondary_parameter_overrides)
         bottom_layer_idx = mask_layer_idx + 1
         for j in range(0, len(marks), stride):
             start = marks[j].time_ms
@@ -3517,6 +3543,13 @@ def _place_crash_accents(
     -- covers that span and a Shockwave there would collide with it).
     Song-scoped like ``_place_singing_faces``/``_place_video_effect``, not
     routed through the per-section pipeline.
+
+    Matrix-family groups get a white Lightning burst over the same window
+    (user request 2026-07-18): the reference packages use matrix Lightning
+    as a rare accent, not a section texture, so it pairs with the crash
+    choreography (whole-house Shockwave + Moving Head punch) instead of
+    living in the recipe's motion rotation. Alternating marks rotate the
+    bolts 90 degrees, the second-most-common mined Lightning variant.
     """
     result: dict[str, list[EffectPlacement]] = {}
     if not hierarchy.crash_accents:
@@ -3539,7 +3572,14 @@ def _place_crash_accents(
     variant = variant_library.get("Shockwave Full Fast") if variant_library is not None else None
     params = dict(variant.parameter_overrides) if variant is not None else {}
 
+    matrix_groups = [
+        g for g in groups
+        if (recipe := recipe_for_group(g)) is not None and recipe.family == "matrix"
+    ]
+
     placements: list[EffectPlacement] = []
+    matrix_placements: dict[str, list[EffectPlacement]] = {}
+    accent_index = 0
     for mark in hierarchy.crash_accents:
         if _near_vocal(mark.time_ms):
             continue
@@ -3558,7 +3598,26 @@ def _place_crash_accents(
             parameters=params,
             color_palette=["#FFFFFF"],
         ))
+        lightning_params: dict[str, Any] = dict(_LIGHTNING_FLICKER)
+        if accent_index % 2 == 1:
+            lightning_params["B_CHOICE_BufferTransform"] = "Rotate CC 90"
+        for g in matrix_groups:
+            p = EffectPlacement(
+                effect_name="Lightning",
+                xlights_id="Lightning",
+                model_or_group=g.name,
+                start_ms=start_ms,
+                end_ms=end_ms,
+                parameters=dict(lightning_params),
+                color_palette=["#FFFFFF"],
+            )
+            # xLights renders the FIRST EffectLayer on top (bug-248); a
+            # negative index sorts above the recipe's layers 0-2.
+            p.layer = -1
+            matrix_placements.setdefault(g.name, []).append(p)
+        accent_index += 1
 
     if placements:
         result["01_BASE_All_FADES"] = placements
+        result.update(matrix_placements)
     return result
