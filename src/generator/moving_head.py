@@ -52,11 +52,11 @@ sequence is itself all-white, so this carries forward without conflict.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional
 
 from src.analyzer.result import HierarchyResult
-from src.generator.models import EffectPlacement, SectionAssignment, frame_align
+from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy, frame_align
 from src.grouper.layout import Layout, find_moving_head_groups
 
 # "Dimmer: x1,y1,x2,y2,..." is a value-curve point list, not an opaque bit
@@ -66,6 +66,12 @@ from src.grouper.layout import Layout, find_moving_head_groups
 # y is dimmer output (0-1, i.e. 0-255). Commas are pre-escaped (see
 # _COMMA_ESCAPE below).
 _DIMMER_FULL_ON = "0.000000&comma;1.000000&comma;1.000000&comma;1.000000"
+
+# Flat zero the whole effect -- used to darken specific heads for a move
+# without silencing them entirely the way the warmup mechanism does (the
+# head still gets its Pan/Tilt/Wheel/Shutter commands and repositions,
+# just stays invisible). See _reduce_to_lit_pair below.
+_DIMMER_OFF = "0.000000&comma;0.000000&comma;1.000000&comma;0.000000"
 
 # "Stagger" chase moves alternate which half of the effect a head is lit
 # for. MID: on from ~13% to ~52% of the effect (an "early/middle" pulse).
@@ -423,6 +429,56 @@ def _choose_move(
     return choice
 
 
+# A qualifying section that clears _STRONG_ENERGY_GATE (or a chorus/drop
+# role) still gets a move, but not every qualifying moment needs the same
+# amount of moving-head presence -- user request (2026-07-18): scale it
+# down by lighting only half the fixtures once a section is over the
+# gate but short of genuinely peak energy, rather than always running
+# all 4 heads. 1-based head-slot pairs (matching the mined arrangement:
+# heads 1-2 are the "L pair", 3-4 the "R pair") -- left, right, outer,
+# inner, so which two heads go dark rotates through every natural
+# grouping, not just the L/R split.
+_FULL_HEADS_ENERGY_GATE = 85  # matches effect_placer._WHOLE_HOUSE_HIGH_ENERGY_GATE
+_HEAD_PAIRS = ((1, 2), (3, 4), (1, 4), (2, 3))
+_MIN_HEADS_FOR_LIT_PAIR = 4
+
+# A fixed absolute gate alone doesn't account for a song that's intense
+# throughout but whose energy-scoring never quite reaches the absolute
+# gate (e.g. a consistently loud song normalized so its sections all land
+# at, say, 78-82) -- user concern (2026-07-18): such a song would get
+# reduced moves almost everywhere despite having no genuinely "calm"
+# contrast to justify it. A section within _RELATIVE_PEAK_MARGIN points of
+# THIS song's own loudest qualifying section counts as full-intensity too,
+# regardless of the absolute gate -- reduction is then reserved for
+# sections that are meaningfully quieter than the song's own peak, not
+# just quieter than a fixed number.
+_RELATIVE_PEAK_MARGIN = 10
+
+
+def _is_strong_section(section: SectionEnergy) -> bool:
+    role = (section.label or "").lower()
+    return section.energy_score >= _STRONG_ENERGY_GATE or role in _STRONG_ROLES
+
+
+def _song_peak_qualifying_energy(assignments: list[SectionAssignment]) -> float:
+    qualifying = [a.section.energy_score for a in assignments if _is_strong_section(a.section)]
+    return max(qualifying) if qualifying else _FULL_HEADS_ENERGY_GATE
+
+
+def _choose_lit_pair(section_index: int, variation_seed: int) -> tuple[int, int]:
+    return _HEAD_PAIRS[(variation_seed + section_index) % len(_HEAD_PAIRS)]
+
+
+def _reduce_to_lit_pair(pose: _HeadPose, head_index: int, lit_pair: tuple[int, int]) -> _HeadPose:
+    """Darken ``pose`` (Dimmer only -- Pan/Tilt/PanOffset untouched, so a
+    darkened head still repositions correctly in case a later move needs
+    its current angle) when ``head_index`` isn't one of the two heads lit
+    this move."""
+    if head_index in lit_pair:
+        return pose
+    return replace(pose, dimmer=_DIMMER_OFF)
+
+
 def _build_group_move_parameters(
     head_count: int, pose: "_HeadPose", jitter_pan: float, jitter_tilt: float,
 ) -> dict[str, str]:
@@ -716,6 +772,8 @@ def place_moving_head_moves(
     if not mh_groups:
         return {}
 
+    song_peak_energy = _song_peak_qualifying_energy(assignments)
+
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
         by_target: dict[str, list[EffectPlacement]] = {}
@@ -725,10 +783,10 @@ def place_moving_head_moves(
         previous_move_name: Optional[str] = None
         for section_index, assignment in enumerate(assignments):
             section = assignment.section
-            role = (section.label or "").lower()
-            is_strong = section.energy_score >= _STRONG_ENERGY_GATE or role in _STRONG_ROLES
+            if not _is_strong_section(section):
+                continue
             duration_ms = section.end_ms - section.start_ms
-            if not is_strong or duration_ms < _MIN_SECTION_DURATION_MS:
+            if duration_ms < _MIN_SECTION_DURATION_MS:
                 continue
 
             move_name = _choose_move(
@@ -739,6 +797,29 @@ def place_moving_head_moves(
             previous_move_name = move_name
             move = MOVE_LIBRARY[move_name]
             jitter_pan, jitter_tilt = _jitter(assignment.variation_seed, section_index)
+            # Scale moving-head presence down for a per-head move on a
+            # qualifying-but-not-peak section: only 2 of 4 heads render,
+            # the other 2 stay dark (see _reduce_to_lit_pair). Doesn't
+            # apply to "group" moves (Fan Pan-Static/-Move) -- those write
+            # one identical pose into every head slot by design, matching
+            # the reference sequence's own group effects.
+            # _HEAD_PAIRS assumes the reference's 4-head arrangement; a
+            # smaller group has no well-defined "half" to darken, so this
+            # only applies once there are at least 4 heads to split. Full
+            # intensity is either the absolute gate OR near THIS song's own
+            # peak qualifying energy (_RELATIVE_PEAK_MARGIN) -- so a song
+            # that's intense throughout but never numerically clears the
+            # absolute gate still keeps all 4 heads rather than reducing
+            # almost everywhere.
+            full_intensity = (
+                section.energy_score >= _FULL_HEADS_ENERGY_GATE
+                or section.energy_score >= song_peak_energy - _RELATIVE_PEAK_MARGIN
+            )
+            lit_pair = (
+                _choose_lit_pair(section_index, assignment.variation_seed)
+                if not full_intensity and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
+                else None
+            )
 
             natural_start_ms = section.start_ms
             natural_end_ms = min(section.end_ms, natural_start_ms + _MAX_MOVE_DURATION_MS)
@@ -771,12 +852,13 @@ def place_moving_head_moves(
                 for head_idx, head_name in enumerate(mh_group.head_names):
                     head_index = head_idx + 1  # 1-based: matches this model's own MH{N}_Settings slot
                     pose = move.poses[head_idx % len(move.poses)]
+                    move_pose = pose if lit_pair is None else _reduce_to_lit_pair(pose, head_index, lit_pair)
                     start_ms, warmup_duration_ms = _resolve_warmup(
                         [channel_owner[head_name]], natural_start_ms,
                     )
                     if start_ms >= natural_end_ms:
                         continue
-                    move_params = _build_per_head_move_parameters(pose, jitter_pan, jitter_tilt, head_index)
+                    move_params = _build_per_head_move_parameters(move_pose, jitter_pan, jitter_tilt, head_index)
                     warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
                     move_placement = _add_with_warmup(
                         by_target, head_name, warmup_params, move_params,

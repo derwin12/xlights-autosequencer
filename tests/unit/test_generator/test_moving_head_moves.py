@@ -6,8 +6,11 @@ from pathlib import Path
 
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.generator.moving_head import (
+    _choose_lit_pair,
     _choose_move,
     _DIMMER_FULL_ON,
+    _DIMMER_OFF,
+    _FULL_HEADS_ENERGY_GATE,
     _jitter,
     _MAX_MOVE_DURATION_MS,
     _MIN_SECTION_DURATION_MS,
@@ -90,6 +93,87 @@ class TestPlaceMovingHeadMoves:
         assignments = [_assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0)]
         result = place_moving_head_moves(layout, assignments)
         assert set(result) == {"MH GRP"}
+
+    def test_qualifying_but_not_peak_energy_darkens_two_of_four_heads(self):
+        # User request (2026-07-18): a qualifying section that clears the
+        # gate but isn't genuinely peak energy shouldn't always run all 4
+        # heads -- only 2 should light, the other 2 stay dark.
+        # role="chorus" + energy=40 qualifies (is_strong) but is well under
+        # _FULL_HEADS_ENERGY_GATE, and under _STRONG_ENERGY_GATE too so
+        # dynamic=False -> static pool. variation_seed=1, section_index=0
+        # -> static pool index 1 ("l_r_static", per_head): heads 1&2 posed
+        # pan=-45, heads 3&4 posed pan=45. lit_pair for
+        # (section_index=0, variation_seed=1) -> _HEAD_PAIRS[1] = (3, 4).
+        # A second, much louder section (95) is included so the song's own
+        # peak-relative check doesn't also treat 40 as "near this song's
+        # peak" -- see test_song_relative_gate_* below for that behavior
+        # in isolation.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [
+            _assignment("chorus", 0, 15_000, 40, variation_seed=1),
+            _assignment("verse", 20_000, 35_000, 95, variation_seed=1),
+        ]
+        result = place_moving_head_moves(layout, assignments)
+        lit_pair = _choose_lit_pair(section_index=0, variation_seed=1)
+        assert lit_pair == (3, 4)
+
+        def move_settings(head_name, head_index):
+            # Warmups carry no "Shutter" command; pick the FIRST real move
+            # (this section's, not the second section's).
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            moves = [p for p in result[head_name] if "Shutter: On" in p.parameters[key]]
+            return moves[0].parameters[key]
+
+        assert f"Dimmer: {_DIMMER_OFF}" in move_settings("MH1", 1)
+        assert f"Dimmer: {_DIMMER_OFF}" in move_settings("MH2", 2)
+        assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH3", 3)
+        assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH4", 4)
+
+    def test_consistently_intense_song_never_reduces_below_own_peak(self):
+        # User concern (2026-07-18): a song that's intense throughout but
+        # whose sections never numerically clear _FULL_HEADS_ENERGY_GATE
+        # (e.g. normalized so everything scores in the low-to-mid 80s)
+        # shouldn't get reduced moves almost everywhere just because of a
+        # fixed absolute number -- every qualifying section here is within
+        # _RELATIVE_PEAK_MARGIN of the song's own peak (84), so none of
+        # them should reduce even though all are under the absolute 85 gate.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [
+            _assignment("verse", 0, 15_000, 80, variation_seed=1),
+            _assignment("chorus", 20_000, 35_000, 84, variation_seed=1),
+            _assignment("verse", 40_000, 55_000, 82, variation_seed=1),
+        ]
+        result = place_moving_head_moves(layout, assignments)
+        for head_name in ("MH1", "MH2", "MH3", "MH4"):
+            head_index = int(head_name[-1])
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            for placement in result[head_name]:
+                if "Shutter: On" in placement.parameters[key]:
+                    assert f"Dimmer: {_DIMMER_OFF}" not in placement.parameters[key]
+
+    def test_peak_energy_lights_all_four_heads(self):
+        # Comfortably clears _FULL_HEADS_ENERGY_GATE -- no head goes dark.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [_assignment("verse", 0, 15_000, _FULL_HEADS_ENERGY_GATE + 5, variation_seed=1)]
+        result = place_moving_head_moves(layout, assignments)
+        for head_name in ("MH1", "MH2", "MH3", "MH4"):
+            move_placement = result[head_name][-1]
+            head_index = int(head_name[-1])
+            settings = move_placement.parameters[f"E_TEXTCTRL_MH{head_index}_Settings"]
+            assert f"Dimmer: {_DIMMER_OFF}" not in settings
+
+    def test_two_head_group_never_gets_reduced(self):
+        # _HEAD_PAIRS assumes the reference's 4-head arrangement -- a
+        # smaller group (this fixture's MH1/MH2) has no well-defined
+        # "half" to darken, so every head stays lit regardless of energy.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 15_000, 40, variation_seed=1)]
+        result = place_moving_head_moves(layout, assignments)
+        for head_name in ("MH1", "MH2"):
+            move_placement = result[head_name][-1]
+            head_index = int(head_name[-1])
+            settings = move_placement.parameters[f"E_TEXTCTRL_MH{head_index}_Settings"]
+            assert f"Dimmer: {_DIMMER_OFF}" not in settings
 
     def test_move_duration_capped_within_long_section(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")

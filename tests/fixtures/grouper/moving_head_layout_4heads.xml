@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xlights_rgbeffects>
+    <!-- A 4-head moving-head group, matching the reference sequence's arrangement -->
+    <model name="MH1" DisplayAs="DmxMovingHeadAdv" WorldPosX="10.0" WorldPosY="10.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="1.0" parm1="16" parm2="1" />
+    <model name="MH2" DisplayAs="DmxMovingHeadAdv" WorldPosX="20.0" WorldPosY="10.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="1.0" parm1="16" parm2="1" />
+    <model name="MH3" DisplayAs="DmxMovingHeadAdv" WorldPosX="30.0" WorldPosY="10.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="1.0" parm1="16" parm2="1" />
+    <model name="MH4" DisplayAs="DmxMovingHeadAdv" WorldPosX="40.0" WorldPosY="10.0" WorldPosZ="0.0"
+           ScaleX="1.0" ScaleY="1.0" parm1="16" parm2="1" />
+    <modelGroup name="MH GRP" DisplayAs="ModelGroup" models="MH1,MH2,MH3,MH4" />
+</xlights_rgbeffects>
