@@ -819,8 +819,27 @@ def _ensure_effect_entry(
     effect_list: list[str],
     buffer_style: str | None = None,
 ) -> int:
-    """Add effect params to dedup index if not already present. Return index."""
+    """Add effect params to dedup index if not already present. Return index.
+
+    Moving Head effects are exempt from dedup -- always get their own fresh
+    EffectDB entry, never shared with another placement even when the
+    serialized content is byte-identical. Every other effect type shares
+    entries safely; Moving Head placements from this module are always
+    built as immediately-adjacent warmup+punch pairs (warmup's endTime ==
+    punch's startTime, zero gap), and a real xLights round-trip test
+    (2026-07-17) showed clicking one such effect in the UI can corrupt a
+    *different* placement's content on save -- confirmed via a real
+    before/after file diff where a silent warmup pose got replaced with an
+    unrelated punch's Wheel/Shutter/Dimmer content from elsewhere in the
+    timeline, for placements the user never directly touched. Two
+    placements sharing one EffectDB entry gives xLights' editor a path to
+    conflate them; a dedicated entry per placement removes that path
+    entirely, regardless of the exact internal xLights mechanism.
+    """
     key = _serialize_effect_params(placement, buffer_style)
+    if placement.effect_name == "Moving Head":
+        effect_list.append(key)
+        return len(effect_list) - 1
     if key not in index:
         index[key] = len(effect_list)
         effect_list.append(key)

@@ -209,6 +209,52 @@ class TestXsqWriter:
             f"Expected 1 deduplicated EffectDB entry, got {len(fire_entries)}"
         )
 
+    def test_moving_head_effects_are_never_deduplicated(self, tmp_path: Path) -> None:
+        """Moving Head placements always get their own EffectDB entry, even
+        with byte-identical parameters -- unlike every other effect type.
+
+        Regression (bug-304, 2026-07-17): a real xLights round-trip test
+        showed clicking one Moving Head effect in the UI could corrupt a
+        DIFFERENT placement's content on save when the two shared an
+        EffectDB entry. Moving Head placements from this pipeline are
+        always immediately-adjacent warmup+punch pairs (zero gap between
+        them), which real xLights' effect hit-test can conflate at the
+        shared boundary -- giving two placements the same dedup'd entry
+        makes that conflation corrupt saved data. A dedicated entry per
+        placement removes the shared state entirely.
+        """
+        plan = _make_plan()
+        mh_1 = EffectPlacement(
+            effect_name="Moving Head",
+            xlights_id="Moving Head",
+            model_or_group="MH-1",
+            start_ms=0,
+            end_ms=1000,
+            parameters={"E_SLIDER_MHTilt": "65.0"},
+        )
+        mh_2 = EffectPlacement(
+            effect_name="Moving Head",
+            xlights_id="Moving Head",
+            model_or_group="MH-1",
+            start_ms=1000,
+            end_ms=2000,
+            parameters={"E_SLIDER_MHTilt": "65.0"},
+        )
+        plan.moving_head_effects = {"MH-1": [mh_1, mh_2]}
+        root = _write_and_parse(plan, tmp_path)
+        effect_db = root.find("EffectDB")
+        assert effect_db is not None
+
+        entries = list(effect_db)
+        mh_entries = [
+            entry.get("settings") or entry.text or ""
+            for entry in entries
+            if "E_SLIDER_MHTilt=65.0" in (entry.get("settings") or entry.text or "")
+        ]
+        assert len(mh_entries) == 2, (
+            f"Expected 2 non-deduplicated Moving Head EffectDB entries, got {len(mh_entries)}"
+        )
+
     def test_palette_deduplication(self, tmp_path: Path) -> None:
         """Two placements with identical palettes share one palette entry."""
         plan = _make_plan()
