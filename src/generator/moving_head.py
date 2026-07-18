@@ -178,7 +178,6 @@ def _build_parameters(
         "E_SLIDER_MHPatternXOffset": "0",
         "E_SLIDER_MHPatternYOffset": "0",
         "E_TEXTCTRL_MHPathDef": "",
-        "T_CHECKBOX_Canvas": "0",
         "T_CHECKBOX_LayerMorph": "0",
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",

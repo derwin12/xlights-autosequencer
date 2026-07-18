@@ -206,7 +206,6 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_SLIDER_Thickness_Percentage": "25",
         "E_SLIDER_Wave_Height": "50",
         "E_TEXTCTRL_Wave_Speed": "10.0",
-        "T_CHECKBOX_Canvas": "1",
     },
     # Copied verbatim from a user-verified working effect (2026-07-12).
     # FaceDefinition and TimingTrack are per-placement parameters set by
@@ -222,7 +221,6 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHOICE_Faces_Eyes": "Auto",
         "E_CHOICE_Faces_UseState": "",
         "E_TEXTCTRL_Faces_TransparentBlack": "0",
-        "T_CHECKBOX_Canvas": "0",
         "T_CHECKBOX_LayerMorph": "0",
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
@@ -246,7 +244,6 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_SLIDER_Text_YStart": "0",
         "E_TEXTCTRL_Text": "",
         "E_TEXTCTRL_Text_Speed": "10",
-        "T_CHECKBOX_Canvas": "0",
         "T_CHECKBOX_LayerMorph": "0",
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
@@ -266,7 +263,6 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_TEXTCTRL_Video_CropTop": "100",
         "E_TEXTCTRL_Video_Starttime": "0.0",
         "E_TEXTCTRL_Video_TransparentBlack": "0",
-        "T_CHECKBOX_Canvas": "0",
         "T_CHECKBOX_LayerMorph": "0",
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
@@ -756,6 +752,14 @@ def _serialize_effect_params(
             points = curve_data
             p_min, p_max = 0.0, 100.0
         defaults[f"E_VALUECURVE_{short}"] = _encode_value_curve(short, points, p_min, p_max)
+
+    # Rule (user request, 2026-07-18): never emit T_CHECKBOX_Canvas, on any
+    # effect, regardless of whether a mined vendor .xsqz template includes
+    # it. Enforced here rather than just omitted from
+    # _XLIGHTS_EFFECT_DEFAULTS/moving_head._build_parameters so it can't
+    # come back in via a placement's own parameters, a future template
+    # mining pass, or any other producer.
+    defaults.pop("T_CHECKBOX_Canvas", None)
 
     parts = [f"{k}={v}" for k, v in sorted(defaults.items())]
     return ",".join(parts)

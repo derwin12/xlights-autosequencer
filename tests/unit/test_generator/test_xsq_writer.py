@@ -467,6 +467,35 @@ class TestXsqWriter:
                     assert elem.get("type") == "model"
 
 
+class TestCanvasPropertyNeverSet:
+    """User rule (2026-07-18): never emit T_CHECKBOX_Canvas on any effect,
+    even if a mined vendor .xsqz template includes it. Enforced as a strip
+    in _serialize_effect_params, not just an omission from
+    _XLIGHTS_EFFECT_DEFAULTS -- so it can't come back via a placement's own
+    parameters or a future template-mining pass either."""
+
+    def test_canvas_absent_from_default_placements(self, tmp_path: Path) -> None:
+        root = _write_and_parse(_make_plan(), tmp_path)
+        effect_db = root.find("EffectDB")
+        assert effect_db is not None
+        for entry in effect_db:
+            text = entry.get("settings") or entry.text or ""
+            assert "T_CHECKBOX_Canvas" not in text
+
+    def test_canvas_stripped_even_when_explicitly_set(self, tmp_path: Path) -> None:
+        """Even a placement that explicitly sets T_CHECKBOX_Canvas in its
+        own parameters (e.g. copied from a mined template) must not have
+        it survive serialization."""
+        plan = _make_plan()
+        plan.sections[0].group_effects["Model1"][0].parameters["T_CHECKBOX_Canvas"] = "1"
+        root = _write_and_parse(plan, tmp_path)
+        effect_db = root.find("EffectDB")
+        assert effect_db is not None
+        for entry in effect_db:
+            text = entry.get("settings") or entry.text or ""
+            assert "T_CHECKBOX_Canvas" not in text
+
+
 class TestSpiralsDefaultsMatchCatalogStorageNames:
     """Regression guard for the Spirals_Movement bug: xLights persists a
     stale E_SLIDER_ snapshot alongside the real E_TEXTCTRL_ value in its
