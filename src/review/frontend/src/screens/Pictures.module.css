@@ -118,6 +118,72 @@
   cursor: pointer;
 }
 
+.createImageBtn {
+  background: var(--color-surface-2, #1e1e24);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.createImageBtn:hover {
+  border-color: var(--color-accent, #4ade80);
+}
+
+.promptOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.promptDialog {
+  background: var(--color-surface-2, #1e1e24);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 8px;
+  padding: 20px;
+  width: min(480px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.promptTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.promptText {
+  background: var(--color-surface-1, #141418);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 6px;
+  color: inherit;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 10px;
+  resize: none;
+  min-height: 56px;
+}
+
+.promptHint {
+  font-size: 12px;
+  color: var(--color-text-tertiary, #888);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.promptActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .matchedArrow {
   color: var(--color-text-tertiary, #888);
 }

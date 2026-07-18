@@ -35,10 +35,43 @@ function formatTimestamp(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+function buildImagePrompt(word: string): string {
+  return `${word.toLowerCase()}, 16x16 bold colors, black background`;
+}
+
+// Bing strips query parameters from the image-creator URL on load, so the
+// prompt can't be passed in the link — the popup shows it for copy/paste.
+const BING_CREATE_URL = 'https://www.bing.com/images/create/ai-image-generator';
+
+async function openExternal(url: string) {
+  try {
+    const { open } = await import('@tauri-apps/plugin-shell');
+    await open(url);
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
 export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: PicturesScreenProps) {
   const [uploaded, setUploaded] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [promptWord, setPromptWord] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function openCreateImage(word: string) {
+    setPromptWord(word);
+    setCopied(false);
+  }
+
+  async function copyPrompt(prompt: string) {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+    } catch {
+      setError('Could not copy to clipboard — select the text and copy manually.');
+    }
+  }
 
   async function handleUpload(topic: ImageTopic, file: File) {
     setUploading(topic.word);
@@ -108,6 +141,13 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                     }}
                   />
                 </label>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(t.word)}
+                >
+                  Create image
+                </button>
               </li>
             ))}
           </ul>
@@ -124,6 +164,27 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                 <span className={styles.topicWord}>&ldquo;{s.word}&rdquo;</span>
                 <span className={styles.matchedArrow}>&rarr;</span>
                 <span className={styles.matchedFile}>{s.matched_file}</span>
+                <label className={styles.uploadLabel}>
+                  {uploading === s.word ? 'Uploading…' : 'Choose image'}
+                  <input
+                    type="file"
+                    accept=".gif,.png,.bmp,.jpg,.jpeg"
+                    className={styles.uploadInput}
+                    disabled={uploading === s.word}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(s, file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(s.word)}
+                >
+                  Create image
+                </button>
               </li>
             ))}
             {imageTopics.filter((t) => uploaded.has(t.word)).map((t) => (
@@ -132,10 +193,72 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                 <span className={styles.topicWord}>&ldquo;{t.word}&rdquo;</span>
                 <span className={styles.matchedArrow}>&rarr;</span>
                 <span className={styles.matchedFile}>uploaded</span>
+                <label className={styles.uploadLabel}>
+                  {uploading === t.word ? 'Uploading…' : 'Choose image'}
+                  <input
+                    type="file"
+                    accept=".gif,.png,.bmp,.jpg,.jpeg"
+                    className={styles.uploadInput}
+                    disabled={uploading === t.word}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(t, file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(t.word)}
+                >
+                  Create image
+                </button>
               </li>
             ))}
           </ul>
         </section>
+      )}
+
+      {promptWord !== null && (
+        <div className={styles.promptOverlay} onClick={() => setPromptWord(null)}>
+          <div className={styles.promptDialog} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.promptTitle}>Image prompt for &ldquo;{promptWord}&rdquo;</h3>
+            <textarea
+              className={styles.promptText}
+              readOnly
+              value={buildImagePrompt(promptWord)}
+              onFocus={(e) => e.target.select()}
+            />
+            <p className={styles.promptHint}>
+              Bing no longer accepts the prompt in the link — copy it, then paste it into the
+              prompt box on the Bing page.
+            </p>
+            <div className={styles.promptActions}>
+              <button
+                type="button"
+                className={styles.createImageBtn}
+                onClick={() => copyPrompt(buildImagePrompt(promptWord))}
+              >
+                {copied ? 'Copied ✓' : 'Copy prompt'}
+              </button>
+              <button
+                type="button"
+                className={styles.createImageBtn}
+                onClick={() => openExternal(BING_CREATE_URL)}
+              >
+                Open Bing
+              </button>
+              <button
+                type="button"
+                className={styles.createImageBtn}
+                onClick={() => setPromptWord(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
