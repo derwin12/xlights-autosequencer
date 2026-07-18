@@ -149,6 +149,24 @@ class TestThemeSelector:
         assert len(result) == 1
         assert result[0].theme.name == "Starlight"
 
+    def test_general_occasion_excludes_holiday_themes(self):
+        """A plain occasion='general' query (the default for most songs)
+        must not pick a Christmas/Halloween-tagged theme just because it
+        matches mood+genre -- regression for 2026-07-18 bug where a real
+        non-holiday song landed on 'Festive Flash'/'Silent Night' in July
+        because _query_themes skipped its occasion filter entirely
+        whenever the query's own occasion was 'general'."""
+        xmas_theme = _make_theme("Festive Flash", mood="aggressive", occasion="christmas")
+        general_theme = _make_theme("Inferno", mood="aggressive", occasion="general")
+        library = _make_library([xmas_theme, general_theme])
+
+        sections = [_make_section("chorus", energy_score=80, mood_tier="aggressive")]
+        result = select_themes(sections, library, genre="pop", occasion="general")
+
+        assert len(result) == 1
+        assert result[0].theme.name == "Inferno"
+        assert result[0].theme.occasion == "general"
+
     def test_returns_assignment_per_section(self):
         """Output length must match input sections."""
         theme = _make_theme("Starlight", mood="ethereal")

@@ -71,15 +71,29 @@ def _default_overrides() -> dict:
 # against it, so a stale id here produces defaults the user can never
 # re-select (bug-176). Used only when the energy/key-aware selector below
 # cannot run (analysis stub, missing hierarchy, count mismatch).
+# Safety-net theme assignments used only when the real energy/mood-aware
+# selector can't run at all (e.g. hierarchy unavailable, or a section-count
+# mismatch between a freshly-derived section list and the one being themed
+# -- see reset_assignments_to_defaults in src/review/api/v1/assignments.py).
+# Every value here MUST be a real, general-occasion theme_id: this map
+# bypasses select_themes/_query_themes entirely, so it has no occasion
+# filtering of its own. Previously mapped intro/chorus/outro to
+# Christmas-tagged themes (warm-glow, festive-flash, silent-night), which
+# meant an ordinary song hitting this fallback in July could land on
+# Christmas colors with no holiday preference set anywhere; "unknown" (and
+# the .get() default below) pointed at "neutral-glow", which isn't a real
+# theme_id in builtin_themes.json at all -- a dangling reference that
+# silently failed to resolve downstream. Both found 2026-07-18.
 _KIND_TO_THEME: dict[str, str] = {
-    "intro": "warm-glow",
+    "intro": "bio-lume",
     "verse": "aurora",
-    "chorus": "festive-flash",
+    "chorus": "tracer-fire",
     "solo": "scanning-beam",
     "bridge": "inferno",
-    "outro": "silent-night",
-    "unknown": "warm-glow",
+    "outro": "ice-crystal",
+    "unknown": "cyber-grid",
 }
+_UNRECOGNIZED_KIND_THEME = "cyber-grid"  # same dangling-reference fix as "unknown" above
 
 
 def _song_seed(song_id: str | None) -> int:
@@ -189,7 +203,7 @@ def _auto_assign_defaults(
             theme_id = smart_ids[i]
         else:
             kind = sec.get("kind", "unknown")
-            theme_id = _KIND_TO_THEME.get(kind, "neutral-glow")
+            theme_id = _KIND_TO_THEME.get(kind, _UNRECOGNIZED_KIND_THEME)
         assignments.append({
             "section_index": sec["index"],
             "theme_id": theme_id,

@@ -56,6 +56,22 @@ class TestStaticFallback:
             _KIND_TO_THEME["intro"], _KIND_TO_THEME["verse"], _KIND_TO_THEME["chorus"],
         ]
 
+    def test_every_fallback_entry_is_a_real_general_occasion_theme(self):
+        # Regression 2026-07-18: this map bypasses select_themes/
+        # _query_themes entirely (no occasion filtering of its own), so an
+        # ordinary song hitting this safety-net path must never land on a
+        # holiday-tagged theme (previously chorus/outro/intro pointed at
+        # Christmas themes) or a dangling theme_id that isn't in the real
+        # catalog at all (previously "neutral-glow", which doesn't exist
+        # in builtin_themes.json).
+        catalog = {t["theme_id"]: t for t in _load_themes()}
+        for kind, theme_id in _KIND_TO_THEME.items():
+            assert theme_id in catalog, f"{kind!r} -> {theme_id!r} is not a real theme_id"
+            assert catalog[theme_id]["occasion"] == "general", (
+                f"{kind!r} -> {theme_id!r} is occasion={catalog[theme_id]['occasion']!r}, "
+                "not general -- can leak into songs with no holiday preference"
+            )
+
 
 class TestSmartDefaults:
     def test_story_energies_drive_theme_moods(self):

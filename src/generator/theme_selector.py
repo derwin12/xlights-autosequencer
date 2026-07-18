@@ -133,12 +133,19 @@ def _query_themes(
 ) -> list[Theme]:
     """Query themes matching mood + genre + occasion exactly.
 
-    Occasion match is strict: a request for "christmas" returns only themes
-    tagged "christmas", not the broader "general" pool.  `_fallback_sequence`
-    broadens to "general" on a subsequent attempt if no specific-occasion
-    themes qualify, so the strict match here ensures Christmas songs land on
-    Christmas themes whenever they exist rather than being outvoted by the
-    larger general pool.
+    Occasion match is always strict, including "general": a request for
+    "christmas" returns only themes tagged "christmas", and a request for
+    "general" (the default for the vast majority of songs) returns only
+    themes tagged "general" — not every theme regardless of occasion.
+    `_fallback_sequence` owns broadening independently: it appends a
+    (genre, "general") attempt as its own escalation tier when a
+    specific-occasion query comes up empty, so Christmas songs still fall
+    back to general themes when no Christmas-specific theme matches. A
+    prior version special-cased occasion == "general" to skip this filter
+    entirely, which meant an ordinary song's default "general" query could
+    silently return Christmas/Halloween-tagged themes whenever mood+genre
+    happened to match (found 2026-07-18 via a real song landing on
+    "Festive Flash"/"Silent Night" in July with no holiday preference set).
     """
     results = []
     for theme in library.themes.values():
@@ -146,7 +153,7 @@ def _query_themes(
             continue
         if genre != "any" and theme.genre not in (genre, "any"):
             continue
-        if occasion != "general" and theme.occasion != occasion:
+        if theme.occasion != occasion:
             continue
         results.append(theme)
     return results
