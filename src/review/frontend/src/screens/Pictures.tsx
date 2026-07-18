@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './Pictures.module.css';
 
 interface ImageSuggestion {
@@ -36,7 +36,7 @@ function formatTimestamp(ms: number): string {
 }
 
 function buildImagePrompt(word: string): string {
-  return `${word.toLowerCase()}, 16x16 bold colors, black background`;
+  return `pixel art of ${word.toLowerCase()}, 16x16, bold saturated colors, centered on a solid pure black background (#000000), the entire background must be black, no white, no border, no frame`;
 }
 
 // Bing strips query parameters from the image-creator URL on load, so the
@@ -58,6 +58,57 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
   const [error, setError] = useState<string | null>(null);
   const [promptWord, setPromptWord] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [ignored, setIgnored] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch(`/api/v1/songs/${song.song_id}/ignored-images`)
+      .then((r) => (r.ok ? r.json() : { words: [] }))
+      .then((body) => setIgnored(new Set<string>(body.words ?? [])))
+      .catch(() => {});
+  }, [song.song_id]);
+
+  async function ignoreMatch(word: string) {
+    const token = word.toLowerCase();
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/songs/${song.song_id}/ignored-images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: token }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        setError(body?.error?.message ?? 'Failed to unmap');
+        return;
+      }
+      setIgnored((prev) => new Set(prev).add(token));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
+
+  async function restoreMatch(word: string) {
+    const token = word.toLowerCase();
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/songs/${song.song_id}/ignored-images/${encodeURIComponent(token)}`,
+        { method: 'DELETE' },
+      );
+      if (!res.ok) {
+        const body = await res.json();
+        setError(body?.error?.message ?? 'Failed to restore');
+        return;
+      }
+      setIgnored((prev) => {
+        const next = new Set(prev);
+        next.delete(token);
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
 
   function openCreateImage(word: string) {
     setPromptWord(word);
@@ -87,6 +138,9 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
         return;
       }
       setUploaded((prev) => new Set(prev).add(topic.word));
+      // Re-uploading an image for an unmapped word means the user wants it
+      // matched again — lift the per-song ignore automatically.
+      if (ignored.has(topic.word.toLowerCase())) restoreMatch(topic.word);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     } finally {
@@ -95,6 +149,11 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
   }
 
   const remainingTopics = imageTopics.filter((t) => !uploaded.has(t.word));
+  const activeSuggestions = imageSuggestions.filter((s) => !ignored.has(s.word.toLowerCase()));
+  // Unmapped words go back to "Suggested topics" (first occurrence per word).
+  const ignoredTopics = imageSuggestions
+    .filter((s) => ignored.has(s.word.toLowerCase()) && !uploaded.has(s.word))
+    .filter((s, i, arr) => arr.findIndex((x) => x.word.toLowerCase() === s.word.toLowerCase()) === i);
 
   return (
     <div className={styles.root}>
@@ -119,10 +178,45 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
           These lyric words don't have a matching image in your library yet. Upload one to make
           it available for this song (and any future song mentioning the same word).
         </p>
-        {remainingTopics.length === 0 ? (
+        {remainingTopics.length === 0 && ignoredTopics.length === 0 ? (
           <p className={styles.empty}>No unmatched topics — nothing to upload.</p>
         ) : (
           <ul className={styles.topicList}>
+            {ignoredTopics.map((s) => (
+              <li key={`ignored-${s.word}-${s.start_ms}`} className={styles.topicItem}>
+                <span className={styles.topicTime}>{formatTimestamp(s.start_ms)}</span>
+                <span className={styles.topicWord}>&ldquo;{s.word}&rdquo;</span>
+                <span className={styles.unmappedNote}>unmapped from {s.matched_file}</span>
+                <label className={styles.uploadLabel}>
+                  {uploading === s.word ? 'Uploading…' : 'Choose image'}
+                  <input
+                    type="file"
+                    accept=".gif,.png,.bmp,.jpg,.jpeg"
+                    className={styles.uploadInput}
+                    disabled={uploading === s.word}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(s, file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(s.word)}
+                >
+                  Create image
+                </button>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => restoreMatch(s.word)}
+                >
+                  Restore match
+                </button>
+              </li>
+            ))}
             {remainingTopics.map((t) => (
               <li key={`${t.word}-${t.start_ms}`} className={styles.topicItem}>
                 <span className={styles.topicTime}>{formatTimestamp(t.start_ms)}</span>
@@ -154,11 +248,11 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
         )}
       </section>
 
-      {(imageSuggestions.length > 0 || uploaded.size > 0) && (
+      {(activeSuggestions.length > 0 || uploaded.size > 0) && (
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Already matched</h3>
           <ul className={styles.topicList}>
-            {imageSuggestions.map((s, i) => (
+            {activeSuggestions.map((s, i) => (
               <li key={`matched-${s.word}-${s.start_ms}-${i}`} className={styles.topicItem}>
                 <span className={styles.topicTime}>{formatTimestamp(s.start_ms)}</span>
                 <span className={styles.topicWord}>&ldquo;{s.word}&rdquo;</span>
@@ -184,6 +278,13 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                   onClick={() => openCreateImage(s.word)}
                 >
                   Create image
+                </button>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => ignoreMatch(s.word)}
+                >
+                  Unmap
                 </button>
               </li>
             ))}

@@ -359,7 +359,9 @@ def build_plan(
     # only fires where a lyric word actually matches a library image.
     picture_effects: dict[str, list] = {}
     if config.picture_effects and config.vocal_words:
-        word_image_matches = suggest_images_for_words(config.vocal_words)
+        word_image_matches = suggest_images_for_words(
+            config.vocal_words, ignored_words=config.ignored_image_words,
+        )
         if word_image_matches:
             # Bug-243 follow-up: Pictures must render above whatever the
             # per-section theme/rotation content already occupies on its

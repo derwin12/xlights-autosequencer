@@ -132,6 +132,12 @@
   border-color: var(--color-accent, #4ade80);
 }
 
+.unmappedNote {
+  font-size: 11px;
+  color: var(--color-text-tertiary, #888);
+  font-style: italic;
+}
+
 .promptOverlay {
   position: fixed;
   inset: 0;

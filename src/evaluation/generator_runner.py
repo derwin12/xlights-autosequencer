@@ -35,6 +35,7 @@ def run(
     genre: str = "pop",
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
+    ignored_image_words: Optional[list[str]] = None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Run the generator deterministically and return .xsq bytes.
@@ -59,6 +60,10 @@ def run(
         occasion: Theme-selection occasion hint (GenerationConfig.occasion).
         video_path: Optional path to an imported video file — placed as a
                     Video effect on the largest matrix prop (GenerationConfig.video_path).
+        ignored_image_words: Optional lyric words whose image-library matches
+                    the user unmapped on the Pictures screen — suppresses
+                    lyric-matched Pictures bursts for those words
+                    (GenerationConfig.ignored_image_words).
 
     Returns:
         Raw .xsq XML bytes.
@@ -95,6 +100,7 @@ def run(
         return _run_pipeline(audio_path, layout_path, seed, theme_overrides=theme_overrides,
                               lyrics=lyrics, words=words, phonemes=phonemes,
                               genre=genre, occasion=occasion, video_path=video_path,
+                              ignored_image_words=ignored_image_words,
                               progress_cb=progress_cb)
     except GeneratorError:
         raise
@@ -113,6 +119,7 @@ def _run_pipeline(
     genre: str = "pop",
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
+    ignored_image_words: Optional[list[str]] = None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Execute the full generation pipeline and return .xsq bytes."""
@@ -162,6 +169,7 @@ def _run_pipeline(
             # only enable vocal placements when both mark sets exist.
             vocal_words=words if (words and phonemes) else None,
             video_path=video_path,
+            ignored_image_words=ignored_image_words,
         )
 
         # Re-seed after config construction (which may trigger path resolution calls)

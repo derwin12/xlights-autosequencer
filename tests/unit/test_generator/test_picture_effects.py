@@ -512,6 +512,26 @@ class TestSuggestImagesForWords:
         assert len(result) == 1
         assert result[0]["matched_file"] == "snowman.gif"
 
+    def test_ignored_word_suppressed(self):
+        words = [
+            {"label": "snowman", "start_ms": 0, "end_ms": 500},
+            {"label": "rocker", "start_ms": 1000, "end_ms": 1500},
+        ]
+        library = [_library_entry("snowman"), _library_entry("rocker", filename="rocker.gif")]
+        result = suggest_images_for_words(words, library, ignored_words=["snowman"])
+        assert [s["word"] for s in result] == ["rocker"]
+
+    def test_ignored_word_is_case_insensitive(self):
+        words = [{"label": "Snowman", "start_ms": 0, "end_ms": 500}]
+        library = [_library_entry("snowman")]
+        assert suggest_images_for_words(words, library, ignored_words=["SNOWMAN"]) == []
+
+    def test_no_ignored_words_matches_everything(self):
+        words = [{"label": "snowman", "start_ms": 0, "end_ms": 500}]
+        library = [_library_entry("snowman")]
+        assert len(suggest_images_for_words(words, library, ignored_words=None)) == 1
+        assert len(suggest_images_for_words(words, library, ignored_words=[])) == 1
+
 
 class TestFindUnmatchedTopics:
     def test_no_words_returns_empty(self):

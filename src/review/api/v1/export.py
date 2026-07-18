@@ -121,6 +121,7 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             genre=genre,
             occasion=occasion,
             video_path=song.get("video_path"),
+            ignored_image_words=session.get("ignored_image_words") or None,
             progress_cb=_placement_progress,
         )
 

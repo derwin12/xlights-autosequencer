@@ -265,6 +265,10 @@ class GenerationConfig:
     # alignment. When present alongside face-capable props in the layout,
     # build_plan places Faces effects over the vocal regions (singing faces).
     vocal_words: Optional[list[dict]] = None
+    # Lyric words the user unmapped on the Pictures screen (per-song ignore).
+    # Suppresses lyric-matched Pictures bursts for these words without
+    # removing the image from the shared library. Case-insensitive.
+    ignored_image_words: Optional[list[str]] = None
 
     _VALID_CURVES_MODES = frozenset({"all", "brightness", "speed", "color", "none"})
     _VALID_MOOD_INTENTS = frozenset({"auto", "party", "emotional", "dramatic", "playful"})

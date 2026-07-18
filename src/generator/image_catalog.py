@@ -108,7 +108,9 @@ _WORD_RE = re.compile(r"[a-z0-9]+")
 
 
 def suggest_images_for_words(
-    words: list[dict] | None, library: list[dict] | None = None
+    words: list[dict] | None,
+    library: list[dict] | None = None,
+    ignored_words: list[str] | None = None,
 ) -> list[dict]:
     """Fuzzy-match lyric words against the image library's tags.
 
@@ -121,7 +123,10 @@ def suggest_images_for_words(
     match per word when its ratio clears ``_MIN_MATCH_RATIO``. Words shorter
     than ``_MIN_WORD_LEN`` are skipped as too generic. ``library`` defaults
     to :func:`load_image_library` when not supplied (tests pass a fixed list
-    for determinism). Returns ``[]`` for no words or an empty library. Each
+    for determinism). ``ignored_words`` (case-insensitive) suppresses matches
+    for words the user unmapped on the review UI's Pictures screen — a
+    per-song ignore, so the library entry itself stays available to other
+    songs. Returns ``[]`` for no words or an empty library. Each
     suggestion includes ``stored_path`` (the matched entry's absolute file
     path) so callers can resolve straight to the image file.
     """
@@ -131,13 +136,14 @@ def suggest_images_for_words(
         return []
 
     tags = [(entry, entry.get("tag", "").lower()) for entry in library if entry.get("tag")]
+    ignored = {w.lower() for w in (ignored_words or [])}
 
     suggestions: list[dict] = []
     for word in words:
         raw = str(word.get("label") or word.get("word") or "")
         match = _WORD_RE.fullmatch(raw.lower())
         token = match.group(0) if match else ""
-        if len(token) < _MIN_WORD_LEN:
+        if len(token) < _MIN_WORD_LEN or token in ignored:
             continue
 
         best_entry: dict | None = None
