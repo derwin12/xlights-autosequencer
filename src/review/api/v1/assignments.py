@@ -180,6 +180,18 @@ def reset_assignments_to_defaults(song_id: str):
 
     sections = session.get("sections", [])
 
+    # hierarchy.sections uses the raw QM-boundary segmentation (often a
+    # DIFFERENT count than the session's story-labeled sections -- e.g. 11
+    # vs 10 on a real song), so the story must be rebuilt here too, not
+    # just the hierarchy: _smart_default_theme_ids falls back to deriving
+    # energies straight from hierarchy.sections when story is None, and a
+    # section-count mismatch there makes it abort and use the crude static
+    # kind->theme map for every section (collapsing all sections to the
+    # same generic fallback theme -- caught 2026-07-18 via a real reset
+    # producing visually uncolored section chips). Rebuild story the same
+    # way the initial analyze flow does (src/review/api/v1/analysis.py),
+    # not load_song_story -- that loads a `_story.json` FILE path, which
+    # this flow never writes to disk.
     hierarchy = None
     story = None
     source_paths = song.get("source_paths") or []
@@ -190,11 +202,12 @@ def reset_assignments_to_defaults(song_id: str):
             hierarchy = run_orchestrator(audio_path, fresh=False)
         except Exception:
             hierarchy = None
-        try:
-            from src.story.builder import load_song_story
-            story = load_song_story(audio_path)
-        except Exception:
-            story = None
+        if hierarchy is not None:
+            try:
+                from src.story.builder import build_song_story
+                story = build_song_story(hierarchy.to_dict(), audio_path)
+            except Exception:
+                story = None
 
     from .analysis import _auto_assign_defaults
     assignments = _auto_assign_defaults(song_id, sections, hierarchy=hierarchy, story=story)

@@ -179,6 +179,7 @@ export function Theme({
   const [error, setError] = useState<string | null>(null);
   const [liveOverrides, setLiveOverrides] = useState<ParameterOverrides>(DEFAULT_OVERRIDES);
   const [editState, setEditState] = useState<EditState | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   const currentAssignment = localAssignments.find((a) => a.section_index === selectedSectionIdx);
 
@@ -251,7 +252,12 @@ export function Theme({
 
   async function handleResetDefaults() {
     setError(null);
+    setResetting(true);
     try {
+      // Recomputing smart defaults rebuilds the song story (section-role
+      // classification + lyric-anchored boundary refinement), which can
+      // take a while on a real song -- not a quick local operation, hence
+      // the loading state rather than an instant round-trip.
       const res = await fetch(
         `/api/v1/songs/${song.song_id}/assignments/reset-defaults`,
         { method: 'POST' }
@@ -268,6 +274,8 @@ export function Theme({
       updated.forEach((a) => onAssignmentChange(a));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -320,8 +328,12 @@ export function Theme({
       <div className={styles.header}>
         <h2 className={styles.title}>{song.title}</h2>
         <div className={styles.headerActions}>
-          <button className={styles.resetBtn} onClick={handleResetDefaults}>
-            Reset
+          <button
+            className={styles.resetBtn}
+            onClick={handleResetDefaults}
+            disabled={resetting}
+          >
+            {resetting ? 'Resetting…' : 'Reset'}
           </button>
           <button className={styles.acceptBtn} onClick={handleAcceptAll}>
             Accept

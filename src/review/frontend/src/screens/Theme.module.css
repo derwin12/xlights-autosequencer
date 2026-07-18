@@ -50,6 +50,11 @@
   border-color: var(--color-text-secondary, #999);
 }
 
+.resetBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .error {
   color: var(--color-error, #ef4444);
   font-size: 13px;
