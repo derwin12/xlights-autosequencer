@@ -628,6 +628,11 @@ class TestHouseLineRecipes:
                 assert p.parameters["E_CHOICE_Fade_Type"] == "From Head"
 
     def test_alternate_is_lightning_with_mined_preset(self) -> None:
+        # Direction/Width/Number_Segments are randomized per bolt (user
+        # request 2026-07-18: xLights' Number_Segments field is labeled
+        # "Width of Bolt" in the UI despite its ID -- verified against
+        # resources/effectmetadata/Lightning.json); Number_Bolts (UI label
+        # "Number of Segments") stays fixed at the mined value of 10.
         result = _place(_make_section(label="chorus"), _VERTICAL_GROUP,
                         variation_seed=3,
                         library_names=_DEFAULT_LIBRARY_NAMES + ("Lightning",))
@@ -635,9 +640,22 @@ class TestHouseLineRecipes:
         assert placements
         for p in placements:
             assert p.effect_name == "Lightning"
-            assert p.parameters["E_CHOICE_Lightning_Direction"] == "Up"
-            assert p.parameters["E_SLIDER_Lightning_WIDTH"] == "1"
+            assert p.parameters["E_CHOICE_Lightning_Direction"] in ("Up", "Down")
+            assert 1 <= int(p.parameters["E_SLIDER_Lightning_WIDTH"]) <= 3
+            assert 1 <= int(p.parameters["E_SLIDER_Number_Segments"]) <= 5
+            assert p.parameters["E_SLIDER_Number_Bolts"] == "10"
             assert "E_CHOICE_Fade_Type" not in p.parameters
+
+    def test_lightning_randomization_is_deterministic(self) -> None:
+        result_a = _place(_make_section(label="chorus"), _VERTICAL_GROUP,
+                          variation_seed=3,
+                          library_names=_DEFAULT_LIBRARY_NAMES + ("Lightning",))
+        result_b = _place(_make_section(label="chorus"), _VERTICAL_GROUP,
+                          variation_seed=3,
+                          library_names=_DEFAULT_LIBRARY_NAMES + ("Lightning",))
+        params_a = [p.parameters for p in result_a["06_PROP_Vertical"]]
+        params_b = [p.parameters for p in result_b["06_PROP_Vertical"]]
+        assert params_a == params_b
 
     def test_on_color_layer_over_chase_mask(self) -> None:
         # Bar-cycled, not section-spanning (see megatree test for the same

@@ -2115,6 +2115,12 @@ def _place_corpus_recipe(
         ):
             beat_params = dict(params)
             beat_params["B_CHOICE_BufferTransform"] = "Flip Horizontal"
+        if effect_name == "Lightning":
+            if beat_params is params:
+                beat_params = dict(params)
+            beat_params.update(_randomized_lightning_fields(
+                f"{variation_seed}:lightning:{group.name}:{start}"
+            ))
         p = _make_placement(
             effect_def, group.name, start, end,
             beat_params, palette, layer.blend_mode, "beat",
@@ -3247,6 +3253,26 @@ _PICTURE_DIRECTIONS = (
     "up-left", "up-right", "down-left", "down-right",
 )
 
+# Lightning randomization (user request, 2026-07-18): xLights' own field IDs
+# and UI labels are swapped for two sliders (verified against
+# resources/effectmetadata/Lightning.json) -- E_SLIDER_Lightning_WIDTH is
+# labeled "Width", E_SLIDER_Number_Segments is labeled "Width of Bolt", and
+# E_SLIDER_Number_Bolts is labeled "Number of Segments". Only the two
+# UI-labeled "Width"/"Width of Bolt" sliders and Direction vary per bolt;
+# Number_Bolts stays fixed at the mined value of 10.
+_LIGHTNING_WIDTH_RANGE = (1, 3)          # E_SLIDER_Lightning_WIDTH ("Width")
+_LIGHTNING_SEGMENTS_RANGE = (1, 5)       # E_SLIDER_Number_Segments ("Width of Bolt")
+_LIGHTNING_DIRECTIONS = ("Up", "Down")   # E_CHOICE_Lightning_Direction
+
+
+def _randomized_lightning_fields(seed_key: str) -> dict[str, str]:
+    rng = random.Random(seed_key)
+    return {
+        "E_CHOICE_Lightning_Direction": rng.choice(_LIGHTNING_DIRECTIONS),
+        "E_SLIDER_Lightning_WIDTH": str(rng.randint(*_LIGHTNING_WIDTH_RANGE)),
+        "E_SLIDER_Number_Segments": str(rng.randint(*_LIGHTNING_SEGMENTS_RANGE)),
+    }
+
 # Occasional buffer-transform motion overlays for picture bursts (user
 # request, 2026-07-18). The value-curve strings are copied verbatim from
 # working xLights clipboard samples — parametric Ramp/Sine curves, passed
@@ -3599,6 +3625,7 @@ def _place_crash_accents(
             color_palette=["#FFFFFF"],
         ))
         lightning_params: dict[str, Any] = dict(_LIGHTNING_FLICKER)
+        lightning_params.update(_randomized_lightning_fields(f"lightning:{mark.time_ms}"))
         if accent_index % 2 == 1:
             lightning_params["B_CHOICE_BufferTransform"] = "Rotate CC 90"
         for g in matrix_groups:

@@ -138,7 +138,9 @@ class TestCrashAccentMatrixLightning:
         assert p.color_palette == ["#FFFFFF"]
         assert abs(p.start_ms - (50_850 - _CRASH_LEAD_MS)) <= 25
         assert abs(p.end_ms - (50_850 + _CRASH_EFFECT_DURATION_MS)) <= 25
-        assert p.parameters["E_CHOICE_Lightning_Direction"] == "Up"
+        assert p.parameters["E_CHOICE_Lightning_Direction"] in ("Up", "Down")
+        assert 1 <= int(p.parameters["E_SLIDER_Lightning_WIDTH"]) <= 3
+        assert 1 <= int(p.parameters["E_SLIDER_Number_Segments"]) <= 5
         assert p.parameters["E_SLIDER_Number_Bolts"] == "10"
 
     def test_lightning_renders_above_recipe_layers(self):
