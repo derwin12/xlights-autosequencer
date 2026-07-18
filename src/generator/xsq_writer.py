@@ -475,9 +475,15 @@ def write_xsq(
     # Shockwave always renders with the "...Per Preview" variant of
     # whichever tier-based style would otherwise apply (user request,
     # 2026-07-18) -- preserves the underlying Default-vs-Per-Model-Default
-    # semantics per tier, just adds the per-preview qualifier. Tiers 01-03
-    # (base=None, no explicit style) have no mapping entry here on
-    # purpose: there's no "Default" state to transform from there.
+    # semantics per tier, just adds the per-preview qualifier. Bug found
+    # same day: individual model-targeted placements (e.g. "Snowflake
+    # Prop", "Spinner Prop" -- type="model" in DisplayElements, not routed
+    # through any tier-prefixed group) get base=None from
+    # _buffer_style_for_group since there's no tier convention to read,
+    # and the fixed two-entry map left those with no override at all
+    # (rendered as unset/"Default" on import). A single-model target is
+    # inherently "per model" already, so the .get() fallback below treats
+    # any other base (None included) as "Per Model Per Preview" too.
     _SHOCKWAVE_PREVIEW_STYLE = {
         "Default": "Per Preview",
         "Per Model Default": "Per Model Per Preview",
@@ -488,8 +494,8 @@ def write_xsq(
             base = "Per Model Default"
         else:
             base = _buffer_style_for_group(group_name)
-        if effect_name == "Shockwave" and base in _SHOCKWAVE_PREVIEW_STYLE:
-            return _SHOCKWAVE_PREVIEW_STYLE[base]
+        if effect_name == "Shockwave":
+            return _SHOCKWAVE_PREVIEW_STYLE.get(base, "Per Model Per Preview")
         return base
 
     all_placements: dict[str, list[EffectPlacement]] = {

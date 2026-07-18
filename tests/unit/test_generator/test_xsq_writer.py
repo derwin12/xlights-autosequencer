@@ -467,6 +467,30 @@ class TestXsqWriter:
             assert f"B_CHOICE_BufferStyle={expected_shockwave}" in effectdb[by_name["Shockwave"]]
             assert f"B_CHOICE_BufferStyle={expected_on}" in effectdb[by_name["On"]]
 
+    def test_shockwave_on_individual_model_gets_per_model_per_preview(self, tmp_path: Path) -> None:
+        """Regression (2026-07-18): a Shockwave targeting an individual
+        model directly (e.g. "Snowflake Prop", type="model" -- not routed
+        through any tier-prefixed group) has no tier convention to read,
+        so _buffer_style_for_group returns None. The two-entry Default/Per
+        Model Default map left that case with no override at all
+        (rendered as unset on import). A single-model target is inherently
+        "per model" already, so it must still get Per Model Per Preview."""
+        plan = _make_plan()
+        plan.sections[0].group_effects["Snowflake Prop"] = [
+            EffectPlacement(
+                effect_name="Shockwave", xlights_id="Shockwave",
+                model_or_group="Snowflake Prop",
+                start_ms=0, end_ms=1000, parameters={},
+                color_palette=["#FFFFFF"],
+            ),
+        ]
+        root = _write_and_parse(plan, tmp_path)
+        effectdb = [ef.text or "" for ef in root.find("EffectDB")]
+        effects_el = root.find("ElementEffects")
+        group_el = next(e for e in effects_el if e.get("name") == "Snowflake Prop")
+        ref = int(group_el.find("EffectLayer").find("Effect").get("ref"))
+        assert "B_CHOICE_BufferStyle=Per Model Per Preview" in effectdb[ref]
+
     def test_tier_1_to_3_non_override_groups_get_no_buffer_style_key(self, tmp_path: Path) -> None:
         """Tiers 01-03 (other than the 01_BASE_All(_FADES) override
         canvases) render as a unified group with no explicit buffer style
