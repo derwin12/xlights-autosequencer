@@ -10,6 +10,8 @@ from src.generator.models import EffectPlacement
 from src.generator.moving_head import (
     _CRASH_EFFECT_DURATION_MS,
     _CRASH_LEAD_MS,
+    _CRASH_PAN_OFFSET_DEG,
+    _CRASH_TILT_DEG,
     _CRASH_VOCAL_EXCLUSION_MS,
     _PREFERRED_WARMUP_DURATION_MS,
     place_moving_head_crash_accents,
@@ -67,6 +69,29 @@ class TestPlaceMovingHeadCrashAccents:
         assert "PanOffset: 10.5" in settings
         assert "Wheel: 0.000000&comma;0.000000&comma;1.000000" in settings
         assert "Shutter: On" in settings
+
+    def test_shared_sliders_match_the_punch_pose_not_stale_placeholders(self):
+        # Regression (2026-07-17/18): the shared E_SLIDER_MHTilt/MHPanOffset
+        # were hardcoded to unrelated placeholder values ("300"/"400") that
+        # never matched the punch's real Tilt: 78.5 / PanOffset: 10.5 text.
+        # xLights treats those shared sliders as authoritative on save, so
+        # the mismatch would silently corrupt the pose once the file
+        # round-tripped through xLights (same failure mode confirmed on the
+        # per-head moves via a real before/after diff). Confirmed against
+        # the vendor reference sequence (MH Samples.xsq): these sliders are
+        # degrees*10 integers, not the plain-decimal-degrees format the
+        # per-head text uses (e.g. text "PanOffset: 10.5" pairs with
+        # E_SLIDER_MHPanOffset=105).
+        expected_tilt = str(round(float(_CRASH_TILT_DEG) * 10))
+        expected_pan_offset = str(round(float(_CRASH_PAN_OFFSET_DEG) * 10))
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        punch = _punch(result["MH GRP"])
+        assert punch.parameters["E_SLIDER_MHTilt"] == expected_tilt
+        assert punch.parameters["E_SLIDER_MHPanOffset"] == expected_pan_offset
+        warmup = _warmup(result["MH GRP"])
+        assert warmup.parameters["E_SLIDER_MHTilt"] == expected_tilt
+        assert warmup.parameters["E_SLIDER_MHPanOffset"] == expected_pan_offset
 
     def test_punch_dimmer_is_a_random_flicker_not_a_flat_flash(self):
         # Mined from the user's own preset (mhpresets/Random.xmh, 2026-07-17):

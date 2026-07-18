@@ -102,22 +102,49 @@ _COMMA_ESCAPE = "&comma;"
 _COLOR_WHITE = _COMMA_ESCAPE.join(("0.000000", "0.000000", "1.000000"))
 
 
+def _deg_to_slider(deg: float) -> str:
+    """xLights' shared MH Pan/Tilt/PanOffset sliders store degrees*10 as a
+    plain integer -- NOT the same plain-decimal-degrees format as the
+    ``Pan: X``/``Tilt: X`` per-head text (confirmed against the vendor
+    reference sequence, ``MH Samples.xsq``, 2026-07-18: e.g. text ``Pan:
+    -45.0`` pairs with ``E_SLIDER_MHPan=-450``, ``PanOffset: 10.5`` pairs
+    with ``E_SLIDER_MHPanOffset=105``). This matches the value-curve
+    encoding's own ``Min=-1800.00|Max=1800.00`` scale. A prior fix
+    (2026-07-17) wrote these sliders as plain decimal-degree strings
+    (e.g. ``"-55.0"``) assuming the same scale as the text -- wrong scale
+    *and* wrong format, which is why xLights silently discarded them on
+    save regardless of the value supplied.
+    """
+    return str(round(deg * 10))
+
+
 def _build_parameters(
     per_head_settings: dict[int, str],
     *,
-    slider_tilt: str = "0",
+    slider_pan: Optional[str] = None,
+    slider_tilt: Optional[str] = None,
     slider_pan_offset: str = "0",
-    slider_cycles: str = "1",
+    slider_cycles: str = "10",
 ) -> dict[str, str]:
     """``per_head_settings`` maps 1-indexed head slot -> settings text for
     that slot; slots not present get an empty string (see _MAX_HEAD_SLOTS).
+
+    ``slider_pan``/``slider_tilt`` are the shared ``E_SLIDER_MHPan``/
+    ``E_SLIDER_MHTilt`` values xLights treats as authoritative for whichever
+    axis isn't value-curve-driven -- confirmed by a real before/after diff
+    (2026-07-17): opening a generated effect whose per-head text said
+    ``Tilt: 65.0`` but whose ``E_SLIDER_MHTilt`` didn't match made xLights
+    silently rewrite the per-head text to ``Tilt: 0.0`` on save, discarding
+    the intended angle. Pass ``None`` (the default) for whichever axis is
+    value-curve-driven -- the reference sequence OMITS that key entirely
+    rather than setting it to any value, confirmed across every VC-driven
+    entry in ``MH Samples.xsq``. Values must already be in the ``_deg_to_slider``
+    scale (degrees*10), not plain degrees.
     """
     params: dict[str, str] = {
         "B_CHOICE_BufferStyle": "Per Model Default",
         "E_NOTEBOOK1": "Position",
         "E_NOTEBOOK2": "ColorWheel",
-        "E_SLIDER_MHPan": "0",
-        "E_SLIDER_MHTilt": slider_tilt,
         "E_SLIDER_MHPanOffset": slider_pan_offset,
         "E_SLIDER_MHTiltOffset": "0",
         "E_SLIDER_MHGroupings": "1",
@@ -150,6 +177,10 @@ def _build_parameters(
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
     }
+    if slider_pan is not None:
+        params["E_SLIDER_MHPan"] = slider_pan
+    if slider_tilt is not None:
+        params["E_SLIDER_MHTilt"] = slider_tilt
     for i in range(1, _MAX_HEAD_SLOTS + 1):
         params[f"E_TEXTCTRL_MH{i}_Settings"] = per_head_settings.get(i, "")
     return params
@@ -214,8 +245,14 @@ MOVE_LIBRARY: dict[str, _Move] = {
         _HeadPose(pan=-45.0, tilt=60.0), _HeadPose(pan=-45.0, tilt=60.0),
     )),
     "l_r_sweep": _Move("l_r_sweep", "per_head", (
+        # All 4 heads sweep the same direction together -- confirmed
+        # against the reference sequence (MH Samples.xsq, 2026-07-18): its
+        # equivalent sweep segments have every head's Pan VC pointing the
+        # same way, never alternating/crisscrossing. Head 2 previously had
+        # a reversed tuple here (copy-paste from r_l_sweep) that fought
+        # the other three (user-reported, 2026-07-18).
         _HeadPose(pan_vc=(-45.0, 45.0), tilt=60.0),
-        _HeadPose(pan_vc=(45.0, -45.0), tilt=60.0),
+        _HeadPose(pan_vc=(-45.0, 45.0), tilt=60.0),
         _HeadPose(pan_vc=(-45.0, 45.0), tilt=60.0),
         _HeadPose(pan_vc=(-45.0, 45.0), tilt=60.0),
     )),
@@ -368,9 +405,22 @@ def _jitter(variation_seed: int, section_index: int) -> tuple[float, float]:
     return pan, tilt
 
 
-def _choose_move(section_index: int, variation_seed: int, *, dynamic: bool) -> str:
+# A repeated l_r_sweep/r_l_sweep back-to-back reads as the same move
+# twice rather than variety (user request, 2026-07-18); when the rotation
+# would pick the same sweep direction as the immediately preceding
+# qualifying section, swap to the other direction instead.
+_SWEEP_PARTNER = {"l_r_sweep": "r_l_sweep", "r_l_sweep": "l_r_sweep"}
+
+
+def _choose_move(
+    section_index: int, variation_seed: int, *, dynamic: bool,
+    previous_move: Optional[str] = None,
+) -> str:
     pool = _DYNAMIC_MOVES if dynamic else _STATIC_MOVES
-    return pool[(variation_seed + section_index) % len(pool)]
+    choice = pool[(variation_seed + section_index) % len(pool)]
+    if choice == previous_move and choice in _SWEEP_PARTNER:
+        choice = _SWEEP_PARTNER[choice]
+    return choice
 
 
 def _build_group_move_parameters(
@@ -383,7 +433,12 @@ def _build_group_move_parameters(
     heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field)
     per_head = {i: settings for i in range(1, head_count + 1)}
-    params = _build_parameters(per_head, slider_pan_offset=f"{pose.pan_offset:.1f}")
+    params = _build_parameters(
+        per_head,
+        slider_pan=None if pose.pan_vc is not None else _deg_to_slider((pose.pan or 0.0) + jitter_pan),
+        slider_tilt=None if pose.tilt_vc is not None else _deg_to_slider((pose.tilt or 0.0) + jitter_tilt),
+        slider_pan_offset=_deg_to_slider(pose.pan_offset),
+    )
     params.update(_vc_top_level_params(pose, jitter_pan, jitter_tilt))
     return params
 
@@ -404,7 +459,11 @@ def _build_per_head_move_parameters(
     matching the original MH Samples.xsq reference this module was mined
     from in the first place)."""
     settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field=str(head_index))
-    params = _build_parameters({head_index: settings})
+    params = _build_parameters(
+        {head_index: settings},
+        slider_pan=None if pose.pan_vc is not None else _deg_to_slider((pose.pan or 0.0) + jitter_pan),
+        slider_tilt=None if pose.tilt_vc is not None else _deg_to_slider((pose.tilt or 0.0) + jitter_tilt),
+    )
     params.update(_vc_top_level_params(pose, jitter_pan, jitter_tilt))
     return params
 
@@ -447,14 +506,23 @@ def _build_group_warmup_parameters(
     heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     settings = _build_move_warmup_settings(pose, jitter_pan, jitter_tilt, heads_field)
     per_head = {i: settings for i in range(1, head_count + 1)}
-    return _build_parameters(per_head, slider_pan_offset=f"{pose.pan_offset:.1f}")
+    return _build_parameters(
+        per_head,
+        slider_pan=_deg_to_slider(_pose_start_pan(pose) + jitter_pan),
+        slider_tilt=_deg_to_slider(_pose_start_tilt(pose) + jitter_tilt),
+        slider_pan_offset=_deg_to_slider(pose.pan_offset),
+    )
 
 
 def _build_per_head_warmup_parameters(
     pose: _HeadPose, jitter_pan: float, jitter_tilt: float, head_index: int,
 ) -> dict[str, str]:
     settings = _build_move_warmup_settings(pose, jitter_pan, jitter_tilt, heads_field=str(head_index))
-    return _build_parameters({head_index: settings})
+    return _build_parameters(
+        {head_index: settings},
+        slider_pan=_deg_to_slider(_pose_start_pan(pose) + jitter_pan),
+        slider_tilt=_deg_to_slider(_pose_start_tilt(pose) + jitter_tilt),
+    )
 
 
 # "Strong and powerful" gate (user-confirmed 2026-07-17): the song's own
@@ -654,6 +722,7 @@ def place_moving_head_moves(
         channel_owner: dict[str, Optional[EffectPlacement]] = {
             name: None for name in mh_group.head_names
         }
+        previous_move_name: Optional[str] = None
         for section_index, assignment in enumerate(assignments):
             section = assignment.section
             role = (section.label or "").lower()
@@ -665,7 +734,9 @@ def place_moving_head_moves(
             move_name = _choose_move(
                 section_index, assignment.variation_seed,
                 dynamic=section.energy_score >= _STRONG_ENERGY_GATE,
+                previous_move=previous_move_name,
             )
+            previous_move_name = move_name
             move = MOVE_LIBRARY[move_name]
             jitter_pan, jitter_tilt = _jitter(assignment.variation_seed, section_index)
 
@@ -874,7 +945,9 @@ def place_moving_head_crash_accents(
         warmup_settings = _build_warmup_head_settings(head_count)
         warmup_params = _build_parameters(
             {i: warmup_settings for i in range(1, head_count + 1)},
-            slider_tilt="300", slider_pan_offset="400",
+            slider_pan=_deg_to_slider(0.0),
+            slider_tilt=_deg_to_slider(float(_CRASH_TILT_DEG)),
+            slider_pan_offset=_deg_to_slider(float(_CRASH_PAN_OFFSET_DEG)),
         )
         # Every existing placement that touches this group's channels --
         # the group's own key AND every individual head's, since a
@@ -902,7 +975,9 @@ def place_moving_head_crash_accents(
             crash_settings = _build_crash_head_settings(head_count, dimmer_curve)
             params = _build_parameters(
                 {i: crash_settings for i in range(1, head_count + 1)},
-                slider_tilt="300", slider_pan_offset="400", slider_cycles="10",
+                slider_pan=_deg_to_slider(0.0),
+                slider_tilt=_deg_to_slider(float(_CRASH_TILT_DEG)),
+                slider_pan_offset=_deg_to_slider(float(_CRASH_PAN_OFFSET_DEG)),
             )
             # Includes crash marks already placed earlier in this same
             # loop, not just placements from place_moving_head_moves --

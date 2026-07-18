@@ -6,12 +6,15 @@ from pathlib import Path
 
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.generator.moving_head import (
+    _choose_move,
     _DIMMER_FULL_ON,
+    _jitter,
     _MAX_MOVE_DURATION_MS,
     _MIN_SECTION_DURATION_MS,
     _MIN_WARMUP_DURATION_MS,
     _PREFERRED_WARMUP_DURATION_MS,
     _STRONG_ENERGY_GATE,
+    MOVE_LIBRARY,
     place_moving_head_moves,
 )
 from src.grouper.layout import parse_layout
@@ -114,6 +117,62 @@ class TestPlaceMovingHeadMoves:
         assert "Heads: 2" in params["E_TEXTCTRL_MH2_Settings"]
         for slot in range(3, 9):
             assert params[f"E_TEXTCTRL_MH{slot}_Settings"] == ""
+
+    def test_repeated_sweep_alternates_direction(self):
+        # User request (2026-07-18): a repeated l_r_sweep/r_l_sweep
+        # back-to-back reads as the same move twice, not variety -- when
+        # the rotation would naturally pick the same sweep direction as
+        # the section right before it, swap to the other direction.
+        # section_index=1 and section_index=5 both land on "l_r_sweep"
+        # via the natural (variation_seed + section_index) % 4 rotation.
+        first = _choose_move(1, variation_seed=0, dynamic=True)
+        assert first == "l_r_sweep"
+        second = _choose_move(5, variation_seed=0, dynamic=True, previous_move=first)
+        assert second == "r_l_sweep"
+
+    def test_non_sweep_repeat_is_left_alone(self):
+        # The alternation rule only applies to the two sweep moves --
+        # a naturally-repeated non-sweep move (e.g. two sections landing
+        # on "fan_pan_move") isn't forced to change.
+        first = _choose_move(0, variation_seed=0, dynamic=True)
+        assert first == "fan_pan_move"
+        second = _choose_move(4, variation_seed=0, dynamic=True, previous_move=first)
+        assert second == "fan_pan_move"
+
+    def test_l_r_sweep_moves_every_head_the_same_direction(self):
+        # Regression (2026-07-18, user-reported): head 2's pose in
+        # "l_r_sweep" had a reversed pan_vc tuple (a copy-paste from
+        # r_l_sweep), fighting the other 3 heads mid-sweep instead of
+        # moving with them. Confirmed against the vendor reference
+        # sequence (MH Samples.xsq): its equivalent sweep segments have
+        # every head's Pan VC pointing the same direction, never
+        # alternating.
+        move = MOVE_LIBRARY["l_r_sweep"]
+        pan_vcs = [pose.pan_vc for pose in move.poses]
+        assert len(set(pan_vcs)) == 1, f"Expected identical pan_vc across all heads, got {pan_vcs}"
+
+    def test_shared_sliders_match_the_pose_not_the_zero_default(self):
+        # Regression (2026-07-17/18, bug found via a real before/after xLights
+        # diff, then corrected against the vendor reference sequence):
+        # E_SLIDER_MHPan/E_SLIDER_MHTilt were always left at their "0"
+        # default regardless of the pose's actual angle. xLights treats those
+        # shared sliders as authoritative for whichever axis isn't
+        # value-curve-driven -- opening a generated effect with a nonzero
+        # static Tilt but a "0" slider made xLights silently zero the Tilt
+        # out on save. Both sliders must reflect the pose's real angle
+        # (jittered), not the unconditional "0" default -- and, confirmed
+        # against MH Samples.xsq, in degrees*10 integer form (e.g. Pan:
+        # 45.0 -> "450"), not the plain-decimal-degrees format the text
+        # itself uses.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 15_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments)
+        # variation_seed=2, section_index=0 -> static pool index 2 ("r_static"),
+        # every head posed at pan=45.0, tilt=60.0 (see MOVE_LIBRARY).
+        jitter_pan, jitter_tilt = _jitter(variation_seed=2, section_index=0)
+        params = result["MH2"][0].parameters
+        assert params["E_SLIDER_MHPan"] == str(round((45.0 + jitter_pan) * 10))
+        assert params["E_SLIDER_MHTilt"] == str(round((60.0 + jitter_tilt) * 10))
 
     def test_multiple_qualifying_sections_rotate_moves(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
@@ -270,6 +329,21 @@ class TestPlaceMovingHeadMoves:
                 assert not (g.start_ms < h.end_ms and g.end_ms > h.start_ms), (
                     f"overlap: head [{h.start_ms},{h.end_ms}) vs group [{g.start_ms},{g.end_ms})"
                 )
+
+    def test_vc_driven_axis_omits_its_shared_slider_entirely(self):
+        # Regression (2026-07-18): confirmed against the vendor reference
+        # sequence (MH Samples.xsq) that whichever axis is value-curve-driven
+        # has its shared E_SLIDER_MHPan/E_SLIDER_MHTilt key OMITTED entirely
+        # from the effect's parameters -- never present, not just zeroed.
+        # variation_seed=1, dynamic pool -> "l_r_sweep" (per_head, Pan VC,
+        # static Tilt).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=1)]
+        result = place_moving_head_moves(layout, assignments)
+        move = result["MH1"][-1]
+        params = move.parameters
+        assert "E_SLIDER_MHPan" not in params
+        assert "E_SLIDER_MHTilt" in params
 
     def test_pan_vc_move_gets_matching_top_level_valuecurve_key(self):
         # variation_seed=1, dynamic pool -> "l_r_sweep" (per_head, Pan VC).
