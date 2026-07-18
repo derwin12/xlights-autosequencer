@@ -259,6 +259,16 @@ class GenerationConfig:
     crash_accents: bool = True          # Rare whole-house Shockwave on 01_BASE_All_FADES at extreme percussive transients
     picture_effects: bool = True        # Cycle catalog images (show_dir/Images) on matrix/tree props
     moving_head_effects: bool = True    # Gated reference-sequence moves + crash punch on DMX moving-head fixture groups
+    # Rare Moving Head accent on hierarchy.riff_bursts marks. Default False
+    # (2026-07-18): the detector's signal doesn't reliably find real riffs
+    # yet (missed both of the user's original confirmations, 0/9 on
+    # follow-up candidates) and its placements collide with crash-accent
+    # warmups, which fill the entire natural gap between crash marks and
+    # so block every riff-burst window via _has_overlap — see
+    # CLAUDE.md -> "Riff/Fill Detector for Moving Head Accent". Code kept
+    # in place, gated off, pending a better-validated signal and a fix for
+    # the warmup collision.
+    riff_bursts: bool = False
     # Nominal fields (spec 047) — stored but not read in Phase 3. Phase 4
     # (spec 048 follow-up) will wire them into build_plan/theme_selector so
     # the Brief tab can drop its client-side MOOD_DEFAULTS ruleset.

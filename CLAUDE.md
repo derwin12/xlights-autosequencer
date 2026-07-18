@@ -326,37 +326,51 @@ preconditions, and 16-song corpus results.
   dict into `plan.py`'s `moving_head_effects` variable (currently hard-coded
   to `{}`) and pass it through the same call.
 
-### Riff/Fill Detector for Moving Head Accent (2026-07-18, single-song validated)
-- **Shipped**: `src/analyzer/riff_bursts.py::detect_riff_bursts(bass_audio,
-  bass_sr, chords)` flags rare guitar/bass riff or fill moments — a burst
-  of >=3 bass-band (20-250Hz, demucs bass stem) onsets within 1.0s AND an
-  accelerated chord change (two adjacent Chordino marks <=0.6s apart)
-  inside that same window. Neither signal alone is selective enough (12
-  raw bass bursts / 21 raw fast-chord-changes in the validation song);
-  the AND of both reproduced exactly the user-confirmed moments and
-  nothing else. Wired into `orchestrator.py` Stage 8 (schema 2.3.0),
-  stored as `HierarchyResult.riff_bursts`, exported as an `riff_bursts`
-  .xtiming layer. Generator side:
-  `moving_head.py::place_moving_head_riff_bursts` places a mid-height
-  wide-fan Pan/Tilt punch (Tilt 45°/PanOffset 25°, deliberately distinct
-  from the crash punch's near-vertical narrow fan at Tilt 78.5°/PanOffset
-  10.5°) at each mark, reusing the exact same warmup/existing_placements/
-  vocal-exclusion machinery as `place_moving_head_crash_accents`. MH-only
-  — no whole-house counterpart (unlike crash accents' Shockwave), gated on
-  `config.moving_head_effects` alone (no new config flag added).
-- **Validation history**: ground truth came from manually scrubbing
-  "bar-guitar-and-a-honky-tonk-crowd" (a real user song) in the xLights
-  timeline UI — the user confirmed 5 moments by ear (~33s, ~43s, ~60.6s,
-  ~96.5s, ~149.3s) after being shown chord-acceleration + bass-burst
-  candidates cross-referenced against the song's own analysis tracks.
-  **Single-song validation only** — unlike crash_accents.py (6-song panel
-  before shipping), this formula has one song's worth of ground truth.
-  Follow-up: run against 2-3 more songs in the local library (any genre
-  with audible guitar/bass fills) and confirm the AND-condition still
-  cleanly separates real riffs from ordinary chord/bass movement before
-  trusting the threshold broadly. If it doesn't generalize, the
-  `_BURST_WINDOW_S`/`_CHORD_ACCEL_GAP_S` constants are the first things to
-  revisit — see the module docstring for the exact formula.
+### Riff/Fill Detector for Moving Head Accent — DISABLED, needs redesign (2026-07-18)
+- **Current state: code present, gated OFF by default.** `src/analyzer/
+  riff_bursts.py::detect_riff_bursts(bass_audio, bass_sr, chords)` and
+  `moving_head.py::place_moving_head_riff_bursts` both exist and are unit
+  tested, but `GenerationConfig.riff_bursts` defaults to `False`
+  (`src/generator/models.py`) and `plan.py`'s wiring checks it before
+  calling the placement function — so real exports are unaffected. Do NOT
+  flip the default to `True` without addressing both failures below.
+- **Failure 1 — the detection formula didn't survive contact with real
+  data.** The burst threshold (">=3 bass-band onsets within 1.0s") was
+  validated by hand against a sparser external onset computation (~127
+  onsets/song via a separate MCP tool call), not against what the shipped
+  code actually runs (`librosa.onset.onset_detect` on the real demucs bass
+  stem — ~366 onsets/song, ~3x denser). At that density "3 onsets in 1s"
+  is almost always true on a busy bassline, so it stopped discriminating
+  anything; the real selectivity came almost entirely from the
+  chord-acceleration half. Run against the real cached stem for the
+  validation song ("bar-guitar-and-a-honky-tonk-crowd"), the shipped
+  formula produced 14 marks: it MISSED both of the user's original
+  by-ear-confirmed moments (~33s — a section-boundary event with no chord
+  acceleration at all, a trigger type never implemented; ~43s — real bass
+  onsets there are sparse, so the burst condition failed by chance at
+  exactly that spot) and, when asked to confirm 9 of the other candidates
+  it did produce, the user confirmed **zero** of them as real riffs.
+  Conclusion: the compound signal does not reliably locate the moments a
+  listener means by "riff" — needs a fundamentally different approach
+  (possibly the section-boundary case as a distinct second trigger type,
+  or listening-driven ground truth collected across several songs before
+  attempting to fit a threshold again), not just a threshold tweak.
+- **Failure 2 — even a correct signal couldn't have placed anything.**
+  `place_moving_head_crash_accents`' warmup fills "the ENTIRE natural gap
+  back to the previous placement" (see the Moving Head warmup entry
+  above) — between the validation song's 2 crash marks, that warmup logic
+  covers almost the *entire* 197s song. `plan.py`'s riff-burst call passes
+  those crash placements in as `existing_placements`, so `_has_overlap`
+  silently skipped all 14 candidate marks in the real pipeline even
+  though `place_moving_head_riff_bursts` produces correct placements when
+  called in isolation (verified directly against real data: 28
+  placements with no `existing_placements` passed, 0 when the real
+  crash-accent warmups are included). Any future revival of this feature
+  needs either a warmup-interruption mechanism (carve a slot out of an
+  in-progress warmup rather than treating it as a hard block) or a
+  non-Moving-Head effect target that doesn't share DMX channels with the
+  crash accent, sidestepping the collision entirely (raised as an option
+  by the user 2026-07-18, not yet explored).
 - Implementation note for future test fixtures on this detector or any
   other `librosa.onset.onset_detect`-based one: onset detection there is
   scale-invariant (fires on pure low-amplitude noise, not just real

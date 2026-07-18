@@ -186,10 +186,32 @@ def build_plan(
 
     # Apply theme overrides before deriving the anchor palette so the anchor
     # reflects the themes that will actually be used (not the auto-selected ones).
+    #
+    # theme_overrides values arrive in TWO different formats depending on the
+    # caller (2026-07-18 bug find): the CLI (src/cli_old.py) and
+    # tests/integration/test_phase1_metrics.py pass display names
+    # ("Stellar Wind"), while the review API (export.py's session
+    # assignments, generate_routes.py's theme_slug/story overrides) passes
+    # slug IDs ("stellar-wind") -- the same slug format _load_themes() uses
+    # for its theme_id catalog (src/review/api/v1/themes.py::_slugify). The
+    # direct dict lookup below only ever matched display names, so every
+    # slug-based override (i.e. every theme choice made through the Theme
+    # screen) silently no-op'd and fell through to the auto-selected theme
+    # -- confirmed on a real export where NONE of a song's 4 confirmed
+    # theme assignments' colors appeared anywhere in the output. Resolve
+    # against both a name-keyed and a slug-keyed index so either caller
+    # format works.
     if config.theme_overrides:
+        from src.themes.library import _slugify as _theme_slugify
+        _themes_by_slug = {
+            _theme_slugify(t.name): t for t in theme_library.themes.values()
+        }
         for idx, theme_name in config.theme_overrides.items():
             if 0 <= idx < len(assignments):
-                theme = theme_library.themes.get(theme_name)
+                theme = (
+                    theme_library.themes.get(theme_name)
+                    or _themes_by_slug.get(theme_name)
+                )
                 if theme is not None:
                     assignments[idx].theme = theme
 
@@ -381,10 +403,16 @@ def build_plan(
     # 5d-3. Riff bursts: mid-height fan-out Moving Head punch on each rare
     # guitar/bass riff or fill (hierarchy.riff_bursts,
     # riff_bursts.detect_riff_bursts). MH-only accent, no whole-house
-    # counterpart (unlike crash accents' Shockwave) -- gated purely on
-    # config.moving_head_effects, the same toggle place_moving_head_moves
-    # uses, since this feature has no non-MH half.
-    if config.moving_head_effects and layout is not None and hierarchy.riff_bursts:
+    # counterpart (unlike crash accents' Shockwave). Gated on
+    # config.riff_bursts, default False (2026-07-18) -- the detector's
+    # signal isn't validated yet AND its placements collide with the
+    # crash-accent warmup (which fills the entire gap between crash marks,
+    # so _has_overlap blocks every riff-burst window) -- see CLAUDE.md ->
+    # "Riff/Fill Detector for Moving Head Accent".
+    if (
+        config.riff_bursts and config.moving_head_effects
+        and layout is not None and hierarchy.riff_bursts
+    ):
         fade_exclusion_start_ms = max(
             0, min(_audible_end_ms(assignments, hierarchy), hierarchy.duration_ms - _FADE_MIN_MS)
         )

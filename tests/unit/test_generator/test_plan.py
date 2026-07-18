@@ -177,6 +177,66 @@ class TestBuildPlan:
         assert len(elements) > 0, "ElementEffects should have at least one model element"
 
 
+class TestThemeOverrides:
+    """Regression coverage for the theme_overrides slug/name mismatch
+    (2026-07-18): src/review's session assignments and story overrides
+    pass slug-format theme_id values (e.g. "stellar-wind"), while the CLI
+    and tests/integration/test_phase1_metrics.py pass display names (e.g.
+    "Stellar Wind"). build_plan must resolve both — the slug lookup
+    previously fell through silently, so no theme choice made through the
+    Theme screen ever actually applied (confirmed on a real export: none
+    of a song's 4 confirmed theme assignments' colors appeared in the
+    output; auto-selected themes rendered instead). NOT inside
+    TestBuildPlan: that class is xfail'd for an unrelated reason, which
+    would hide a real regression here.
+    """
+
+    def test_slug_theme_override_resolves(self, tmp_path: Path):
+        hierarchy = _make_hierarchy()
+        props = _make_props()
+        groups = _make_groups()
+        effect_lib = load_effect_library()
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
+        assert theme_lib.themes.get("Stellar Wind") is not None, (
+            "fixture assumption: builtin theme 'Stellar Wind' must exist"
+        )
+
+        config = GenerationConfig(
+            audio_path=tmp_path / "test.mp3",
+            layout_path=tmp_path / "layout.xml",
+            genre="pop",
+            occasion="general",
+            theme_overrides={0: "stellar-wind"},
+        )
+
+        plan = build_plan(config, hierarchy, props, groups, effect_lib, theme_lib)
+
+        assert plan.sections[0].theme.name == "Stellar Wind"
+
+    def test_display_name_theme_override_still_resolves(self, tmp_path: Path):
+        # The CLI and test_phase1_metrics.py pass display names directly —
+        # must keep working alongside the new slug path.
+        hierarchy = _make_hierarchy()
+        props = _make_props()
+        groups = _make_groups()
+        effect_lib = load_effect_library()
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
+
+        config = GenerationConfig(
+            audio_path=tmp_path / "test.mp3",
+            layout_path=tmp_path / "layout.xml",
+            genre="pop",
+            occasion="general",
+            theme_overrides={0: "Stellar Wind"},
+        )
+
+        plan = build_plan(config, hierarchy, props, groups, effect_lib, theme_lib)
+
+        assert plan.sections[0].theme.name == "Stellar Wind"
+
+
 class TestReadSongMetadata:
     """Tests for read_song_metadata."""
 
