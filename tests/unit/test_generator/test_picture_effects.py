@@ -15,7 +15,7 @@ from src.generator.effect_placer import (
     _PICTURE_MIN_GAP_MS,
     _PICTURE_MOTIONS,
     _PICTURE_SCALE_PERCENT,
-    _PICTURE_SPEED,
+    _PICTURE_SPEED_RANGE,
     _place_picture_effects,
 )
 from src.generator.models import GenerationConfig
@@ -251,7 +251,8 @@ class TestPlacePictureEffects:
         # image, that renders it too small to read as an accent (user report,
         # 2026-07-15, screenshot showed the burst present but imperceptible).
         assert placement.parameters["E_CHOICE_Scaling"] == "Scale To Fit"
-        assert placement.parameters["E_TEXTCTRL_Pictures_Speed"] == _PICTURE_SPEED
+        speed = placement.parameters["E_TEXTCTRL_Pictures_Speed"]
+        assert _PICTURE_SPEED_RANGE[0] <= speed <= _PICTURE_SPEED_RANGE[1]
         assert placement.parameters["E_SLIDER_Pictures_StartScale"] == _PICTURE_SCALE_PERCENT
         assert placement.parameters["E_SLIDER_Pictures_EndScale"] == _PICTURE_SCALE_PERCENT
 
@@ -480,6 +481,19 @@ class TestPictureMotionVariants:
         seen = [_motion_of(self._burst_params(seed)) for seed in range(300)]
         assert set(seen) == set(_PICTURE_MOTIONS)
         assert seen.count("normal") > len(seen) // 2
+
+    def test_speed_varies_within_range_and_is_deterministic(self):
+        speeds = {
+            self._burst_params(seed)["E_TEXTCTRL_Pictures_Speed"]
+            for seed in range(60)
+        }
+        lo, hi = _PICTURE_SPEED_RANGE
+        assert all(lo <= s <= hi for s in speeds)
+        assert len(speeds) > 1, "speed never varies across seeds"
+        assert (
+            self._burst_params(11)["E_TEXTCTRL_Pictures_Speed"]
+            == self._burst_params(11)["E_TEXTCTRL_Pictures_Speed"]
+        )
     def test_flag_defaults_to_true(self):
         config = GenerationConfig(
             audio_path=Path("/fake/song.mp3"),

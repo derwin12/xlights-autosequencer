@@ -400,6 +400,58 @@ class TestTier1AlwaysGetsMusicSparkles:
             )
 
 
+class TestColorWashAlwaysGetsMusicSparkles:
+    """Color Wash placements get music_sparkles > 0 on any tier (user
+    request, 2026-07-18: 'Sparkles Reflect Music' must always be toggled on
+    a Color Wash), not just tier-1 BASE or the probabilistic
+    palette-restraint roll."""
+
+    def _place(self, effect_name: str):
+        # Color Wash isn't in _PROP_EFFECT_POOL, so drive tier 6 through the
+        # focused-vocabulary WorkingSet path (a working_set on the assignment
+        # turns it on) with a single-entry set naming the effect under test.
+        from src.generator.models import WorkingSet, WorkingSetEntry
+        assignment = SectionAssignment(
+            section=_make_section(energy_score=50),
+            theme=_make_theme(layers=[EffectLayer(variant=effect_name)]),
+            active_tiers=frozenset({6}),
+            working_set=WorkingSet(
+                effects=[WorkingSetEntry(
+                    effect_name=effect_name, variant_name=effect_name,
+                    weight=1.0, source="layer_0",
+                )],
+                theme_name="Test Theme",
+            ),
+        )
+        assert assignment.palette_target is None  # restraint OFF
+        groups = [PowerGroup(name="06_PROP_Arches", tier=6, members=["Model_A"])]
+        library = _make_library(
+            _make_effect("Color Wash"),
+            _make_effect("Spirals", xlights_id="E_SPIRALS"),
+        )
+        variant_library = _make_variant_library("Color Wash", "Spirals")
+        hierarchy = _make_hierarchy(beat_times=[0, 500, 1000])
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        return result.get("06_PROP_Arches", [])
+
+    def test_color_wash_on_tier6_has_sparkles(self) -> None:
+        placements = [p for p in self._place("Color Wash")
+                      if p.effect_name == "Color Wash"]
+        assert placements, "tier-6 Color Wash placement expected"
+        for p in placements:
+            assert p.music_sparkles > 0, (
+                f"Color Wash must have music_sparkles > 0; got "
+                f"{p.music_sparkles}"
+            )
+
+    def test_other_effects_on_tier6_stay_unconditional_sparkle_free(self) -> None:
+        placements = [p for p in self._place("Spirals")
+                      if p.effect_name == "Spirals"]
+        assert placements, "tier-6 Spirals placement expected"
+        assert all(p.music_sparkles == 0 for p in placements)
+
+
 class TestDurationTypeBeat:
     """Effect with duration_type='beat' creates one instance per beat mark."""
 

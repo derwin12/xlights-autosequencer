@@ -252,6 +252,10 @@ _TIER_PALETTE_CAP: dict[int, int] = {
 # Effects where MusicSparkles is suppressed (redundant with built-in audio reactivity).
 _AUDIO_REACTIVE_EFFECTS: set[str] = {"VU Meter", "Music"}
 
+# Effects that always get MusicSparkles on any tier (user request, 2026-07-18:
+# a Color Wash without music-reactive sparkles reads as a static gradient).
+_ALWAYS_SPARKLE_EFFECTS: set[str] = {"Color Wash"}
+
 # Effects that default to Rainbow but should use Palette when we provide colors.
 # Maps effect name -> parameter storage_name -> value to force.
 _FORCE_PALETTE_PARAMS: dict[str, dict[str, str]] = {
@@ -1260,13 +1264,16 @@ def place_effects(
     # Tier 1 BASE always gets MusicSparkles regardless of palette restraint —
     # the single section-spanning placement on BASE_All would otherwise read
     # as a static sine wave; sparkles are the music-reactive overlay that
-    # gives the wash visual life. Tier 1 sparkles are unconditional (not the
-    # probabilistic compute_music_sparkles gate) but still skip
+    # gives the wash visual life. Same rule for _ALWAYS_SPARKLE_EFFECTS on
+    # any tier (user request, 2026-07-18: Color Wash should always have
+    # "Sparkles Reflect Music" toggled). These sparkles are unconditional
+    # (not the probabilistic compute_music_sparkles gate) but still skip
     # already-audio-reactive effects to avoid double-coverage.
     for group_name, placements in result.items():
-        if not group_name.startswith("01_BASE"):
-            continue
+        is_base = group_name.startswith("01_BASE")
         for p in placements:
+            if not is_base and p.effect_name not in _ALWAYS_SPARKLE_EFFECTS:
+                continue
             if p.music_sparkles > 0:
                 continue  # already set (e.g. by palette-restraint pass above)
             if p.effect_name in _AUDIO_REACTIVE_EFFECTS:
@@ -3204,7 +3211,9 @@ _PICTURE_LEAD_MS = 1_000
 # user request (2026-07-15): the picture should feel like a small addition
 # to the sequence, not overwhelm it.
 _PICTURE_SCALE_PERCENT = 55
-_PICTURE_SPEED = 3
+# Movement speed varies per burst within this inclusive range (user request,
+# 2026-07-18: the fixed 3 made every pan glide at the same rate).
+_PICTURE_SPEED_RANGE = (2, 6)
 # All 8 cardinal/diagonal xLights Pictures_Direction pan directions (user
 # request, 2026-07-15: the original 4 felt monotonous burst-to-burst).
 _PICTURE_DIRECTIONS = (
@@ -3391,6 +3400,9 @@ def _place_picture_effects(
         motion = random.Random(
             f"{variation_seed}:motion:{match.get('word')}:{word_start}"
         ).choices(_PICTURE_MOTION_NAMES, weights=_PICTURE_MOTION_WEIGHTS)[0]
+        speed = random.Random(
+            f"{variation_seed}:speed:{match.get('word')}:{word_start}"
+        ).randint(*_PICTURE_SPEED_RANGE)
         for target_name in set(targets.values()):
             # Bursts on the same target may never overlap in time regardless
             # of image, but the _PICTURE_MIN_GAP_MS cooldown only applies to
@@ -3423,7 +3435,7 @@ def _place_picture_effects(
                     "E_TEXTCTRL_Pictures_TransparentBlack": "30",
                     "E_CHOICE_Pictures_Direction": direction,
                     "E_CHOICE_Scaling": "Scale To Fit",
-                    "E_TEXTCTRL_Pictures_Speed": _PICTURE_SPEED,
+                    "E_TEXTCTRL_Pictures_Speed": speed,
                     "E_SLIDER_Pictures_StartScale": _PICTURE_SCALE_PERCENT,
                     "E_SLIDER_Pictures_EndScale": _PICTURE_SCALE_PERCENT,
                     **_PICTURE_MOTIONS[motion],
