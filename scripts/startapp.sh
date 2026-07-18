@@ -19,7 +19,12 @@ if command -v docker &>/dev/null; then
   docker exec "$CONTAINER" pkill -f xlight-review || true
 
   echo "Starting xlight-review..."
-  MSYS_NO_PATHCONV=1 docker exec -d "$CONTAINER" /usr/bin/python3 /home/node/.local/bin/xlight-review --dev --host 0.0.0.0 --port "$PORT"
+  # `docker exec -d` output goes nowhere on its own -- it's not captured by
+  # `docker logs` (that only shows the container's PID 1 stdout), so without
+  # an explicit redirect the server's logs are simply unavailable. Route to
+  # a file so `docker exec xlight-dev tail -f /tmp/xlight-review.log` works.
+  MSYS_NO_PATHCONV=1 docker exec -d "$CONTAINER" sh -c \
+    "/usr/bin/python3 /home/node/.local/bin/xlight-review --dev --host 0.0.0.0 --port $PORT >/tmp/xlight-review.log 2>&1"
 else
   echo "docker CLI not found — assuming this shell is already inside $CONTAINER."
   echo "Stopping any running xlight-review process..."
@@ -45,6 +50,7 @@ echo ""
 echo "Warning: server did not respond within 15s. Check with:"
 if command -v docker &>/dev/null; then
   echo "  docker exec $CONTAINER ps aux | grep xlight-review"
+  echo "  docker exec $CONTAINER cat /tmp/xlight-review.log"
 else
   echo "  ps aux | grep xlight-review"
   echo "  cat /tmp/xlight-review.log"
