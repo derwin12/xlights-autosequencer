@@ -326,51 +326,44 @@ preconditions, and 16-song corpus results.
   dict into `plan.py`'s `moving_head_effects` variable (currently hard-coded
   to `{}`) and pass it through the same call.
 
-### Riff/Fill Detector for Moving Head Accent — DISABLED, needs redesign (2026-07-18)
-- **Current state: code present, gated OFF by default.** `src/analyzer/
-  riff_bursts.py::detect_riff_bursts(bass_audio, bass_sr, chords)` and
-  `moving_head.py::place_moving_head_riff_bursts` both exist and are unit
-  tested, but `GenerationConfig.riff_bursts` defaults to `False`
-  (`src/generator/models.py`) and `plan.py`'s wiring checks it before
-  calling the placement function — so real exports are unaffected. Do NOT
-  flip the default to `True` without addressing both failures below.
-- **Failure 1 — the detection formula didn't survive contact with real
-  data.** The burst threshold (">=3 bass-band onsets within 1.0s") was
-  validated by hand against a sparser external onset computation (~127
-  onsets/song via a separate MCP tool call), not against what the shipped
-  code actually runs (`librosa.onset.onset_detect` on the real demucs bass
-  stem — ~366 onsets/song, ~3x denser). At that density "3 onsets in 1s"
-  is almost always true on a busy bassline, so it stopped discriminating
-  anything; the real selectivity came almost entirely from the
-  chord-acceleration half. Run against the real cached stem for the
-  validation song ("bar-guitar-and-a-honky-tonk-crowd"), the shipped
-  formula produced 14 marks: it MISSED both of the user's original
-  by-ear-confirmed moments (~33s — a section-boundary event with no chord
-  acceleration at all, a trigger type never implemented; ~43s — real bass
-  onsets there are sparse, so the burst condition failed by chance at
-  exactly that spot) and, when asked to confirm 9 of the other candidates
-  it did produce, the user confirmed **zero** of them as real riffs.
-  Conclusion: the compound signal does not reliably locate the moments a
-  listener means by "riff" — needs a fundamentally different approach
-  (possibly the section-boundary case as a distinct second trigger type,
-  or listening-driven ground truth collected across several songs before
-  attempting to fit a threshold again), not just a threshold tweak.
-- **Failure 2 — even a correct signal couldn't have placed anything.**
-  `place_moving_head_crash_accents`' warmup fills "the ENTIRE natural gap
-  back to the previous placement" (see the Moving Head warmup entry
-  above) — between the validation song's 2 crash marks, that warmup logic
-  covers almost the *entire* 197s song. `plan.py`'s riff-burst call passes
-  those crash placements in as `existing_placements`, so `_has_overlap`
-  silently skipped all 14 candidate marks in the real pipeline even
-  though `place_moving_head_riff_bursts` produces correct placements when
-  called in isolation (verified directly against real data: 28
-  placements with no `existing_placements` passed, 0 when the real
-  crash-accent warmups are included). Any future revival of this feature
-  needs either a warmup-interruption mechanism (carve a slot out of an
-  in-progress warmup rather than treating it as a hard block) or a
-  non-Moving-Head effect target that doesn't share DMX channels with the
-  crash accent, sidestepping the collision entirely (raised as an option
-  by the user 2026-07-18, not yet explored).
+### Riff/Fill Detector — snare-roll burst on Star groups (2026-07-18, v2)
+- **Current state: code present, gated OFF by default pending real-world
+  listening.** `src/analyzer/riff_bursts.py::detect_riff_bursts(snare_audio,
+  snare_sr)` and `effect_placer.py::_place_star_bursts` both exist and are
+  unit tested; `GenerationConfig.riff_bursts` (`src/generator/models.py`)
+  defaults to `False`.
+- **v1 (bass+chord, retired same day)**: validated by hand against a
+  sparser external onset computation than what actually shipped, and
+  failed on real data — missed both of the user's original
+  by-ear-confirmed moments and 0/9 confirmed on follow-up candidates. Its
+  Moving Head placement also collided with the crash-accent warmup (which
+  fills the entire gap between crash marks), silently blocking every
+  candidate mark even when the signal itself was right.
+- **v2 (this version) fixes both problems at once.** The user provided a
+  real isolated snare stem for the validation song and pointed out an
+  audible triple-hit around 33s — the actual physical signal a "riff" turns
+  out to be is a **snare-drum roll/fill**, not a bass/chord phenomenon.
+  `detect_riff_bursts` now finds runs of >=3 onsets on the snare stem with
+  consecutive gaps <=0.2s, using `drum_stems.py::separate_snare` (the
+  `redoblante` source from the same drumsep run `separate_cymbals` already
+  does for crash accents — `drum_stems.py` was generalized to run
+  inference once and cache every source, so pairing both costs no extra
+  compute). Validated end-to-end against a full fresh analysis: found
+  both original confirmations natively (no section-boundary special case
+  needed) plus 5/5 spot-checked follow-ups confirmed by ear — a materially
+  better hit rate than v1's 0/9. Placement targets `06_PROP_Star`-family
+  groups (a real xLights Pinwheel preset the user supplied: 3 arms, twist
+  148, red/yellow/orange palette, layered above the recipe's own content)
+  instead of Moving Head, sidestepping the warmup collision entirely since
+  Stars share no DMX channels with anything else.
+- Detection is **not** rare-by-design like crash_accents — it fires
+  roughly once every 12s on a song with frequent fills (17 marks on the
+  197s validation song). Keeping the resulting accent visually distinct is
+  the generator's job (placement cadence/effect choice), not the
+  detector's.
+- Schema bumped to 2.4.0 — v1's cached marks are wrong under v2's
+  detector, not just a differently-shaped field, so caches must
+  invalidate, not just gain a new key.
 - Implementation note for future test fixtures on this detector or any
   other `librosa.onset.onset_detect`-based one: onset detection there is
   scale-invariant (fires on pure low-amplitude noise, not just real
