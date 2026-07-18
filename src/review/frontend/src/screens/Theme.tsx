@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import styles from './Theme.module.css';
 import { ThemeCard } from '../components/ThemeCard/ThemeCard';
 import { LightsPreview } from '../components/LightsPreview/LightsPreview';
@@ -182,6 +182,24 @@ export function Theme({
 
   const currentAssignment = localAssignments.find((a) => a.section_index === selectedSectionIdx);
 
+  // Holiday (occasion) first — general-purpose themes sort last since
+  // holiday-specific ones are the special case worth surfacing together —
+  // then category (mood), then alphabetical by name (user request 2026-07-18).
+  const sortedThemes = useMemo(() => {
+    return [...themes].sort((a, b) => {
+      const aOccasion = a.occasion ?? 'general';
+      const bOccasion = b.occasion ?? 'general';
+      const aIsGeneral = aOccasion === 'general' ? 1 : 0;
+      const bIsGeneral = bOccasion === 'general' ? 1 : 0;
+      if (aIsGeneral !== bIsGeneral) return aIsGeneral - bIsGeneral;
+      if (aOccasion !== bOccasion) return aOccasion.localeCompare(bOccasion);
+      const aMood = a.mood ?? '';
+      const bMood = b.mood ?? '';
+      if (aMood !== bMood) return aMood.localeCompare(bMood);
+      return a.name.localeCompare(b.name);
+    });
+  }, [themes]);
+
   async function handleThemeSelect(themeId: string) {
     setError(null);
     try {
@@ -226,6 +244,28 @@ export function Theme({
       if (body.song_status === 'themed') {
         onThemed();
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
+
+  async function handleResetDefaults() {
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/songs/${song.song_id}/assignments/reset-defaults`,
+        { method: 'POST' }
+      );
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Failed to reset to defaults');
+        return;
+      }
+      const updated: Assignment[] = body.assignments;
+      setLocalAssignments(updated);
+      const current = updated.find((a) => a.section_index === selectedSectionIdx);
+      setLiveOverrides(current?.overrides ?? DEFAULT_OVERRIDES);
+      updated.forEach((a) => onAssignmentChange(a));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     }
@@ -279,9 +319,14 @@ export function Theme({
     <div className={styles.root}>
       <div className={styles.header}>
         <h2 className={styles.title}>{song.title}</h2>
-        <button className={styles.acceptBtn} onClick={handleAcceptAll}>
-          Accept All Defaults
-        </button>
+        <div className={styles.headerActions}>
+          <button className={styles.resetBtn} onClick={handleResetDefaults}>
+            Reset
+          </button>
+          <button className={styles.acceptBtn} onClick={handleAcceptAll}>
+            Accept
+          </button>
+        </div>
       </div>
 
       <SectionStrip
@@ -305,7 +350,7 @@ export function Theme({
 
       <div className={styles.body}>
         <div className={styles.themeGrid}>
-          {themes.map((theme) => (
+          {sortedThemes.map((theme) => (
             <ThemeCard
               key={theme.theme_id}
               theme={theme}

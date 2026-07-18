@@ -159,3 +159,55 @@ def accept_all_assignments(song_id: str):
     save_library(lib)
 
     return jsonify({"song_status": "themed", "confirmed_count": count}), 200
+
+
+@api_v1.route("/songs/<song_id>/assignments/reset-defaults", methods=["POST"])
+def reset_assignments_to_defaults(song_id: str):
+    """Discard every section's theme/parameter choice and restore the AI's
+    smart-default pick (same selector used at initial analysis). Applies to
+    ALL sections, including manually confirmed ones -- no partial reset
+    mode (user decision, 2026-07-18). Song status flips back to
+    "analyzed" since defaults are unconfirmed again; Accept must be
+    clicked before exporting."""
+    song, lib, err = _get_song_or_error(song_id)
+    if err:
+        return err
+
+    session = load_session(song_id)
+    if session is None:
+        return jsonify({"error": {"code": "not_analyzed",
+                                   "message": "No session data available"}}), 409
+
+    sections = session.get("sections", [])
+
+    hierarchy = None
+    story = None
+    source_paths = song.get("source_paths") or []
+    audio_path = source_paths[0] if source_paths else None
+    if audio_path:
+        try:
+            from src.analyzer.orchestrator import run_orchestrator
+            hierarchy = run_orchestrator(audio_path, fresh=False)
+        except Exception:
+            hierarchy = None
+        try:
+            from src.story.builder import load_song_story
+            story = load_song_story(audio_path)
+        except Exception:
+            story = None
+
+    from .analysis import _auto_assign_defaults
+    assignments = _auto_assign_defaults(song_id, sections, hierarchy=hierarchy, story=story)
+
+    save_session(song_id, sections, assignments)
+
+    # Defaults are unconfirmed again -- drop song status back to "analyzed"
+    # so Accept is required before exporting, mirroring the fresh-analysis
+    # state.
+    for s in lib["songs"]:
+        if s["song_id"] == song_id:
+            s["status"] = "analyzed"
+            break
+    save_library(lib)
+
+    return jsonify({"assignments": assignments, "song_status": "analyzed"}), 200

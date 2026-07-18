@@ -231,3 +231,52 @@ class TestAcceptAll:
             f"/api/v1/songs/{song_id}/assignments/accept-all"
         ).get_json()
         assert data["confirmed_count"] == len(sections)
+
+
+class TestResetDefaults:
+    def test_reset_discards_manual_pick_and_confirmation(self, client):
+        song_id = _import_and_analyze(client)
+        themes = client.get("/api/v1/themes").get_json()["themes"]
+        # Pick a theme other than whatever section 0 already has, so the
+        # override is a real change.
+        current = client.get(f"/api/v1/songs/{song_id}/assignments").get_json()
+        current_theme_id = current["assignments"][0]["theme_id"]
+        other_theme_id = next(
+            t["theme_id"] for t in themes if t["theme_id"] != current_theme_id
+        )
+        client.put(
+            f"/api/v1/songs/{song_id}/assignments/0",
+            json={"theme_id": other_theme_id},
+        )
+        client.post(f"/api/v1/songs/{song_id}/assignments/accept-all")
+
+        data = client.post(
+            f"/api/v1/songs/{song_id}/assignments/reset-defaults"
+        ).get_json()
+
+        assert data["song_status"] == "analyzed"
+        assert all(not a["user_confirmed"] for a in data["assignments"])
+
+    def test_reset_flips_status_back_to_analyzed(self, client):
+        song_id = _import_and_analyze(client)
+        client.post(f"/api/v1/songs/{song_id}/assignments/accept-all")
+
+        client.post(f"/api/v1/songs/{song_id}/assignments/reset-defaults")
+
+        lib = client.get("/api/v1/library").get_json()
+        song = next(s for s in lib["songs"] if s["song_id"] == song_id)
+        assert song["status"] == "analyzed"
+
+    def test_reset_applies_to_all_sections_not_just_unconfirmed(self, client):
+        # User decision (2026-07-18): reset discards EVERY section's manual
+        # pick, including ones already confirmed -- not a partial reset.
+        song_id = _import_and_analyze(client)
+        sections = client.get(f"/api/v1/songs/{song_id}/sections").get_json()["sections"]
+        client.post(f"/api/v1/songs/{song_id}/assignments/accept-all")
+
+        data = client.post(
+            f"/api/v1/songs/{song_id}/assignments/reset-defaults"
+        ).get_json()
+
+        assert len(data["assignments"]) == len(sections)
+        assert all(not a["user_confirmed"] for a in data["assignments"])
