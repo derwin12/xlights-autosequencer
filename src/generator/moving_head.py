@@ -994,20 +994,24 @@ def _pose_fields(params: dict) -> dict[str, dict[str, str]]:
 def _heads_already_posed(
     prior: list[EffectPlacement], before_ms: int, target_params: dict,
 ) -> bool:
-    """True when the placement that most recently ended at or before
-    ``before_ms`` left every head in exactly the static pose
-    ``target_params`` would set — a warmup would reposition nothing (user
-    request, 2026-07-18: check before deploying warmups). Conservative on
-    purpose: an active Pan/Tilt value curve on the previous placement means
-    its ending pose isn't its static text fields, and a per-head move's
-    placement carries a different settings-key set than a group-targeted
-    one — both compare unequal, so the warmup deploys (the safe direction).
+    """True when a placement ends EXACTLY at ``before_ms`` (zero gap) having
+    left every head in exactly the static pose ``target_params`` would set —
+    only then does a warmup reposition nothing (user request, 2026-07-18).
+    Zero gap is mandatory, not an optimization: with no active effect on
+    the channels, the heads automatically return to their home position
+    (user-confirmed on real hardware, 2026-07-18), so a matching pose from
+    a placement that ended even slightly earlier has already been lost.
+    Conservative on purpose: an active Pan/Tilt value curve on the previous
+    placement means its ending pose isn't its static text fields, and a
+    per-head move's placement carries a different settings-key set than a
+    group-targeted one — both compare unequal, so the warmup deploys (the
+    safe direction).
     """
     prev = max(
         (p for p in prior if p.end_ms <= before_ms),
         key=lambda p: p.end_ms, default=None,
     )
-    if prev is None:
+    if prev is None or prev.end_ms != before_ms:
         return False
     for key in ("E_VALUECURVE_MHPan", "E_VALUECURVE_MHTilt"):
         if "Active=TRUE" in str(prev.parameters.get(key, "")):
@@ -1152,11 +1156,12 @@ def place_moving_head_crash_accents(
 # lead-in and no flicker curve — punches in a machine-gun cluster can be
 # only ~200ms apart, so each flash is a hard full-on burst trimmed to leave
 # a short off-gap before the next mark (back-to-back flashes with no gap
-# would merge into continuous light and stop reading as hits). A single
-# gap-adaptive dark warmup (same mechanism as the crash punch's) runs before
-# the FIRST flash only, so the heads are already vertical and dark before
-# the shutter opens instead of visibly traveling while lit; later flashes in
-# the cluster don't need one — the heads stay up between them. No vocal
+# would merge into continuous light and stop reading as hits). A dark
+# position-hold warmup fills every gap — before the first flash AND inside
+# the off-gaps between clustered flashes — because with no active effect
+# the heads automatically return to home position (user-confirmed on real
+# hardware, 2026-07-18): the hold keeps them vertical while dark, so the
+# strobe look survives without the heads visibly traveling. No vocal
 # exclusion either — the finale IS the moment; a shouted last word should
 # not suppress it (design decision, 2026-07-18).
 _ENDING_FLASH_DURATION_MS = 300
@@ -1206,9 +1211,10 @@ def place_moving_head_ending_punches(
     by construction, so the fade check is a safety net, not a routine
     filter. Marks are anchored to real audio transients: an overlapping
     prior placement skips the flash rather than shifting it. A dark
-    gap-adaptive warmup (same mechanism as the crash punch's) precedes the
-    first placed flash only. Returns {} when the layout has no moving-head
-    group or there are no marks.
+    position-hold warmup fills every gap before/between flashes (see the
+    constants block above — heads home themselves when no effect is
+    active). Returns {} when the layout has no moving-head group or there
+    are no marks.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups or not hierarchy.ending_punches:
@@ -1240,7 +1246,6 @@ def place_moving_head_ending_punches(
         ]
 
         placements: list[EffectPlacement] = []
-        flash_placed = False
         for i, mark in enumerate(marks):
             if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
                 continue
@@ -1254,29 +1259,30 @@ def place_moving_head_ending_punches(
             if _has_overlap(channel_existing + placements, start_ms, end_ms):
                 continue
 
-            if not flash_placed:
-                # Dark warmup before the first flash so the heads are
-                # already vertical when the shutter opens. Fills the entire
-                # natural gap back to the previous placement, same as the
-                # crash punch's (user request 2026-07-18; the mark's own
-                # timing is sacred — never delayed), and skipped entirely
-                # when the previous placement already left the heads in
-                # this pose (_heads_already_posed).
-                all_prior = channel_existing + placements
-                prior_ends = [p.end_ms for p in all_prior if p.end_ms <= start_ms]
-                warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
-                if _heads_already_posed(all_prior, start_ms, warmup_params):
-                    warmup_duration_ms = 0
-                if warmup_duration_ms > 0:
-                    placements.append(EffectPlacement(
-                        effect_name="Moving Head",
-                        xlights_id="eff_MOVINGHEAD",
-                        model_or_group=mh_group.name,
-                        start_ms=start_ms - warmup_duration_ms,
-                        end_ms=start_ms,
-                        parameters=dict(warmup_params),
-                    ))
-            flash_placed = True
+            # Dark position-hold warmup filling the entire gap back to the
+            # previous placement (user request 2026-07-18; the mark's own
+            # timing is sacred — never delayed). Before EVERY flash, not
+            # just the first: with no active effect the heads automatically
+            # return to home (user-confirmed on real hardware, 2026-07-18),
+            # so even the deliberate off-gaps between clustered flashes
+            # need a dark hold — position kept, light off, strobe look
+            # preserved. Skipped only when the previous placement ends
+            # exactly at this flash AND already leaves the heads in its
+            # pose (_heads_already_posed).
+            all_prior = channel_existing + placements
+            prior_ends = [p.end_ms for p in all_prior if p.end_ms <= start_ms]
+            warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+            if _heads_already_posed(all_prior, start_ms, warmup_params):
+                warmup_duration_ms = 0
+            if warmup_duration_ms > 0:
+                placements.append(EffectPlacement(
+                    effect_name="Moving Head",
+                    xlights_id="eff_MOVINGHEAD",
+                    model_or_group=mh_group.name,
+                    start_ms=start_ms - warmup_duration_ms,
+                    end_ms=start_ms,
+                    parameters=dict(warmup_params),
+                ))
 
             placements.append(EffectPlacement(
                 effect_name="Moving Head",

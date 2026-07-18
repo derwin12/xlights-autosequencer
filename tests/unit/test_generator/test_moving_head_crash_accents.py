@@ -191,20 +191,20 @@ class TestPlaceMovingHeadCrashAccents:
         assert warmup.start_ms == punch_start - 400
         assert warmup.end_ms == punch_start
 
-    def test_two_close_crash_marks_second_needs_no_warmup(self):
-        # Two crash marks close together: the first punch already leaves
-        # every head in the crash pose, so the second mark gets NO warmup
-        # at all (pose check, user request 2026-07-18 — previously it got
-        # a pointless 300ms one squeezed in after the first punch), and
-        # nothing may overlap.
+    def test_two_close_crash_marks_second_warmup_fills_the_gap(self):
+        # Two crash marks close together: the first punch leaves the heads
+        # in the crash pose, but a 300ms dark gap separates it from the
+        # second punch — and with no active effect the heads return to
+        # home (user-confirmed, 2026-07-18), so the second mark still
+        # needs a warmup, filling exactly that gap. Nothing may overlap.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         first_mark, second_mark = 10_000, 12_000  # 2s apart
         result = place_moving_head_crash_accents(layout, _hierarchy([first_mark, second_mark]), vocal_words=None)
         placements = sorted(result["MH GRP"], key=lambda p: p.start_ms)
-        assert len(placements) == 3  # mark1: warmup+punch; mark2: punch only
-        assert "Shutter: On" not in placements[0].parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Shutter: On" in placements[1].parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Shutter: On" in placements[2].parameters["E_TEXTCTRL_MH1_Settings"]
+        assert len(placements) == 4  # mark1: warmup+punch; mark2: gap-fill warmup+punch
+        second_warmup = placements[2]
+        assert "Shutter: On" not in second_warmup.parameters["E_TEXTCTRL_MH1_Settings"]
+        assert second_warmup.start_ms == placements[1].end_ms  # starts exactly where the first punch ends
         for i, p in enumerate(placements):
             for q in placements[i + 1:]:
                 assert not (p.start_ms < q.end_ms and p.end_ms > q.start_ms), (
@@ -258,9 +258,35 @@ class TestPlaceMovingHeadCrashAccents:
         assert sorted(p.start_ms + _CRASH_LEAD_MS for p in punches) == [10_000, 50_000]
 
     def test_warmup_skipped_when_heads_already_in_punch_pose(self):
-        """User request (2026-07-18): no warmup when the previous placement
-        already left every head in the punch's fan-out pose — a warmup
-        would reposition nothing."""
+        """User rule (2026-07-18): no warmup if and only if the previous
+        placement ends EXACTLY where the punch starts (back-to-back — with
+        no active effect the heads return home, so any gap loses the pose)
+        AND its ending pose matches the punch's starting pose."""
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        seed = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
+        punch_params = _punch(seed["MH GRP"]).parameters
+        punch_start = 50_850 - _CRASH_LEAD_MS
+        existing = {
+            "MH GRP": [EffectPlacement(
+                effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                model_or_group="MH GRP",
+                start_ms=45_000, end_ms=punch_start, parameters=dict(punch_params),
+            )],
+        }
+        result = place_moving_head_crash_accents(
+            layout, _hierarchy([50_850]), vocal_words=None,
+            existing_placements=existing,
+        )
+        placements = result["MH GRP"]
+        assert len(placements) == 1
+        assert "Shutter: On" in placements[0].parameters["E_TEXTCTRL_MH1_Settings"]
+
+    def test_same_pose_with_a_gap_still_gets_a_warmup(self):
+        """Regression (user-confirmed on real hardware, 2026-07-18): heads
+        return to home position whenever no effect is active, so a
+        matching pose from a placement that ended BEFORE the punch's
+        start (any gap at all) has already been lost — the warmup must
+        deploy, filling the gap."""
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         seed = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
         punch_params = _punch(seed["MH GRP"]).parameters
@@ -275,6 +301,8 @@ class TestPlaceMovingHeadCrashAccents:
             layout, _hierarchy([50_850]), vocal_words=None,
             existing_placements=existing,
         )
-        placements = result["MH GRP"]
-        assert len(placements) == 1
-        assert "Shutter: On" in placements[0].parameters["E_TEXTCTRL_MH1_Settings"]
+        placements = sorted(result["MH GRP"], key=lambda p: p.start_ms)
+        assert len(placements) == 2
+        warmup = _warmup(placements)
+        assert warmup.start_ms == 47_000  # fills the whole gap
+        assert warmup.end_ms == _punch(placements).start_ms

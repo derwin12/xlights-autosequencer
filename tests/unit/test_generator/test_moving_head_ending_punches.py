@@ -67,17 +67,26 @@ class TestPlaceMovingHeadEndingPunches:
         assert p.parameters["E_SLIDER_MHTilt"] == "0"
         assert p.parameters["E_SLIDER_MHPan"] == "0"
 
-    def test_dark_warmup_precedes_first_flash_only(self):
+    def test_dark_warmups_fill_every_gap(self):
+        """Heads return to home whenever no effect is active (user-confirmed
+        on real hardware, 2026-07-18), so a dark position-hold warmup fills
+        the lead-in AND every off-gap between flashes — the timeline is
+        contiguous from song start through the last flash."""
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         marks = [192_000, 192_500]
         result = place_moving_head_ending_punches(layout, _hierarchy(marks))
+        placements = sorted(result["MH GRP"], key=lambda p: p.start_ms)
         warmups = _warmups(result["MH GRP"])
-        assert len(warmups) == 1
-        (w,) = warmups
-        assert w.end_ms == 192_000
-        # Fills the entire natural gap — back to song start when nothing
-        # else occupies the channels (user request, 2026-07-18).
-        assert w.start_ms == 0
+        assert len(warmups) == 2  # lead-in + the off-gap between the flashes
+        # Lead-in fills the entire natural gap — back to song start when
+        # nothing else occupies the channels (user request, 2026-07-18).
+        assert placements[0].start_ms == 0
+        for prev, nxt in zip(placements, placements[1:]):
+            assert prev.end_ms == nxt.start_ms, "timeline must be contiguous"
+        for w in warmups:
+            settings = w.parameters["E_TEXTCTRL_MH1_Settings"]
+            assert "Tilt: 0.0" in settings
+            assert "Dimmer" not in settings and "Wheel" not in settings
         settings = w.parameters["E_TEXTCTRL_MH1_Settings"]
         assert "Tilt: 0.0" in settings
         assert "Dimmer" not in settings and "Wheel" not in settings
@@ -99,25 +108,37 @@ class TestPlaceMovingHeadEndingPunches:
         assert w.start_ms == 191_500
         assert w.end_ms == 192_000
 
-    def test_warmup_skipped_when_heads_already_in_pose(self):
-        """User request (2026-07-18): no warmup when the previous placement
-        already left every head in the flash's straight-up pose."""
+    def test_warmup_skipped_only_when_back_to_back_in_same_pose(self):
+        """User rule (2026-07-18): no warmup if and only if the previous
+        placement ends EXACTLY where the flash starts AND its ending pose
+        matches — with no active effect the heads return home, so a
+        matching pose across any gap has already been lost."""
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         # Steal a real flash's parameters to build a prior placement whose
         # pose fields exactly match what the warmup would set.
         seed = place_moving_head_ending_punches(layout, _hierarchy([192_000]))
         flash_params = _flashes(seed["MH GRP"])[0].parameters
-        existing = {
-            "MH GRP": [EffectPlacement(
-                effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
-                model_or_group="MH GRP",
-                start_ms=190_000, end_ms=191_000, parameters=dict(flash_params),
-            )],
-        }
-        result = place_moving_head_ending_punches(
-            layout, _hierarchy([192_000]), existing_placements=existing)
-        assert _warmups(result["MH GRP"]) == []
-        assert len(_flashes(result["MH GRP"])) == 1
+
+        def _place_with_prior_ending_at(end_ms: int):
+            existing = {
+                "MH GRP": [EffectPlacement(
+                    effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                    model_or_group="MH GRP",
+                    start_ms=190_000, end_ms=end_ms, parameters=dict(flash_params),
+                )],
+            }
+            return place_moving_head_ending_punches(
+                layout, _hierarchy([192_000]), existing_placements=existing)
+
+        # Back-to-back + same pose -> no warmup.
+        back_to_back = _place_with_prior_ending_at(192_000)
+        assert _warmups(back_to_back["MH GRP"]) == []
+        assert len(_flashes(back_to_back["MH GRP"])) == 1
+        # Same pose but a 1s gap -> heads went home -> warmup fills the gap.
+        gapped = _place_with_prior_ending_at(191_000)
+        (w,) = _warmups(gapped["MH GRP"])
+        assert w.start_ms == 191_000
+        assert w.end_ms == 192_000
 
     def test_cluster_flashes_trimmed_to_leave_off_gap(self):
         """Machine-gun marks closer than the flash duration: each flash ends
