@@ -28,7 +28,9 @@ import numpy as np
 DRUMSEP_MODEL_NAME = "49469ca8"
 _DRUMSEP_GDRIVE_ID = "1-Dm666ScPkg8Gt2-lK3Ua0xOudWHZBGC"
 _CYMBALS_SOURCE = "platillos"
+_SNARE_SOURCE = "redoblante"
 _CACHE_FILENAME = "drums_cymbals.mp3"
+_SNARE_CACHE_FILENAME = "drums_snare.mp3"
 
 
 def default_model_dir() -> Path:
@@ -108,10 +110,39 @@ def separate_cymbals(
     Checks *cache_dir* (the song's existing .stems/<hash>/ directory) for a
     previously separated cymbals file first. Returns None on any failure.
     """
+    return _separate_source(_CYMBALS_SOURCE, _CACHE_FILENAME, "cymbals",
+                            drums_audio, sample_rate, cache_dir)
+
+
+def separate_snare(
+    drums_audio: np.ndarray,
+    sample_rate: int,
+    cache_dir: Path | None = None,
+) -> tuple[np.ndarray, int] | None:
+    """Return (snare_mono_float32, sample_rate) for a drums-stem array.
+
+    Same drumsep run as separate_cymbals (the model produces both sources
+    together) -- whichever of the two is called first opportunistically
+    caches both, so calling both in the same analysis run only pays for
+    inference once. See separate_cymbals for the cache/degrade-gracefully
+    contract.
+    """
+    return _separate_source(_SNARE_SOURCE, _SNARE_CACHE_FILENAME, "snare",
+                            drums_audio, sample_rate, cache_dir)
+
+
+def _separate_source(
+    source_name: str,
+    cache_filename: str,
+    label: str,
+    drums_audio: np.ndarray,
+    sample_rate: int,
+    cache_dir: Path | None,
+) -> tuple[np.ndarray, int] | None:
     if drums_audio.size <= 1 or not float(np.abs(drums_audio).max()) > 0.0:
         return None
 
-    cache_file = (cache_dir / _CACHE_FILENAME) if cache_dir else None
+    cache_file = (cache_dir / cache_filename) if cache_dir else None
     if cache_file is not None and cache_file.exists():
         try:
             import librosa
@@ -119,7 +150,7 @@ def separate_cymbals(
                                    dtype=np.float32)
             return arr, int(sr)
         except Exception as exc:
-            print(f"cymbals cache load failed ({exc}); re-separating",
+            print(f"{label} cache load failed ({exc}); re-separating",
                   file=sys.stderr)
 
     ckpt = ensure_checkpoint()
@@ -127,12 +158,12 @@ def separate_cymbals(
         return None
 
     try:
-        cymbals, out_sr = _run_drumsep_inprocess(drums_audio, sample_rate,
-                                                 ckpt.parent)
+        sources, out_sr = _run_drumsep_inprocess(drums_audio, sample_rate,
+                                                  ckpt.parent)
     except ImportError:
         try:
-            cymbals, out_sr = _run_drumsep_sidecar(drums_audio, sample_rate,
-                                                   ckpt.parent)
+            sources, out_sr = _run_drumsep_sidecar(drums_audio, sample_rate,
+                                                    ckpt.parent)
         except Exception as exc:
             print(f"drumsep sidecar separation failed: {exc}", file=sys.stderr)
             return None
@@ -140,21 +171,41 @@ def separate_cymbals(
         print(f"drumsep separation failed: {exc}", file=sys.stderr)
         return None
 
-    if cache_file is not None:
-        try:
-            from src.analyzer.stems import _write_mp3
-            cache_file.parent.mkdir(parents=True, exist_ok=True)
-            _write_mp3(cymbals, out_sr, cache_file)
-        except Exception as exc:
-            print(f"cymbals cache write failed ({exc})", file=sys.stderr)
+    if source_name not in sources:
+        print(f"drumsep output lacks '{source_name}'", file=sys.stderr)
+        return None
 
-    return cymbals, out_sr
+    # Opportunistically cache every known source from this one inference
+    # run, not just the one requested, so a later call for the other
+    # source hits cache instead of re-running the model.
+    if cache_dir is not None:
+        from src.analyzer.stems import _write_mp3
+        for name, filename in ((_CYMBALS_SOURCE, _CACHE_FILENAME),
+                                (_SNARE_SOURCE, _SNARE_CACHE_FILENAME)):
+            arr = sources.get(name)
+            if arr is None:
+                continue
+            out_path = cache_dir / filename
+            if out_path.exists():
+                continue
+            try:
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                _write_mp3(arr, out_sr, out_path)
+            except Exception as exc:
+                print(f"{name} cache write failed ({exc})", file=sys.stderr)
+
+    return sources[source_name], out_sr
 
 
 def _run_drumsep_inprocess(
     drums_audio: np.ndarray, sample_rate: int, repo_dir: Path,
-) -> tuple[np.ndarray, int]:
-    """Run the drumsep model in this process (demucs/torch importable here)."""
+) -> tuple[dict[str, np.ndarray], int]:
+    """Run the drumsep model in this process (demucs/torch importable here).
+
+    Returns every source the model produces, not just one -- callers pick
+    out what they need, and separating once covers every caller in the
+    same analysis run.
+    """
     import torch
     from demucs.apply import apply_model
     from demucs.pretrained import get_model
@@ -176,11 +227,11 @@ def _run_drumsep_inprocess(
     with torch.no_grad():
         out = apply_model(model, wav.unsqueeze(0), device="cpu", shifts=0,
                           progress=False)[0]
-    if _CYMBALS_SOURCE not in model.sources:
-        raise RuntimeError(
-            f"drumsep model sources {model.sources} lack '{_CYMBALS_SOURCE}'")
-    cymbals = out[model.sources.index(_CYMBALS_SOURCE)].mean(dim=0)
-    return cymbals.numpy().astype(np.float32), int(model.samplerate)
+    sources = {
+        name: out[i].mean(dim=0).numpy().astype(np.float32)
+        for i, name in enumerate(model.sources)
+    }
+    return sources, int(model.samplerate)
 
 
 def _load_drumsep_model(get_model, repo_dir: Path):
@@ -202,11 +253,12 @@ def _load_drumsep_model(get_model, repo_dir: Path):
 
 def _run_drumsep_sidecar(
     drums_audio: np.ndarray, sample_rate: int, repo_dir: Path,
-) -> tuple[np.ndarray, int]:
+) -> tuple[dict[str, np.ndarray], int]:
     """Run drumsep in the .venv-vamp sidecar (demucs not importable here).
 
     Same handoff pattern as StemSeparator._run_demucs: write the input as
     .npy, run a small script in the sidecar python, read the output .npy.
+    Returns every source the model produces (see _run_drumsep_inprocess).
     """
     import json
     import os
@@ -224,7 +276,7 @@ def _run_drumsep_sidecar(
 
     with tempfile.TemporaryDirectory(prefix="xlight_drumsep_") as tmp_dir:
         in_npy = os.path.join(tmp_dir, "drums.npy")
-        out_npy = os.path.join(tmp_dir, "cymbals.npy")
+        out_dir = tmp_dir
         np.save(in_npy, drums_audio.astype(np.float32))
         script = f'''
 import json, sys
@@ -255,9 +307,11 @@ elif wav.shape[0] > 2:
     wav = wav[:2]
 with torch.no_grad():
     out = apply_model(model, wav.unsqueeze(0), device="cpu", shifts=0, progress=False)[0]
-cymbals = out[model.sources.index({_CYMBALS_SOURCE!r})].mean(dim=0).numpy().astype(np.float32)
-np.save({out_npy!r}, cymbals)
-print(json.dumps({{"sample_rate": model.samplerate}}))
+source_names = list(model.sources)
+for i, name in enumerate(source_names):
+    arr = out[i].mean(dim=0).numpy().astype(np.float32)
+    np.save({out_dir!r} + "/" + name + ".npy", arr)
+print(json.dumps({{"sample_rate": model.samplerate, "sources": source_names}}))
 '''
         proc = subprocess.run(
             [str(vamp_python), "-c", script],
@@ -268,4 +322,8 @@ print(json.dumps({{"sample_rate": model.samplerate}}))
                 f"drumsep sidecar exit {proc.returncode}: "
                 f"{(proc.stderr or '')[:500]}")
         info = json.loads(proc.stdout.strip().split("\n")[-1])
-        return np.load(out_npy), int(info["sample_rate"])
+        sources = {
+            name: np.load(os.path.join(out_dir, f"{name}.npy"))
+            for name in info["sources"]
+        }
+        return sources, int(info["sample_rate"])

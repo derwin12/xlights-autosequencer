@@ -32,7 +32,14 @@ if TYPE_CHECKING:
 # 2.3.0 (2026-07-18): riff_bursts added (riff_bursts.detect_riff_bursts) — same
 # bug-265 reasoning: bump so pre-feature caches re-analyze instead of silently
 # skipping the new Moving Head riff accent.
-SCHEMA_VERSION = "2.3.0"
+# 2.4.0 (2026-07-18): riff_bursts detector replaced entirely (bass+chord
+# heuristic -> snare-roll burst on an isolated snare stem — the bass+chord
+# version missed both user-confirmed moments and false-positived on 9/9
+# follow-ups; see riff_bursts.py docstring). riff_bursts field shape is
+# unchanged, but its VALUES differ completely under the new detector, so
+# this must bump too or fresh=False silently serves stale marks computed
+# by the retired algorithm.
+SCHEMA_VERSION = "2.4.0"
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -691,20 +698,26 @@ def run_orchestrator(
     else:
         warnings.append("L0 Crash accents: skipped — drums stem unavailable")
 
-    # Riff bursts: bass-band onset burst + accelerated chord change (see
-    # src/analyzer/riff_bursts.py). Uses the demucs bass stem directly — no
-    # extra separation step, unlike crash accents' cymbal isolation.
+    # Riff bursts: snare-roll/fill detection on a snare-isolated stem (see
+    # src/analyzer/riff_bursts.py). Same drumsep run as crash accents'
+    # cymbal isolation — separate_snare opportunistically shares the
+    # inference with separate_cymbals above (whichever runs first caches
+    # both), so this costs no extra model run when crash accents also ran.
     riff_bursts: list["TimingMark"] = []
-    _bass_arr = stems.get("bass") if stems is not None else None
-    if _bass_arr is not None and _bass_arr.size > 1 and chords is not None:
+    if _drums_arr is not None and _drums_arr.size > 1:
+        from src.analyzer.drum_stems import separate_snare
         from src.analyzer.riff_bursts import detect_riff_bursts
-        riff_bursts = detect_riff_bursts(_bass_arr, stems.sample_rate, chords)
-        if riff_bursts:
-            print(f"L0 Riff bursts: {len(riff_bursts)} moment(s)")
-    elif chords is None:
-        warnings.append("L0 Riff bursts: skipped — chords not available")
+        _snare = separate_snare(_drums_arr, stems.sample_rate,
+                                cache_dir=_stem_cache.stem_dir)
+        if _snare is not None:
+            _snare_arr, _snare_sr = _snare
+            riff_bursts = detect_riff_bursts(_snare_arr, _snare_sr)
+            if riff_bursts:
+                print(f"L0 Riff bursts: {len(riff_bursts)} moment(s)")
+        else:
+            warnings.append("L0 Riff bursts: skipped — snare separation unavailable")
     else:
-        warnings.append("L0 Riff bursts: skipped — bass stem unavailable")
+        warnings.append("L0 Riff bursts: skipped — drums stem unavailable")
 
     # ── Stage 9: Interaction analysis ────────────────────────────────────────
     interactions = None

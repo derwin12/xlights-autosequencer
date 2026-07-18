@@ -574,10 +574,10 @@ class HierarchyResult:
     # audible end (crash_accents.detect_ending_punches). Zero for songs that
     # fade out; at most a handful for songs that end on hits.
     ending_punches: list[TimingMark] = field(default_factory=list)
-    # Rare guitar/bass riff or fill moments: a burst of bass-band onsets
-    # coinciding with an accelerated chord change — see
-    # src/analyzer/riff_bursts.py. Distinct from crash_accents (isolated
-    # treble transient) and energy_impacts (section-level energy jump).
+    # Rare drum-fill/riff moments: a snare-roll burst (>=3 onsets on an
+    # isolated snare stem within ~0.2s) — see src/analyzer/riff_bursts.py.
+    # Distinct from crash_accents (isolated treble transient) and
+    # energy_impacts (section-level energy jump).
     riff_bursts: list[TimingMark] = field(default_factory=list)
 
     # L1: Structure

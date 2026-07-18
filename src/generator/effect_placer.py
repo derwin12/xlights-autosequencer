@@ -3648,3 +3648,104 @@ def _place_crash_accents(
         result["01_BASE_All_FADES"] = placements
         result.update(matrix_placements)
     return result
+
+
+# Riff-burst accent on Star-family groups (see src/analyzer/riff_bursts.py:
+# snare-roll/fill detection, user request 2026-07-18). Deliberately targets
+# a prop group rather than Moving Head: the crash-accent MH warmup fills
+# the entire natural gap back to the previous placement, which silently
+# blocked every riff-burst window when tried on Moving Head earlier the
+# same day (see CLAUDE.md -> "Riff/Fill Detector for Moving Head Accent").
+# Stars don't share DMX channels with anything else, so no such collision.
+# Pinwheel preset supplied directly by the user (real xLights clipboard
+# paste, 2026-07-18): 3 arms, twist 148, thickness 28, speed ramping 10->45
+# over the placement via value curve, red/yellow/orange palette.
+_STAR_BURST_DURATION_MS = 1050
+_STAR_BURST_VOCAL_EXCLUSION_MS = 500
+_STAR_BURST_PARAMS: dict[str, str] = {
+    "B_CHOICE_BufferStyle": "Per Model Per Preview",
+    "E_CHECKBOX_Pinwheel_Rotation": "0",
+    "E_CHOICE_Pinwheel_3D": "None",
+    "E_CHOICE_Pinwheel_Style": "New Render Method",
+    "E_SLIDER_PinwheelXC": "0",
+    "E_SLIDER_PinwheelYC": "0",
+    "E_SLIDER_Pinwheel_ArmSize": "100",
+    "E_SLIDER_Pinwheel_Arms": "3",
+    "E_SLIDER_Pinwheel_Offset": "0",
+    "E_SLIDER_Pinwheel_Thickness": "28",
+    "E_SLIDER_Pinwheel_Twist": "148",
+    "E_VALUECURVE_Pinwheel_Speed": (
+        "Active=TRUE|Id=ID_VALUECURVE_Pinwheel_Speed|Type=Ramp|"
+        "Min=0.00|Max=50.00|P1=10.00|P2=45.00|RV=TRUE|"
+    ),
+    "T_CHOICE_LayerMethod": "Normal",
+    "T_SLIDER_EffectLayerMix": "0",
+    # T_CHECKBOX_Canvas deliberately omitted -- never emit it (see
+    # CLAUDE.md engineering rule; xsq_writer strips it unconditionally
+    # anyway, but the source of truth shouldn't carry it either).
+}
+_STAR_BURST_PALETTE = ["#FF0000", "#FFFF00", "#FF8000"]
+
+
+def _place_star_bursts(
+    groups: list[PowerGroup],
+    hierarchy: HierarchyResult,
+    vocal_words: Optional[list[dict]],
+    fade_exclusion_start_ms: Optional[int] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a short Pinwheel burst on Star-family groups at each rare
+    riff/fill mark from ``hierarchy.riff_bursts``.
+
+    Song-scoped like ``_place_crash_accents``, not routed through the
+    per-section pipeline. Layered above the star group's regular recipe
+    content (layer -1) so it reads as a distinct one-off pop rather than
+    blending into the family's normal Shockwave rotation.
+    """
+    result: dict[str, list[EffectPlacement]] = {}
+    if not hierarchy.riff_bursts:
+        return result
+
+    star_groups = [
+        g for g in groups
+        if (recipe := recipe_for_group(g)) is not None and recipe.family == "star"
+    ]
+    if not star_groups:
+        return result
+
+    word_spans = [
+        (int(w["start_ms"]), int(w["end_ms"]))
+        for w in (vocal_words or [])
+        if int(w["end_ms"]) > int(w["start_ms"])
+    ]
+
+    def _near_vocal(time_ms: int) -> bool:
+        return any(
+            start - _STAR_BURST_VOCAL_EXCLUSION_MS <= time_ms <= end + _STAR_BURST_VOCAL_EXCLUSION_MS
+            for start, end in word_spans
+        )
+
+    for mark in hierarchy.riff_bursts:
+        if _near_vocal(mark.time_ms):
+            continue
+        if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
+            continue
+        start_ms = mark.time_ms
+        end_ms = min(mark.time_ms + _STAR_BURST_DURATION_MS, hierarchy.duration_ms)
+        if end_ms <= start_ms:
+            continue
+        for g in star_groups:
+            p = EffectPlacement(
+                effect_name="Pinwheel",
+                xlights_id="eff_PINWHEEL",
+                model_or_group=g.name,
+                start_ms=start_ms,
+                end_ms=end_ms,
+                parameters=dict(_STAR_BURST_PARAMS),
+                color_palette=list(_STAR_BURST_PALETTE),
+            )
+            # xLights renders the FIRST EffectLayer on top (bug-248); a
+            # negative index sorts above the recipe's layers 0-2.
+            p.layer = -1
+            result.setdefault(g.name, []).append(p)
+
+    return result
