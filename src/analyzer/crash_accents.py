@@ -228,3 +228,90 @@ def detect_crash_accents(
     accepted_ms.sort()
     return [TimingMark(time_ms=t, confidence=None, label="crash")
             for t in accepted_ms]
+
+
+# ── Ending punches (2026-07-18) ──────────────────────────────────────────────
+# Cymbal hits in the final seconds before the song's audible end — the ending
+# "button" (validated on bar-guitar-and-a-honky-tonk-crowd: hits at 190.7s and
+# a 192.0-192.3s cluster before a hard cut at 193.4s). Deliberately NOT scored
+# by detect_crash_accents' isolation metric: these hits sit inside an
+# already-loud finale, so isolation correctly scores them near zero there.
+# Position (relative to the audible end) is the discriminator, not loudness —
+# a bare ">=3.5x cymbal peak" rule fires ~17x/song mid-song, but scoped to the
+# final window it fires 0-4x/song across the local library (2026-07-18 census).
+
+# How far before the audible end a punch may sit.
+_ENDING_WINDOW_S = 6.0
+# Peak height floor as a multiple of the cymbal stem's song-wide median RMS.
+# 3.3, not 3.5: the target song's first user-identified punch (190.7s)
+# measures ~3.4-3.5x and sat exactly on a 3.5 floor (missed by rounding).
+# 4-song panel at 3.3 (2026-07-18): honky-tonk 3 marks (both user-identified
+# moments), 1999 zero, Dream On 2, Raining Tacos 2 (one more than at 3.5,
+# still an ending hit) — rarity preserved.
+_ENDING_PEAK_RATIO = 3.3
+# Minimum spacing between marks — small on purpose: a machine-gun ending
+# cluster (192.0/192.2/192.3s validated) should fire per hit.
+_ENDING_MIN_GAP_MS = 200
+_ENDING_MAX_MARKS = 8
+# "Audible end" = last frame where full-mix RMS clears this fraction of the
+# song's median full-mix RMS (excludes trailing encoder padding / silence).
+_AUDIBLE_END_RMS_RATIO = 0.2
+# RMS envelope hop (seconds) for both stems.
+_ENDING_HOP_S = 0.025
+
+
+def detect_ending_punches(
+    cymbals: np.ndarray,
+    cymbals_sample_rate: int,
+    full_mix: np.ndarray,
+    full_mix_sample_rate: int,
+) -> list[TimingMark]:
+    """Return cymbal punches inside the final ``_ENDING_WINDOW_S`` of audio.
+
+    *cymbals* is the same cymbal-isolated mono stem detect_crash_accents
+    consumes; *full_mix* locates the audible end. No cymbals stem -> the
+    orchestrator emits no marks (zero beats wrong). Songs that fade out
+    gradually produce no >=3.5x peaks in their final window -> zero marks.
+    """
+    if cymbals.size == 0 or full_mix.size == 0:
+        return []
+
+    import librosa
+
+    mix_hop = max(1, int(_ENDING_HOP_S * full_mix_sample_rate))
+    mix_rms = librosa.feature.rms(
+        y=full_mix, frame_length=mix_hop * 2, hop_length=mix_hop)[0]
+    mix_active = mix_rms[mix_rms > 1e-3]
+    if mix_active.size == 0:
+        return []
+    mix_median = float(np.median(mix_active))
+    audible = np.nonzero(mix_rms >= _AUDIBLE_END_RMS_RATIO * mix_median)[0]
+    if audible.size == 0:
+        return []
+    end_s = float(audible[-1]) * mix_hop / full_mix_sample_rate
+
+    hop = max(1, int(_ENDING_HOP_S * cymbals_sample_rate))
+    rms = librosa.feature.rms(y=cymbals, frame_length=hop * 2, hop_length=hop)[0]
+    active = rms[rms > 1e-3]
+    if active.size == 0:
+        return []
+    height_floor = _ENDING_PEAK_RATIO * float(np.median(active))
+    if height_floor <= 0.0:
+        return []
+
+    sec_per_frame = hop / cymbals_sample_rate
+    lo = max(1, int((end_s - _ENDING_WINDOW_S) / sec_per_frame))
+    hi = min(len(rms) - 1, int(end_s / sec_per_frame) + 1)
+
+    marks_ms: list[int] = []
+    for i in range(lo, hi):
+        if rms[i] > rms[i - 1] and rms[i] >= rms[i + 1] and rms[i] > height_floor:
+            time_ms = int(round(i * sec_per_frame * 1000))
+            if marks_ms and time_ms - marks_ms[-1] < _ENDING_MIN_GAP_MS:
+                continue
+            marks_ms.append(time_ms)
+            if len(marks_ms) >= _ENDING_MAX_MARKS:
+                break
+
+    return [TimingMark(time_ms=t, confidence=None, label="ending_punch")
+            for t in marks_ms]

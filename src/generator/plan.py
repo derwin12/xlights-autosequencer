@@ -31,6 +31,7 @@ from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
 from src.generator.moving_head import (
     place_moving_head_crash_accents,
+    place_moving_head_ending_punches,
     place_moving_head_moves,
 )
 from src.generator.rotation import RotationEngine
@@ -352,6 +353,28 @@ def build_plan(
                 existing_placements=moving_head_effects,
             ).items():
                 crash_effects.setdefault(gname, []).extend(placements)
+
+    # 5d-2. Ending punches: quick straight-up Moving Head flash on each
+    # cymbal hit of the song's ending "button" (hierarchy.ending_punches,
+    # crash_accents.detect_ending_punches). Same rare-transient-accents
+    # umbrella as 5d (config.crash_accents), merged into the same dict.
+    if (
+        config.crash_accents and config.moving_head_effects
+        and layout is not None and hierarchy.ending_punches
+    ):
+        fade_exclusion_start_ms = max(
+            0, min(_audible_end_ms(assignments, hierarchy), hierarchy.duration_ms - _FADE_MIN_MS)
+        )
+        existing_mh = dict(moving_head_effects)
+        for gname, placements in crash_effects.items():
+            existing_mh.setdefault(gname, [])
+            existing_mh[gname] = existing_mh[gname] + placements
+        for gname, placements in place_moving_head_ending_punches(
+            layout, hierarchy,
+            fade_exclusion_start_ms=fade_exclusion_start_ms,
+            existing_placements=existing_mh,
+        ).items():
+            crash_effects.setdefault(gname, []).extend(placements)
 
     # 5e. Library images on Matrix/Mega Tree props, timed to lyric matches
     # (config.picture_effects). Song-scoped, same rationale as

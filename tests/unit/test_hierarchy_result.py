@@ -84,7 +84,8 @@ class TestHierarchyResultSchema:
         d = r.to_dict()
         expected_keys = {
             "schema_version", "source_file", "source_hash", "duration_ms", "estimated_bpm",
-            "energy_impacts", "energy_drops", "gaps", "crash_accents", "sections",
+            "energy_impacts", "energy_drops", "gaps", "crash_accents",
+            "ending_punches", "sections",
             "bars", "beats", "half_bars", "eighth_notes", "events", "solos",
             "energy_curves", "spectral_flux",
             "chords", "key_changes", "chroma_curve", "interactions", "essentia_features",

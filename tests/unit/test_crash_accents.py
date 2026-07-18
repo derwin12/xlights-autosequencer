@@ -11,7 +11,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.analyzer.crash_accents import _MAX_MARKS, _MIN_GAP_MS, detect_crash_accents
+from src.analyzer.crash_accents import (
+    _MAX_MARKS,
+    _MIN_GAP_MS,
+    detect_crash_accents,
+    detect_ending_punches,
+)
 
 _SR = 22050
 
@@ -114,3 +119,73 @@ class TestDetectCrashAccents:
         marks = detect_crash_accents(stem, _SR, mix, mix_sr)
         assert len(marks) == 1
         assert abs(marks[0].time_ms - 12000) < 150
+
+
+def _punchy_stem(duration_s: float, punches: list[float] = (), seed: int = 7) -> np.ndarray:
+    """Cymbal stem with short hard hits (no multi-second wash): the ending
+    'button' shape — loud, brief, fast decay."""
+    n = int(_SR * duration_s)
+    rng = np.random.default_rng(seed)
+    stem = (0.01 * rng.standard_normal(n)).astype(np.float32)
+    for at in np.arange(0.5, duration_s - 0.1, 0.7):  # ordinary ticks
+        start = int(at * _SR)
+        length = int(0.03 * _SR)
+        burst = 0.05 * rng.standard_normal(length)
+        burst *= np.exp(-np.linspace(0, 6, length))
+        stem[start:start + length] += burst.astype(np.float32)
+    for at in punches:
+        start = int(at * _SR)
+        length = min(int(0.08 * _SR), n - start)
+        burst = 0.6 * rng.standard_normal(length)
+        burst *= np.exp(-np.linspace(0, 4, length))
+        stem[start:start + length] += burst.astype(np.float32)
+    return stem
+
+
+class TestDetectEndingPunches:
+    """Ending 'button' punches: cymbal hits in the final seconds before the
+    audible end. Fixture mixes go silent at 60s (the audible end) with 2s of
+    trailing silence, like a hard-cut ending followed by encoder padding."""
+
+    def _mix(self, duration_s: float = 62.0, audible_until_s: float = 60.0) -> np.ndarray:
+        t = np.linspace(0, duration_s, int(_SR * duration_s), endpoint=False)
+        mix = (0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+        mix[int(audible_until_s * _SR):] = 0.0
+        return mix
+
+    def test_empty_inputs_produce_no_marks(self):
+        assert detect_ending_punches(np.array([]), _SR, self._mix(), _SR) == []
+        assert detect_ending_punches(_punchy_stem(62.0), _SR, np.array([]), _SR) == []
+
+    def test_punches_in_final_window_detected(self):
+        stem = _punchy_stem(62.0, punches=[55.0, 57.0])
+        marks = detect_ending_punches(stem, _SR, self._mix(), _SR)
+        assert len(marks) == 2
+        assert all(m.label == "ending_punch" for m in marks)
+        assert abs(marks[0].time_ms - 55_000) < 150
+        assert abs(marks[1].time_ms - 57_000) < 150
+
+    def test_identical_punches_mid_song_are_ignored(self):
+        """Position is the discriminator: the same hit strength mid-song
+        must not fire (a bare loudness rule fires ~17x/song)."""
+        stem = _punchy_stem(62.0, punches=[20.0, 35.0])
+        assert detect_ending_punches(stem, _SR, self._mix(), _SR) == []
+
+    def test_no_punches_near_end_produces_no_marks(self):
+        stem = _punchy_stem(62.0, punches=[])
+        assert detect_ending_punches(stem, _SR, self._mix(), _SR) == []
+
+    def test_machine_gun_cluster_fires_per_hit(self):
+        """Hits ~300ms apart (validated cluster: 192.0/192.2/192.3s in the
+        target song) must each get their own mark."""
+        stem = _punchy_stem(62.0, punches=[56.0, 56.35, 56.7])
+        marks = detect_ending_punches(stem, _SR, self._mix(), _SR)
+        assert len(marks) == 3
+
+    def test_trailing_silence_does_not_shift_the_window(self):
+        """The window anchors to the audible end (60s), not the file end
+        (62s): a punch 5s before the audible end is inside the window even
+        though it is 7s before end-of-file."""
+        stem = _punchy_stem(62.0, punches=[55.0])
+        marks = detect_ending_punches(stem, _SR, self._mix(), _SR)
+        assert len(marks) == 1

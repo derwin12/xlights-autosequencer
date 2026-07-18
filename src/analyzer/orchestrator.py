@@ -26,7 +26,10 @@ if TYPE_CHECKING:
 # detector (crash-stem-impact-score change); the bump invalidates both
 # pre-feature caches (missing field -> silent placement skip, bug-265) and
 # 07-14..07-16 caches carrying the broken v2 detector's marks (bug-266).
-SCHEMA_VERSION = "2.1.0"
+# 2.2.0 (2026-07-18): ending_punches added (crash_accents.detect_ending_punches)
+# — bumped so pre-feature caches re-analyze instead of silently skipping the
+# Moving Head ending flash (the bug-265 lesson).
+SCHEMA_VERSION = "2.2.0"
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -665,9 +668,10 @@ def run_orchestrator(
     # validated insufficient (bug-266; see crash_accents.py docstring).
     # No cymbals stem -> no marks: zero marks beats wrong marks.
     crash_accents: list["TimingMark"] = []
+    ending_punches: list["TimingMark"] = []
     _drums_arr = stems.get("drums") if stems is not None else None
     if _drums_arr is not None and _drums_arr.size > 1:
-        from src.analyzer.crash_accents import detect_crash_accents
+        from src.analyzer.crash_accents import detect_crash_accents, detect_ending_punches
         from src.analyzer.drum_stems import separate_cymbals
         _cym = separate_cymbals(_drums_arr, stems.sample_rate,
                                 cache_dir=_stem_cache.stem_dir)
@@ -676,6 +680,9 @@ def run_orchestrator(
             crash_accents = detect_crash_accents(_cym_arr, _cym_sr, audio, sr)
             if crash_accents:
                 print(f"L0 Crash accents: {len(crash_accents)} rare transient(s)")
+            ending_punches = detect_ending_punches(_cym_arr, _cym_sr, audio, sr)
+            if ending_punches:
+                print(f"L0 Ending punches: {len(ending_punches)} hit(s) at song end")
         else:
             warnings.append("L0 Crash accents: skipped — cymbal separation unavailable")
     else:
@@ -763,6 +770,7 @@ def run_orchestrator(
         energy_drops=drops,
         gaps=gaps,
         crash_accents=crash_accents,
+        ending_punches=ending_punches,
         sections=sections,
         bars=bars,
         beats=beats,
@@ -828,6 +836,14 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
                         element_type="crash", marks=result.crash_accents,
                         quality_score=0.0),
             fixed_width_ms=700,
+        )
+    if result.ending_punches:
+        _add_mark_layer(
+            root, "ending_punches",
+            TimingTrack(name="ending_punches", algorithm_name="derived",
+                        element_type="crash", marks=result.ending_punches,
+                        quality_score=0.0),
+            fixed_width_ms=300,
         )
     _add_section_layer(root, "sections", result.sections)
 
