@@ -13,7 +13,6 @@ from src.generator.moving_head import (
     _CRASH_PAN_OFFSET_DEG,
     _CRASH_TILT_DEG,
     _CRASH_VOCAL_EXCLUSION_MS,
-    _PREFERRED_WARMUP_DURATION_MS,
     place_moving_head_crash_accents,
 )
 from src.grouper.layout import parse_layout
@@ -129,10 +128,10 @@ class TestPlaceMovingHeadCrashAccents:
 
     def test_warmup_inserted_when_nothing_already_there(self):
         # No existing_placements passed and nothing before it on the
-        # timeline -> the warmup uses the full preferred length, not a
-        # short fixed one (user-observed real .xsq, 2026-07-17: a fixed
-        # 750ms warmup was needlessly short when the whole timeline
-        # before the mark was wide open).
+        # timeline -> the warmup fills the ENTIRE natural gap (back to
+        # song start here), not a capped 3s (user request 2026-07-18,
+        # extending the 2026-07-17 "750ms was needlessly short"
+        # observation): the channels are idle in that gap anyway.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
         placements = result["MH GRP"]
@@ -146,7 +145,7 @@ class TestPlaceMovingHeadCrashAccents:
         assert "Wheel:" not in settings
         assert "Shutter:" not in settings
         assert warmup.end_ms == punch.start_ms
-        assert abs((warmup.end_ms - warmup.start_ms) - _PREFERRED_WARMUP_DURATION_MS) <= 25
+        assert warmup.start_ms == 0
 
     def test_warmup_skipped_when_wash_already_covers_the_window(self):
         # The existing placement ends exactly where the punch itself

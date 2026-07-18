@@ -1111,14 +1111,14 @@ def place_moving_head_crash_accents(
             # The crash mark's own timing is sacred (anchored to a real
             # audio transient) -- unlike the gated moves, nothing here
             # gets trimmed or delayed to open room. The warmup instead
-            # adapts to whatever natural gap already exists before it,
-            # up to _PREFERRED_WARMUP_DURATION_MS -- a fixed 750ms was
-            # needlessly short when the whole timeline before a mark was
-            # actually wide open (user-observed, 2026-07-17).
+            # fills the ENTIRE natural gap back to the previous placement
+            # (user request 2026-07-18, extending the 2026-07-17 "750ms
+            # was needlessly short" observation past the old 3s cap):
+            # these channels are idle in that gap anyway, and parking the
+            # heads in position early beats a last-moment slew.
             warmup_end_ms = start_ms
             prior_ends = [p.end_ms for p in all_prior if p.end_ms <= warmup_end_ms]
-            gap_ms = warmup_end_ms - max(prior_ends, default=0)
-            warmup_duration_ms = max(0, min(_PREFERRED_WARMUP_DURATION_MS, gap_ms))
+            warmup_duration_ms = max(0, warmup_end_ms - max(prior_ends, default=0))
             if _heads_already_posed(all_prior, warmup_end_ms, warmup_params):
                 warmup_duration_ms = 0  # heads already in the punch pose
             warmup_start_ms = warmup_end_ms - warmup_duration_ms
@@ -1256,15 +1256,15 @@ def place_moving_head_ending_punches(
 
             if not flash_placed:
                 # Dark warmup before the first flash so the heads are
-                # already vertical when the shutter opens. Adapts to the
-                # natural gap before the mark, same as the crash punch's
-                # (the mark's own timing is sacred — never delayed), and
-                # skipped entirely when the previous placement already left
-                # the heads in this pose (_heads_already_posed).
+                # already vertical when the shutter opens. Fills the entire
+                # natural gap back to the previous placement, same as the
+                # crash punch's (user request 2026-07-18; the mark's own
+                # timing is sacred — never delayed), and skipped entirely
+                # when the previous placement already left the heads in
+                # this pose (_heads_already_posed).
                 all_prior = channel_existing + placements
                 prior_ends = [p.end_ms for p in all_prior if p.end_ms <= start_ms]
-                gap_ms = start_ms - max(prior_ends, default=0)
-                warmup_duration_ms = max(0, min(_PREFERRED_WARMUP_DURATION_MS, gap_ms))
+                warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
                 if _heads_already_posed(all_prior, start_ms, warmup_params):
                     warmup_duration_ms = 0
                 if warmup_duration_ms > 0:

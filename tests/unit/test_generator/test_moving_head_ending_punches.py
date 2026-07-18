@@ -10,7 +10,6 @@ from src.generator.models import EffectPlacement
 from src.generator.moving_head import (
     _ENDING_FLASH_DURATION_MS,
     _ENDING_FLASH_OFF_GAP_MS,
-    _PREFERRED_WARMUP_DURATION_MS,
     find_moving_head_groups,
     place_moving_head_ending_punches,
 )
@@ -76,7 +75,9 @@ class TestPlaceMovingHeadEndingPunches:
         assert len(warmups) == 1
         (w,) = warmups
         assert w.end_ms == 192_000
-        assert w.start_ms == 192_000 - _PREFERRED_WARMUP_DURATION_MS
+        # Fills the entire natural gap — back to song start when nothing
+        # else occupies the channels (user request, 2026-07-18).
+        assert w.start_ms == 0
         settings = w.parameters["E_TEXTCTRL_MH1_Settings"]
         assert "Tilt: 0.0" in settings
         assert "Dimmer" not in settings and "Wheel" not in settings
