@@ -190,6 +190,13 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                 <span className={styles.topicTime}>{formatTimestamp(s.start_ms)}</span>
                 <span className={styles.topicWord}>&ldquo;{s.word}&rdquo;</span>
                 <span className={styles.unmappedNote}>unmapped from {s.matched_file}</span>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(s.word)}
+                >
+                  Create image
+                </button>
                 <label className={styles.uploadLabel}>
                   {uploading === s.word ? 'Uploading…' : 'Choose image'}
                   <input
@@ -207,13 +214,6 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  onClick={() => openCreateImage(s.word)}
-                >
-                  Create image
-                </button>
-                <button
-                  type="button"
-                  className={styles.createImageBtn}
                   onClick={() => restoreMatch(s.word)}
                 >
                   Restore match
@@ -224,6 +224,13 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
               <li key={`${t.word}-${t.start_ms}`} className={styles.topicItem}>
                 <span className={styles.topicTime}>{formatTimestamp(t.start_ms)}</span>
                 <span className={styles.topicWord}>&ldquo;{t.word}&rdquo;</span>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(t.word)}
+                >
+                  Create image
+                </button>
                 <label className={styles.uploadLabel}>
                   {uploading === t.word ? 'Uploading…' : 'Choose image'}
                   <input
@@ -238,13 +245,6 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                     }}
                   />
                 </label>
-                <button
-                  type="button"
-                  className={styles.createImageBtn}
-                  onClick={() => openCreateImage(t.word)}
-                >
-                  Create image
-                </button>
               </li>
             ))}
           </ul>
@@ -261,6 +261,13 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                 <span className={styles.topicWord}>&ldquo;{s.word}&rdquo;</span>
                 <span className={styles.matchedArrow}>&rarr;</span>
                 <span className={styles.matchedFile}>{s.matched_file}</span>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(s.word)}
+                >
+                  Create image
+                </button>
                 <label className={styles.uploadLabel}>
                   {uploading === s.word ? 'Uploading…' : 'Choose image'}
                   <input
@@ -278,13 +285,6 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  onClick={() => openCreateImage(s.word)}
-                >
-                  Create image
-                </button>
-                <button
-                  type="button"
-                  className={styles.createImageBtn}
                   onClick={() => ignoreMatch(s.word)}
                 >
                   Unmap
@@ -297,6 +297,13 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                 <span className={styles.topicWord}>&ldquo;{t.word}&rdquo;</span>
                 <span className={styles.matchedArrow}>&rarr;</span>
                 <span className={styles.matchedFile}>uploaded</span>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => openCreateImage(t.word)}
+                >
+                  Create image
+                </button>
                 <label className={styles.uploadLabel}>
                   {uploading === t.word ? 'Uploading…' : 'Choose image'}
                   <input
@@ -311,13 +318,6 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
                     }}
                   />
                 </label>
-                <button
-                  type="button"
-                  className={styles.createImageBtn}
-                  onClick={() => openCreateImage(t.word)}
-                >
-                  Create image
-                </button>
               </li>
             ))}
           </ul>
