@@ -3212,6 +3212,39 @@ _PICTURE_DIRECTIONS = (
     "up-left", "up-right", "down-left", "down-right",
 )
 
+# Occasional buffer-transform motion overlays for picture bursts (user
+# request, 2026-07-18). The value-curve strings are copied verbatim from
+# working xLights clipboard samples — parametric Ramp/Sine curves, passed
+# straight through placement.parameters (they contain no commas, so they
+# survive the comma-joined settings string). "normal" keeps today's plain
+# pan and dominates the weighting so motion stays an occasional accent.
+_PICTURE_MOTION_ZOOM_RAMP = (
+    "Active=TRUE|Id=ID_VALUECURVE_Zoom|Type=Ramp|Min=0.00|Max=30.00|P2=10.00|RV=TRUE|"
+)
+_PICTURE_MOTIONS: dict[str, dict[str, str]] = {
+    "normal": {},
+    "explode": {"B_VALUECURVE_Zoom": _PICTURE_MOTION_ZOOM_RAMP},
+    "shake": {
+        "B_SLIDER_Rotations": "10",
+        "B_SLIDER_ZoomQuality": "2",
+        "B_VALUECURVE_Rotation": (
+            "Active=TRUE|Id=ID_VALUECURVE_Rotation|Type=Sine|Min=0.00|Max=100.00"
+            "|P2=10.00|P3=50.00|P4=25.00|WRAP=TRUE|RV=TRUE|"
+        ),
+    },
+    "explode_spin": {
+        "B_SLIDER_Rotations": "10",
+        "B_SLIDER_ZoomQuality": "2",
+        "B_VALUECURVE_Rotation": (
+            "Active=TRUE|Id=ID_VALUECURVE_Rotation|Type=Ramp|Min=0.00|Max=100.00"
+            "|P2=100.00|RV=TRUE|"
+        ),
+        "B_VALUECURVE_Zoom": _PICTURE_MOTION_ZOOM_RAMP,
+    },
+}
+_PICTURE_MOTION_NAMES = tuple(_PICTURE_MOTIONS)
+_PICTURE_MOTION_WEIGHTS = (60, 13, 13, 13)
+
 # Name tokens identifying mega tree props — matches corpus_recipes.py's
 # megatree PropFamilyRecipe.match_tokens so eligibility stays consistent
 # with how the rest of the generator identifies this family.
@@ -3289,7 +3322,11 @@ def _place_picture_effects(
     image reads as an accent rather than filling the whole buffer, a short
     fade in/out (``_PICTURE_FADE_MS``), and a gentle pan (seeded per burst so
     it isn't always the same direction) — user request (2026-07-15): overlay
-    the picture with movement, don't just cut it in statically.
+    the picture with movement, don't just cut it in statically. A weighted
+    seeded pick (``_PICTURE_MOTIONS``/``_PICTURE_MOTION_WEIGHTS``) occasionally
+    adds a buffer-transform motion on top — explode (zoom ramp), shake
+    (rotation sine), or explode+spin — with plain "normal" dominating so the
+    motions stay an accent (user request, 2026-07-18).
     """
     if duration_ms <= 0:
         return {}
@@ -3351,6 +3388,9 @@ def _place_picture_effects(
             random.Random(f"{variation_seed}:{match.get('word')}:{word_start}")
             .randrange(len(_PICTURE_DIRECTIONS))
         ]
+        motion = random.Random(
+            f"{variation_seed}:motion:{match.get('word')}:{word_start}"
+        ).choices(_PICTURE_MOTION_NAMES, weights=_PICTURE_MOTION_WEIGHTS)[0]
         for target_name in set(targets.values()):
             # Bursts on the same target may never overlap in time regardless
             # of image, but the _PICTURE_MIN_GAP_MS cooldown only applies to
@@ -3386,6 +3426,7 @@ def _place_picture_effects(
                     "E_TEXTCTRL_Pictures_Speed": _PICTURE_SPEED,
                     "E_SLIDER_Pictures_StartScale": _PICTURE_SCALE_PERCENT,
                     "E_SLIDER_Pictures_EndScale": _PICTURE_SCALE_PERCENT,
+                    **_PICTURE_MOTIONS[motion],
                 },
                 color_palette=["#FFFFFF"],
                 layer=picture_layer_by_target[target_name],
@@ -3393,8 +3434,8 @@ def _place_picture_effects(
                 fade_out_ms=_PICTURE_FADE_MS,
             ))
             logger.debug(
-                "picture_effects: %s burst %d-%d -> lyric match %r (%s)",
-                target_name, start, end, match.get("word"), filename,
+                "picture_effects: %s burst %d-%d -> lyric match %r (%s, motion=%s)",
+                target_name, start, end, match.get("word"), filename, motion,
             )
 
     logger.info(
