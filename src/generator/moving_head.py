@@ -411,11 +411,18 @@ def _jitter(variation_seed: int, section_index: int) -> tuple[float, float]:
     return pan, tilt
 
 
-# A repeated l_r_sweep/r_l_sweep back-to-back reads as the same move
-# twice rather than variety (user request, 2026-07-18); when the rotation
-# would pick the same sweep direction as the immediately preceding
-# qualifying section, swap to the other direction instead.
-_SWEEP_PARTNER = {"l_r_sweep": "r_l_sweep", "r_l_sweep": "l_r_sweep"}
+# A repeated directional move back-to-back reads as the same move twice
+# rather than variety (user request, 2026-07-18, extended same day to
+# cover every genuine directional pair in MOVE_LIBRARY, not just sweeps);
+# when the rotation would pick the same move as the immediately preceding
+# qualifying section, swap to its direction-reversed partner instead.
+# l_r_crisscross has no such partner (ll_rr_crisscross is a different
+# pattern, not its direction-flip) so it isn't listed here on purpose.
+_DIRECTIONAL_PARTNER = {
+    "l_r_sweep": "r_l_sweep", "r_l_sweep": "l_r_sweep",
+    "l_static": "r_static", "r_static": "l_static",
+    "stagger_o_i": "stagger_i_o", "stagger_i_o": "stagger_o_i",
+}
 
 
 def _choose_move(
@@ -424,8 +431,8 @@ def _choose_move(
 ) -> str:
     pool = _DYNAMIC_MOVES if dynamic else _STATIC_MOVES
     choice = pool[(variation_seed + section_index) % len(pool)]
-    if choice == previous_move and choice in _SWEEP_PARTNER:
-        choice = _SWEEP_PARTNER[choice]
+    if choice == previous_move and choice in _DIRECTIONAL_PARTNER:
+        choice = _DIRECTIONAL_PARTNER[choice]
     return choice
 
 

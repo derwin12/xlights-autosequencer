@@ -223,6 +223,32 @@ class TestPlaceMovingHeadMoves:
         second = _choose_move(4, variation_seed=0, dynamic=True, previous_move=first)
         assert second == "fan_pan_move"
 
+    def test_repeated_static_alternates_direction(self):
+        # Same alternation rule extended (2026-07-18) to every genuine
+        # directional pair in MOVE_LIBRARY, not just the sweeps.
+        # section_index=2 and 10 both land on "r_static" via the natural
+        # (variation_seed + section_index) % 8 rotation in the static pool.
+        first = _choose_move(2, variation_seed=0, dynamic=False)
+        assert first == "r_static"
+        second = _choose_move(10, variation_seed=0, dynamic=False, previous_move=first)
+        assert second == "l_static"
+
+    def test_repeated_stagger_alternates_direction(self):
+        # section_index=6 and 14 both land on "stagger_o_i".
+        first = _choose_move(6, variation_seed=0, dynamic=False)
+        assert first == "stagger_o_i"
+        second = _choose_move(14, variation_seed=0, dynamic=False, previous_move=first)
+        assert second == "stagger_i_o"
+
+    def test_l_r_crisscross_repeat_is_left_alone(self):
+        # l_r_crisscross has no direction-reversed partner in MOVE_LIBRARY
+        # (ll_rr_crisscross is a different pattern, not its flip), so a
+        # repeat isn't forced to change.
+        first = _choose_move(4, variation_seed=0, dynamic=False)
+        assert first == "l_r_crisscross"
+        second = _choose_move(12, variation_seed=0, dynamic=False, previous_move=first)
+        assert second == "l_r_crisscross"
+
     def test_l_r_sweep_moves_every_head_the_same_direction(self):
         # Regression (2026-07-18, user-reported): head 2's pose in
         # "l_r_sweep" had a reversed pan_vc tuple (a copy-paste from

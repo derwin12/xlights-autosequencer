@@ -472,10 +472,25 @@ def write_xsq(
     # marquee reads as one prop instead of many).
     _ALL_GROUP_PER_MODEL_EFFECTS = {"Strobe", "Marquee"}
 
+    # Shockwave always renders with the "...Per Preview" variant of
+    # whichever tier-based style would otherwise apply (user request,
+    # 2026-07-18) -- preserves the underlying Default-vs-Per-Model-Default
+    # semantics per tier, just adds the per-preview qualifier. Tiers 01-03
+    # (base=None, no explicit style) have no mapping entry here on
+    # purpose: there's no "Default" state to transform from there.
+    _SHOCKWAVE_PREVIEW_STYLE = {
+        "Default": "Per Preview",
+        "Per Model Default": "Per Model Per Preview",
+    }
+
     def _buffer_style_for_placement(group_name: str, effect_name: str) -> str | None:
         if group_name in ("01_BASE_All", "01_BASE_All_FADES") and effect_name in _ALL_GROUP_PER_MODEL_EFFECTS:
-            return "Per Model Default"
-        return _buffer_style_for_group(group_name)
+            base = "Per Model Default"
+        else:
+            base = _buffer_style_for_group(group_name)
+        if effect_name == "Shockwave" and base in _SHOCKWAVE_PREVIEW_STYLE:
+            return _SHOCKWAVE_PREVIEW_STYLE[base]
+        return base
 
     all_placements: dict[str, list[EffectPlacement]] = {
         k: unordered[k] for k in sorted(unordered, key=_tier_sort_key)

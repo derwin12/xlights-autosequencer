@@ -433,6 +433,40 @@ class TestXsqWriter:
             assert f"B_CHOICE_BufferStyle=Per Model Default" in effectdb[by_name["Marquee"]]
             assert "B_CHOICE_BufferStyle=Default" in effectdb[by_name["On"]]
 
+    def test_shockwave_gets_the_preview_variant_of_its_tier_style(self, tmp_path: Path) -> None:
+        """Shockwave always renders as the "...Per Preview" variant of
+        whichever tier-based style would otherwise apply (user request,
+        2026-07-18): Default -> Per Preview, Per Model Default -> Per
+        Model Per Preview. A non-Shockwave effect in the same groups keeps
+        the ordinary tier style, confirming this is Shockwave-specific."""
+        plan = _make_plan()
+        for name in ("01_BASE_All_FADES", "06_PROP_Test"):
+            plan.sections[0].group_effects[name] = [
+                EffectPlacement(
+                    effect_name="Shockwave", xlights_id="Shockwave", model_or_group=name,
+                    start_ms=0, end_ms=1000, parameters={},
+                    color_palette=["#FFFFFF"],
+                ),
+                EffectPlacement(
+                    effect_name="On", xlights_id="On", model_or_group=name,
+                    start_ms=1000, end_ms=2000, parameters={},
+                    color_palette=["#FFFFFF"],
+                ),
+            ]
+        root = _write_and_parse(plan, tmp_path)
+        effectdb = [ef.text or "" for ef in root.find("EffectDB")]
+        effects_el = root.find("ElementEffects")
+
+        for group_name, expected_shockwave, expected_on in (
+            ("01_BASE_All_FADES", "Per Preview", "Default"),
+            ("06_PROP_Test", "Per Model Per Preview", "Per Model Default"),
+        ):
+            group_el = next(e for e in effects_el if e.get("name") == group_name)
+            effect_els = group_el.find("EffectLayer").findall("Effect")
+            by_name = {e.get("name"): int(e.get("ref")) for e in effect_els}
+            assert f"B_CHOICE_BufferStyle={expected_shockwave}" in effectdb[by_name["Shockwave"]]
+            assert f"B_CHOICE_BufferStyle={expected_on}" in effectdb[by_name["On"]]
+
     def test_tier_1_to_3_non_override_groups_get_no_buffer_style_key(self, tmp_path: Path) -> None:
         """Tiers 01-03 (other than the 01_BASE_All(_FADES) override
         canvases) render as a unified group with no explicit buffer style
