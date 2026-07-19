@@ -26,6 +26,11 @@ export PATH="$HOME/.local/bin:$PATH"
 # this container's system Python IS the app environment by design.
 export PIP_BREAK_SYSTEM_PACKAGES=1
 
+# The bind-mounted repo is owned by the host user, not the container's
+# node user — without this, git inside the container refuses to read it
+# ("dubious ownership"), which breaks the UI's backend-staleness check.
+git config --global --add safe.directory /workspace
+
 echo "[1/5] Installing the Python package (editable) + optional extras..."
 pip install --user -e ".[all]" --quiet
 # madmom is deliberately excluded from the "all" extra (pyproject.toml notes
