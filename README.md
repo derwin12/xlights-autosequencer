@@ -25,7 +25,9 @@
 
 ## Quick Start
 
-### Option A: Docker Compose (recommended — works on any OS, no VS Code required)
+Runs anywhere Docker does — Windows, macOS, or Linux. The only
+prerequisite is **Docker Desktop** (or Docker Engine on Linux) —
+[docker.com](https://www.docker.com/products/docker-desktop/).
 
 ```bash
 git clone https://github.com/derwin12/xlight-autosequencer.git
@@ -36,9 +38,8 @@ docker compose up
 Open **http://localhost:5000**. First run builds the toolchain image (the
 Vamp plugins compile from source — the slow step, easily 20–40 min, but
 fully unattended) and installs the Python/JS packages; later runs are
-fast. Your song library and cached analysis persist in a named Docker
-volume across restarts. This is the only prerequisite: **Docker Desktop**
-(or Docker Engine on Linux) — [docker.com](https://www.docker.com/products/docker-desktop/).
+fast. Your song library and cached analysis persist in named Docker
+volumes across restarts.
 
 Once the page loads, the first-run flow is: drop an MP3/WAV onto the
 **Drop** tab and let the analysis pipeline run, then also drop your
@@ -47,12 +48,7 @@ layout is imported). From there walk the numbered tabs left-to-right and
 finish with an `.xsq` on the Export tab — the full walkthrough is in
 [Launch the App](#launch-the-app) and [The screens](#the-screens) below.
 
-This is a separate, simpler path from `.devcontainer/` below — no VS Code,
-no Dev Containers extension, no outbound-traffic firewall (that firewall
-in `.devcontainer/` is specifically for sandboxing an AI coding agent and
-will block normal internet access for anyone else who hits it).
-
-#### Updating an Option A install
+#### Updating
 
 The footer of every screen shows `ui <commit> · built <date> · api <commit>` —
 when either commit falls behind `main`, update like this:
@@ -78,100 +74,27 @@ Then hard-refresh the browser (Ctrl+Shift+R). What each step covers:
 Only if `.devcontainer/Dockerfile` itself changed (new system-level
 dependency — rare) do you need a real rebuild: `docker compose up -d --build`.
 
-### Option B: Native install (macOS / Linux)
+#### Your data
 
-- **Python 3.11 or 3.12** — [python.org](https://www.python.org/downloads/) or `brew install python@3.12`
-- **Node.js 18+ and npm** — [nodejs.org](https://nodejs.org/) or `brew install node` — required to build the review UI (`src/review/frontend/`)
-- **ffmpeg** — `brew install ffmpeg`
-- **Vamp plugins** (recommended) — Download from [vamp-plugins.org](https://vamp-plugins.org/pack.html) and copy `.dylib` files to `~/Library/Audio/Plug-Ins/Vamp/`:
-  - QM Vamp Plugins, BeatRoot, pYIN, NNLS Chroma/Chordino, Silvet
+Everything you upload or generate (song library, cached stems/analysis,
+image library, custom themes) lives under `~/.xlight/` inside the
+container, backed by named Docker volumes — it survives restarts,
+recreates, and image rebuilds, and isn't tracked in git. To carry it to
+another machine, `docker cp` it out of/into the `xlight-state` volume.
 
-> **Fastest path:** `./scripts/install.sh` runs every step below automatically (system deps, Vamp plugins, both Python venvs, and the frontend build) and verifies capabilities at the end.
-
-> **Windows:** `scripts/install.sh` only supports macOS and Linux — Vamp/madmom require a Linux build toolchain. Use **Option A (Docker Compose)** above instead.
-
-### Option C: VS Code Dev Container (for contributors who want an interactive VS Code environment)
-
-`.devcontainer/` also works as a normal VS Code Dev Container (open the
-folder, "Reopen in Container") if you'd rather develop interactively
-inside the same toolchain image Option A builds. Two things to know
-that don't apply to Option A:
-
-- It runs an outbound-traffic firewall on start (`.devcontainer/init-firewall.sh`,
-  built for sandboxing an AI coding agent) — normal internet access
-  outside its allowlist is blocked by design.
-- `scripts/startapp.sh` assumes a container named `xlight-dev` (this
-  project's own dev container) — VS Code auto-names yours differently, so
-  set `XLIGHT_DEVCONTAINER_NAME=<your container name>` (find it with
-  `docker ps`) before running the script, or export it once in your shell profile.
-
-Whichever option you used above, your data (uploaded image library, song
-library entries, cached stems/analysis) lives under `~/.xlight/` — inside
-the container for Options A/C, or wherever `XLIGHT_STATE_HOME` points for
-Option B — and isn't tracked in git. To carry it over to a new machine,
-copy that directory across (for Option A, `docker cp` it into/out of the
-`xlight-state` named volume).
-
-### Install
-
-```bash
-git clone https://github.com/derwin12/xlight-autosequencer.git
-cd xlight-autosequencer
-python3.12 -m venv .venv
-source .venv/bin/activate
-
-# Install everything
-pip install -e ".[all]"
-
-# PyTorch (required for stem separation and phonemes)
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-
-# nltk data (for phoneme analysis + lyric part-of-speech tagging)
-python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_perceptron_tagger_eng')"
-```
-
-> **macOS Python.org installer:** Run `open "/Applications/Python 3.12/Install Certificates.command"` once for SSL certs.
-
-### Optional: Vamp + madmom secondary environment
-
-Vamp and madmom require NumPy 1.x, which conflicts with whisperx. A separate venv is auto-detected:
-
-```bash
-python3.12 -m venv .venv-vamp
-source .venv-vamp/bin/activate
-pip install "numpy<2" vamp madmom librosa soundfile
-deactivate
-```
-
-When `.venv-vamp/` exists, Vamp and madmom algorithms run through it automatically (~14 additional tracks).
-
-### Build the review UI
-
-The web dashboard is a React app that must be built before `xlight-analyze review` can serve it — the built bundle (`src/review/frontend/dist/`) is git-ignored, so this step is required on every fresh clone and after pulling frontend changes:
-
-```bash
-cd src/review/frontend
-npm install
-npm run build
-cd ../../..
-```
+> **Contributors:** `.devcontainer/` also works as a VS Code Dev
+> Container for interactive development inside the same toolchain image.
+> Note it runs an outbound-traffic firewall on start (built for
+> sandboxing an AI coding agent) — normal internet access outside its
+> allowlist is blocked by design. See `scripts/startapp.sh` for
+> restarting the server after backend changes.
 
 ---
 
 ## Launch the App
 
-If you used Option A (Docker Compose) or Option C (VS Code Dev Container)
-above, the app is already running — skip to **http://localhost:5000**.
-
-For a native install (Option B):
-
-```bash
-source .venv/bin/activate
-xlight-review
-```
-
-Opens **http://localhost:5000** in your browser (auto-opened by default;
-pass `--dev` to skip that). The whole workflow lives in six tabs across the top of every screen:
+`docker compose up` already started the app — open **http://localhost:5000**.
+The whole workflow lives in six tabs across the top of every screen:
 
 ```
 xOnset  1 Library   2 Drop   3 Analyze   4 Timeline   5 Theme   6 Export
@@ -190,7 +113,7 @@ The numbers indicate the natural order — drop a song in, walk through the tabs
 Where you start the very first time.
 
 1. **Tab bar** (top). Numbered steps; the active tab is underlined orange. You can revisit any tab at any time.
-2. **Drop zone** (centered card). Drag an MP3 / WAV file onto it, or click *"or click to browse files"* to open a native file picker. Both mono and stereo audio are accepted; ID3 metadata is read automatically.
+2. **Drop zone** (centered card). Drag an MP3 / WAV file — or a video file (mp4/mov/avi/mkv/webm), whose audio track is extracted automatically — onto it, or click *"or click to browse files"* to open a native file picker. Both mono and stereo audio are accepted; ID3 metadata is read automatically.
 
 That's the entire screen — the app is deliberately empty here so the call to action is unmissable.
 
@@ -402,20 +325,16 @@ src/
 
 | Issue | Fix |
 |-------|-----|
-| `SSLCertVerificationError` during demucs download | Run `open "/Applications/Python 3.12/Install Certificates.command"` (Python.org installs only) |
-| `No module named 'demucs.api'` | `pip install -U demucs` (need >= 4.0.1) |
 | `TorchCodec is required` warning | Harmless — can be ignored |
-| `FileNotFoundError: ffmpeg` | Add ffmpeg to PATH: `export PATH="/opt/homebrew/bin:$PATH"` |
 | Stem separation slow on first run | Normal — demucs downloads ~200 MB model. Cached after first run. |
-| whisperx alignment model fails | `pip install huggingface_hub && huggingface-cli login` |
+| whisperx alignment model fails | `docker compose exec xonset sh -c "pip install huggingface_hub && huggingface-cli login"` |
 
 ---
 
 ## Running Tests
 
 ```bash
-source .venv/bin/activate
-pytest tests/ -v
+docker compose exec xonset pytest tests/ -v
 ```
 
 ---
