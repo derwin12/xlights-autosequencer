@@ -37,20 +37,46 @@ Open **http://localhost:5000**. First run builds the toolchain image (the
 Vamp plugins compile from source — the slow step, easily 20–40 min, but
 fully unattended) and installs the Python/JS packages; later runs are
 fast. Your song library and cached analysis persist in a named Docker
-volume across restarts.
+volume across restarts. This is the only prerequisite: **Docker Desktop**
+(or Docker Engine on Linux) — [docker.com](https://www.docker.com/products/docker-desktop/).
 
 Once the page loads, the first-run flow is: drop an MP3/WAV onto the
 **Drop** tab and let the analysis pipeline run, then also drop your
 `xlights_rgbeffects.xml` layout file there (Export is blocked until a
 layout is imported). From there walk the numbered tabs left-to-right and
 finish with an `.xsq` on the Export tab — the full walkthrough is in
-[Launch the App](#launch-the-app) and [The screens](#the-screens) below. This is the only prerequisite: **Docker Desktop**
-(or Docker Engine on Linux) — [docker.com](https://www.docker.com/products/docker-desktop/).
+[Launch the App](#launch-the-app) and [The screens](#the-screens) below.
 
 This is a separate, simpler path from `.devcontainer/` below — no VS Code,
 no Dev Containers extension, no outbound-traffic firewall (that firewall
 in `.devcontainer/` is specifically for sandboxing an AI coding agent and
 will block normal internet access for anyone else who hits it).
+
+#### Updating an Option A install
+
+The footer of every screen shows `ui <commit> · built <date> · api <commit>` —
+when either commit falls behind `main`, update like this:
+
+```bash
+git pull
+docker compose exec xonset sh -c "cd src/review/frontend && npm run build"
+docker compose restart
+```
+
+Then hard-refresh the browser (Ctrl+Shift+R). What each step covers:
+
+- `git pull` — the app code runs from your checkout (bind-mounted into the
+  container), so pulling is most of the update.
+- The `npm run build` line rebuilds the web UI. Only needed when frontend
+  files changed (`src/review/frontend/`), but it's fast and always safe —
+  the container skips rebuilding it on startup whenever a built bundle
+  already exists, so don't rely on a restart alone to pick up UI changes.
+- `docker compose restart` — restarts the Python backend so pulled backend
+  changes take effect (it doesn't hot-reload). Expect a couple of quiet
+  minutes at `[1/5]` while pip re-checks dependencies.
+
+Only if `.devcontainer/Dockerfile` itself changed (new system-level
+dependency — rare) do you need a real rebuild: `docker compose up -d --build`.
 
 ### Option B: Native install (macOS / Linux)
 
