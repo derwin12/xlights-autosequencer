@@ -37,7 +37,14 @@ Open **http://localhost:5000**. First run builds the toolchain image (the
 Vamp plugins compile from source — the slow step, easily 20–40 min, but
 fully unattended) and installs the Python/JS packages; later runs are
 fast. Your song library and cached analysis persist in a named Docker
-volume across restarts. This is the only prerequisite: **Docker Desktop**
+volume across restarts.
+
+Once the page loads, the first-run flow is: drop an MP3/WAV onto the
+**Drop** tab and let the analysis pipeline run, then also drop your
+`xlights_rgbeffects.xml` layout file there (Export is blocked until a
+layout is imported). From there walk the numbered tabs left-to-right and
+finish with an `.xsq` on the Export tab — the full walkthrough is in
+[Launch the App](#launch-the-app) and [The screens](#the-screens) below. This is the only prerequisite: **Docker Desktop**
 (or Docker Engine on Linux) — [docker.com](https://www.docker.com/products/docker-desktop/).
 
 This is a separate, simpler path from `.devcontainer/` below — no VS Code,
