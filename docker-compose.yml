@@ -25,6 +25,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5000:5000"
+    environment:
+      # Where the analyzer finds the vamp/madmom sidecar interpreter.
+      # devcontainer.json sets this for the VS Code path; without it here,
+      # analysis silently skips every vamp/madmom algorithm. Inside this
+      # image it's a symlink to the one system Python (see Dockerfile).
+      - XLIGHT_VENV_VAMP=/home/node/.venv-vamp/bin/python
     volumes:
       - .:/workspace
       # Song library, cached analysis/stems, custom themes/variants — kept
