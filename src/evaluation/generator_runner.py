@@ -36,6 +36,7 @@ def run(
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
+    include_extra_timing: bool = True,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Run the generator deterministically and return .xsq bytes.
@@ -64,6 +65,9 @@ def run(
                     the user unmapped on the Pictures screen — suppresses
                     lyric-matched Pictures bursts for those words
                     (GenerationConfig.ignored_image_words).
+        include_extra_timing: When False, the Chords and per-stem Onsets (...)
+                    timing tracks are omitted from the .xsq (display-only
+                    tracks; effect placement is unaffected).
 
     Returns:
         Raw .xsq XML bytes.
@@ -101,6 +105,7 @@ def run(
                               lyrics=lyrics, words=words, phonemes=phonemes,
                               genre=genre, occasion=occasion, video_path=video_path,
                               ignored_image_words=ignored_image_words,
+                              include_extra_timing=include_extra_timing,
                               progress_cb=progress_cb)
     except GeneratorError:
         raise
@@ -120,6 +125,7 @@ def _run_pipeline(
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
+    include_extra_timing: bool = True,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Execute the full generation pipeline and return .xsq bytes."""
@@ -183,6 +189,7 @@ def _run_pipeline(
         # Write .xsq to a temp file, then read back as bytes
         output_path = Path(tmp_dir) / "output.xsq"
         write_xsq(plan, output_path, hierarchy=hierarchy, audio_path=audio_path,
-                  lyrics=lyrics, words=words, phonemes=phonemes)
+                  lyrics=lyrics, words=words, phonemes=phonemes,
+                  include_extra_timing=include_extra_timing)
 
         return output_path.read_bytes()

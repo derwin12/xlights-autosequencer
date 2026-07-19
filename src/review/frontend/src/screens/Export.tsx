@@ -36,6 +36,9 @@ interface RenderLogLine {
 export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayoutImported }: ExportProps) {
   const [exporting, setExporting] = useState(false);
   const [outputPath, setOutputPath] = useState<string | null>(null);
+  // Onsets (per-stem) + Chords timing tracks are display-only in the .xsq;
+  // unchecking omits them for a leaner timing panel in xLights.
+  const [includeExtraTiming, setIncludeExtraTiming] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Render-progress panels (stage list + stream log), populated from the
   // export SSE. stageOrder holds known stages plus any new ones the backend
@@ -142,6 +145,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
 
   async function handleRender() {
     setError(null);
+    setOutputPath(null);
     setExporting(true);
     setStageOrder(RENDER_STAGES);
     setStageStatus({});
@@ -159,7 +163,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
       const res = await fetch(`/api/v1/songs/${song.song_id}/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format: 'xsq' }),
+        body: JSON.stringify({ format: 'xsq', include_extra_timing: includeExtraTiming }),
       });
       const body = await res.json();
       if (!res.ok) {
@@ -343,15 +347,27 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
 
       {error && <p className={styles.error}>{error}</p>}
 
-      {!outputPath && (
-        <button
-          className={styles.renderBtn}
-          onClick={handleRender}
+      <label
+        data-testid="include-extra-timing"
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+                 fontSize: 13, color: 'var(--color-text-muted, #888)', cursor: 'pointer' }}
+      >
+        <input
+          type="checkbox"
+          checked={includeExtraTiming}
+          onChange={(e) => setIncludeExtraTiming(e.target.checked)}
           disabled={exporting}
-        >
-          {exporting ? 'Rendering…' : 'Render Sequence'}
-        </button>
-      )}
+        />
+        Include Onsets/Chords timing tracks
+      </label>
+
+      <button
+        className={styles.renderBtn}
+        onClick={handleRender}
+        disabled={exporting}
+      >
+        {exporting ? 'Rendering…' : outputPath ? 'Render Again' : 'Render Sequence'}
+      </button>
 
       {renderLog.length > 0 && (
         <>

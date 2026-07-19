@@ -1494,3 +1494,53 @@ class TestMigratedSliderKeysAbsent:
         text = Path("src/effects/builtin_effects.json").read_text(encoding="utf-8")
         for bare in _MIGRATED_TO_TEXTCTRL:
             assert f'"E_SLIDER_{bare}"' not in text, bare
+
+
+class TestIncludeExtraTiming:
+    """include_extra_timing=False omits the display-only Chords and
+    Onsets (<stem>) timing tracks while keeping Beats/Bars/Sections."""
+
+    def _hierarchy_with_all_tracks(self):
+        hierarchy = _make_hierarchy_with_stems(["drums", "vocals"])
+        hierarchy.beats = TimingTrack(
+            name="beats", algorithm_name="test", element_type="beat",
+            marks=[TimingMark(time_ms=100, confidence=0.9)], quality_score=0.8,
+        )
+        hierarchy.bars = TimingTrack(
+            name="bars", algorithm_name="test", element_type="bar",
+            marks=[TimingMark(time_ms=400, confidence=0.9)], quality_score=0.8,
+        )
+        hierarchy.chords = TimingTrack(
+            name="chords", algorithm_name="test", element_type="chord",
+            marks=[TimingMark(time_ms=200, confidence=0.9)], quality_score=0.8,
+        )
+        return hierarchy
+
+    def test_collect_drops_chords_and_onsets_when_disabled(self):
+        tracks = _collect_timing_tracks(
+            self._hierarchy_with_all_tracks(), include_extra_timing=False)
+        assert "Beats" in tracks
+        assert "Bars" in tracks
+        assert "Chords" not in tracks
+        assert not any(name.startswith("Onsets") for name in tracks)
+
+    def test_collect_default_keeps_all_tracks(self):
+        tracks = _collect_timing_tracks(self._hierarchy_with_all_tracks())
+        assert "Chords" in tracks
+        assert "Onsets (drums)" in tracks
+        assert "Onsets (vocals)" in tracks
+
+    def test_write_xsq_omits_extra_timing_elements(self, tmp_path: Path) -> None:
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, hierarchy=self._hierarchy_with_all_tracks(),
+                  include_extra_timing=False)
+        root = ET.parse(out).getroot()
+        timing_names = [
+            el.get("name")
+            for el in root.find("DisplayElements").findall("Element")
+            if el.get("type") == "timing"
+        ]
+        assert "Beats" in timing_names
+        assert "Bars" in timing_names
+        assert "Chords" not in timing_names
+        assert not any(n.startswith("Onsets") for n in timing_names)

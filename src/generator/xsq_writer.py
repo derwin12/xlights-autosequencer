@@ -280,6 +280,7 @@ def write_xsq(
     lyrics: list[dict] | None = None,
     words: list[dict] | None = None,
     phonemes: list[dict] | None = None,
+    include_extra_timing: bool = True,
 ) -> None:
     """Write a SequencePlan as a valid xLights .xsq XML file.
 
@@ -307,6 +308,10 @@ def write_xsq(
       lyric-track shape). Faces placements reference the track
       ("Lyrics"); the matrix Text effect references its word layer
       ("Lyrics - Words").
+    - include_extra_timing: when False, the Chords and per-stem
+      Onsets (...) timing tracks are omitted from the output (they are
+      display-only — no placed effect references them by name). Beats,
+      Bars, Sections, and Lyrics are always written.
     """
     # Warn if audio is outside the mounted show directory (devcontainer-specific).
     # The XSQ will still be written, but xLights on the host won't find the audio.
@@ -608,7 +613,8 @@ def write_xsq(
     lyric_layers = _build_lyric_layers(lyrics, words, phonemes)
 
     # Add timing track display elements
-    timing_tracks = (_collect_timing_tracks(hierarchy, None if lyric_layers else lyrics)
+    timing_tracks = (_collect_timing_tracks(hierarchy, None if lyric_layers else lyrics,
+                                            include_extra_timing=include_extra_timing)
                      if (hierarchy or lyrics) else {})
     timing_names = list(timing_tracks)
     if lyric_layers:
@@ -1087,6 +1093,7 @@ def _build_lyric_layers(
 def _collect_timing_tracks(
     hierarchy: HierarchyResult | None,
     lyrics: list[dict] | None = None,
+    include_extra_timing: bool = True,
 ) -> dict[str, list[TimingMark]]:
     """Collect single-layer timing tracks from hierarchy (+ optional lyric lines)."""
     tracks: dict[str, list[TimingMark]] = {}
@@ -1101,16 +1108,17 @@ def _collect_timing_tracks(
         if hierarchy.sections:
             tracks["Sections"] = hierarchy.sections
 
-        if hierarchy.chords and hierarchy.chords.marks:
-            tracks["Chords"] = hierarchy.chords.marks
+        if include_extra_timing:
+            if hierarchy.chords and hierarchy.chords.marks:
+                tracks["Chords"] = hierarchy.chords.marks
 
-        # Emit one timing track per stem with onsets.  Stem-aware trigger placement
-        # (drum Shockwaves, vocal accents, bass pulses) routes to its matching
-        # Onsets (<stem>) track, so every stem with marks must be emitted — not
-        # only the first one.
-        for stem_name, track in hierarchy.events.items():
-            if track.marks:
-                tracks[f"Onsets ({stem_name})"] = track.marks
+            # Emit one timing track per stem with onsets.  Stem-aware trigger
+            # placement (drum Shockwaves, vocal accents, bass pulses) routes to
+            # its matching Onsets (<stem>) track, so every stem with marks must
+            # be emitted — not only the first one.
+            for stem_name, track in hierarchy.events.items():
+                if track.marks:
+                    tracks[f"Onsets ({stem_name})"] = track.marks
 
     if lyrics:
         tracks["Lyrics"] = [

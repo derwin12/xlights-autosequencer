@@ -53,7 +53,8 @@ def _export_id() -> str:
 
 def _run_export(state: "_ExportState", song: dict, session: dict,
                 layout: dict, destination_name: str, fmt: str,
-                genre: str = "pop", occasion: str = "general") -> None:
+                genre: str = "pop", occasion: str = "general",
+                include_extra_timing: bool = True) -> None:
     """Run the export in a background thread."""
     try:
         state.push({"stage": "building_plan", "progress": 0.1})
@@ -122,6 +123,7 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             occasion=occasion,
             video_path=song.get("video_path"),
             ignored_image_words=session.get("ignored_image_words") or None,
+            include_extra_timing=include_extra_timing,
             progress_cb=_placement_progress,
         )
 
@@ -194,6 +196,7 @@ def start_export(song_id: str):
 
     body = request.get_json(silent=True) or {}
     fmt = body.get("format", "xsq")
+    include_extra_timing = bool(body.get("include_extra_timing", True))
     default_name = Path(source_path).stem if source_path else song.get("title", song_id)
     destination_name = body.get("destination_name", f"{default_name}.xsq")
 
@@ -213,7 +216,8 @@ def start_export(song_id: str):
 
     t = threading.Thread(
         target=_run_export,
-        args=(state, song, session, layout, destination_name, fmt, genre, occasion),
+        args=(state, song, session, layout, destination_name, fmt, genre, occasion,
+              include_extra_timing),
         daemon=True,
     )
     t.start()
