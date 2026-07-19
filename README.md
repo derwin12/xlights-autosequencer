@@ -25,7 +25,27 @@
 
 ## Quick Start
 
-### Prerequisites
+### Option A: Docker Compose (recommended — works on any OS, no VS Code required)
+
+```bash
+git clone https://github.com/derwin12/xlight-autosequencer.git
+cd xlight-autosequencer
+docker compose up
+```
+
+Open **http://localhost:5000**. First run builds the toolchain image (the
+Vamp plugins compile from source — the slow step, easily 20–40 min, but
+fully unattended) and installs the Python/JS packages; later runs are
+fast. Your song library and cached analysis persist in a named Docker
+volume across restarts. This is the only prerequisite: **Docker Desktop**
+(or Docker Engine on Linux) — [docker.com](https://www.docker.com/products/docker-desktop/).
+
+This is a separate, simpler path from `.devcontainer/` below — no VS Code,
+no Dev Containers extension, no outbound-traffic firewall (that firewall
+in `.devcontainer/` is specifically for sandboxing an AI coding agent and
+will block normal internet access for anyone else who hits it).
+
+### Option B: Native install (macOS / Linux)
 
 - **Python 3.11 or 3.12** — [python.org](https://www.python.org/downloads/) or `brew install python@3.12`
 - **Node.js 18+ and npm** — [nodejs.org](https://nodejs.org/) or `brew install node` — required to build the review UI (`src/review/frontend/`)
@@ -35,34 +55,29 @@
 
 > **Fastest path:** `./scripts/install.sh` runs every step below automatically (system deps, Vamp plugins, both Python venvs, and the frontend build) and verifies capabilities at the end.
 
-> **Windows:** `scripts/install.sh` only supports macOS and Linux — Vamp/madmom require a Linux build toolchain. On Windows, build and run inside a Linux container instead; `.devcontainer/Dockerfile` in this repo already builds the full stack (Vamp SDK, QM plugins, madmom) from source for a Linux container and can be adapted for that purpose.
+> **Windows:** `scripts/install.sh` only supports macOS and Linux — Vamp/madmom require a Linux build toolchain. Use **Option A (Docker Compose)** above instead.
 
-### Simple 5-Step Approach to Installation (Docker / Dev Container)
+### Option C: VS Code Dev Container (for contributors who want an interactive VS Code environment)
 
-The entire toolchain (Python, ffmpeg, Vamp plugins, whisperx, xLights AppImage)
-is already captured in `.devcontainer/`, so duplicating a working setup on a
-new machine doesn't require manually reinstalling any of it:
+`.devcontainer/` also works as a normal VS Code Dev Container (open the
+folder, "Reopen in Container") if you'd rather develop interactively
+inside the same toolchain image Option A builds. Two things to know
+that don't apply to Option A:
 
-1. **Install prerequisites** — [Docker Desktop](https://www.docker.com/products/docker-desktop/),
-   [VS Code](https://code.visualstudio.com/), and the
-   [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
-   This is the only manual setup step.
-2. **Clone the repo** — `git clone https://github.com/derwin12/xlight-autosequencer.git`.
-   This pulls the code *and* the full `.devcontainer/` build recipe in one step.
-3. **Open the folder in VS Code and "Reopen in Container"** — VS Code reads
-   `devcontainer.json` and builds `.devcontainer/Dockerfile`, producing an
-   identical environment. This is the slow step (the Vamp plugins compile
-   from source) but it's fully unattended.
-4. **Build the frontend once** — `cd src/review/frontend && npm install && npm run build`.
-   The built bundle is gitignored, so this has to happen on every machine.
-5. **Start the app** — `scripts/startapp.sh` (kills any stale process and
-   launches `xlight-review` at `http://localhost:5000`).
+- It runs an outbound-traffic firewall on start (`.devcontainer/init-firewall.sh`,
+  built for sandboxing an AI coding agent) — normal internet access
+  outside its allowlist is blocked by design.
+- `scripts/startapp.sh` assumes a container named `xlight-dev` (this
+  project's own dev container) — VS Code auto-names yours differently, so
+  set `XLIGHT_DEVCONTAINER_NAME=<your container name>` (find it with
+  `docker ps`) before running the script, or export it once in your shell profile.
 
-This reproduces the code and toolchain, not your data — the uploaded image
-library, song library entries, and cached stems/analysis all live under
-`~/.xlight/` (inside the container, or wherever `XLIGHT_STATE_HOME` points)
-and aren't tracked in git. To carry those over too, copy that directory from
-the old machine to the new one as a 6th step.
+Whichever option you used above, your data (uploaded image library, song
+library entries, cached stems/analysis) lives under `~/.xlight/` — inside
+the container for Options A/C, or wherever `XLIGHT_STATE_HOME` points for
+Option B — and isn't tracked in git. To carry it over to a new machine,
+copy that directory across (for Option A, `docker cp` it into/out of the
+`xlight-state` named volume).
 
 ### Install
 
@@ -112,12 +127,18 @@ cd ../../..
 
 ## Launch the App
 
+If you used Option A (Docker Compose) or Option C (VS Code Dev Container)
+above, the app is already running — skip to **http://localhost:5000**.
+
+For a native install (Option B):
+
 ```bash
 source .venv/bin/activate
-xlight-analyze review
+xlight-review
 ```
 
-Opens **http://localhost:5173** in your browser. The whole workflow lives in six tabs across the top of every screen:
+Opens **http://localhost:5000** in your browser (auto-opened by default;
+pass `--dev` to skip that). The whole workflow lives in six tabs across the top of every screen:
 
 ```
 xOnset  1 Library   2 Drop   3 Analyze   4 Timeline   5 Theme   6 Export

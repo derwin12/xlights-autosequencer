@@ -1,0 +1,34 @@
+# Standalone way to run xOnset with a single command, no VS Code / Dev
+# Containers extension / Claude Code required:
+#
+#   docker compose up
+#
+# Then open http://localhost:5000 . First run builds the image (compiles
+# the Vamp plugins from source — the slow, unattended step, easily 20-40
+# min) and installs the Python/JS packages; later runs are fast.
+#
+# This deliberately does NOT use .devcontainer/devcontainer.json (that's
+# built for an interactive VS Code + Dev Containers workflow and includes
+# an outbound-traffic firewall meant for sandboxing an AI coding agent —
+# appropriate there, actively harmful here, since it blocks most normal
+# internet access). It DOES reuse .devcontainer/Dockerfile unmodified,
+# since that's the actual toolchain build recipe (ffmpeg, compiled Vamp
+# plugins, Node, xLights AppImage) and there's no reason to duplicate it.
+services:
+  xonset:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/workspace
+      # Song library, cached analysis/stems, custom themes/variants — kept
+      # in a named volume so they survive `docker compose down` /
+      # container recreation (unlike the bind-mounted workspace, which is
+      # your own repo checkout and shouldn't hold user data).
+      - xlight-state:/home/node/.xlight
+    command: ["/workspace/scripts/docker-entrypoint.sh"]
+
+volumes:
+  xlight-state:

@@ -1,0 +1,7 @@
+# Shell scripts must keep LF line endings regardless of core.autocrlf --
+# several are executed directly via their #!/usr/bin/env shebang (not
+# `bash script.sh`), which breaks outright on Windows checkouts with
+# core.autocrlf=true (confirmed: scripts/install.sh had CRLF endings on a
+# real Windows clone, 2026-07-18 -- "env: bash\r: No such file or
+# directory" on any Linux container/host that tries to run it directly).
+*.sh text eol=lf

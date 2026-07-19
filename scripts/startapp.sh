@@ -1,20 +1,35 @@
 #!/usr/bin/env bash
-# Restart the xlight-review server running inside the xlight-dev devcontainer.
+# Restart the xlight-review server running inside a devcontainer.
 # The server does not hot-reload backend Python changes, so this must be run
 # after every commit before testing through http://localhost:5000.
 #
 # Works from two places:
 #   - The Windows host (Git Bash etc.): uses `docker exec` against the
-#     xlight-dev container.
-#   - A shell already inside the xlight-dev container (e.g. VS Code's
-#     "Open in terminal" on the container): runs the commands directly,
-#     since there's no `docker` CLI (or container to exec into) in there.
+#     devcontainer.
+#   - A shell already inside the devcontainer (e.g. VS Code's "Open in
+#     terminal" on the container): runs the commands directly, since
+#     there's no `docker` CLI (or container to exec into) in there.
 set -euo pipefail
 
-CONTAINER="xlight-dev"
+# "xlight-dev" is this project's own dev container name (not something
+# VS Code's Dev Containers extension guarantees for anyone else -- it
+# auto-generates its own name per workspace, so a fresh clone's container
+# will be called something else entirely). Override with
+# XLIGHT_DEVCONTAINER_NAME=<name> if yours differs; find it with
+# `docker ps` (look for the image built from .devcontainer/Dockerfile).
+CONTAINER="${XLIGHT_DEVCONTAINER_NAME:-xlight-dev}"
 PORT=5000
 
 if command -v docker &>/dev/null; then
+  if ! docker inspect "$CONTAINER" &>/dev/null; then
+    echo "Error: no container named '$CONTAINER' found."
+    echo "Run 'docker ps' to find your devcontainer's actual name, then either:"
+    echo "  export XLIGHT_DEVCONTAINER_NAME=<your-container-name>"
+    echo "and re-run this script, or pass it inline:"
+    echo "  XLIGHT_DEVCONTAINER_NAME=<your-container-name> $0"
+    exit 1
+  fi
+
   echo "Stopping any running xlight-review process in $CONTAINER..."
   docker exec "$CONTAINER" pkill -f xlight-review || true
 
