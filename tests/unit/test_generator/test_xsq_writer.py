@@ -143,6 +143,23 @@ class TestXsqWriter:
         # The media file text should be non-empty
         assert media.text is not None and len(media.text.strip()) > 0
 
+    def test_author_is_xonset(self, tmp_path: Path) -> None:
+        """<head><author> identifies xOnset as the sequence author."""
+        root = _write_and_parse(_make_plan(), tmp_path)
+        head = root.find("head")
+        assert head is not None
+        author_el = head.find("author")
+        assert author_el is not None
+        assert author_el.text == "xOnset"
+
+    def test_song_and_artist_from_profile(self, tmp_path: Path) -> None:
+        """<head><song>/<artist> reflect the plan's SongProfile."""
+        root = _write_and_parse(_make_plan(), tmp_path)
+        head = root.find("head")
+        assert head is not None
+        assert head.find("song").text == "Test"
+        assert head.find("artist").text == "Artist"
+
     def test_sequence_duration(self, tmp_path: Path) -> None:
         """<head> contains <sequenceDuration> matching the plan duration."""
         plan = _make_plan()

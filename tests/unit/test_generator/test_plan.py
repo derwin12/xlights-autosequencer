@@ -145,6 +145,31 @@ class TestBuildPlan:
         )
         assert has_placements, "At least one section should have effect placements"
 
+    def test_title_artist_override_wins_over_id3_and_filename(self, tmp_path: Path):
+        """A caller-supplied title/artist (e.g. the review library's
+        corrected metadata) must win over read_song_metadata()'s raw
+        ID3/filename-stem fallback in the resulting SongProfile."""
+        hierarchy = _make_hierarchy()
+        props = _make_props()
+        groups = _make_groups()
+        effect_lib = load_effect_library()
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
+
+        config = GenerationConfig(
+            audio_path=tmp_path / "some-raw-filename-slug.mp3",
+            layout_path=tmp_path / "layout.xml",
+            genre="pop",
+            occasion="general",
+            title_override="With a Little Help From My Friends",
+            artist_override="Wet Wet Wet",
+        )
+
+        plan = build_plan(config, hierarchy, props, groups, effect_lib, theme_lib)
+
+        assert plan.song_profile.title == "With a Little Help From My Friends"
+        assert plan.song_profile.artist == "Wet Wet Wet"
+
     def test_xsq_output_is_valid_xml(self, tmp_path: Path):
         hierarchy = _make_hierarchy()
         props = _make_props()

@@ -127,6 +127,46 @@ class TestExportStart:
         assert "export_id" in data
         assert "started_at" in data
 
+    def test_default_destination_name_has_ai_suffix(self, client, tmp_path, monkeypatch):
+        """Downloaded .xsq files should be clearly identifiable as AI-generated."""
+        import src.review.api.v1.export as export_module
+
+        captured: dict = {}
+
+        def _fake_run_export(state, song, session, layout, destination_name, fmt,
+                              genre="pop", occasion="general", include_extra_timing=True):
+            captured["destination_name"] = destination_name
+            with state.lock:
+                state.status = "done"
+
+        monkeypatch.setattr(export_module, "_run_export", _fake_run_export)
+
+        wav_path = tmp_path / "test.wav"
+        wav_bytes = _make_wav_bytes()
+        wav_path.write_bytes(wav_bytes)
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav_bytes), "test.wav"), "source_path": str(wav_path)},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        for _ in range(20):
+            time.sleep(0.1)
+            lib_data = client.get("/api/v1/library").get_json()
+            song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
+            if song and song.get("status") == "analyzed":
+                break
+        _import_layout(client)
+        _theme_song(client, song_id)
+
+        resp = client.post(f"/api/v1/songs/{song_id}/export", json={"format": "xsq"})
+        assert resp.status_code == 202
+        for _ in range(20):
+            if "destination_name" in captured:
+                break
+            time.sleep(0.1)
+        assert captured["destination_name"] == "test_AI.xsq"
+
     def test_export_missing_sections_in_409(self, client):
         """incomplete_theming error must include missing_sections in details."""
         song_id = _import_and_analyze(client)
@@ -162,7 +202,46 @@ class TestRunGeneratorCallConformance:
             words=None,
             phonemes=None,
             video_path=None,
+            title_override="Song Title",
+            artist_override="Song Artist",
         )
+
+
+class TestRunExportTitleArtistOverride:
+    def test_passes_library_title_artist_to_generator(self, tmp_path, monkeypatch):
+        """_run_export must forward the library song's title/artist so the
+        exported .xsq's Meta Data reflects any user correction, not raw ID3
+        tags (which may be missing/wrong for video-sourced audio)."""
+        import src.review.api.v1.export as export_module
+        import src.evaluation.generator_runner as generator_runner_module
+
+        captured: dict = {}
+
+        def _fake_run(**kwargs):
+            captured.update(kwargs)
+            return b"<xsequence></xsequence>"
+
+        monkeypatch.setattr(generator_runner_module, "run", _fake_run)
+
+        audio_path = tmp_path / "test.mp3"
+        audio_path.write_bytes(b"fake-audio")
+        layout_path = tmp_path / "layout.xml"
+        layout_path.write_text("<xlights_rgbeffects></xlights_rgbeffects>")
+
+        state = export_module._ExportState("exp_test")
+        song = {
+            "song_id": "abc123",
+            "source_paths": [str(audio_path)],
+            "title": "With a Little Help From My Friends",
+            "artist": "Wet Wet Wet",
+        }
+        session = {"assignments": [], "lyrics": [], "words": [], "phonemes": []}
+        layout = {"xml_path": str(layout_path)}
+
+        export_module._run_export(state, song, session, layout, "test_AI.xsq", "xsq")
+
+        assert captured["title_override"] == "With a Little Help From My Friends"
+        assert captured["artist_override"] == "Wet Wet Wet"
 
 
 class TestExportSSE:

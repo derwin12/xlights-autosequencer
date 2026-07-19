@@ -124,6 +124,8 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             video_path=song.get("video_path"),
             ignored_image_words=session.get("ignored_image_words") or None,
             include_extra_timing=include_extra_timing,
+            title_override=song.get("title"),
+            artist_override=song.get("artist"),
             progress_cb=_placement_progress,
         )
 
@@ -198,7 +200,7 @@ def start_export(song_id: str):
     fmt = body.get("format", "xsq")
     include_extra_timing = bool(body.get("include_extra_timing", True))
     default_name = Path(source_path).stem if source_path else song.get("title", song_id)
-    destination_name = body.get("destination_name", f"{default_name}.xsq")
+    destination_name = body.get("destination_name", f"{default_name}_AI.xsq")
 
     # Dashboard-wide genre/occasion preferences steer auto theme selection
     # for sections without a user override ("pop"/"general" = generator

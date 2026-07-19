@@ -544,7 +544,7 @@ def write_xsq(
     # <head>
     head = ET.SubElement(root, "head")
     ET.SubElement(head, "version").text = "2026.03"
-    ET.SubElement(head, "author").text = "xlight-autosequencer"
+    ET.SubElement(head, "author").text = "xOnset"
     ET.SubElement(head, "song").text = plan.song_profile.title
     ET.SubElement(head, "artist").text = plan.song_profile.artist
     # Write media path and ensure the MP3 is alongside the XSQ.

@@ -125,6 +125,10 @@ def build_plan(
     profile = read_song_metadata(config.audio_path, hierarchy)
     profile.genre = config.genre
     profile.occasion = config.occasion
+    if config.title_override:
+        profile.title = config.title_override
+    if config.artist_override:
+        profile.artist = config.artist_override
 
     # 2. Derive section energies — use song story if available, else derive from hierarchy
     story: Optional[dict] = None

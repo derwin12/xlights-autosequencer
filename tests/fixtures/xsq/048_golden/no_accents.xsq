@@ -2,7 +2,7 @@
 <xsequence BaseChannel="0" ChanCtrlBasic="0" ChanCtrlColor="0" FixedPointTiming="25" ModelBlending="true">
   <head>
     <version>2026.03</version>
-    <author>xlight-autosequencer</author>
+    <author>xOnset</author>
     <song>10s_vocals</song>
     <artist />
     <mediaFile>10s_vocals.mp3</mediaFile>
@@ -12,7 +12,7 @@
   </head>
   <ColorPalettes>
     <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=77</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=63</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#2E1E61,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=25</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#2C1D61,C_BUTTON_Palette3=#2E1E61,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=37</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#2C1D61,C_BUTTON_Palette3=#2E1E61,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=63</ColorPalette>
@@ -21,18 +21,18 @@
     <ColorPalette>C_BUTTON_Palette1=#FFFFFF,C_BUTTON_Palette2=#00FF00,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=0,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
   </ColorPalettes>
   <EffectDB>
-    <Effect>B_CHOICE_BufferStyle=Per Model Default,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=Left,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
-    <Effect>B_CHOICE_BufferStyle=Per Model Default,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=expand,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
-    <Effect>B_CHOICE_BufferStyle=Per Model Default,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=Right,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
-    <Effect>B_CHOICE_BufferStyle=Per Model Default,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=compress,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
+    <Effect>B_CHOICE_BufferStyle=Per Model Per Preview,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=Left,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
+    <Effect>B_CHOICE_BufferStyle=Per Model Per Preview,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=expand,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
+    <Effect>B_CHOICE_BufferStyle=Per Model Per Preview,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=Right,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
+    <Effect>B_CHOICE_BufferStyle=Per Model Per Preview,E_CHECKBOX_ColorWash_HFade=0,E_CHECKBOX_ColorWash_VFade=0,E_CHOICE_Bars_Direction=compress,E_SLIDER_Bars_BarCount=2,E_TEXTCTRL_ColorWash_Cycles=1.0</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Normal,E_SLIDER_Butterfly_Chunks=3,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=15,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.32,T_TEXTCTRL_Fadeout=0.32</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_CHOICE_Pinwheel_Style=New Render Method,E_SLIDER_Pinwheel_ArmSize=100,E_SLIDER_Pinwheel_Arms=6,E_SLIDER_Pinwheel_Speed=15,E_SLIDER_Pinwheel_Thickness=0,E_SLIDER_Pinwheel_Twist=30,T_TEXTCTRL_Fadein=0.6,T_TEXTCTRL_Fadeout=0.6</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_CHECKBOX_Bars_3D=0,E_CHECKBOX_Bars_Gradient=0,E_CHECKBOX_Bars_Highlight=0,E_CHECKBOX_Bars_UseFirstColorForHighlight=0,E_CHOICE_Bars_Direction=Left,E_SLIDER_Bars_BarCount=2,E_SLIDER_Bars_Cycles=1,T_TEXTCTRL_Fadein=0.6,T_TEXTCTRL_Fadeout=0.6</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_CHOICE_Butterfly_Colors=Palette,E_CHOICE_Butterfly_Direction=Reverse,E_SLIDER_Butterfly_Chunks=1,E_SLIDER_Butterfly_Skip=2,E_SLIDER_Butterfly_Speed=10,E_SLIDER_Butterfly_Style=1,T_TEXTCTRL_Fadein=0.32,T_TEXTCTRL_Fadeout=1</Effect>
-    <Effect>B_CHOICE_BufferStyle=Default,E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5,T_TEXTCTRL_Fadein=0.32,T_TEXTCTRL_Fadeout=0.32</Effect>
+    <Effect>B_CHOICE_BufferStyle=Per Preview,E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5,T_TEXTCTRL_Fadein=0.32,T_TEXTCTRL_Fadeout=0.32</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_CHOICE_Pinwheel_Style=New Render Method,E_SLIDER_Pinwheel_ArmSize=100,E_SLIDER_Pinwheel_Arms=6,E_SLIDER_Pinwheel_Speed=15,E_SLIDER_Pinwheel_Thickness=0,E_SLIDER_Pinwheel_Twist=25,T_TEXTCTRL_Fadein=0.6,T_TEXTCTRL_Fadeout=0.6</Effect>
-    <Effect>B_CHOICE_BufferStyle=Default,E_SLIDER_Number_Strobes=3,E_SLIDER_Strobe_Duration=5,E_SLIDER_Strobe_Type=1,T_TEXTCTRL_Fadein=0.6,T_TEXTCTRL_Fadeout=0.6</Effect>
-    <Effect>B_CHOICE_BufferStyle=Default,E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5,T_TEXTCTRL_Fadein=0.32,T_TEXTCTRL_Fadeout=1</Effect>
+    <Effect>B_CHOICE_BufferStyle=Per Model Default,E_SLIDER_Number_Strobes=3,E_SLIDER_Strobe_Duration=5,E_SLIDER_Strobe_Type=1,T_TEXTCTRL_Fadein=0.6,T_TEXTCTRL_Fadeout=0.6</Effect>
+    <Effect>B_CHOICE_BufferStyle=Per Preview,E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5,T_TEXTCTRL_Fadein=0.32,T_TEXTCTRL_Fadeout=1</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_0FILEPICKERCTRL_IFS=Shaders/Plasma Emitter.fs,E_SLIDER_Shader_Speed=500,E_TEXTCTRL_Shader_Zoom=20</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_CHOICE_Pinwheel_Style=New Render Method,E_SLIDER_Pinwheel_ArmSize=100,E_SLIDER_Pinwheel_Arms=3,E_SLIDER_Pinwheel_Speed=10,E_SLIDER_Pinwheel_Thickness=0,E_SLIDER_Pinwheel_Twist=0</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_TEXTCTRL_Eff_On_End=0,T_CHOICE_LayerMethod=Min,T_SLIDER_EffectLayerMix=0</Effect>
@@ -45,7 +45,7 @@
     <Element type="timing" name="Beats" visible="1" collapsed="0" active="1" />
     <Element type="timing" name="Bars" visible="1" collapsed="0" active="0" />
     <Element type="timing" name="Sections" visible="1" collapsed="0" active="0" />
-    <Element type="timing" name="Onsets (drums)" visible="1" collapsed="0" active="0" />
+    <Element type="timing" name="Onsets (drums)" visible="0" collapsed="0" active="0" />
   </DisplayElements>
   <ElementEffects>
     <Element type="model" name="04_BEAT_1">

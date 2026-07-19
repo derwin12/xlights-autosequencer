@@ -37,6 +37,8 @@ def run(
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
     include_extra_timing: bool = True,
+    title_override: Optional[str] = None,
+    artist_override: Optional[str] = None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Run the generator deterministically and return .xsq bytes.
@@ -106,6 +108,7 @@ def run(
                               genre=genre, occasion=occasion, video_path=video_path,
                               ignored_image_words=ignored_image_words,
                               include_extra_timing=include_extra_timing,
+                              title_override=title_override, artist_override=artist_override,
                               progress_cb=progress_cb)
     except GeneratorError:
         raise
@@ -126,6 +129,8 @@ def _run_pipeline(
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
     include_extra_timing: bool = True,
+    title_override: Optional[str] = None,
+    artist_override: Optional[str] = None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Execute the full generation pipeline and return .xsq bytes."""
@@ -176,6 +181,8 @@ def _run_pipeline(
             vocal_words=words if (words and phonemes) else None,
             video_path=video_path,
             ignored_image_words=ignored_image_words,
+            title_override=title_override,
+            artist_override=artist_override,
         )
 
         # Re-seed after config construction (which may trigger path resolution calls)

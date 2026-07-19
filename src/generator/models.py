@@ -291,6 +291,11 @@ class GenerationConfig:
     # Suppresses lyric-matched Pictures bursts for these words without
     # removing the image from the shared library. Case-insensitive.
     ignored_image_words: Optional[list[str]] = None
+    # Caller-supplied title/artist (e.g. the review library's corrected
+    # values) that win over read_song_metadata()'s raw ID3/filename-stem
+    # result — written into the .xsq's <song>/<artist> Meta Data fields.
+    title_override: Optional[str] = None
+    artist_override: Optional[str] = None
 
     _VALID_CURVES_MODES = frozenset({"all", "brightness", "speed", "color", "none"})
     _VALID_MOOD_INTENTS = frozenset({"auto", "party", "emotional", "dramatic", "playful"})
