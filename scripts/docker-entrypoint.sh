@@ -20,6 +20,12 @@ cd /workspace
 # which is NOT on PATH by default in a non-login shell inside this image.
 export PATH="$HOME/.local/bin:$PATH"
 
+# Debian's python3.11 is PEP 668 "externally managed" — pip refuses to
+# install even with --user unless this is set. Safe here for the same
+# reason the Dockerfile's own pip steps pass --break-system-packages:
+# this container's system Python IS the app environment by design.
+export PIP_BREAK_SYSTEM_PACKAGES=1
+
 echo "[1/5] Installing the Python package (editable) + optional extras..."
 pip install --user -e ".[all]" --quiet
 # madmom is deliberately excluded from the "all" extra (pyproject.toml notes
