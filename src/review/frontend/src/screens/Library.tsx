@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useRef } from 'react';
 import type { Song, Folder } from 'src/store/library';
 
-const ALLOWED_EXTS = new Set(['.mp3', '.wav', '.flac', '.aiff', '.aif']);
+const ALLOWED_AUDIO_EXTS = new Set(['.mp3', '.wav', '.flac', '.aiff', '.aif']);
+// Video files import as songs too (audio track extracted server-side; the
+// video is kept for the matrix Video effect) — same routing as Drop.tsx.
+const ALLOWED_VIDEO_EXTS = new Set(['.mp4', '.mov', '.avi', '.mkv', '.webm']);
 function getExt(f: string) { const i = f.lastIndexOf('.'); return i >= 0 ? f.slice(i).toLowerCase() : ''; }
 
 async function importFile(
@@ -9,14 +12,17 @@ async function importFile(
   onDone: (song: Song, created: boolean) => void,
   onErr: (msg: string) => void,
 ) {
-  if (!ALLOWED_EXTS.has(getExt(file.name))) {
-    onErr(`Unsupported type: ${getExt(file.name)}`);
+  const ext = getExt(file.name);
+  const isVideo = ALLOWED_VIDEO_EXTS.has(ext);
+  if (!isVideo && !ALLOWED_AUDIO_EXTS.has(ext)) {
+    onErr(`Unsupported type: ${ext}`);
     return;
   }
   const fd = new FormData();
-  fd.append('audio', file);
+  fd.append(isVideo ? 'video' : 'audio', file);
   try {
-    const res = await fetch('/api/v1/import', { method: 'POST', body: fd });
+    const endpoint = isVideo ? '/api/v1/import-video' : '/api/v1/import';
+    const res = await fetch(endpoint, { method: 'POST', body: fd });
     const body = await res.json();
     if (!res.ok) { onErr(body?.error?.message ?? 'Import failed'); return; }
     // Forward `created` so the caller can force re-analysis on a re-drop.
@@ -117,7 +123,7 @@ export function Library({ songs, folders, onSelectSong, onFileDrop }: Props) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".mp3,.wav,.flac,.aiff,.aif"
+          accept=".mp3,.wav,.flac,.aiff,.aif,.mp4,.mov,.avi,.mkv,.webm"
           style={{ display: 'none' }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDroppedFile(f); }}
           data-testid="library-file-input"
@@ -143,7 +149,7 @@ export function Library({ songs, folders, onSelectSong, onFileDrop }: Props) {
         >
           <span style={{ fontSize: 40 }}>🎵</span>
           <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text, #f5f5f0)', margin: 0 }}>
-            {dropLoading ? 'Importing…' : 'Drop an MP3 or WAV here to get started'}
+            {dropLoading ? 'Importing…' : 'Drop an MP3, WAV, or video here to get started'}
           </p>
           <p style={{ fontSize: 13, margin: 0, color: 'var(--color-text-muted, #888)' }}>
             or click to browse files
