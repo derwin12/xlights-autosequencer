@@ -13,6 +13,21 @@ function fmtBuildTime(iso: string): string {
   });
 }
 
+/** Strip the "-dirty" suffix so a commit compares equal regardless of
+ * working-tree state at the moment each side was read. */
+function baseCommit(commit: string): string {
+  return commit.replace(/-dirty$/, '');
+}
+
+/** True when the running backend process was started before the latest
+ * commit on disk -- i.e. a restart would pick up newer code (user
+ * request, 2026-07-18: surface this instead of requiring a manual
+ * git log vs. manifest cross-check). */
+function isBackendStale(backendCommit: string | null | undefined, repoHeadCommit: string | null | undefined): boolean {
+  if (!backendCommit || !repoHeadCommit) return false;
+  return baseCommit(backendCommit) !== baseCommit(repoHeadCommit);
+}
+
 const TABS: { id: Screen; label: string; key: string }[] = [
   { id: 'library', label: 'Library', key: '1' },
   { id: 'drop', label: 'Import', key: '2' },
@@ -71,6 +86,7 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
   const manifest = useManifestStore((s) => s.manifest);
   const loadManifest = useManifestStore((s) => s.load);
   React.useEffect(() => { void loadManifest(); }, [loadManifest]);
+  const backendStale = isBackendStale(manifest?.backend_commit, manifest?.repo_head_commit);
 
   return (
     <div className={styles.shell}>
@@ -95,7 +111,9 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
           data-testid="build-stamp"
           onClick={() => setAboutOpen(true)}
           title={
-            'ui = frontend bundle, api = running backend code — click for details'
+            (backendStale
+              ? `Backend is running an older commit than HEAD (${manifest?.repo_head_commit}) — restart the server to pick up the latest code. `
+              : 'ui = frontend bundle, api = running backend code — click for details')
             + (manifest?.backend_started_at ? ` (backend up since ${fmtBuildTime(manifest.backend_started_at)})` : '')
           }
           style={{
@@ -103,15 +121,17 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: 'var(--color-text-muted, #666)',
+            color: backendStale ? 'var(--color-warning, #f59e0b)' : 'var(--color-text-muted, #666)',
             fontSize: 11,
             fontFamily: 'monospace',
             whiteSpace: 'nowrap',
             padding: '0 12px',
+            fontWeight: backendStale ? 600 : 'normal',
           }}
         >
           ui {__GIT_COMMIT__} · built {fmtBuildTime(__BUILD_TIME__)}
           {manifest?.backend_commit ? ` · api ${shortCommit(manifest.backend_commit)}` : ''}
+          {backendStale ? ' ⚠ restart needed' : ''}
         </button>
       </header>
       <About open={aboutOpen} onClose={() => setAboutOpen(false)} />

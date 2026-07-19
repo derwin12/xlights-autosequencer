@@ -61,12 +61,18 @@ def manifest():
         m.setdefault("backend_started_at", _SERVER_STARTED_AT)
         return jsonify(m)
     # Dev stub — frontend still uses this to render the About dialog.
+    # repo_head_commit is read FRESH on every request (unlike
+    # backend_commit, cached once at process start) so the UI can detect
+    # "code was committed/pulled since this process launched" -- the
+    # exact confusion that kept recurring when checking whether a restart
+    # actually picked up the latest change (user request, 2026-07-18).
     return jsonify({
         "app_version": "dev",
         "build_timestamp": None,
         "target_arch": None,
         "frontend_commit": None,
         "backend_commit": _BACKEND_COMMIT,
+        "repo_head_commit": _backend_commit(),
         "backend_started_at": _SERVER_STARTED_AT,
         "bundled_vamp_plugins": [],
         "download_model_manifest_url": None,

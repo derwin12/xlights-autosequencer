@@ -8,6 +8,10 @@ export interface Manifest {
   target_arch: string | null;
   frontend_commit: string | null;
   backend_commit: string | null;
+  // Read fresh per-request (unlike backend_commit, cached once at process
+  // start) so the UI can tell when code has been committed/pulled since
+  // this backend process launched and flag that a restart is needed.
+  repo_head_commit?: string | null;
   backend_started_at?: string | null;
   bundled_vamp_plugins: string[];
   download_model_manifest_url: string | null;

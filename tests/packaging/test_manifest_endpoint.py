@@ -36,6 +36,17 @@ def test_dev_mode_reports_backend_commit_and_start_time(client_dev):
     datetime.fromisoformat(body["backend_started_at"])
 
 
+def test_dev_mode_reports_repo_head_commit_for_staleness_check(client_dev):
+    """repo_head_commit is read fresh per-request (unlike backend_commit,
+    cached once at process start), so the UI can detect when code has
+    been committed since this process launched and show a "restart
+    needed" warning (user request, 2026-07-18)."""
+    import re
+
+    body = client_dev.get("/api/v1/manifest").get_json()
+    assert re.fullmatch(r"[0-9a-f]{7,}(-dirty)?", body["repo_head_commit"])
+
+
 def test_bundled_stub_when_manifest_file_absent(monkeypatch, tmp_path):
     # Simulate bundled mode but without the manifest file on disk — the
     # endpoint must fall back to the dev stub (shape-compatible) rather
