@@ -17,8 +17,12 @@
 services:
   xonset:
     build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
+      # Context must be .devcontainer (not the repo root): the Dockerfile's
+      # COPY lines (init-firewall.sh, xlights-render.sh, xlights-check.sh)
+      # are written relative to that directory, matching how the Dev
+      # Containers extension builds it.
+      context: .devcontainer
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
