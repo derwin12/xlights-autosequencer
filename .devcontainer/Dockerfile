@@ -350,6 +350,12 @@ USER root
 RUN chmod +x /usr/local/bin/xlights-render.sh /usr/local/bin/xlights-check.sh
 USER node
 
+# Pre-create ~/.xlight owned by node. docker-compose.yml mounts a named
+# volume here; without this directory in the image, Docker creates the
+# mountpoint root-owned and the node-user server can't write to it
+# (PermissionError on the first import).
+RUN mkdir -p /home/node/.xlight
+
 # Create .venv-vamp outside the workspace bind mount so it survives container restarts.
 # The XLIGHT_VENV_VAMP env var (set in devcontainer.json containerEnv) points the
 # subprocess runner here instead of looking inside /workspace.
