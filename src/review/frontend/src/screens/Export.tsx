@@ -366,7 +366,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
         onClick={handleRender}
         disabled={exporting}
       >
-        {exporting ? 'Rendering…' : outputPath ? 'Render Again' : 'Render Sequence'}
+        {exporting ? 'Generating…' : outputPath ? 'Generate Again' : 'Generate Sequence'}
       </button>
 
       {renderLog.length > 0 && (
