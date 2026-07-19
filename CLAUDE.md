@@ -129,6 +129,28 @@ xlight-analyze review song_analysis.json
 pytest tests/ -v
 ```
 
+### Restarting the dev review server after a commit (Docker devcontainer)
+
+The review UI at `localhost:5000` runs inside the `xlight-dev` Docker container
+(`docker ps` / `docker exec xlight-dev ps aux`, not a native Windows process).
+`/workspace` in the container is a live bind-mount of the repo, so commits are
+visible immediately, but the running `xlight-review --dev` process does **not**
+hot-reload backend Python changes — it keeps serving whatever it imported at
+process start. Before concluding a backend fix "didn't work" when testing
+through `localhost:5000`, check the UI's version banner (`ui <commit> · built
+<time> · api <commit>`) — if `api` doesn't match the latest commit, restart:
+
+```bash
+docker exec xlight-dev pkill -f xlight-review
+docker exec -d xlight-dev /usr/bin/python3 /home/node/.local/bin/xlight-review --dev --host 0.0.0.0 --port 5000
+```
+
+Git Bash mangles `/usr/bin/...` paths passed to `docker exec` — prefix with
+`MSYS_NO_PATHCONV=1` if invoking from Git Bash on Windows. Frontend-only
+changes need a rebuild first (`cd src/review/frontend && npm run build`) —
+the `ui <commit>` banner segment only changes when that bundle is rebuilt;
+the restart above is only needed for backend Python changes.
+
 ## Segment Classification — Mandatory Changelog Rule
 
 Any change to segment detection, section merging, or section role classification

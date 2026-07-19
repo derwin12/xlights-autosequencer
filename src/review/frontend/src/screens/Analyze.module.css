@@ -665,6 +665,11 @@
   font-size: 12px;
 }
 
+.metadataWarning {
+  color: var(--color-warning, #d9a441);
+  font-size: 12px;
+}
+
 .reanalyzeBtn {
   background: transparent;
   color: var(--ink3, #555);
