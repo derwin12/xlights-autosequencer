@@ -38,7 +38,15 @@ services:
       # container recreation (unlike the bind-mounted workspace, which is
       # your own repo checkout and shouldn't hold user data).
       - xlight-state:/home/node/.xlight
+      # The entrypoint pip-installs everything into ~/.local (and pip/model
+      # downloads land in ~/.cache). Without these volumes a
+      # `--force-recreate` wipes them and the next start silently spends
+      # 10-20 min reinstalling from scratch before the UI comes up.
+      - xlight-packages:/home/node/.local
+      - xlight-cache:/home/node/.cache
     command: ["/workspace/scripts/docker-entrypoint.sh"]
 
 volumes:
   xlight-state:
+  xlight-packages:
+  xlight-cache:
