@@ -153,6 +153,39 @@ def patch_song_folder(song_id: str):
     return jsonify(_song_with_source_exists(song)), 200
 
 
+# ─── Song metadata (title/artist) override ───────────────────────────────────
+
+@api_v1.route("/songs/<song_id>/metadata", methods=["PATCH"])
+def patch_song_metadata(song_id: str):
+    """Let the user correct title/artist when ID3 tags are missing or wrong.
+
+    A future analyze run picks these up as the synced-lyrics search query
+    (see build_song_story's title_override/artist_override) instead of the
+    raw filename stem + "Unknown" fallback.
+    """
+    lib = load_library()
+    body = request.get_json(silent=True) or {}
+
+    song = next((s for s in lib.get("songs", []) if s["song_id"] == song_id), None)
+    if song is None:
+        return jsonify({"error": {"code": "song_not_found", "message": "Song not found"}}), 404
+
+    if "title" in body:
+        title = str(body["title"]).strip()
+        if not title:
+            return jsonify({"error": {"code": "invalid_title", "message": "Title cannot be empty"}}), 400
+        song["title"] = title
+
+    if "artist" in body:
+        artist = str(body["artist"]).strip()
+        if not artist:
+            return jsonify({"error": {"code": "invalid_artist", "message": "Artist cannot be empty"}}), 400
+        song["artist"] = artist
+
+    save_library(lib)
+    return jsonify(_song_with_source_exists(song)), 200
+
+
 # ─── Song delete + cache purge ───────────────────────────────────────────────
 
 def _analysis_cache_path(song_id: str) -> Path:

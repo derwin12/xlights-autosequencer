@@ -143,6 +143,45 @@ def fetch_synced_lyrics(title: str, artist: str) -> Optional[str]:
     return result
 
 
+def check_synced_lyrics_available(title: str, artist: str) -> dict:
+    """Look up synced lyrics for (title, artist) and report why, not just whether.
+
+    Standalone diagnostic for the review UI's "Check Lyrics" button — same
+    underlying lookup as ``fetch_synced_lyrics``, but distinguishes the three
+    cases that otherwise all collapse to ``None`` there: the package isn't
+    installed, the provider search raised (network/rate-limit), or the
+    search genuinely found no match. Returns
+    ``{"found": bool, "reason": str | None, "line_count": int, "preview": list[str]}``
+    — ``reason`` is one of ``"not_installed"``, ``"search_failed"``, or
+    ``"no_match"`` when ``found`` is False, else ``None``.
+    """
+    search_term = f"{title} {artist}".strip()
+    if not search_term:
+        return {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+
+    try:
+        import syncedlyrics
+    except ImportError:
+        return {"found": False, "reason": "not_installed", "line_count": 0, "preview": []}
+
+    try:
+        result = syncedlyrics.search(search_term, providers=list(_ALLOWED_PROVIDERS))
+    except Exception as exc:
+        log.warning("syncedlyrics search failed for %r: %s", search_term, exc)
+        return {"found": False, "reason": "search_failed", "line_count": 0, "preview": []}
+
+    if not result:
+        return {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+
+    lines = parse_lrc(result)
+    if lines:
+        preview = [text for _, text in lines[:3]]
+        return {"found": True, "reason": None, "line_count": len(lines), "preview": preview}
+
+    plain_lines = [ln.strip() for ln in result.splitlines() if ln.strip()]
+    return {"found": True, "reason": None, "line_count": len(plain_lines), "preview": plain_lines[:3]}
+
+
 def get_boundary_refinement_inputs(
     title: str, artist: str, duration_ms: int,
 ) -> tuple[list[WordMark], Optional[str], list[TimingMark]]:

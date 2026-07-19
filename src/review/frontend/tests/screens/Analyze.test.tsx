@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import {
   Analyze,
   deriveSectionRefinementStatus,
@@ -58,6 +58,63 @@ describe('Analyze screen', () => {
       btn.click();
       expect(onComplete).toHaveBeenCalled();
     }
+  });
+
+  it('prefills title/artist inputs from the song', () => {
+    render(<Analyze song={{ ...mockSong, artist: 'Test Artist' }} onComplete={() => {}} />);
+    expect(screen.getByLabelText('Title')).toHaveValue('Test Song');
+    expect(screen.getByLabelText('Artist')).toHaveValue('Test Artist');
+  });
+
+  it('does not PATCH metadata when values are unchanged', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    screen.getByText('Save & Refresh').click();
+    await waitFor(() => {
+      const patchCalls = mockFetch.mock.calls.filter(([, opts]) => opts?.method === 'PATCH');
+      expect(patchCalls.length).toBe(0);
+    });
+  });
+
+  it('PATCHes /metadata with the changed title on Save & Refresh', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ song_id: 'abc123', title: 'New Title' }) });
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    const titleInput = screen.getByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'New Title' } });
+    screen.getByText('Save & Refresh').click();
+    await waitFor(() => {
+      const patchCall = mockFetch.mock.calls.find(([, opts]) => opts?.method === 'PATCH');
+      expect(patchCall).toBeTruthy();
+      expect(patchCall![0]).toBe('/api/v1/songs/abc123/metadata');
+      expect(JSON.parse(patchCall![1].body)).toEqual({ title: 'New Title' });
+    });
+  });
+
+  it('POSTs /lyrics/check with the current title/artist and shows found result', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: true, reason: null, line_count: 12, preview: [] }),
+    });
+    render(<Analyze song={{ ...mockSong, artist: 'Test Artist' }} onComplete={() => {}} />);
+    screen.getByText('Check Lyrics').click();
+    await waitFor(() => {
+      const checkCall = mockFetch.mock.calls.find(([url]) => url === '/api/v1/lyrics/check');
+      expect(checkCall).toBeTruthy();
+      expect(JSON.parse(checkCall![1].body)).toEqual({ title: 'Test Song', artist: 'Test Artist' });
+      expect(screen.getByText(/Found \(12 lines\)/)).toBeTruthy();
+    });
+  });
+
+  it('shows the failure reason when lyrics are not found', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: false, reason: 'no_match', line_count: 0, preview: [] }),
+    });
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    screen.getByText('Check Lyrics').click();
+    await waitFor(() => {
+      expect(screen.getByText(/no match found/)).toBeTruthy();
+    });
   });
 
 });

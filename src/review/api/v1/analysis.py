@@ -408,7 +408,13 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                     "status": "running", "progress": 0.0})
         try:
             from src.story.builder import build_song_story
-            story = build_song_story(hierarchy.to_dict(), str(src))
+            lib = load_library()
+            lib_song = next((s for s in lib.get("songs", []) if s.get("song_id") == song_id), None)
+            story = build_song_story(
+                hierarchy.to_dict(), str(src),
+                title_override=(lib_song or {}).get("title"),
+                artist_override=(lib_song or {}).get("artist"),
+            )
             story_sections = story.get("sections", [])
             # Surface Step-15c capability skips (one entry per skipped fix
             # per song) on HierarchyResult.warnings so the analyze-step API
@@ -760,6 +766,25 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                                 "error": str(exc)}})
         state.push({"log": {"at_ms": 0, "level": "error",
                             "message": f"{exc}\n{tb[:500]}}}"}})
+
+
+@api_v1.route("/lyrics/check", methods=["POST"])
+def check_lyrics():
+    """Standalone synced-lyrics lookup for the Analyze screen's "Check Lyrics"
+    button — validates title/artist against lyrics providers directly,
+    without running the audio pipeline, so a user can fix a bad title/artist
+    before committing to a full analyze/refresh.
+    """
+    body = request.get_json(silent=True) or {}
+    title = str(body.get("title") or "").strip()
+    artist = str(body.get("artist") or "").strip()
+    if not title and not artist:
+        return jsonify({"error": {"code": "missing_query",
+                                   "message": "title and/or artist is required"}}), 400
+
+    from src.analyzer.synced_lyrics import check_synced_lyrics_available
+    result = check_synced_lyrics_available(title, artist)
+    return jsonify(result), 200
 
 
 @api_v1.route("/songs/<song_id>/analyze", methods=["POST"])

@@ -637,6 +637,34 @@
   align-items: center;
 }
 
+.metadataRow {
+  padding: 10px 20px;
+  border-top: 1px solid var(--line, #222);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metadataInput {
+  background: transparent;
+  color: var(--ink, #f5f5f0);
+  border: 1px solid var(--line, #333);
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 160px;
+}
+
+.metadataError {
+  color: var(--color-error, #e05252);
+  font-size: 12px;
+}
+
+.metadataSuccess {
+  color: var(--color-success, #4caf50);
+  font-size: 12px;
+}
+
 .reanalyzeBtn {
   background: transparent;
   color: var(--ink3, #555);

@@ -243,3 +243,38 @@ class TestAnalyzeCommit:
         )
         # Either already_committed or run_not_found (after first commit clears it)
         assert resp.status_code in (404, 409)
+
+
+class TestCheckLyrics:
+    """Standalone /lyrics/check lookup — no audio pipeline involved."""
+
+    def test_missing_query_returns_400(self, client):
+        resp = client.post("/api/v1/lyrics/check", json={})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_query"
+
+    def test_found_returns_200_with_line_count(self, client, monkeypatch):
+        import src.analyzer.synced_lyrics as sl
+
+        monkeypatch.setattr(
+            sl, "check_synced_lyrics_available",
+            lambda title, artist: {"found": True, "reason": None, "line_count": 12, "preview": ["a", "b", "c"]},
+        )
+        resp = client.post("/api/v1/lyrics/check", json={"title": "Real Title", "artist": "Real Artist"})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["found"] is True
+        assert data["line_count"] == 12
+
+    def test_not_found_returns_200_with_reason(self, client, monkeypatch):
+        import src.analyzer.synced_lyrics as sl
+
+        monkeypatch.setattr(
+            sl, "check_synced_lyrics_available",
+            lambda title, artist: {"found": False, "reason": "no_match", "line_count": 0, "preview": []},
+        )
+        resp = client.post("/api/v1/lyrics/check", json={"title": "Garbled Slug", "artist": "Unknown"})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["found"] is False
+        assert data["reason"] == "no_match"

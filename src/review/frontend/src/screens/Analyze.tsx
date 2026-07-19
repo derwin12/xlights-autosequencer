@@ -198,6 +198,15 @@ function fmtDuration(ms: number): string {
   return `${m}:${String(sec).padStart(2, '0')}`;
 }
 
+export function lyricsCheckReasonLabel(reason: string | null): string {
+  switch (reason) {
+    case 'not_installed': return 'syncedlyrics not installed';
+    case 'search_failed': return 'provider search failed';
+    case 'no_match': return 'no match found';
+    default: return reason || 'not found';
+  }
+}
+
 export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComplete }: AnalyzeProps) {
   const [detectors, setDetectors] = useState<DetectorRow[]>([]);
   const [overall, setOverall] = useState<OverallState | null>(null);
@@ -221,6 +230,21 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   });
   const [elapsedMs, setElapsedMs] = useState(0);
 
+  // Title/artist override — lets the user correct metadata (e.g. audio
+  // extracted from video, with no ID3 tags) so the synced-lyrics lookup gets
+  // a real search query instead of the raw filename + "Unknown" fallback.
+  const [titleInput, setTitleInput] = useState(song.title);
+  const [artistInput, setArtistInput] = useState(song.artist ?? '');
+  const [metadataSaving, setMetadataSaving] = useState(false);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
+  const [checkingLyrics, setCheckingLyrics] = useState(false);
+  const [lyricsCheckResult, setLyricsCheckResult] = useState<{
+    found: boolean;
+    reason: string | null;
+    line_count: number;
+    preview: string[];
+  } | null>(null);
+
   const esRef = useRef<EventSource | null>(null);
   // Seed forceRef with forceOnMount so the initial POST /analyze carries
   // force=true when the parent asked for a re-run (set on re-drop).
@@ -241,6 +265,78 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
     setFindings({ beats: 0, bars: 0, sections: [], waveformDecoded: false, themesAssigned: false });
     setElapsedMs(0);
     startTimeRef.current = null;
+  }
+
+  // Save a title/artist correction, then re-run analysis WITHOUT forcing —
+  // run_orchestrator cache-hits the heavy pipeline (demucs/vamp/madmom,
+  // unchanged since only metadata changed) and only the story/lyrics stage
+  // re-runs, so this completes in seconds rather than minutes.
+  async function handleSaveMetadata() {
+    const trimmedTitle = titleInput.trim();
+    const trimmedArtist = artistInput.trim();
+    const body: Record<string, string> = {};
+    if (trimmedTitle && trimmedTitle !== song.title) body.title = trimmedTitle;
+    if (trimmedArtist && trimmedArtist !== (song.artist ?? '')) body.artist = trimmedArtist;
+    if (Object.keys(body).length === 0) return;
+
+    setMetadataSaving(true);
+    setMetadataError(null);
+    try {
+      const res = await fetch(`/api/v1/songs/${song.song_id}/metadata`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error?.message || 'Failed to save metadata');
+      }
+      const updated = await res.json();
+      onAnalysisComplete?.({ ...song, ...updated });
+
+      esRef.current?.close();
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+      forceRef.current = false;
+      setDetectors([]);
+      setOverall(null);
+      setError(null);
+      setAnalysisComplete(false);
+      setLogLines([]);
+      setFindings({ beats: 0, bars: 0, sections: [], waveformDecoded: false, themesAssigned: false });
+      setElapsedMs(0);
+      startTimeRef.current = null;
+    } catch (e) {
+      setMetadataError(e instanceof Error ? e.message : 'Failed to save metadata');
+    } finally {
+      setMetadataSaving(false);
+    }
+  }
+
+  // Standalone lookup — validates title/artist against lyrics providers
+  // directly (no audio pipeline), so the user can fix a bad title/artist
+  // before committing to a full Save & Refresh.
+  async function handleCheckLyrics() {
+    setCheckingLyrics(true);
+    setLyricsCheckResult(null);
+    try {
+      const res = await fetch('/api/v1/lyrics/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: titleInput.trim(), artist: artistInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || 'Lyrics check failed');
+      setLyricsCheckResult(data);
+    } catch (e) {
+      setLyricsCheckResult({
+        found: false,
+        reason: e instanceof Error ? e.message : 'Lyrics check failed',
+        line_count: 0,
+        preview: [],
+      });
+    } finally {
+      setCheckingLyrics(false);
+    }
   }
 
   // Fetch sections on complete
@@ -524,6 +620,44 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
             ▶ review timeline →
           </button>
         </div>
+        <div className={styles.metadataRow}>
+          <input
+            className={styles.metadataInput}
+            type="text"
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            placeholder="Title"
+            aria-label="Title"
+          />
+          <input
+            className={styles.metadataInput}
+            type="text"
+            value={artistInput}
+            onChange={(e) => setArtistInput(e.target.value)}
+            placeholder="Artist"
+            aria-label="Artist"
+          />
+          <button
+            className={styles.reanalyzeBtn}
+            onClick={handleSaveMetadata}
+            disabled={metadataSaving || (!titleInput.trim() && !artistInput.trim())}
+          >
+            {metadataSaving ? 'Saving…' : 'Save & Refresh'}
+          </button>
+          <button
+            className={styles.reanalyzeBtn}
+            onClick={handleCheckLyrics}
+            disabled={checkingLyrics || (!titleInput.trim() && !artistInput.trim())}
+          >
+            {checkingLyrics ? 'Checking…' : 'Check Lyrics'}
+          </button>
+          {metadataError && <span className={styles.metadataError}>{metadataError}</span>}
+          {lyricsCheckResult && (
+            lyricsCheckResult.found
+              ? <span className={styles.metadataSuccess}>✓ Found ({lyricsCheckResult.line_count} lines)</span>
+              : <span className={styles.metadataError}>✗ {lyricsCheckReasonLabel(lyricsCheckResult.reason)}</span>
+          )}
+        </div>
         <div style={{
           padding: '24px 32px',
           color: 'var(--color-text-muted, #888)',
@@ -612,6 +746,45 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
           <button className={styles.reviewBtn} onClick={onComplete}>
             ▶ review timeline →
           </button>
+        )}
+      </div>
+
+      <div className={styles.metadataRow}>
+        <input
+          className={styles.metadataInput}
+          type="text"
+          value={titleInput}
+          onChange={(e) => setTitleInput(e.target.value)}
+          placeholder="Title"
+          aria-label="Title"
+        />
+        <input
+          className={styles.metadataInput}
+          type="text"
+          value={artistInput}
+          onChange={(e) => setArtistInput(e.target.value)}
+          placeholder="Artist"
+          aria-label="Artist"
+        />
+        <button
+          className={styles.reanalyzeBtn}
+          onClick={handleSaveMetadata}
+          disabled={metadataSaving || (!titleInput.trim() && !artistInput.trim())}
+        >
+          {metadataSaving ? 'Saving…' : 'Save & Refresh'}
+        </button>
+        <button
+          className={styles.reanalyzeBtn}
+          onClick={handleCheckLyrics}
+          disabled={checkingLyrics || (!titleInput.trim() && !artistInput.trim())}
+        >
+          {checkingLyrics ? 'Checking…' : 'Check Lyrics'}
+        </button>
+        {metadataError && <span className={styles.metadataError}>{metadataError}</span>}
+        {lyricsCheckResult && (
+          lyricsCheckResult.found
+            ? <span className={styles.metadataSuccess}>✓ Found ({lyricsCheckResult.line_count} lines)</span>
+            : <span className={styles.metadataError}>✗ {lyricsCheckReasonLabel(lyricsCheckResult.reason)}</span>
         )}
       </div>
 
@@ -868,7 +1041,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       {analysisComplete && (
         <div className={styles.reanalyzeRow}>
           <button className={styles.reanalyzeBtn} onClick={handleReanalyze}>
-            Re-analyze
+            {alreadyAnalyzedAtMount ? 'Re-analyze' : 'Analyze'}
           </button>
         </div>
       )}

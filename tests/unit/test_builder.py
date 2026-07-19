@@ -205,3 +205,34 @@ def test_handles_hierarchy_with_none_optional_fields():
     hier["interactions"] = None
     result = build_song_story(hier, AUDIO_PATH)
     assert isinstance(result, dict)
+
+
+# ── title/artist override ───────────────────────────────────────────────────────
+
+def test_title_override_wins_over_filename_fallback(hierarchy):
+    """AUDIO_PATH has no ID3 tags, so title normally falls back to the
+    filename stem — an explicit override must win over that fallback."""
+    result = build_song_story(hierarchy, AUDIO_PATH, title_override="Real Title")
+    assert result["song"]["title"] == "Real Title"
+
+
+def test_artist_override_wins_over_unknown_fallback(hierarchy):
+    """AUDIO_PATH has no ID3 tags, so artist normally falls back to
+    'Unknown' — an explicit override must win over that fallback."""
+    result = build_song_story(hierarchy, AUDIO_PATH, artist_override="Real Artist")
+    assert result["song"]["artist"] == "Real Artist"
+
+
+def test_no_override_keeps_existing_fallback_behavior(hierarchy):
+    """Omitting the override params must not change existing behavior."""
+    result = build_song_story(hierarchy, AUDIO_PATH)
+    assert result["song"]["title"] == "fixture_song"
+    assert result["song"]["artist"] == "Unknown"
+
+
+def test_blank_override_does_not_clobber_fallback(hierarchy):
+    """An empty-string override (e.g. an unmodified form field) must not
+    stomp the filename/ID3-derived value with an empty title."""
+    result = build_song_story(hierarchy, AUDIO_PATH, title_override="", artist_override="")
+    assert result["song"]["title"] == "fixture_song"
+    assert result["song"]["artist"] == "Unknown"

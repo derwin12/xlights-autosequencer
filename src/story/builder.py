@@ -157,6 +157,8 @@ def _compute_moment_pattern(moments_in_section: list[dict]) -> str:
 def build_song_story(
     hierarchy: dict,
     audio_path: str,
+    title_override: str | None = None,
+    artist_override: str | None = None,
 ) -> dict:
     """Orchestrate all foundational modules to produce a complete song story dict.
 
@@ -166,6 +168,12 @@ def build_song_story(
         HierarchyResult-compatible dict (from HierarchyResult.to_dict()).
     audio_path:
         Path to the source audio file (used for title/artist extraction).
+    title_override, artist_override:
+        Caller-supplied title/artist (e.g. a user correction in the review UI)
+        that wins over both ID3 tags and the filename-stem fallback. Used as
+        the search query for the synced-lyrics lookup — ID3-less files (e.g.
+        audio extracted from video) otherwise search for the raw filename
+        slug + "Unknown", which no lyrics provider matches.
 
     Returns
     -------
@@ -384,6 +392,11 @@ def build_song_story(
     except Exception:
         # mutagen not available, file not readable, or no ID3 tags — use defaults
         pass
+
+    if title_override:
+        title = title_override
+    if artist_override:
+        artist = artist_override
 
     duration_formatted: str = _fmt_time(duration_seconds)
 

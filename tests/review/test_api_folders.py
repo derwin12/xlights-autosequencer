@@ -179,3 +179,50 @@ class TestPatchSongFolder:
         resp = client.patch(f"/api/v1/songs/{song_id}/folder", json={"folder_id": "nonexistent"})
         assert resp.status_code == 404
         assert resp.get_json()["error"]["code"] == "folder_not_found"
+
+
+class TestPatchSongMetadata:
+    def test_update_title_returns_200(self, client):
+        song_data = _import_song(client, _make_unique_wav(6))
+        song_id = song_data["song"]["song_id"]
+        resp = client.patch(f"/api/v1/songs/{song_id}/metadata", json={"title": "With a Little Help From My Friends"})
+        assert resp.status_code == 200
+        assert resp.get_json()["title"] == "With a Little Help From My Friends"
+
+    def test_update_artist_reflected_in_library(self, client):
+        song_data = _import_song(client, _make_unique_wav(7))
+        song_id = song_data["song"]["song_id"]
+        client.patch(f"/api/v1/songs/{song_id}/metadata", json={"artist": "Wet Wet Wet"})
+        lib = client.get("/api/v1/library").get_json()
+        song = next(s for s in lib["songs"] if s["song_id"] == song_id)
+        assert song["artist"] == "Wet Wet Wet"
+
+    def test_update_title_and_artist_together(self, client):
+        song_data = _import_song(client, _make_unique_wav(8))
+        song_id = song_data["song"]["song_id"]
+        resp = client.patch(
+            f"/api/v1/songs/{song_id}/metadata",
+            json={"title": "Corrected Title", "artist": "Corrected Artist"},
+        )
+        data = resp.get_json()
+        assert data["title"] == "Corrected Title"
+        assert data["artist"] == "Corrected Artist"
+
+    def test_empty_title_returns_400(self, client):
+        song_data = _import_song(client, _make_unique_wav(9))
+        song_id = song_data["song"]["song_id"]
+        resp = client.patch(f"/api/v1/songs/{song_id}/metadata", json={"title": "   "})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "invalid_title"
+
+    def test_empty_artist_returns_400(self, client):
+        song_data = _import_song(client, _make_unique_wav(10))
+        song_id = song_data["song"]["song_id"]
+        resp = client.patch(f"/api/v1/songs/{song_id}/metadata", json={"artist": ""})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "invalid_artist"
+
+    def test_unknown_song_returns_404(self, client):
+        resp = client.patch("/api/v1/songs/deadbeef/metadata", json={"title": "X"})
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "song_not_found"

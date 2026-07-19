@@ -577,6 +577,7 @@ export default function App() {
         if (!song) return <PlaceholderScreen label="Drop a song first" onDrop={() => setScreen('drop')} />;
         return (
           <Analyze
+            key={song.song_id}
             song={song}
             forceOnMount={forceAnalyze}
             onAnalysisComplete={(updated) => {

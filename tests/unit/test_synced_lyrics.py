@@ -215,6 +215,90 @@ def test_get_boundary_refinement_inputs_no_match(monkeypatch):
     assert line_marks == []
 
 
+# ---------------------------------------------------------------------------
+# check_synced_lyrics_available — standalone diagnostic for the "Check
+# Lyrics" button, distinguishing not_installed / search_failed / no_match.
+# ---------------------------------------------------------------------------
+
+def test_check_synced_lyrics_found_with_lrc(monkeypatch):
+    lrc = (
+        "[00:01.00]la la placeholder line one\n"
+        "[00:03.00]la la placeholder line two\n"
+        "[00:05.00]a unique verse line here\n"
+    )
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return lrc
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Placeholder Title", "Placeholder Artist")
+    assert result["found"] is True
+    assert result["reason"] is None
+    assert result["line_count"] == 3
+    assert result["preview"] == [
+        "la la placeholder line one",
+        "la la placeholder line two",
+        "a unique verse line here",
+    ]
+
+
+def test_check_synced_lyrics_found_plain_text(monkeypatch):
+    plain = "la la placeholder line one\nla la placeholder line two\n"
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return plain
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Title", "Artist")
+    assert result["found"] is True
+    assert result["line_count"] == 2
+
+
+def test_check_synced_lyrics_no_match(monkeypatch):
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return None
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Nonexistent Song Xyzzy", "Nobody")
+    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+
+
+def test_check_synced_lyrics_search_failed(monkeypatch):
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            raise RuntimeError("network error")
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Title", "Artist")
+    assert result == {"found": False, "reason": "search_failed", "line_count": 0, "preview": []}
+
+
+def test_check_synced_lyrics_not_installed(monkeypatch):
+    import builtins
+    real_import = builtins.__import__
+
+    def _fake_import(name, *args, **kwargs):
+        if name == "syncedlyrics":
+            raise ImportError("no module named syncedlyrics")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _fake_import)
+    result = sl.check_synced_lyrics_available("Title", "Artist")
+    assert result == {"found": False, "reason": "not_installed", "line_count": 0, "preview": []}
+
+
+def test_check_synced_lyrics_empty_query_returns_no_match():
+    result = sl.check_synced_lyrics_available("", "")
+    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+
+
 def test_get_boundary_refinement_inputs_plain_text_no_timestamps(monkeypatch):
     """Some providers can return untimed plain text — no forced_words, but
     chorus_body can still be derived from line repetition."""
