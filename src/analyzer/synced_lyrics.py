@@ -119,28 +119,88 @@ def find_chorus_body(
     return " ".join(lines[j][1] for j in range(first_idx, first_idx + block_size))
 
 
+def _search_synced_lyrics(search_term: str, *, max_attempts: int = 3) -> tuple[Optional[str], Optional[str]]:
+    """Try ``syncedlyrics.search()`` up to ``max_attempts`` times, preferring
+    a timed-LRC result over plain text.
+
+    One provider in the allowlist (``megalobiz``) has been observed to time
+    out intermittently; when it does, ``syncedlyrics`` silently falls back
+    to a different provider that may only return plain (untimed) text —
+    which is useless for forced word/line timing even though "lyrics were
+    found". Retrying a couple of times gives a transient timeout another
+    chance to land on a provider that returns real LRC timestamps instead.
+
+    Returns ``(text, reason)``: ``text`` is the best result found (a timed
+    result if any attempt got one, else the first plain-text result, else
+    ``None``). ``reason`` is ``None`` when ``text`` is not ``None``,
+    ``"not_installed"`` if the package is missing, ``"search_failed"`` if
+    every attempt raised, or ``"no_match"`` if every attempt returned
+    nothing without raising.
+    """
+    try:
+        import syncedlyrics
+    except ImportError:
+        return None, "not_installed"
+
+    best_result: Optional[str] = None
+    any_attempt_succeeded = False
+    for _ in range(max_attempts):
+        try:
+            result = syncedlyrics.search(search_term, providers=list(_ALLOWED_PROVIDERS))
+        except Exception as exc:
+            log.warning("syncedlyrics search failed for %r: %s", search_term, exc)
+            continue
+        any_attempt_succeeded = True
+        if not result:
+            continue
+        if best_result is None:
+            best_result = result
+        if parse_lrc(result):
+            return result, None
+
+    if best_result is not None:
+        return best_result, None
+    return None, "search_failed" if not any_attempt_succeeded else "no_match"
+
+
 def fetch_synced_lyrics(title: str, artist: str) -> Optional[str]:
     """Search for synced lyrics via ``syncedlyrics``, restricted to non-Genius providers.
 
     Returns raw LRC (or plain, provider-dependent) text, or ``None`` when no
     match is found, the search fails, or ``syncedlyrics`` isn't installed.
     """
-    try:
-        import syncedlyrics
-    except ImportError:
-        log.warning("syncedlyrics is not installed — skipping synced-lyrics lookup")
-        return None
-
     search_term = f"{title} {artist}".strip()
     if not search_term:
         return None
 
-    try:
-        result = syncedlyrics.search(search_term, providers=list(_ALLOWED_PROVIDERS))
-    except Exception as exc:
-        log.warning("syncedlyrics search failed for %r: %s", search_term, exc)
-        return None
-    return result
+    text, reason = _search_synced_lyrics(search_term)
+    if reason == "not_installed":
+        log.warning("syncedlyrics is not installed — skipping synced-lyrics lookup")
+    return text
+
+
+def check_synced_lyrics_with_text(title: str, artist: str) -> tuple[dict, Optional[str]]:
+    """Same lookup as ``check_synced_lyrics_available``, also returning the
+    raw lyrics text so a caller (the review API) can cache a confirmed-good
+    result and reuse it for the real analyze pass instead of re-fetching —
+    a second independent network round-trip against the same flaky provider
+    could land on a worse (or no) result than what was already confirmed.
+    """
+    search_term = f"{title} {artist}".strip()
+    if not search_term:
+        return {"found": False, "reason": "no_match", "line_count": 0, "preview": []}, None
+
+    result, reason = _search_synced_lyrics(search_term)
+    if result is None:
+        return {"found": False, "reason": reason, "line_count": 0, "preview": []}, None
+
+    lines = parse_lrc(result)
+    if lines:
+        preview = [text for _, text in lines[:3]]
+        return {"found": True, "reason": None, "line_count": len(lines), "preview": preview}, result
+
+    plain_lines = [ln.strip() for ln in result.splitlines() if ln.strip()]
+    return {"found": True, "reason": None, "line_count": len(plain_lines), "preview": plain_lines[:3]}, result
 
 
 def check_synced_lyrics_available(title: str, artist: str) -> dict:
@@ -155,35 +215,12 @@ def check_synced_lyrics_available(title: str, artist: str) -> dict:
     — ``reason`` is one of ``"not_installed"``, ``"search_failed"``, or
     ``"no_match"`` when ``found`` is False, else ``None``.
     """
-    search_term = f"{title} {artist}".strip()
-    if not search_term:
-        return {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
-
-    try:
-        import syncedlyrics
-    except ImportError:
-        return {"found": False, "reason": "not_installed", "line_count": 0, "preview": []}
-
-    try:
-        result = syncedlyrics.search(search_term, providers=list(_ALLOWED_PROVIDERS))
-    except Exception as exc:
-        log.warning("syncedlyrics search failed for %r: %s", search_term, exc)
-        return {"found": False, "reason": "search_failed", "line_count": 0, "preview": []}
-
-    if not result:
-        return {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
-
-    lines = parse_lrc(result)
-    if lines:
-        preview = [text for _, text in lines[:3]]
-        return {"found": True, "reason": None, "line_count": len(lines), "preview": preview}
-
-    plain_lines = [ln.strip() for ln in result.splitlines() if ln.strip()]
-    return {"found": True, "reason": None, "line_count": len(plain_lines), "preview": plain_lines[:3]}
+    result, _text = check_synced_lyrics_with_text(title, artist)
+    return result
 
 
 def get_boundary_refinement_inputs(
-    title: str, artist: str, duration_ms: int,
+    title: str, artist: str, duration_ms: int, *, lyrics_text: Optional[str] = None,
 ) -> tuple[list[WordMark], Optional[str], list[TimingMark]]:
     """Fetch synced lyrics and derive ``(forced_words, chorus_body, line_marks)``.
 
@@ -194,8 +231,15 @@ def get_boundary_refinement_inputs(
     line repetition. ``line_marks`` is one ``TimingMark`` per LRC line, for
     the lyric timeline track — fetched once here rather than a second time
     per call site to avoid a duplicate network lookup.
+
+    ``lyrics_text``, when provided (e.g. a cached result from a prior
+    "Check Lyrics" lookup), is used directly instead of performing a fresh
+    ``fetch_synced_lyrics()`` call — avoids a second independent network
+    round-trip against a potentially flaky provider that could return a
+    different (or no) result than what was already confirmed.
     """
-    lyrics_text = fetch_synced_lyrics(title, artist)
+    if lyrics_text is None:
+        lyrics_text = fetch_synced_lyrics(title, artist)
     if not lyrics_text:
         return [], None, []
 

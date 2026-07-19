@@ -29,6 +29,13 @@ from src.review.storage.assignments import load_session, save_session, save_full
 _runs: dict[str, "_RunState"] = {}
 _runs_lock = threading.Lock()
 
+# Caches a confirmed-good "Check Lyrics" result by (title, artist) so the
+# actual analyze pass can reuse it instead of re-fetching — a second
+# independent network round-trip against a flaky lyrics provider could land
+# on a worse (or no) result than what was already confirmed.
+_lyrics_cache: dict[tuple[str, str], str] = {}
+_lyrics_cache_lock = threading.Lock()
+
 
 class _RunState:
     def __init__(self, run_id: str, song_id: str, force: bool = False) -> None:
@@ -410,10 +417,15 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             from src.story.builder import build_song_story
             lib = load_library()
             lib_song = next((s for s in lib.get("songs", []) if s.get("song_id") == song_id), None)
+            lib_title = (lib_song or {}).get("title")
+            lib_artist = (lib_song or {}).get("artist")
+            with _lyrics_cache_lock:
+                cached_lyrics_text = _lyrics_cache.get((lib_title, lib_artist))
             story = build_song_story(
                 hierarchy.to_dict(), str(src),
-                title_override=(lib_song or {}).get("title"),
-                artist_override=(lib_song or {}).get("artist"),
+                title_override=lib_title,
+                artist_override=lib_artist,
+                lyrics_text_override=cached_lyrics_text,
             )
             story_sections = story.get("sections", [])
             # Surface Step-15c capability skips (one entry per skipped fix
@@ -782,8 +794,11 @@ def check_lyrics():
         return jsonify({"error": {"code": "missing_query",
                                    "message": "title and/or artist is required"}}), 400
 
-    from src.analyzer.synced_lyrics import check_synced_lyrics_available
-    result = check_synced_lyrics_available(title, artist)
+    from src.analyzer.synced_lyrics import check_synced_lyrics_with_text
+    result, text = check_synced_lyrics_with_text(title, artist)
+    if text:
+        with _lyrics_cache_lock:
+            _lyrics_cache[(title, artist)] = text
     return jsonify(result), 200
 
 

@@ -183,8 +183,54 @@ def test_fetch_synced_lyrics_empty_title_and_artist_returns_none():
 
 
 # ---------------------------------------------------------------------------
+# check_synced_lyrics_with_text — exposes raw text for caching
+# ---------------------------------------------------------------------------
+
+def test_check_synced_lyrics_with_text_returns_raw_lrc(monkeypatch):
+    lrc = "[00:01.00]la la placeholder\n"
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return lrc
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result, text = sl.check_synced_lyrics_with_text("Title", "Artist")
+    assert result["found"] is True
+    assert text == lrc
+
+
+def test_check_synced_lyrics_with_text_returns_none_when_not_found(monkeypatch):
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return None
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result, text = sl.check_synced_lyrics_with_text("Nonexistent Xyzzy", "Nobody")
+    assert result["found"] is False
+    assert text is None
+
+
+# ---------------------------------------------------------------------------
 # get_boundary_refinement_inputs — end-to-end wiring
 # ---------------------------------------------------------------------------
+
+def test_get_boundary_refinement_inputs_uses_cached_lyrics_text_without_refetching(monkeypatch):
+    """A cached lyrics_text (e.g. from a prior Check Lyrics call) must skip
+    fetch_synced_lyrics entirely — no second network round-trip."""
+    lrc = "[00:01.00]cached line one\n[00:03.00]cached line two\n"
+
+    def _should_not_be_called(title, artist):
+        raise AssertionError("fetch_synced_lyrics should not be called when lyrics_text is cached")
+
+    monkeypatch.setattr(sl, "fetch_synced_lyrics", _should_not_be_called)
+    forced_words, chorus_body, line_marks = sl.get_boundary_refinement_inputs(
+        "Title", "Artist", 12_000, lyrics_text=lrc,
+    )
+    assert len(forced_words) > 0
+    assert [m.label for m in line_marks] == ["cached line one", "cached line two"]
+
 
 def test_get_boundary_refinement_inputs_full_lrc(monkeypatch):
     lrc = (
@@ -292,6 +338,80 @@ def test_check_synced_lyrics_not_installed(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", _fake_import)
     result = sl.check_synced_lyrics_available("Title", "Artist")
     assert result == {"found": False, "reason": "not_installed", "line_count": 0, "preview": []}
+
+
+def test_check_synced_lyrics_retries_and_prefers_timed_result_over_plain(monkeypatch):
+    """megalobiz-style flakiness: first attempt returns plain text (no LRC
+    tags), a later attempt returns real timed lines — the retry must keep
+    trying until it lands on the timed result rather than settling for the
+    first (untimed) hit."""
+    calls = {"count": 0}
+    plain = "la la placeholder line one\nla la placeholder line two\n"
+    lrc = "[00:01.00]la la placeholder line one\n[00:03.00]la la placeholder line two\n"
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            calls["count"] += 1
+            return plain if calls["count"] == 1 else lrc
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Title", "Artist")
+    assert result["found"] is True
+    assert result["line_count"] == 2
+    assert calls["count"] == 2
+
+
+def test_check_synced_lyrics_falls_back_to_plain_when_no_attempt_gets_timed(monkeypatch):
+    """Every attempt returns plain text — after exhausting retries, the
+    first plain-text result is still reported as found (chorus_body can
+    still be derived from it), not discarded."""
+    calls = {"count": 0}
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            calls["count"] += 1
+            return "always plain text, never timed\n"
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Title", "Artist")
+    assert result["found"] is True
+    assert result["reason"] is None
+    assert calls["count"] == 3
+
+
+def test_check_synced_lyrics_no_match_when_all_attempts_cleanly_return_none(monkeypatch):
+    """All attempts return None without raising — genuinely no match, not
+    a provider failure."""
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return None
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Nonexistent Song Xyzzy", "Nobody")
+    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+
+
+def test_check_synced_lyrics_search_failed_only_when_every_attempt_raises(monkeypatch):
+    """A mix of one clean None and some raises must NOT be reported as
+    search_failed — only report search_failed when every single attempt
+    raised (a clean 'no result' response, even once, means the provider(s)
+    are reachable and this is a genuine no-match)."""
+    calls = {"count": 0}
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return None
+            raise RuntimeError("network error")
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result = sl.check_synced_lyrics_available("Title", "Artist")
+    assert result["reason"] == "no_match"
 
 
 def test_check_synced_lyrics_empty_query_returns_no_match():

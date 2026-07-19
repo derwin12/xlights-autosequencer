@@ -257,8 +257,11 @@ class TestCheckLyrics:
         import src.analyzer.synced_lyrics as sl
 
         monkeypatch.setattr(
-            sl, "check_synced_lyrics_available",
-            lambda title, artist: {"found": True, "reason": None, "line_count": 12, "preview": ["a", "b", "c"]},
+            sl, "check_synced_lyrics_with_text",
+            lambda title, artist: (
+                {"found": True, "reason": None, "line_count": 12, "preview": ["a", "b", "c"]},
+                "[00:01.00]a\n[00:02.00]b\n",
+            ),
         )
         resp = client.post("/api/v1/lyrics/check", json={"title": "Real Title", "artist": "Real Artist"})
         assert resp.status_code == 200
@@ -270,11 +273,36 @@ class TestCheckLyrics:
         import src.analyzer.synced_lyrics as sl
 
         monkeypatch.setattr(
-            sl, "check_synced_lyrics_available",
-            lambda title, artist: {"found": False, "reason": "no_match", "line_count": 0, "preview": []},
+            sl, "check_synced_lyrics_with_text",
+            lambda title, artist: (
+                {"found": False, "reason": "no_match", "line_count": 0, "preview": []},
+                None,
+            ),
         )
         resp = client.post("/api/v1/lyrics/check", json={"title": "Garbled Slug", "artist": "Unknown"})
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["found"] is False
         assert data["reason"] == "no_match"
+
+    def test_found_result_is_cached_and_reused_by_analyze(self, client, monkeypatch, tmp_path):
+        """A confirmed-good check result must be reused by the actual
+        analyze pass instead of a fresh (potentially flaky) re-fetch."""
+        import src.review.api.v1.analysis as analysis_module
+
+        with analysis_module._lyrics_cache_lock:
+            analysis_module._lyrics_cache.clear()
+
+        import src.analyzer.synced_lyrics as sl
+        monkeypatch.setattr(
+            sl, "check_synced_lyrics_with_text",
+            lambda title, artist: (
+                {"found": True, "reason": None, "line_count": 2, "preview": ["a", "b"]},
+                "[00:01.00]a\n[00:02.00]b\n",
+            ),
+        )
+        client.post("/api/v1/lyrics/check", json={"title": "Cached Title", "artist": "Cached Artist"})
+        with analysis_module._lyrics_cache_lock:
+            assert analysis_module._lyrics_cache.get(("Cached Title", "Cached Artist")) == (
+                "[00:01.00]a\n[00:02.00]b\n"
+            )

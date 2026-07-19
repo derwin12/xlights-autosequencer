@@ -159,6 +159,7 @@ def build_song_story(
     audio_path: str,
     title_override: str | None = None,
     artist_override: str | None = None,
+    lyrics_text_override: str | None = None,
 ) -> dict:
     """Orchestrate all foundational modules to produce a complete song story dict.
 
@@ -174,6 +175,11 @@ def build_song_story(
         the search query for the synced-lyrics lookup — ID3-less files (e.g.
         audio extracted from video) otherwise search for the raw filename
         slug + "Unknown", which no lyrics provider matches.
+    lyrics_text_override:
+        Raw lyrics text already fetched (e.g. by a prior "Check Lyrics"
+        lookup in the review UI) — used directly instead of a fresh
+        synced-lyrics search, avoiding a second independent network
+        round-trip against a potentially flaky provider.
 
     Returns
     -------
@@ -560,7 +566,7 @@ def build_song_story(
         for w in free_words_raw
     ]
     forced_marks, chorus_body, lyric_line_marks = get_boundary_refinement_inputs(
-        title, artist, duration_ms
+        title, artist, duration_ms, lyrics_text=lyrics_text_override,
     )
     sections_out, refinement_notes = refine_section_boundaries(
         sections_out,

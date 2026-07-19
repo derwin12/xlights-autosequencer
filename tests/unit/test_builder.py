@@ -236,3 +236,19 @@ def test_blank_override_does_not_clobber_fallback(hierarchy):
     result = build_song_story(hierarchy, AUDIO_PATH, title_override="", artist_override="")
     assert result["song"]["title"] == "fixture_song"
     assert result["song"]["artist"] == "Unknown"
+
+
+def test_lyrics_text_override_populates_lyrics_without_network_fetch(hierarchy, monkeypatch):
+    """A cached lyrics_text_override (e.g. from a prior Check Lyrics call)
+    must populate story['lyrics'] directly, without a fresh synced-lyrics
+    network fetch — the actual analyze pass should reuse a confirmed-good
+    result rather than risk a flaky provider giving a different one."""
+    from src.analyzer import synced_lyrics as sl
+
+    def _should_not_be_called(title, artist):
+        raise AssertionError("fetch_synced_lyrics should not be called when lyrics_text_override is set")
+
+    monkeypatch.setattr(sl, "fetch_synced_lyrics", _should_not_be_called)
+    lrc = "[00:01.00]cached line one\n[00:03.00]cached line two\n"
+    result = build_song_story(hierarchy, AUDIO_PATH, lyrics_text_override=lrc)
+    assert [line["text"] for line in result["lyrics"]] == ["cached line one", "cached line two"]
