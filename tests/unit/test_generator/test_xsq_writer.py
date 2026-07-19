@@ -491,6 +491,33 @@ class TestXsqWriter:
         ref = int(group_el.find("EffectLayer").find("Effect").get("ref"))
         assert "B_CHOICE_BufferStyle=Per Model Per Preview" in effectdb[ref]
 
+    def test_all_beat_groups_get_per_model_per_preview_for_every_effect(self, tmp_path: Path) -> None:
+        """Every effect on the four BEAT groups gets the preview variant
+        (user request, 2026-07-18) -- not just Shockwave. A non-Shockwave
+        effect (e.g. "On") on an unrelated tier-4 group keeps the ordinary
+        "Per Model Default" style, confirming this is BEAT-group-specific."""
+        plan = _make_plan()
+        for name in ("04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4", "04_OTHER_Test"):
+            plan.sections[0].group_effects[name] = [
+                EffectPlacement(
+                    effect_name="On", xlights_id="On", model_or_group=name,
+                    start_ms=0, end_ms=1000, parameters={},
+                    color_palette=["#FFFFFF"],
+                ),
+            ]
+        root = _write_and_parse(plan, tmp_path)
+        effectdb = [ef.text or "" for ef in root.find("EffectDB")]
+        effects_el = root.find("ElementEffects")
+
+        for name in ("04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4"):
+            group_el = next(e for e in effects_el if e.get("name") == name)
+            ref = int(group_el.find("EffectLayer").find("Effect").get("ref"))
+            assert f"B_CHOICE_BufferStyle=Per Model Per Preview" in effectdb[ref], name
+
+        group_el = next(e for e in effects_el if e.get("name") == "04_OTHER_Test")
+        ref = int(group_el.find("EffectLayer").find("Effect").get("ref"))
+        assert "B_CHOICE_BufferStyle=Per Model Default" in effectdb[ref]
+
     def test_tier_1_to_3_non_override_groups_get_no_buffer_style_key(self, tmp_path: Path) -> None:
         """Tiers 01-03 (other than the 01_BASE_All(_FADES) override
         canvases) render as a unified group with no explicit buffer style

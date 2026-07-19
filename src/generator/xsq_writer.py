@@ -472,30 +472,37 @@ def write_xsq(
     # marquee reads as one prop instead of many).
     _ALL_GROUP_PER_MODEL_EFFECTS = {"Strobe", "Marquee"}
 
-    # Shockwave always renders with the "...Per Preview" variant of
-    # whichever tier-based style would otherwise apply (user request,
-    # 2026-07-18) -- preserves the underlying Default-vs-Per-Model-Default
-    # semantics per tier, just adds the per-preview qualifier. Bug found
-    # same day: individual model-targeted placements (e.g. "Snowflake
-    # Prop", "Spinner Prop" -- type="model" in DisplayElements, not routed
-    # through any tier-prefixed group) get base=None from
-    # _buffer_style_for_group since there's no tier convention to read,
-    # and the fixed two-entry map left those with no override at all
-    # (rendered as unset/"Default" on import). A single-model target is
-    # inherently "per model" already, so the .get() fallback below treats
-    # any other base (None included) as "Per Model Per Preview" too.
-    _SHOCKWAVE_PREVIEW_STYLE = {
+    # The "...Per Preview" variant of whichever tier-based style would
+    # otherwise apply (user request, 2026-07-18) -- preserves the
+    # underlying Default-vs-Per-Model-Default semantics per tier, just
+    # adds the per-preview qualifier. Bug found same day: individual
+    # model-targeted placements (e.g. "Snowflake Prop", "Spinner Prop" --
+    # type="model" in DisplayElements, not routed through any
+    # tier-prefixed group) get base=None from _buffer_style_for_group
+    # since there's no tier convention to read, and the fixed two-entry
+    # map left those with no override at all (rendered as unset/"Default"
+    # on import). A single-model target is inherently "per model"
+    # already, so the .get() fallback below treats any other base (None
+    # included) as "Per Model Per Preview" too.
+    _PREVIEW_VARIANT = {
         "Default": "Per Preview",
         "Per Model Default": "Per Model Per Preview",
     }
+    # Every effect on the four BEAT groups gets the preview variant too
+    # (user request, 2026-07-18), not just Shockwave -- these are tier 4
+    # (base="Per Model Default"), so in practice this always resolves to
+    # "Per Model Per Preview", but goes through the same base-driven
+    # mapping as Shockwave rather than a hardcoded string, in case a
+    # future tier convention change ever puts BEAT groups on "Default".
+    _ALWAYS_PREVIEW_GROUPS = {"04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4"}
 
     def _buffer_style_for_placement(group_name: str, effect_name: str) -> str | None:
         if group_name in ("01_BASE_All", "01_BASE_All_FADES") and effect_name in _ALL_GROUP_PER_MODEL_EFFECTS:
             base = "Per Model Default"
         else:
             base = _buffer_style_for_group(group_name)
-        if effect_name == "Shockwave":
-            return _SHOCKWAVE_PREVIEW_STYLE.get(base, "Per Model Per Preview")
+        if effect_name == "Shockwave" or group_name in _ALWAYS_PREVIEW_GROUPS:
+            return _PREVIEW_VARIANT.get(base, "Per Model Per Preview")
         return base
 
     all_placements: dict[str, list[EffectPlacement]] = {
