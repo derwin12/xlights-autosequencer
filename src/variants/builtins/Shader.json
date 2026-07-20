@@ -57,6 +57,98 @@
         "scope": "group",
         "genre_affinity": "any"
       }
+    },
+    {
+      "name": "Shader Hex 3D Spiral",
+      "base_effect": "Shader",
+      "description": "Mined Hex 3D Spiral shader preset -- the second most-used shader on the corpus's whole-house \"All\" element (28 placements). Matrix-oriented: gives 2D matrix props a real GLSL alternative beyond the always-static Plasma Emitter default.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Hex 3D Spiral.fs",
+        "E_CHECKBOX_SHADERXYZZY_uContRot": true,
+        "E_CHECKBOX_SHADERXYZZY_uReverse": false,
+        "E_CHOICE_SHADERXYZZY_uColMode": "Shader Defaults",
+        "E_SLIDER_SHADERXYZZY_uIntensity": 100,
+        "E_SLIDER_SHADERXYZZY_uOffsetX": 0,
+        "E_SLIDER_SHADERXYZZY_uOffsetY": 0,
+        "E_SLIDER_SHADERXYZZY_uOutline": 50,
+        "E_SLIDER_SHADERXYZZY_uRotate": 0,
+        "E_SLIDER_SHADERXYZZY_uTwist": 50,
+        "E_SLIDER_SHADERXYZZY_uZoom": 100,
+        "E_SLIDER_Shader_Speed": 200,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Creation Silexars",
+      "base_effect": "Shader",
+      "description": "Mined Creation by Silexars shader preset -- a slow, hypnotic generative pattern. Matrix-oriented: shares the same color-mode/intensity/offset knobs as Hex 3D Spiral (both use xLights' common shader-uniform naming), no new parameter schema needed.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Creation by Silexars.fs",
+        "E_CHOICE_SHADERXYZZY_uColMode": "Shader Defaults",
+        "E_SLIDER_SHADERXYZZY_uIntensity": 100,
+        "E_SLIDER_SHADERXYZZY_uOffsetX": 0,
+        "E_SLIDER_SHADERXYZZY_uOffsetY": 0,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": ["verse", "intro", "outro", "bridge"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Black Cherry Cosmos",
+      "base_effect": "Shader",
+      "description": "Mined Black Cherry Cosmos shader preset -- the third most-used shader on the corpus's \"All\" element (15 placements). Minimal-parameter cosmic texture, matrix-oriented.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Black Cherry Cosmos.fs",
+        "E_SLIDER_SHADERXYZZY_mouseX": 0,
+        "E_SLIDER_SHADERXYZZY_mouseY": 0,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Continua Variation",
+      "base_effect": "Shader",
+      "description": "Mined Continua Variation shader preset -- a fast-moving abstract pattern driven almost entirely by the shader itself (no custom uniforms mined). Matrix-oriented.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Continua Variation.fs",
+        "E_SLIDER_Shader_Speed": 1000,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
     }
   ]
 }

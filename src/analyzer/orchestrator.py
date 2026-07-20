@@ -749,13 +749,20 @@ def run_orchestrator(
                 )
             else:
                 classify_drum_events(events["drums"], _drums_arr, sr)
+            # Fresh unlabeled TimingMark copies -- not the same objects as
+            # events["drums"].marks, whose "kick"/"snare"/"hihat" labels
+            # _place_drum_accents (effect_placer.py) reads to pick which
+            # accent effect to place; mutating those labels for display
+            # would silently break that lookup. These export-only copies
+            # drop the label since xLights doesn't need per-mark text here.
+            from src.analyzer.result import TimingMark as _TimingMark
             for _mark in events["drums"].marks:
                 if _mark.label == "kick":
-                    kick_hits.append(_mark)
+                    kick_hits.append(_TimingMark(time_ms=_mark.time_ms, confidence=_mark.confidence))
                 elif _mark.label == "snare":
-                    snare_hits.append(_mark)
+                    snare_hits.append(_TimingMark(time_ms=_mark.time_ms, confidence=_mark.confidence))
                 elif _mark.label == "hihat":
-                    hihat_hits.append(_mark)
+                    hihat_hits.append(_TimingMark(time_ms=_mark.time_ms, confidence=_mark.confidence))
         except Exception as exc:
             warnings.append(f"Drum classification failed: {exc}")
 
@@ -928,11 +935,15 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
                         quality_score=0.0),
             fixed_width_ms=700,
         )
+    # element_type="" (not "kick"/"snare"/"hihat") -- _add_mark_layer falls
+    # back to element_type when a mark has no label, and these marks are
+    # deliberately unlabeled (user request 2026-07-20: no per-tag text on
+    # these timing tracks, just the tick marks).
     if result.kick_hits:
         _add_mark_layer(
             root, "kick_hits",
             TimingTrack(name="kick_hits", algorithm_name="derived",
-                        element_type="kick", marks=result.kick_hits,
+                        element_type="", marks=result.kick_hits,
                         quality_score=0.0),
             fixed_width_ms=150,
         )
@@ -940,7 +951,7 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
         _add_mark_layer(
             root, "snare_hits",
             TimingTrack(name="snare_hits", algorithm_name="derived",
-                        element_type="snare", marks=result.snare_hits,
+                        element_type="", marks=result.snare_hits,
                         quality_score=0.0),
             fixed_width_ms=120,
         )
@@ -948,7 +959,7 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
         _add_mark_layer(
             root, "hihat_hits",
             TimingTrack(name="hihat_hits", algorithm_name="derived",
-                        element_type="hihat", marks=result.hihat_hits,
+                        element_type="", marks=result.hihat_hits,
                         quality_score=0.0),
             fixed_width_ms=60,
         )

@@ -435,6 +435,26 @@ def write_xsq(
                 )
             placement.parameters["E_FILEPICKERCTRL_Video_Filename"] = src_path.name
 
+    # A matrix that received both a Video import and a Shader substitution
+    # (effect_placer.py's matrix-fallback rotation, user request 2026-07-20)
+    # would otherwise both default to layer 0 -- _remove_overlaps_per_layer
+    # below only exempts DIFFERENT layers from its same-layer trim, so two
+    # full-section effects sharing layer 0 get silently cut into fragments
+    # around each other. Push Shader onto a layer strictly behind Video's so
+    # the video always reads as the dominant foreground content and the
+    # shader is a background wash. Per EffectPlacement.layer's docstring
+    # (bug-248, confirmed specifically on a matrix prop): LOWER layer
+    # numbers render in FRONT here, opposite of the usual "higher = on top"
+    # intuition -- Shader must go to a HIGHER number, not layer 0.
+    for group_name, placements in unordered.items():
+        video_placements = [p for p in placements if p.effect_name == "Video"]
+        shader_placements = [p for p in placements if p.effect_name == "Shader"]
+        if not (video_placements and shader_placements):
+            continue
+        max_video_layer = max(p.layer for p in video_placements)
+        for p in shader_placements:
+            p.layer = max(p.layer, max_video_layer + 1)
+
     # Sort groups by tier prefix so BASE (01) renders behind HERO (08).
     # Groups without a 2-digit tier prefix sort last.
     #

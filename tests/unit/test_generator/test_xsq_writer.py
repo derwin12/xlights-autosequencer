@@ -1241,6 +1241,95 @@ class TestStemOnsetTimingTracks:
         assert display_els["Beats"].get("visible") == "1"
 
 
+class TestVideoShaderLayerReconciliation:
+    """A matrix that gets both an imported Video and a Shader substitution
+    (effect_placer.py's matrix-fallback rotation) must not collide on the
+    same xLights layer -- _remove_overlaps_per_layer only exempts different
+    layers from its same-layer overlap trim, so two full-section effects
+    sharing a layer would get silently cut into fragments around each
+    other. Shader must end up strictly behind Video (see EffectPlacement.layer's
+    docstring, bug-248: on a matrix, LOWER layer numbers render in FRONT)."""
+
+    def _plan_with_video_and_shader(self, video_layer: int = 0, shader_layer: int = 0) -> SequencePlan:
+        profile = SongProfile(
+            title="Test", artist="Artist", genre="pop", occasion="general",
+            duration_ms=10000, estimated_bpm=120.0,
+        )
+        theme = _make_theme()
+        shader_placement = EffectPlacement(
+            effect_name="Shader", xlights_id="Shader", model_or_group="MatrixModel",
+            start_ms=0, end_ms=5000, parameters={}, color_palette=["#FFFFFF"],
+            layer=shader_layer,
+        )
+        section = SectionAssignment(
+            section=SectionEnergy(
+                label="verse", start_ms=0, end_ms=5000, energy_score=40,
+                mood_tier="structural", impact_count=2,
+            ),
+            theme=theme,
+            group_effects={"MatrixModel": [shader_placement]},
+        )
+        video_placement = EffectPlacement(
+            effect_name="Video", xlights_id="Video", model_or_group="MatrixModel",
+            start_ms=0, end_ms=10000,
+            parameters={"E_FILEPICKERCTRL_Video_Filename": "", "E_TEXTCTRL_Duration": "10.0"},
+            color_palette=["#FFFFFF"], layer=video_layer,
+        )
+        return SequencePlan(
+            song_profile=profile, sections=[section], models=["MatrixModel"],
+            video_effects={"MatrixModel": [video_placement]},
+        )
+
+    def _layer_order(self, root: ET.Element) -> list[str]:
+        """Return effect names in EffectLayer document order for MatrixModel."""
+        for el in root.find("ElementEffects").findall("Element"):
+            if el.get("name") != "MatrixModel":
+                continue
+            order = []
+            for layer_el in el.findall("EffectLayer"):
+                names = {e.get("name") for e in layer_el.findall("Effect")}
+                order.append(names)
+            return order
+        return []
+
+    def test_shader_pushed_behind_video_when_both_default_to_layer_zero(self, tmp_path: Path) -> None:
+        out = tmp_path / "test.xsq"
+        write_xsq(self._plan_with_video_and_shader(video_layer=0, shader_layer=0), out)
+        root = ET.parse(out).getroot()
+        layer_order = self._layer_order(root)
+        video_idx = next(i for i, names in enumerate(layer_order) if "Video" in names)
+        shader_idx = next(i for i, names in enumerate(layer_order) if "Shader" in names)
+        assert shader_idx > video_idx, (
+            "Shader must render on a layer behind Video (higher layer index; "
+            "bug-248: lower index renders in front on a matrix)"
+        )
+
+    def test_no_reconciliation_needed_without_video(self, tmp_path: Path) -> None:
+        """Shader alone on a matrix (no video) keeps its original layer --
+        the reconciliation only fires when both effects are present."""
+        profile = SongProfile(
+            title="Test", artist="Artist", genre="pop", occasion="general",
+            duration_ms=10000, estimated_bpm=120.0,
+        )
+        theme = _make_theme()
+        shader_placement = EffectPlacement(
+            effect_name="Shader", xlights_id="Shader", model_or_group="MatrixModel",
+            start_ms=0, end_ms=5000, parameters={}, color_palette=["#FFFFFF"], layer=0,
+        )
+        section = SectionAssignment(
+            section=SectionEnergy(
+                label="verse", start_ms=0, end_ms=5000, energy_score=40,
+                mood_tier="structural", impact_count=2,
+            ),
+            theme=theme,
+            group_effects={"MatrixModel": [shader_placement]},
+        )
+        plan = SequencePlan(song_profile=profile, sections=[section], models=["MatrixModel"])
+        out = tmp_path / "test.xsq"
+        write_xsq(plan, out)
+        assert shader_placement.layer == 0
+
+
 class TestDrumHitTimingTracks:
     """Kick/Snare/Hihat Hits (split from the classified "drums" onset track,
     see src/analyzer/drum_classifier.py) must be embedded as their own

@@ -106,6 +106,20 @@ _MATRIX_FRIENDLY_FALLBACKS: tuple[str, ...] = (
     "Plasma", "Fire", "Pinwheel", "Spirals", "Shockwave", "Galaxy",
 )
 
+# Real GLSL Shader presets for matrix substitution, mined from the corpus's
+# whole-house "All" element usage (207/28/11/15/8 placements respectively,
+# out of 312 total) -- see src/variants/builtins/Shader.json for the
+# parameter presets. Rotated into the same candidate pool as
+# _MATRIX_FRIENDLY_FALLBACKS below so matrix substitution stops always
+# rendering the single static "Plasma" (native effect, bare defaults).
+_MATRIX_SHADER_VARIANTS: tuple[str, ...] = (
+    "Shader Plasma Emitter Drift",
+    "Shader Hex 3D Spiral",
+    "Shader Creation Silexars",
+    "Shader Black Cherry Cosmos",
+    "Shader Continua Variation",
+)
+
 
 def _darken_palette_hsl(palette: list[str], target_lightness: float = 0.15) -> list[str]:
     """Darken a palette via HSL lightness reduction, preserving hue and saturation.
@@ -925,7 +939,7 @@ def place_effects(
 
             # Tier 5-8: use rotation plan when available
             if tier in (5, 6, 7, 8) and groups_for_tier and rotation_plan is not None:
-                for group in groups_for_tier:
+                for gi, group in enumerate(groups_for_tier):
                     # Corpus-mined prop-family idiom (snowflakes, arches,
                     # mega trees) overrides rotation on qualifying sections.
                     # Tier 8 included: a solo mega tree is a HERO group.
@@ -986,12 +1000,15 @@ def place_effects(
                     # (peer of the rotation-pool prop_type filter inside
                     # _build_effect_pool, which only runs on tier-6/7).
                     placement_rotated_def = rotated_def
+                    matrix_params: dict[str, Any] = {}
                     if (
                         tier == 8
                         and getattr(group, "prop_type", None) == "matrix"
                     ):
-                        placement_rotated_def = _substitute_matrix_effect(
-                            rotated_def, effect_library
+                        placement_rotated_def, matrix_params = _substitute_matrix_effect(
+                            rotated_def, effect_library,
+                            variant_library=variant_library,
+                            variation_seed=assignment.variation_seed + gi,
                         )
 
                     rot_placements = _place_effect_on_group(
@@ -1014,10 +1031,14 @@ def place_effects(
                     # base_effect matches the placement effect.  When matrix
                     # substitution rewrote rotated_def → placement_rotated_def,
                     # the original variant's params target a different effect
-                    # and would scramble the substitute's parameter space.
+                    # and would scramble the substitute's parameter space; use
+                    # the substitution's own resolved params instead.
                     if placement_rotated_def is rotated_def:
                         for p in rot_placements:
                             p.parameters.update(rot_params)
+                    elif matrix_params:
+                        for p in rot_placements:
+                            p.parameters.update(matrix_params)
                     # Apply direction cycle from variant
                     if rot_direction_cycle is not None:
                         dc_param = rot_direction_cycle.get("param", "")
@@ -1231,7 +1252,7 @@ def place_effects(
             # Used by Tier 1 (BASE_All — ethereal only), Tier 6 (PROP), Tier 7
             # (COMP), and Tier 8 (HERO).  _compute_active_tiers guarantees only
             # one partition tier from {2, 4, 6, 7} is present, plus 1 and/or 8.
-            for group in groups_for_tier:
+            for gi, group in enumerate(groups_for_tier):
                 # Corpus-mined prop-family idiom for HERO props: a solo mega
                 # tree never forms a tier-6 pair group, so it reaches this
                 # default path as 08_HERO_Mega_Tree. Same override semantics
@@ -1257,13 +1278,17 @@ def place_effects(
                 # Matrix-prop guard for tier-8 HERO (peer of the rotation-pool
                 # filter inside _build_effect_pool, which only runs on tier-6/7).
                 placement_effect_def = effect_def
+                matrix_params: dict[str, Any] = {}
                 if (
                     tier == 8
                     and getattr(group, "prop_type", None) == "matrix"
                 ):
-                    placement_effect_def = _substitute_matrix_effect(
-                        effect_def, effect_library
+                    placement_effect_def, matrix_params = _substitute_matrix_effect(
+                        effect_def, effect_library,
+                        variant_library=variant_library,
+                        variation_seed=assignment.variation_seed + gi,
                     )
+                substituted = placement_effect_def is not effect_def
                 placements = _place_effect_on_group(
                     effect_def=placement_effect_def,
                     layer=layer,
@@ -1276,11 +1301,20 @@ def place_effects(
                     tension_curve=tension_curve,
                     danceability=danceability,
                     chord_weight=chord_weight,
-                    variant_library=variant_library,
+                    # When matrix substitution rewrote the effect, the theme
+                    # layer's own variant targets the original (pre-
+                    # substitution) effect and would scramble the
+                    # substitute's parameter space -- apply matrix_params
+                    # instead, below, rather than looking up a mismatched
+                    # variant here.
+                    variant_library=None if substituted else variant_library,
                     bar_parity=None,
                     duration_scaling=duration_scaling,
                     bpm=bpm,
                 )
+                if substituted and matrix_params:
+                    for p in placements:
+                        p.parameters.update(matrix_params)
                 if placements:
                     # A1: stamp the theme-layer index onto each placement so
                     # multi-layer compositions (especially tier 1 BASE) land
@@ -1826,7 +1860,9 @@ def _substitute_beat_canvas_effect(
 def _substitute_matrix_effect(
     effect_def: EffectDefinition,
     effect_library: EffectLibrary,
-) -> EffectDefinition:
+    variant_library: Any = None,
+    variation_seed: int = 0,
+) -> tuple[EffectDefinition, dict[str, Any]]:
     """Swap 1D-oriented effects with 2D-friendly alternatives for matrix props.
 
     Matrix props have 2D resolution that flat or column-oriented effects
@@ -1835,14 +1871,41 @@ def _substitute_matrix_effect(
     to the rotation-pool prop_type filter inside ``_build_effect_pool``;
     that filter only runs on tier-6/7 PROP rotation, so large matrices
     that auto-promote to HERO need this separate guard.
+
+    Returns ``(effect_def, params)`` — previously this returned only the
+    effect definition, always resolving to the first available entry in
+    ``_MATRIX_FRIENDLY_FALLBACKS`` ("Plasma", always with bare
+    builtin_effects.json defaults since nothing downstream could resolve
+    matching parameters for a substituted effect). Candidates now rotate
+    deterministically by ``variation_seed`` across the native fallbacks
+    plus real mined GLSL Shader presets (``_MATRIX_SHADER_VARIANTS``), and
+    the caller must apply the returned ``params`` directly — the original
+    theme layer's variant lookup targets the pre-substitution effect and
+    would scramble the substitute's parameter space.
     """
     if effect_def.name not in _MATRIX_LOW_VALUE_EFFECTS:
-        return effect_def
-    for candidate in _MATRIX_FRIENDLY_FALLBACKS:
-        alt = effect_library.effects.get(candidate)
-        if alt is not None:
-            return alt
-    return effect_def
+        return effect_def, {}
+
+    candidates: list[tuple[str, str | None]] = [
+        (name, None) for name in _MATRIX_FRIENDLY_FALLBACKS
+        if name in effect_library.effects
+    ]
+    if variant_library is not None:
+        for variant_name in _MATRIX_SHADER_VARIANTS:
+            if variant_library.get(variant_name) is not None:
+                candidates.append(("Shader", variant_name))
+
+    if not candidates:
+        return effect_def, {}
+
+    name, variant_name = candidates[variation_seed % len(candidates)]
+    alt = effect_library.effects.get(name)
+    if alt is None:
+        return effect_def, {}
+    if variant_name is None:
+        return alt, {}
+    variant = variant_library.get(variant_name)
+    return alt, dict(variant.parameter_overrides) if variant is not None else {}
 
 
 def _place_call_response(

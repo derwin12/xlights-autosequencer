@@ -310,25 +310,32 @@ class TestSubstituteMatrixEffect:
             {"Bars", "Single Strand", "Strobe", "Curtain"}
         )
 
-    def test_substitutes_bars_to_first_available_fallback(self):
-        lib = _make_effect_lib({
-            "Bars": {},
-            "Plasma": {},
-            "Fire": {},
-        })
+    def test_returns_effect_and_params_tuple(self):
+        lib = _make_effect_lib({"Bars": {}, "Plasma": {}, "Fire": {}})
         bars = lib.effects["Bars"]
-        out = _substitute_matrix_effect(bars, lib)
-        assert out.name == "Plasma", "first fallback in priority order"
+        out, params = _substitute_matrix_effect(bars, lib)
+        assert out.name in ("Plasma", "Fire")
+        assert isinstance(params, dict)
 
-    def test_skips_to_next_fallback_when_first_missing(self):
-        lib = _make_effect_lib({
-            "Bars": {},
-            # No Plasma in this library.
-            "Fire": {},
-        })
+    def test_rotates_deterministically_by_variation_seed(self):
+        """Previously always returned the first available fallback ("Plasma")
+        no matter what -- every matrix substitution rendered identically.
+        Now rotates across the pool by variation_seed."""
+        lib = _make_effect_lib({"Bars": {}, "Plasma": {}, "Fire": {}, "Pinwheel": {}})
         bars = lib.effects["Bars"]
-        out = _substitute_matrix_effect(bars, lib)
-        assert out.name == "Fire", "should fall through to next available"
+        seen = {
+            _substitute_matrix_effect(bars, lib, variation_seed=seed)[0].name
+            for seed in range(10)
+        }
+        assert len(seen) > 1, "rotation must produce more than one distinct effect"
+
+    def test_same_seed_is_deterministic(self):
+        lib = _make_effect_lib({"Bars": {}, "Plasma": {}, "Fire": {}})
+        bars = lib.effects["Bars"]
+        out_a, params_a = _substitute_matrix_effect(bars, lib, variation_seed=3)
+        out_b, params_b = _substitute_matrix_effect(bars, lib, variation_seed=3)
+        assert out_a.name == out_b.name
+        assert params_a == params_b
 
     def test_returns_input_unchanged_when_not_low_value(self):
         lib = _make_effect_lib({
@@ -336,22 +343,69 @@ class TestSubstituteMatrixEffect:
             "Pinwheel": {},
         })
         plasma = lib.effects["Plasma"]
-        out = _substitute_matrix_effect(plasma, lib)
+        out, params = _substitute_matrix_effect(plasma, lib)
         assert out is plasma, "non-low-value effect must pass through untouched"
+        assert params == {}
 
     def test_returns_input_when_no_fallback_available(self):
         lib = _make_effect_lib({"Bars": {}})  # no fallbacks at all
         bars = lib.effects["Bars"]
-        out = _substitute_matrix_effect(bars, lib)
+        out, params = _substitute_matrix_effect(bars, lib)
         assert out is bars, "fallback failure returns original, not a crash"
+        assert params == {}
 
     def test_every_low_value_effect_substitutes_when_fallbacks_present(self):
         ratings = {name: {} for name in _MATRIX_FRIENDLY_FALLBACKS}
         ratings.update({name: {} for name in _MATRIX_LOW_VALUE_EFFECTS})
         lib = _make_effect_lib(ratings)
         for low_name in _MATRIX_LOW_VALUE_EFFECTS:
-            out = _substitute_matrix_effect(lib.effects[low_name], lib)
+            out, _params = _substitute_matrix_effect(lib.effects[low_name], lib)
             assert out.name in _MATRIX_FRIENDLY_FALLBACKS, (
                 f"{low_name} did not substitute to a 2D-friendly fallback "
                 f"(got {out.name!r})"
             )
+
+    def test_pool_includes_real_shader_variants_when_variant_library_present(self):
+        """The candidate pool should draw from real mined GLSL Shader presets
+        (not just the native Plasma/Fire/etc. fallbacks) when a variant
+        library is supplied -- previously matrices never received Shader at
+        all, always defaulting to the native "Plasma" effect."""
+        from src.effects.library import load_effect_library
+        from src.variants.library import load_variant_library
+
+        effect_library = load_effect_library()
+        variant_library = load_variant_library()
+        bars = effect_library.effects["Bars"]
+
+        seen_shader = False
+        for seed in range(30):
+            out, params = _substitute_matrix_effect(
+                bars, effect_library,
+                variant_library=variant_library, variation_seed=seed,
+            )
+            if out.name == "Shader":
+                seen_shader = True
+                assert params.get("E_0FILEPICKERCTRL_IFS", "").startswith("Shaders/")
+        assert seen_shader, "Shader never selected across 30 seeds"
+
+    def test_shader_params_stay_within_builtin_effects_bounds(self):
+        from src.effects.library import load_effect_library
+        from src.variants.library import load_variant_library
+
+        effect_library = load_effect_library()
+        variant_library = load_variant_library()
+        shader_def = effect_library.effects["Shader"]
+        bounds = {p.storage_name: (p.min, p.max) for p in shader_def.parameters if p.min is not None}
+        bars = effect_library.effects["Bars"]
+
+        for seed in range(30):
+            out, params = _substitute_matrix_effect(
+                bars, effect_library,
+                variant_library=variant_library, variation_seed=seed,
+            )
+            if out.name != "Shader":
+                continue
+            for key, value in params.items():
+                if key in bounds and isinstance(value, (int, float)):
+                    lo, hi = bounds[key]
+                    assert lo <= value <= hi, f"{key}={value} outside [{lo}, {hi}]"
