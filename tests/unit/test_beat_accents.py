@@ -1115,6 +1115,49 @@ class TestWholeHouseCompositePlacement:
         for p in shader_placements:
             assert p.parameters.get("E_0FILEPICKERCTRL_IFS") == "Shaders/Plasma Emitter.fs"
 
+    def test_pinwheel_placements_vary_thickness_and_twist(self):
+        # bug: whole-house Pinwheel placements always rendered with the bare
+        # builtin_effects.json defaults (Thickness=0, Twist=0, Arms=3) since
+        # only Shockwave/Shader had a custom params branch. Sweep enough
+        # variation_seeds to see both non-default values and actual variety.
+        base = _make_base_group()
+        thicknesses: set[str] = set()
+        twists: set[str] = set()
+        for seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                variation_seed=seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=_make_variant_library(),
+            )
+            for p in result[base.name]:
+                if p.effect_name != "Pinwheel":
+                    continue
+                thicknesses.add(p.parameters["E_SLIDER_Pinwheel_Thickness"])
+                twists.add(p.parameters["E_SLIDER_Pinwheel_Twist"])
+                assert p.parameters["E_SLIDER_Pinwheel_Thickness"] != "0"
+        assert len(thicknesses) > 1
+        assert len(twists) > 1
+
+    def test_pinwheel_params_are_deterministic_for_the_same_seed(self):
+        assignment_a = _make_assignment(
+            energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL), variation_seed=5,
+        )
+        assignment_b = _make_assignment(
+            energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL), variation_seed=5,
+        )
+        base = _make_base_group()
+        result_a = _place_whole_house_composite(
+            groups=[base], assignment=assignment_a, variant_library=_make_variant_library(),
+        )
+        result_b = _place_whole_house_composite(
+            groups=[base], assignment=assignment_b, variant_library=_make_variant_library(),
+        )
+        params_a = [p.parameters for p in result_a[base.name] if p.effect_name == "Pinwheel"]
+        params_b = [p.parameters for p in result_b[base.name] if p.effect_name == "Pinwheel"]
+        assert params_a == params_b
+
 
 class TestWholeHouseCompositeConfigFlag:
     def test_flag_defaults_to_true(self):

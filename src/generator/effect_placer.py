@@ -401,6 +401,16 @@ _WHOLE_HOUSE_EFFECT_POOL = (
     "Pinwheel", "Pinwheel",
     "Ripple",
 )
+# Whole-house Pinwheel variety pools -- grounded in the corpus's own mined
+# Pinwheel presets (corpus_recipes.py's matrix recipes use Thickness 15-30 /
+# Twist 0-20; the Star-burst preset uses Thickness 28 / Twist 148), not
+# invented values. Picked deterministically from variation_seed so a
+# whole-house Pinwheel stack no longer renders identically on every
+# placement (previously always Thickness=0/Twist=0/Arms=3, the bare
+# builtin_effects.json defaults -- see bug report 2026-07-20).
+_WHOLE_HOUSE_PINWHEEL_THICKNESS = (10, 18, 25, 32)
+_WHOLE_HOUSE_PINWHEEL_TWIST = (0, 45, 90, 135, -45, -90)
+_WHOLE_HOUSE_PINWHEEL_ARMS = (3, 4, 5)
 
 
 def _apply_palette_target(palette: list[str], target: int) -> list[str]:
@@ -3051,6 +3061,19 @@ def _place_whole_house_composite(
             )
             variant = variant_library.get(variant_name) if variant_library is not None else None
             params = dict(variant.parameter_overrides) if variant is not None else {}
+        elif effect_name == "Pinwheel":
+            local_seed = variation_seed + i
+            params = {
+                "E_SLIDER_Pinwheel_Thickness": str(
+                    _WHOLE_HOUSE_PINWHEEL_THICKNESS[local_seed % len(_WHOLE_HOUSE_PINWHEEL_THICKNESS)]
+                ),
+                "E_SLIDER_Pinwheel_Twist": str(
+                    _WHOLE_HOUSE_PINWHEEL_TWIST[(local_seed // 7) % len(_WHOLE_HOUSE_PINWHEEL_TWIST)]
+                ),
+                "E_SLIDER_Pinwheel_Arms": str(
+                    _WHOLE_HOUSE_PINWHEEL_ARMS[(local_seed // 11) % len(_WHOLE_HOUSE_PINWHEEL_ARMS)]
+                ),
+            }
         else:
             params = {}
         placement = EffectPlacement(

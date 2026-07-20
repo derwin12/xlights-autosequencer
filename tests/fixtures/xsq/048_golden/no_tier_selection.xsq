@@ -50,7 +50,7 @@
     <Effect>B_CHOICE_BufferStyle=Per Model Default,E_SLIDER_Number_Strobes=3,E_SLIDER_Strobe_Duration=5,E_SLIDER_Strobe_Type=1,T_TEXTCTRL_Fadein=0.6,T_TEXTCTRL_Fadeout=0.6</Effect>
     <Effect>B_CHOICE_BufferStyle=Per Preview,E_SLIDER_Shockwave_Accel=0,E_SLIDER_Shockwave_CenterX=50,E_SLIDER_Shockwave_CenterY=50,E_SLIDER_Shockwave_End_Radius=80,E_SLIDER_Shockwave_End_Width=50,E_SLIDER_Shockwave_Start_Radius=1,E_SLIDER_Shockwave_Start_Width=5,T_TEXTCTRL_Fadein=0.32,T_TEXTCTRL_Fadeout=1</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_0FILEPICKERCTRL_IFS=Shaders/Plasma Emitter.fs,E_SLIDER_Shader_Speed=500,E_TEXTCTRL_Shader_Zoom=20</Effect>
-    <Effect>B_CHOICE_BufferStyle=Default,E_CHOICE_Pinwheel_Style=New Render Method,E_SLIDER_Pinwheel_ArmSize=100,E_SLIDER_Pinwheel_Arms=3,E_SLIDER_Pinwheel_Speed=10,E_SLIDER_Pinwheel_Thickness=0,E_SLIDER_Pinwheel_Twist=0</Effect>
+    <Effect>B_CHOICE_BufferStyle=Default,E_CHOICE_Pinwheel_Style=New Render Method,E_SLIDER_Pinwheel_ArmSize=100,E_SLIDER_Pinwheel_Arms=3,E_SLIDER_Pinwheel_Speed=10,E_SLIDER_Pinwheel_Thickness=32,E_SLIDER_Pinwheel_Twist=0</Effect>
     <Effect>B_CHOICE_BufferStyle=Default,E_TEXTCTRL_Eff_On_End=0,T_CHOICE_LayerMethod=Min,T_SLIDER_EffectLayerMix=0</Effect>
   </EffectDB>
   <DisplayElements>
