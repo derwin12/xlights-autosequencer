@@ -145,6 +145,14 @@ _CORPUS_MASK_PRIMARIES: tuple[str, ...] = (
 )
 
 
+_MIN_MASK_HUE_SEPARATION_DEG = 25.0
+
+
+def _hue_distance_deg(a: float, b: float) -> float:
+    d = abs(a - b) % 360.0
+    return min(d, 360.0 - d)
+
+
 def _vivid_mask_color(
     palette: list[str] | None, variation_seed: int, group_name: str = "",
     offset: int = 0,
@@ -159,10 +167,27 @@ def _vivid_mask_color(
     without spreading, every family inherits the same shared anchor color and
     the whole yard converges on one hue. Thin palettes (fewer than 3
     saturated colors) are extended with the corpus primaries.
+
+    Candidates within ``_MIN_MASK_HUE_SEPARATION_DEG`` of an already-picked
+    hue are dropped rather than kept as a "different" candidate: a palette
+    built from several near-identical blues (e.g. a monochrome theme) used to
+    produce multiple candidate strings that were technically distinct RGB
+    values but visually the same color, so bar-to-bar color_cycle_bars
+    rotation looked frozen even though the index was changing every bar.
     """
     import colorsys
     import zlib
     candidates: list[str] = []
+    candidate_hues: list[float] = []
+
+    def add_candidate(vivid: str, hue_deg: float) -> None:
+        if all(
+            _hue_distance_deg(hue_deg, h) >= _MIN_MASK_HUE_SEPARATION_DEG
+            for h in candidate_hues
+        ):
+            candidates.append(vivid)
+            candidate_hues.append(hue_deg)
+
     for color in palette or []:
         c = color.lstrip("#")
         if len(c) != 6:
@@ -172,12 +197,12 @@ def _vivid_mask_color(
         if s >= 0.25 and v >= 0.15:
             r, g, b = colorsys.hsv_to_rgb(h, max(s, 0.75), max(v, 0.95))
             vivid = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
-            if vivid not in candidates:
-                candidates.append(vivid)
+            add_candidate(vivid, h * 360.0)
     if len(candidates) < 3:
-        candidates.extend(
-            c for c in _CORPUS_MASK_PRIMARIES if c not in candidates
-        )
+        for c in _CORPUS_MASK_PRIMARIES:
+            pr, pg, pb = (int(c[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
+            ph, _, _ = colorsys.rgb_to_hsv(pr, pg, pb)
+            add_candidate(c, ph * 360.0)
     spread = zlib.crc32(group_name.encode("utf-8")) if group_name else 0
     return candidates[(variation_seed + spread + offset) % len(candidates)]
 
