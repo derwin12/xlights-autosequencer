@@ -254,12 +254,12 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
 
       <div data-testid="layout-summary" style={{ marginBottom: 16 }}>
         <p style={{ margin: '0 0 8px', color: 'var(--color-text-muted, #888)', fontSize: 13 }}>
-          Layout: <strong style={{ color: 'var(--color-text, #f5f5f0)' }}>
+          Reference Layout: <strong style={{ color: 'var(--color-text, #f5f5f0)' }}>
             {layoutInfo?.display_name ?? layoutId}
           </strong>
           {layoutInfo?.props ? ` · ${layoutInfo.props.length} props` : ''}
           {layoutInfo?.imported_at
-            ? ` · imported ${new Date(layoutInfo.imported_at).toLocaleDateString()}`
+            ? ` · as of ${new Date(layoutInfo.imported_at).toLocaleDateString()}`
             : ''}
         </p>
       </div>

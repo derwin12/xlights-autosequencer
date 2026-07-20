@@ -21,6 +21,14 @@ def _now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _file_mtime_iso(path) -> str:
+    """ISO timestamp of a file's last modification — reflects when a git
+    checkout/pull last wrote it to disk, i.e. the layout's last refresh."""
+    return datetime.datetime.fromtimestamp(
+        path.stat().st_mtime, tz=datetime.timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _parse_props(root: ET.Element) -> list[dict]:
     """Extract prop list from xlights_rgbeffects root element."""
     model_elems = root.findall(".//model")
@@ -74,7 +82,7 @@ def get_committed_layout() -> dict | None:
     _committed_layout_cache = {
         "layout_id": layout_id,
         "display_name": display_name,
-        "imported_at": _now_iso(),
+        "imported_at": _file_mtime_iso(path),
         "props": props,
         "total_pixels": total_pixels,
         "xml_path": str(path),
