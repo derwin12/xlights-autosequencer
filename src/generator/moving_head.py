@@ -56,7 +56,7 @@ import re
 from dataclasses import dataclass, replace
 from typing import Optional
 
-from src.analyzer.result import HierarchyResult
+from src.analyzer.result import HierarchyResult, TimingTrack
 from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy, frame_align
 from src.grouper.layout import Layout, find_moving_head_groups
 
@@ -600,6 +600,18 @@ _STRONG_ROLES = frozenset({"chorus", "drop"})
 _MIN_SECTION_DURATION_MS = 8000
 # Cap so one continuous sweep/fan doesn't drag through a very long section.
 _MAX_MOVE_DURATION_MS = 20000
+# Also cap a move to this many bars (when bar timing marks are available) so
+# a move ending flush against the next strong section's start doesn't force
+# _resolve_warmup to trim an existing effect down to the bare minimum --
+# ending a few bars early leaves a natural gap _resolve_warmup can use for
+# the full preferred warmup instead (user request, 2026-07-19: a warmup
+# observed too short in real xLights despite "room" existing -- the room was
+# there, but only as trimmable slack on the prior move, and trimming beyond
+# the bare minimum was already deliberately rejected, see _resolve_warmup's
+# own docstring). Only applied when it still leaves at least
+# _MIN_WARMUP_DURATION_MS before the section boundary -- a short section
+# keeps today's fill-the-section behavior rather than going mostly dark.
+_MOVE_BAR_CAP = 4
 # A moving head can't snap Pan/Tilt instantly -- each move gets a silent
 # lead-in placement (Pan/Tilt/PanOffset only, no Dimmer/Wheel/Shutter)
 # immediately before it, pre-positioned to the move's own starting angle
@@ -732,9 +744,28 @@ def _resolve_warmup(
     return start_ms, _MIN_WARMUP_DURATION_MS
 
 
+def _bar_capped_end_ms(
+    bars: TimingTrack, start_ms: int, natural_end_ms: int, section_end_ms: int,
+) -> int:
+    """Shorten ``natural_end_ms`` to end after ``_MOVE_BAR_CAP`` bars instead,
+    but only when that still leaves room for a full warmup before the
+    section boundary -- otherwise the move keeps filling the section as
+    today (see ``_MOVE_BAR_CAP``'s own comment for the rationale)."""
+    marks_after = [m.time_ms for m in bars.marks if m.time_ms > start_ms]
+    if len(marks_after) < _MOVE_BAR_CAP:
+        return natural_end_ms
+    bar_end_ms = marks_after[_MOVE_BAR_CAP - 1]
+    if bar_end_ms >= natural_end_ms:
+        return natural_end_ms
+    if section_end_ms - bar_end_ms < _MIN_WARMUP_DURATION_MS:
+        return natural_end_ms
+    return bar_end_ms
+
+
 def place_moving_head_moves(
     layout: Layout,
     assignments: list[SectionAssignment],
+    bars: Optional[TimingTrack] = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place one gated move per qualifying section on each moving-head
     group's fixtures, each preceded by a silent warmup pre-positioning
@@ -774,6 +805,14 @@ def place_moving_head_moves(
     section boundary -- falling back to a partial delay only if the
     prior occupant is too short to safely trim. A move is dropped
     entirely if there's no room for it at all after this.
+
+    ``bars`` (optional bar timing marks) additionally caps each move to
+    ``_MOVE_BAR_CAP`` bars when doing so still leaves room for a full
+    warmup before the section boundary (see ``_bar_capped_end_ms``) --
+    this lets a back-to-back qualifying section get its full preferred
+    warmup via the natural gap instead of relying on trimming the prior
+    move down to the bare minimum. Omitting ``bars`` preserves the old
+    fill-the-section-or-20s behavior unchanged.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups:
@@ -830,6 +869,10 @@ def place_moving_head_moves(
 
             natural_start_ms = section.start_ms
             natural_end_ms = min(section.end_ms, natural_start_ms + _MAX_MOVE_DURATION_MS)
+            if bars is not None and bars.marks:
+                natural_end_ms = _bar_capped_end_ms(
+                    bars, natural_start_ms, natural_end_ms, section.end_ms,
+                )
 
             if move.target == "group":
                 heads = mh_group.head_names

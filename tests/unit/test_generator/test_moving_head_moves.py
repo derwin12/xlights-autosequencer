@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from src.analyzer.result import TimingMark, TimingTrack
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.generator.moving_head import (
     _choose_lit_pair,
@@ -15,6 +16,7 @@ from src.generator.moving_head import (
     _MAX_MOVE_DURATION_MS,
     _MIN_SECTION_DURATION_MS,
     _MIN_WARMUP_DURATION_MS,
+    _MOVE_BAR_CAP,
     _PREFERRED_WARMUP_DURATION_MS,
     _STRONG_ENERGY_GATE,
     MOVE_LIBRARY,
@@ -45,6 +47,14 @@ def _assignment(label: str, start_ms: int, end_ms: int, energy: int, variation_s
         section=_section(label, start_ms, end_ms, energy),
         theme=_theme(),
         variation_seed=variation_seed,
+    )
+
+
+def _bars(interval_ms: int, count: int) -> TimingTrack:
+    return TimingTrack(
+        name="Bars", algorithm_name="test", element_type="segment",
+        marks=[TimingMark(time_ms=i * interval_ms, confidence=1.0) for i in range(count)],
+        quality_score=1.0,
     )
 
 
@@ -543,3 +553,57 @@ class TestPlaceMovingHeadMoves:
         assert warmup.start_ms == 1_000 and warmup.end_ms == 1_750
         assert (warmup.end_ms - warmup.start_ms) == _MIN_WARMUP_DURATION_MS
         assert move.start_ms == 1_750  # pushed past its natural 1_500 to guarantee the minimum
+
+
+class TestMoveBarCap:
+    def test_bar_cap_shortens_move_when_room_permits(self):
+        # variation_seed=2, section 0-30_000 -> per_head "r_static". Without
+        # bars, natural_end_ms would be min(30_000, 0+20_000)=20_000. With
+        # 1s bars, 4 bars after start(0) end at 4_000, and the section has
+        # 26_000ms left after that -- comfortably clears the warmup floor,
+        # so the cap applies.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 30_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments, bars=_bars(1_000, 31))
+        move = result["MH1"][-1]
+        assert move.end_ms == _MOVE_BAR_CAP * 1_000
+
+    def test_bar_cap_lets_back_to_back_section_get_full_preferred_warmup(self):
+        # Same two back-to-back sections as
+        # test_warmup_still_fits_for_back_to_back_qualifying_sections, but
+        # with bars supplied: section 0's move ends at bar 4 (4_000) instead
+        # of filling the section to 15_000, leaving an 11_000ms natural gap
+        # before section 1 starts -- comfortably over the 3s preferred
+        # warmup, so no trim is needed at all (contrast with the no-bars
+        # test, which trims section 0's tail down to the bare minimum).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 15_000, 40, variation_seed=2),
+            _assignment("chorus", 15_000, 30_000, 40, variation_seed=2),
+        ]
+        result = place_moving_head_moves(layout, assignments, bars=_bars(1_000, 31))
+        placements = result["MH1"]
+        assert len(placements) == 3  # section0 move (bar-capped), section1 warmup, section1 move
+        first_move, warmup, second_move = placements
+        assert first_move.end_ms == 4_000
+        assert warmup.start_ms == 15_000 - _PREFERRED_WARMUP_DURATION_MS
+        assert warmup.end_ms == 15_000
+        assert second_move.start_ms == 15_000
+
+    def test_bar_cap_skipped_when_it_would_leave_no_warmup_room(self):
+        # 4s bars -> 4 bars after start(0) end at 16_000. The section ends
+        # at 16_500, only 500ms after that -- under the warmup floor, so the
+        # cap is skipped and the move fills the section as it would without
+        # bars.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 16_500, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments, bars=_bars(4_000, 5))
+        move = result["MH1"][-1]
+        assert move.end_ms == 16_500
+
+    def test_no_bars_preserves_fill_the_section_behavior(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 30_000, 40, variation_seed=2)]
+        result = place_moving_head_moves(layout, assignments, bars=None)
+        move = result["MH1"][-1]
+        assert move.end_ms == _MAX_MOVE_DURATION_MS

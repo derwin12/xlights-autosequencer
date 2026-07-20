@@ -353,7 +353,7 @@ def build_plan(
     # docstring for the v1 continuous-wash rationale this replaced.
     moving_head_effects: dict[str, list] = {}
     if config.moving_head_effects and layout is not None:
-        moving_head_effects = place_moving_head_moves(layout, assignments)
+        moving_head_effects = place_moving_head_moves(layout, assignments, bars=hierarchy.bars)
 
     # 5d. Rare whole-house crash accents (config.crash_accents). Song-scoped,
     # same rationale as vocal_effects/video_effects. Computed here (before
