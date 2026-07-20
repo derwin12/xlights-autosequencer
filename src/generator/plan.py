@@ -32,9 +32,11 @@ from src.generator.corpus_recipes import CORPUS_RECIPES, section_qualifies
 from src.generator.image_catalog import suggest_images_for_words
 from src.generator.energy import derive_section_energies
 from src.generator.moving_head import (
+    place_moving_head_beat_bursts,
     place_moving_head_crash_accents,
     place_moving_head_ending_punches,
     place_moving_head_moves,
+    place_moving_head_pattern_accents,
 )
 from src.generator.rotation import RotationEngine
 from src.generator.transitions import TransitionConfig, apply_transitions
@@ -401,6 +403,26 @@ def build_plan(
             layout, hierarchy,
             fade_exclusion_start_ms=fade_exclusion_start_ms,
             existing_placements=existing_mh,
+        ).items():
+            crash_effects.setdefault(gname, []).extend(placements)
+
+    # 5d-2b. Random Moving Head accents: Beat Burst (strong sections) and
+    # Pattern Circle/Square (quieter sections) -- mined from MH Samples.xsq's
+    # 2026-07-19 update. Same rare-accents umbrella as crash/ending punches,
+    # merged into the same dict. See moving_head.py's "Random accents"
+    # section docstring for the full design (head-count pools, section
+    # gating, sparsity cap).
+    if config.moving_head_effects and layout is not None:
+        existing_mh = dict(moving_head_effects)
+        for gname, placements in crash_effects.items():
+            existing_mh[gname] = existing_mh.get(gname, []) + placements
+        for gname, placements in place_moving_head_beat_bursts(
+            layout, assignments, hierarchy, existing_placements=existing_mh,
+        ).items():
+            crash_effects.setdefault(gname, []).extend(placements)
+            existing_mh[gname] = existing_mh.get(gname, []) + placements
+        for gname, placements in place_moving_head_pattern_accents(
+            layout, assignments, hierarchy, existing_placements=existing_mh,
         ).items():
             crash_effects.setdefault(gname, []).extend(placements)
 

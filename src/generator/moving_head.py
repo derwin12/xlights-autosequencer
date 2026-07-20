@@ -52,13 +52,14 @@ sequence is itself all-white, so this carries forward without conflict.
 """
 from __future__ import annotations
 
+import random
 import re
 from dataclasses import dataclass, replace
 from typing import Optional
 
 from src.analyzer.result import HierarchyResult, TimingTrack
 from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy, frame_align
-from src.grouper.layout import Layout, find_moving_head_groups
+from src.grouper.layout import Layout, MovingHeadGroup, find_moving_head_groups
 
 # "Dimmer: x1,y1,x2,y2,..." is a value-curve point list, not an opaque bit
 # pattern -- confirmed by reading MovingHeadEffect::CalculateDimmer() in the
@@ -1243,6 +1244,247 @@ def _build_ending_warmup_head_settings(head_count: int) -> str:
         "Groupings: 1;Cycles: 1.0;"
         f"Heads: {heads_field}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Random accents: Beat Burst / Pattern Circle / Pattern Square -- mined from
+# a 2026-07-19 update to MH Samples.xsq (3 new demo idioms, distinct from the
+# 12-move MOVE_LIBRARY above). All three are short (~1.4s) single-shot
+# accents on a randomly-sized subset of heads, using the SAME dimmer "burst"
+# value curve (a 24-point dip/spike ramp, identical across every mined
+# Beat-Burst/Circle/Square entry) -- unlike the sustained per-section moves,
+# these read as quick flourishes, not continuous motion.
+#
+# Per user design decision (2026-07-19): Beat Burst fires in the same
+# "strong" sections as the existing gated moves (chosen head count 1-4,
+# matching the demo's own solo-head walkthrough); Pattern Circle/Square fire
+# in the quieter (non-strong) sections instead -- giving those otherwise-dark
+# stretches an occasional light touch -- with head count restricted to 1, 2,
+# or 4 (never 3, per explicit user instruction). Both are sparse: capped to
+# a handful per song (crash_accents/riff_bursts' "rare, not continuous"
+# rarity philosophy), not a per-beat layer. Shape/size (PatternWidth/Height/
+# X-Y Offset) and the burst dimmer curve are mined constants, not varied --
+# only which beat, how many heads, and which heads are chosen at random.
+# ---------------------------------------------------------------------------
+
+_ACCENT_DURATION_MS = 1400
+# Mined verbatim from MH Samples.xsq's Beat Burst / Pattern Circle / Pattern
+# Square entries -- identical dimmer curve on every one of them.
+_ACCENT_BURST_DIMMER_VC = _COMMA_ESCAPE.join((
+    "0.000000", "1.000000", "0.144044", "0.264368", "0.224377", "0.201149",
+    "0.249307", "1.011494", "0.250307", "0.201149", "0.373961", "1.005747",
+    "0.429363", "0.005747", "0.515235", "1.028736", "0.703601", "0.281609",
+    "0.750693", "1.022989", "0.933518", "0.011494", "1.000000", "1.000000",
+))
+_ACCENT_STATIC_PAN_DEG = 45.0
+_ACCENT_STATIC_TILT_DEG = 45.0
+_BEAT_BURST_HEAD_COUNTS = (1, 2, 3, 4)
+_PATTERN_HEAD_COUNTS = (1, 2, 4)
+_PATTERN_NAMES = ("Circle", "Square")
+# (width, height, x_offset, y_offset) -- mined verbatim, identical across
+# every head count in the demo.
+_PATTERN_SHAPES = {
+    "Circle": (39, 22, 42, 10),
+    "Square": (16, 22, 42, 31),
+}
+_MAX_BEAT_BURSTS_PER_SONG = 3
+_MAX_PATTERN_ACCENTS_PER_SONG = 3
+
+
+def _choose_accent_heads(head_names: list[str], count: int, seed: int) -> list[str]:
+    """Deterministically pick ``count`` distinct heads out of ``head_names``,
+    keyed off ``seed`` so the same song/variation_seed always reproduces the
+    same choice."""
+    count = min(count, len(head_names))
+    return random.Random(seed).sample(head_names, count)
+
+
+def _build_accent_head_settings(head_index: int, pan_deg: float, tilt_deg: float,
+                                 pattern_name: Optional[str] = None) -> str:
+    """Per-head settings text for a Beat Burst (``pattern_name=None``) or a
+    Pattern Circle/Square accent -- field order matches the mined/confirmed
+    reference exactly (Dimmer;Pan;Tilt;offsets;Groupings;Cycles;Heads;
+    [Pattern block];Wheel;Shutter)."""
+    pattern_part = ""
+    if pattern_name is not None:
+        width, height, x_offset, y_offset = _PATTERN_SHAPES[pattern_name]
+        pattern_part = (
+            f"Pattern: {pattern_name};PatternWidth: {width};"
+            f"PatternHeight: {height};PatternXOffset: {x_offset};"
+            f"PatternYOffset: {y_offset};PatternRotation: 0;"
+            "PatternStartOffset: 0;"
+        )
+    return (
+        f"Dimmer: {_ACCENT_BURST_DIMMER_VC};"
+        f"Pan: {pan_deg};Tilt: {tilt_deg};"
+        "PanOffset: 0.0;TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {head_index};"
+        f"{pattern_part}"
+        f"Wheel: {_COLOR_WHITE};Shutter: On"
+    )
+
+
+def _build_accent_parameters(pan_deg: float, tilt_deg: float, head_index: int,
+                              pattern_name: Optional[str] = None) -> dict[str, str]:
+    settings = _build_accent_head_settings(head_index, pan_deg, tilt_deg, pattern_name)
+    params = _build_parameters(
+        {head_index: settings},
+        slider_pan=_deg_to_slider(pan_deg), slider_tilt=_deg_to_slider(tilt_deg),
+    )
+    if pattern_name is not None:
+        width, height, x_offset, y_offset = _PATTERN_SHAPES[pattern_name]
+        params["E_CHECKBOX_MHPatternEnable"] = "1"
+        params["E_CHOICE_MHPattern"] = pattern_name
+        params["E_SLIDER_MHPatternWidth"] = str(width)
+        params["E_SLIDER_MHPatternHeight"] = str(height)
+        params["E_SLIDER_MHPatternXOffset"] = str(x_offset)
+        params["E_SLIDER_MHPatternYOffset"] = str(y_offset)
+    return params
+
+
+def _place_random_head_accents(
+    mh_group: MovingHeadGroup, sections: list[tuple[int, SectionEnergy]], hierarchy: HierarchyResult,
+    variation_seed: int, head_counts: tuple[int, ...], max_per_song: int,
+    existing: dict[str, list[EffectPlacement]],
+    pattern_name: Optional[str] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Shared placement logic for Beat Burst (``pattern_name=None``) and
+    Pattern Circle/Square accents -- picks up to ``max_per_song`` qualifying
+    sections, a beat mark near each section's midpoint, a random head count
+    from ``head_counts``, and that many random heads; skips a section
+    entirely if the chosen heads/window collide with anything already
+    placed on those channels."""
+    beats = hierarchy.beats.marks if hierarchy.beats else []
+    result: dict[str, list[EffectPlacement]] = {}
+    placed = 0
+    for section_index, section in sections:
+        if placed >= max_per_song:
+            break
+        window_marks = [m for m in beats if section.start_ms <= m.time_ms < section.end_ms]
+        if not window_marks:
+            continue
+        midpoint = (section.start_ms + section.end_ms) / 2
+        mark = min(window_marks, key=lambda m: abs(m.time_ms - midpoint))
+        start_ms = mark.time_ms
+        end_ms = min(start_ms + _ACCENT_DURATION_MS, section.end_ms)
+        if end_ms <= start_ms:
+            continue
+
+        seed = variation_seed + section_index
+        count = head_counts[seed % len(head_counts)]
+        effective_pattern = (
+            _PATTERN_NAMES[seed % len(_PATTERN_NAMES)] if pattern_name == "any"
+            else pattern_name
+        )
+        heads = _choose_accent_heads(mh_group.head_names, count, seed)
+
+        occupied = [p for h in heads for p in existing.get(h, [])] + [
+            p for h in heads for p in result.get(h, [])
+        ]
+        if _has_overlap(occupied, start_ms, end_ms):
+            continue
+
+        for head_name in heads:
+            head_index = mh_group.head_names.index(head_name) + 1
+            params = _build_accent_parameters(
+                _ACCENT_STATIC_PAN_DEG, _ACCENT_STATIC_TILT_DEG, head_index,
+                pattern_name=effective_pattern,
+            )
+            head_placements = existing.get(head_name, []) + result.get(head_name, [])
+            warmup_settings = _build_move_warmup_settings(
+                _HeadPose(pan=_ACCENT_STATIC_PAN_DEG, tilt=_ACCENT_STATIC_TILT_DEG),
+                0.0, 0.0, heads_field=str(head_index),
+            )
+            warmup_params = _build_parameters(
+                {head_index: warmup_settings},
+                slider_pan=_deg_to_slider(_ACCENT_STATIC_PAN_DEG),
+                slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
+            )
+            prior_ends = [p.end_ms for p in head_placements if p.end_ms <= start_ms]
+            warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+            if _heads_already_posed(head_placements, start_ms, warmup_params):
+                warmup_duration_ms = 0
+            placements = result.setdefault(head_name, [])
+            if warmup_duration_ms > 0:
+                placements.append(EffectPlacement(
+                    effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                    model_or_group=head_name,
+                    start_ms=start_ms - warmup_duration_ms, end_ms=start_ms,
+                    parameters=dict(warmup_params),
+                ))
+            placements.append(EffectPlacement(
+                effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                model_or_group=head_name,
+                start_ms=start_ms, end_ms=end_ms,
+                parameters=params,
+            ))
+        placed += 1
+    return result
+
+
+def place_moving_head_beat_bursts(
+    layout: Layout, assignments: list[SectionAssignment], hierarchy: HierarchyResult,
+    existing_placements: Optional[dict[str, list[EffectPlacement]]] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a short (``_ACCENT_DURATION_MS``) dimmer-burst accent on a
+    randomly-sized subset of heads (``_BEAT_BURST_HEAD_COUNTS``) near the
+    midpoint of a handful of "strong" sections (up to
+    ``_MAX_BEAT_BURSTS_PER_SONG``) -- mined from MH Samples.xsq's Beat Burst
+    demo. See this module's "Random accents" section docstring for the
+    full design rationale."""
+    mh_groups = find_moving_head_groups(layout)
+    if not mh_groups:
+        return {}
+    existing_placements = existing_placements or {}
+    strong_sections = [
+        (i, a.section) for i, a in enumerate(assignments) if _is_strong_section(a.section)
+    ]
+    result: dict[str, list[EffectPlacement]] = {}
+    for mh_group in mh_groups:
+        relevant = {h: existing_placements.get(h, []) for h in mh_group.head_names}
+        accents = _place_random_head_accents(
+            mh_group, strong_sections, hierarchy,
+            assignments[0].variation_seed if assignments else 0,
+            _BEAT_BURST_HEAD_COUNTS, _MAX_BEAT_BURSTS_PER_SONG, relevant,
+            pattern_name=None,
+        )
+        for name, placements in accents.items():
+            result.setdefault(name, []).extend(placements)
+    return result
+
+
+def place_moving_head_pattern_accents(
+    layout: Layout, assignments: list[SectionAssignment], hierarchy: HierarchyResult,
+    existing_placements: Optional[dict[str, list[EffectPlacement]]] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a short (``_ACCENT_DURATION_MS``) Pattern Circle/Square accent
+    (randomly chosen each time) on a randomly-sized subset of heads
+    (``_PATTERN_HEAD_COUNTS`` -- 1, 2, or 4, never 3) near the midpoint of a
+    handful of quieter, non-"strong" sections (up to
+    ``_MAX_PATTERN_ACCENTS_PER_SONG``) -- mined from MH Samples.xsq's
+    Pattern Circle/Square demo. See this module's "Random accents" section
+    docstring for the full design rationale."""
+    mh_groups = find_moving_head_groups(layout)
+    if not mh_groups:
+        return {}
+    existing_placements = existing_placements or {}
+    quiet_sections = [
+        (i, a.section) for i, a in enumerate(assignments)
+        if not _is_strong_section(a.section) and a.section.end_ms - a.section.start_ms >= _MIN_SECTION_DURATION_MS
+    ]
+    result: dict[str, list[EffectPlacement]] = {}
+    for mh_group in mh_groups:
+        relevant = {h: existing_placements.get(h, []) for h in mh_group.head_names}
+        accents = _place_random_head_accents(
+            mh_group, quiet_sections, hierarchy,
+            assignments[0].variation_seed if assignments else 0,
+            _PATTERN_HEAD_COUNTS, _MAX_PATTERN_ACCENTS_PER_SONG, relevant,
+            pattern_name="any",
+        )
+        for name, placements in accents.items():
+            result.setdefault(name, []).extend(placements)
+    return result
 
 
 def place_moving_head_ending_punches(
