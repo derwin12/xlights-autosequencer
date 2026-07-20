@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import styles from "./About.module.css";
 import { useManifestStore } from "../../store/manifest";
+import { isBackendStale, isUpdateAvailable } from "../../lib/manifestStaleness";
 
 /**
  * About dialog — version label, build details, credits, link to the
@@ -27,6 +28,10 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
   }, [open, load]);
 
   if (!open) return null;
+
+  const backendStale = isBackendStale(manifest?.backend_commit, manifest?.repo_head_commit);
+  const updateAvailable = isUpdateAvailable(manifest?.repo_head_commit, manifest?.origin_main_commit);
+
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -81,8 +86,24 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
             {manifest?.backend_commit && (
               <div>backend: <code>{shortCommit(manifest.backend_commit)}</code></div>
             )}
+            {manifest?.repo_head_commit && (
+              <div>local checkout: <code>{shortCommit(manifest.repo_head_commit)}</code></div>
+            )}
+            {manifest?.origin_main_commit && (
+              <div>origin/main: <code>{shortCommit(manifest.origin_main_commit)}</code></div>
+            )}
             {manifest?.backend_started_at && (
               <div>backend up since: <code>{manifest.backend_started_at}</code></div>
+            )}
+            {updateAvailable && (
+              <div className={styles.staleWarning}>
+                ⚠ origin/main has commits this checkout hasn't pulled yet — run <code>git pull</code>.
+              </div>
+            )}
+            {!updateAvailable && backendStale && (
+              <div className={styles.staleWarning}>
+                ⚠ code was pulled since the backend started — restart the server to pick it up.
+              </div>
             )}
           </div>
         )}

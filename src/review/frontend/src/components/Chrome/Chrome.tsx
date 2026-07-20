@@ -3,6 +3,7 @@ import type { Screen } from 'src/store/app';
 import type { Song, Folder } from 'src/store/library';
 import { About, shortCommit } from '../About/About';
 import { useManifestStore } from '../../store/manifest';
+import { isBackendStale, isUpdateAvailable } from '../../lib/manifestStaleness';
 import styles from './Chrome.module.css';
 
 function fmtBuildTime(iso: string): string {
@@ -11,30 +12,6 @@ function fmtBuildTime(iso: string): string {
   return d.toLocaleString(undefined, {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
-}
-
-/** Strip the "-dirty" suffix so a commit compares equal regardless of
- * working-tree state at the moment each side was read. */
-function baseCommit(commit: string): string {
-  return commit.replace(/-dirty$/, '');
-}
-
-/** True when the running backend process was started before the latest
- * commit on disk -- i.e. a restart would pick up newer code (user
- * request, 2026-07-18: surface this instead of requiring a manual
- * git log vs. manifest cross-check). */
-function isBackendStale(backendCommit: string | null | undefined, repoHeadCommit: string | null | undefined): boolean {
-  if (!backendCommit || !repoHeadCommit) return false;
-  return baseCommit(backendCommit) !== baseCommit(repoHeadCommit);
-}
-
-/** True when the local checkout's HEAD is behind origin/main -- distinct
- * from isBackendStale (pulled but not restarted): this is "haven't even
- * pulled yet." origin_main_commit is cached server-side and may be null
- * (offline, no network) -- treated as "unknown," not stale. */
-function isUpdateAvailable(repoHeadCommit: string | null | undefined, originMainCommit: string | null | undefined): boolean {
-  if (!repoHeadCommit || !originMainCommit) return false;
-  return baseCommit(repoHeadCommit) !== baseCommit(originMainCommit);
 }
 
 const TABS: { id: Screen; label: string; key: string }[] = [

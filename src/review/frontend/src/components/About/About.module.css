@@ -94,6 +94,12 @@
   border-radius: 3px;
 }
 
+.staleWarning {
+  color: var(--color-warning, #f59e0b);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
