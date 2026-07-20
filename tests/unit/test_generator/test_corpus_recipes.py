@@ -670,11 +670,12 @@ class TestHouseLineRecipes:
         assert len(masks) == len(_BEATS)
         assert all(p.layer == 1 for p in masks)
 
-    def test_no_off_backdrop(self) -> None:
-        result = _place(_make_section(label="chorus"), _HORIZONTAL_GROUP,
-                        library_names=_DEFAULT_LIBRARY_NAMES + ("Off",))
-        offs = [p for p in result["06_PROP_Horizontal"] if p.effect_name == "Off"]
-        assert offs == []
+    def test_adds_off_backdrop(self) -> None:
+        for group in (_HORIZONTAL_GROUP, _VERTICAL_GROUP):
+            result = _place(_make_section(label="chorus"), group,
+                            library_names=_DEFAULT_LIBRARY_NAMES + ("Off",))
+            offs = [p for p in result[group.name] if p.effect_name == "Off"]
+            assert len(offs) == 1
 
     def test_ping_pongs_chase_direction_per_beat(self) -> None:
         for group in (_HORIZONTAL_GROUP, _VERTICAL_GROUP):

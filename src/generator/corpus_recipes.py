@@ -663,12 +663,25 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     # idiom: white per-beat SingleStrand chase (70%/66%, From Head 85-89%,
     # Number_Chases 1) colored by an On layer with "2 is Unmask" (100% of
     # 243/159 On placements), alternating with white Lightning flickers
-    # (11%/18%, unanimous preset). Off placements are too few/short to be
-    # the tiling-backdrop idiom (52 @ 3.3s median / 24), so off_backdrop
-    # stays False. The On layer bar-cycles rather than spanning the section
-    # -- direct block-duration measurement (2026-07-15) corrected an
-    # earlier claim that these placements were section-spanning; e.g. Bad
-    # Habits measures ~3800ms blocks against a ~475ms beat = 8 beats/cycle.
+    # (11%/18%, unanimous preset). The On layer bar-cycles rather than
+    # spanning the section -- direct block-duration measurement (2026-07-15)
+    # corrected an earlier claim that these placements were section-spanning;
+    # e.g. Bad Habits measures ~3800ms blocks against a ~475ms beat = 8
+    # beats/cycle.
+    #
+    # off_backdrop=True (corrected 2026-07-19): the original "52 @ 3.3s
+    # median" figure that justified off_backdrop=False conflated two
+    # unrelated things -- one outlier song (Bad Habits mashup) contributes 24
+    # short 0.35s Off blips that are inserts inside the Lightning-flicker
+    # combo, not backdrops. Every other Off placement across both corpora
+    # (11 of the 20 songs) is a genuinely long block (3.7s-131.9s), on the
+    # layer directly beneath the bursts, concurrent with 21-40 other motion/
+    # color placements on the layers above -- the same "Off tiled beneath the
+    # bursts" idiom already used for cane/tree/snowflake/icicle, just with
+    # fewer/longer blocks instead of many 12-15s tiles. Reusing the existing
+    # section-spanning off_backdrop placement (rather than adding new
+    # fixed-length tiling logic) fits the data: these blocks vary in length
+    # and sometimes span a whole section, unlike the shorter fixed tiles.
     PropFamilyRecipe(
         family="horizontal",
         match_tokens=("horizontal", "horiz"),
@@ -680,6 +693,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         mask_sparkles=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,
+        off_backdrop=True,
         # Chase direction rotation mined across all 10 corpus songs (1213
         # placements): Left-Right/Right-Left ping-pong dominates (73%
         # combined), "From Middle" the recurring per-occurrence alternate
@@ -708,6 +722,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         mask_sparkles=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,
+        off_backdrop=True,
         # Chase direction rotation mined across all 9 corpus songs (1276
         # placements): Left-Right/Right-Left ping-pong dominates (74%
         # combined), "From Middle" the recurring per-occurrence alternate
