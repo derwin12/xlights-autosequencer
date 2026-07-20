@@ -1158,6 +1158,114 @@ class TestWholeHouseCompositePlacement:
         params_b = [p.parameters for p in result_b[base.name] if p.effect_name == "Pinwheel"]
         assert params_a == params_b
 
+    def test_shockwave_placements_vary_radius_and_width(self):
+        # bug: whole-house Shockwave placements always rendered with the same
+        # hard-coded values (Start_Radius=1, End_Radius=100) and left
+        # Start_Width/End_Width/Accel at builtin defaults -- despite
+        # Shockwave being the single most common whole-house effect (27%
+        # of the mined pool), every placement looked identical.
+        base = _make_base_group()
+        end_radii: set[str] = set()
+        start_widths: set[str] = set()
+        for seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                variation_seed=seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=_make_variant_library(),
+            )
+            for p in result[base.name]:
+                if p.effect_name != "Shockwave":
+                    continue
+                end_radii.add(p.parameters["E_SLIDER_Shockwave_End_Radius"])
+                start_widths.add(p.parameters["E_SLIDER_Shockwave_Start_Width"])
+                # Center stays fixed -- an off-center ring risks looking
+                # broken across the "All" group's mixed prop geometries.
+                assert p.parameters["E_SLIDER_Shockwave_CenterX"] == "50"
+                assert p.parameters["E_SLIDER_Shockwave_CenterY"] == "50"
+        assert len(end_radii) > 1
+        assert len(start_widths) > 1
+
+    def test_shockwave_params_stay_within_builtin_effects_bounds(self):
+        from src.effects.library import load_effect_library
+
+        library = load_effect_library()
+        shockwave = library.get("Shockwave")
+        bounds = {p.storage_name: (p.min, p.max) for p in shockwave.parameters if p.min is not None}
+
+        base = _make_base_group()
+        for seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                variation_seed=seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=_make_variant_library(),
+            )
+            for p in result[base.name]:
+                if p.effect_name != "Shockwave":
+                    continue
+                for key, value in p.parameters.items():
+                    if key in bounds:
+                        lo, hi = bounds[key]
+                        assert lo <= int(value) <= hi, f"{key}={value} outside [{lo}, {hi}]"
+
+    def test_ripple_placements_use_solid_or_highlight_draw_style(self):
+        # bug: whole-house Ripple always fell to the bare `{}` params branch,
+        # rendering with Draw_Style="Old" (the flattest of 18 choices) and
+        # Thickness=3 (thin) on every placement.
+        base = _make_base_group()
+        draw_styles: set[str] = set()
+        thicknesses: set[str] = set()
+        for seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                variation_seed=seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=_make_variant_library(),
+            )
+            for p in result[base.name]:
+                if p.effect_name != "Ripple":
+                    continue
+                draw_styles.add(p.parameters["E_CHOICE_Ripple_Draw_Style"])
+                thicknesses.add(p.parameters["E_SLIDER_Ripple_Thickness"])
+                assert p.parameters["E_CHOICE_Ripple_Draw_Style"] != "Old"
+                assert p.parameters["E_CHOICE_Ripple_Draw_Style"].split()[0] in ("Solid", "Highlight", "Lines")
+                assert p.parameters["E_CHOICE_Ripple_Object_To_Draw"] not in (
+                    "Candy Cane", "Snow Flake", "Present", "Crucifix",
+                )
+        assert len(draw_styles) > 1
+        assert len(thicknesses) > 1
+
+    def test_ripple_params_stay_within_builtin_effects_bounds(self):
+        from src.effects.library import load_effect_library
+
+        library = load_effect_library()
+        ripple = library.get("Ripple")
+        bounds = {p.storage_name: (p.min, p.max) for p in ripple.parameters if p.min is not None}
+        choices = {p.storage_name: p.choices for p in ripple.parameters if p.choices}
+
+        base = _make_base_group()
+        for seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                variation_seed=seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=_make_variant_library(),
+            )
+            for p in result[base.name]:
+                if p.effect_name != "Ripple":
+                    continue
+                for key, value in p.parameters.items():
+                    if key in bounds:
+                        lo, hi = bounds[key]
+                        assert lo <= int(value) <= hi, f"{key}={value} outside [{lo}, {hi}]"
+                    if key in choices:
+                        assert value in choices[key], f"{key}={value} not in {choices[key]}"
+
 
 class TestWholeHouseCompositeConfigFlag:
     def test_flag_defaults_to_true(self):

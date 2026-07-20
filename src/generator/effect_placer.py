@@ -412,6 +412,37 @@ _WHOLE_HOUSE_PINWHEEL_THICKNESS = (10, 18, 25, 32)
 _WHOLE_HOUSE_PINWHEEL_TWIST = (0, 45, 90, 135, -45, -90)
 _WHOLE_HOUSE_PINWHEEL_ARMS = (3, 4, 5)
 
+# Whole-house Shockwave variety pools. Center stays fixed at 50/50 and
+# Blend_Edges stays on -- the "All" group spans every prop's differing
+# physical geometry, so an off-center ring or a hard edge risks looking
+# broken on some prop shapes even though it would vary fine in isolation.
+# Radius/width/cycle/accel ranges stay within builtin_effects.json's min/max
+# and close to the effect's own defaults (Start_Radius=1/End_Radius=100/
+# Start_Width=5/End_Width=1/Cycles=1/Accel=0) so every combination still
+# reads as "an expanding ring," just not byte-identical every time.
+_WHOLE_HOUSE_SHOCKWAVE_START_RADIUS = (0, 5, 10)
+_WHOLE_HOUSE_SHOCKWAVE_END_RADIUS = (100, 130, 160)
+_WHOLE_HOUSE_SHOCKWAVE_START_WIDTH = (3, 6, 10)
+_WHOLE_HOUSE_SHOCKWAVE_END_WIDTH = (1, 3, 6)
+_WHOLE_HOUSE_SHOCKWAVE_CYCLES = (1, 2, 3)
+_WHOLE_HOUSE_SHOCKWAVE_ACCEL = (-3, 0, 3)
+
+# Whole-house Ripple variety pools. Object_To_Draw is restricted to abstract
+# shapes -- the full builtin_effects.json choice list also includes holiday
+# shapes (Candy Cane, Snow Flake, Present, Crucifix) that would look wrong on
+# a non-holiday song. Draw_Style favors the newer Solid/Highlight styles
+# (recently added to builtin_effects.json) over the flat "Old" default that
+# every whole-house Ripple previously rendered with. Thickness is raised off
+# its thin default of 3.
+_WHOLE_HOUSE_RIPPLE_OBJECT = ("Circle", "Square", "Triangle", "Star", "Polygon")
+_WHOLE_HOUSE_RIPPLE_MOVEMENT = ("Explode", "Explode", "Implode")
+_WHOLE_HOUSE_RIPPLE_DRAW_STYLE = (
+    "Solid Outward", "Solid Both", "Highlight Outward", "Highlight Both",
+    "Lines Outward Ripple",
+)
+_WHOLE_HOUSE_RIPPLE_THICKNESS = (8, 15, 25, 35)
+_WHOLE_HOUSE_RIPPLE_SCALE = (80, 100, 120, 150)
+
 
 def _apply_palette_target(palette: list[str], target: int) -> list[str]:
     """Trim a palette to ``target`` colours using spread-based indexing.
@@ -3045,13 +3076,29 @@ def _place_whole_house_composite(
     for i in range(layer_count):
         effect_name = distinct_pool[(variation_seed + i) % len(distinct_pool)]
         if effect_name == "Shockwave":
+            local_seed = variation_seed + i
             params = {
                 "E_CHECKBOX_Shockwave_Blend_Edges": "1",
                 "E_SLIDER_Shockwave_CenterX": "50",
                 "E_SLIDER_Shockwave_CenterY": "50",
-                "E_SLIDER_Shockwave_Cycles": "1",
-                "E_SLIDER_Shockwave_Start_Radius": "1",
-                "E_SLIDER_Shockwave_End_Radius": "100",
+                "E_SLIDER_Shockwave_Start_Radius": str(
+                    _WHOLE_HOUSE_SHOCKWAVE_START_RADIUS[local_seed % len(_WHOLE_HOUSE_SHOCKWAVE_START_RADIUS)]
+                ),
+                "E_SLIDER_Shockwave_End_Radius": str(
+                    _WHOLE_HOUSE_SHOCKWAVE_END_RADIUS[(local_seed // 3) % len(_WHOLE_HOUSE_SHOCKWAVE_END_RADIUS)]
+                ),
+                "E_SLIDER_Shockwave_Start_Width": str(
+                    _WHOLE_HOUSE_SHOCKWAVE_START_WIDTH[(local_seed // 5) % len(_WHOLE_HOUSE_SHOCKWAVE_START_WIDTH)]
+                ),
+                "E_SLIDER_Shockwave_End_Width": str(
+                    _WHOLE_HOUSE_SHOCKWAVE_END_WIDTH[(local_seed // 7) % len(_WHOLE_HOUSE_SHOCKWAVE_END_WIDTH)]
+                ),
+                "E_SLIDER_Shockwave_Cycles": str(
+                    _WHOLE_HOUSE_SHOCKWAVE_CYCLES[(local_seed // 11) % len(_WHOLE_HOUSE_SHOCKWAVE_CYCLES)]
+                ),
+                "E_SLIDER_Shockwave_Accel": str(
+                    _WHOLE_HOUSE_SHOCKWAVE_ACCEL[(local_seed // 13) % len(_WHOLE_HOUSE_SHOCKWAVE_ACCEL)]
+                ),
             }
         elif effect_name == "Shader":
             variant_name = (
@@ -3072,6 +3119,25 @@ def _place_whole_house_composite(
                 ),
                 "E_SLIDER_Pinwheel_Arms": str(
                     _WHOLE_HOUSE_PINWHEEL_ARMS[(local_seed // 11) % len(_WHOLE_HOUSE_PINWHEEL_ARMS)]
+                ),
+            }
+        elif effect_name == "Ripple":
+            local_seed = variation_seed + i
+            params = {
+                "E_CHOICE_Ripple_Object_To_Draw": _WHOLE_HOUSE_RIPPLE_OBJECT[
+                    local_seed % len(_WHOLE_HOUSE_RIPPLE_OBJECT)
+                ],
+                "E_CHOICE_Ripple_Movement": _WHOLE_HOUSE_RIPPLE_MOVEMENT[
+                    (local_seed // 5) % len(_WHOLE_HOUSE_RIPPLE_MOVEMENT)
+                ],
+                "E_CHOICE_Ripple_Draw_Style": _WHOLE_HOUSE_RIPPLE_DRAW_STYLE[
+                    (local_seed // 7) % len(_WHOLE_HOUSE_RIPPLE_DRAW_STYLE)
+                ],
+                "E_SLIDER_Ripple_Thickness": str(
+                    _WHOLE_HOUSE_RIPPLE_THICKNESS[(local_seed // 11) % len(_WHOLE_HOUSE_RIPPLE_THICKNESS)]
+                ),
+                "E_SLIDER_Ripple_Scale": str(
+                    _WHOLE_HOUSE_RIPPLE_SCALE[(local_seed // 13) % len(_WHOLE_HOUSE_RIPPLE_SCALE)]
                 ),
             }
         else:
