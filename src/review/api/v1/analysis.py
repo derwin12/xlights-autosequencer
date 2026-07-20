@@ -569,6 +569,12 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             for stem, track in hierarchy.events.items()
         }
 
+        # ── Per-instrument drum hits (split from the classified "drums"
+        # onset track, see src/analyzer/drum_classifier.py) ──────────────────
+        kick_hits_list = [m.time_ms for m in hierarchy.kick_hits]
+        snare_hits_list = [m.time_ms for m in hierarchy.snare_hits]
+        hihat_hits_list = [m.time_ms for m in hierarchy.hihat_hits]
+
         # ── Sub-beat grids (half-bars and eighth notes) ──────────────────────
         half_bars_list = [m.time_ms for m in (hierarchy.half_bars.marks if hierarchy.half_bars else [])]
         eighth_notes_list = [m.time_ms for m in (hierarchy.eighth_notes.marks if hierarchy.eighth_notes else [])]
@@ -694,6 +700,22 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                            "kind": "marks",
                            "error": None})
 
+        # Per-instrument drum hit detectors (split from the classified
+        # "drums" onset track — empty is normal when drumsep/demucs are
+        # unavailable, not a failure).
+        detectors.append({"name": "kick_hits", "library": "story",
+                           "status": "done", "confidence": None,
+                           "marks": len(kick_hits_list),
+                           "kind": "marks", "error": None})
+        detectors.append({"name": "snare_hits", "library": "story",
+                           "status": "done", "confidence": None,
+                           "marks": len(snare_hits_list),
+                           "kind": "marks", "error": None})
+        detectors.append({"name": "hihat_hits", "library": "story",
+                           "status": "done", "confidence": None,
+                           "marks": len(hihat_hits_list),
+                           "kind": "marks", "error": None})
+
         pipeline_version = f"full-{hierarchy.schema_version}"
 
         story_global = (story or {}).get("global", {})
@@ -709,6 +731,9 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             "impacts": impacts_list,
             "drops": drops_list,
             "onsets": onsets_dict,
+            "kick_hits": kick_hits_list,
+            "snare_hits": snare_hits_list,
+            "hihat_hits": hihat_hits_list,
             "section_boundaries": section_boundaries_list,
             "chord_changes": chord_changes_list,
             "key_changes": key_changes_list,
@@ -1161,6 +1186,13 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
     # Per-stem onsets + section/chord/key timestamps
     onsets_dict = {stem: [m.time_ms for m in track.marks]
                    for stem, track in hierarchy.events.items()}
+
+    # Per-instrument drum hits (split from the classified "drums" onset
+    # track, see src/analyzer/drum_classifier.py)
+    kick_hits_list = [m.time_ms for m in hierarchy.kick_hits]
+    snare_hits_list = [m.time_ms for m in hierarchy.snare_hits]
+    hihat_hits_list = [m.time_ms for m in hierarchy.hihat_hits]
+
     section_boundaries_list = [m.time_ms for m in hierarchy.sections]
     chord_changes_list = [m.time_ms for m in (hierarchy.chords.marks if hierarchy.chords else [])]
     key_changes_list = [m.time_ms for m in (hierarchy.key_changes.marks if hierarchy.key_changes else [])]
@@ -1218,6 +1250,16 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
     detectors.append({"name": "lyrics", "library": "story", "status": "done",
                        "confidence": None, "marks": len(lyrics_list),
                        "kind": "lyrics", "error": None})
+
+    detectors.append({"name": "kick_hits", "library": "story", "status": "done",
+                       "confidence": None, "marks": len(kick_hits_list),
+                       "kind": "marks", "error": None})
+    detectors.append({"name": "snare_hits", "library": "story", "status": "done",
+                       "confidence": None, "marks": len(snare_hits_list),
+                       "kind": "marks", "error": None})
+    detectors.append({"name": "hihat_hits", "library": "story", "status": "done",
+                       "confidence": None, "marks": len(hihat_hits_list),
+                       "kind": "marks", "error": None})
 
     # Sections — load from session if available, else derive from hierarchy.
     # Both paths need to expose `agreement_score` + `low_confidence` so the
@@ -1278,6 +1320,9 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
         "impacts": impacts_list,
         "drops": drops_list,
         "onsets": onsets_dict,
+        "kick_hits": kick_hits_list,
+        "snare_hits": snare_hits_list,
+        "hihat_hits": hihat_hits_list,
         "section_boundaries": section_boundaries_list,
         "chord_changes": chord_changes_list,
         "key_changes": key_changes_list,

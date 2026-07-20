@@ -1241,6 +1241,63 @@ class TestStemOnsetTimingTracks:
         assert display_els["Beats"].get("visible") == "1"
 
 
+class TestDrumHitTimingTracks:
+    """Kick/Snare/Hihat Hits (split from the classified "drums" onset track,
+    see src/analyzer/drum_classifier.py) must be embedded as their own
+    visible .xsq timing tracks -- previously only present in the standalone
+    analyzer .xtiming export, never in the generated .xsq itself."""
+
+    def _hierarchy_with_drum_hits(self):
+        from src.analyzer.result import HierarchyResult
+
+        return HierarchyResult(
+            schema_version="2.0.0",
+            source_file="test.mp3",
+            source_hash="deadbeef",
+            duration_ms=1000,
+            estimated_bpm=120.0,
+            kick_hits=[TimingMark(time_ms=100, confidence=0.9, label="kick")],
+            snare_hits=[TimingMark(time_ms=250, confidence=0.9, label="snare")],
+            hihat_hits=[TimingMark(time_ms=175, confidence=0.9, label="hihat")],
+        )
+
+    def test_kick_snare_hihat_tracks_are_collected(self):
+        tracks = _collect_timing_tracks(self._hierarchy_with_drum_hits())
+        assert "Kick Hits" in tracks
+        assert "Snare Hits" in tracks
+        assert "Hihat Hits" in tracks
+        assert tracks["Kick Hits"][0].time_ms == 100
+
+    def test_empty_hit_lists_are_omitted(self):
+        from src.analyzer.result import HierarchyResult
+
+        hierarchy = HierarchyResult(
+            schema_version="2.0.0", source_file="test.mp3", source_hash="deadbeef",
+            duration_ms=1000, estimated_bpm=120.0,
+        )
+        tracks = _collect_timing_tracks(hierarchy)
+        assert "Kick Hits" not in tracks
+        assert "Snare Hits" not in tracks
+        assert "Hihat Hits" not in tracks
+
+    def test_drum_hit_tracks_are_visible_in_the_xsq(self, tmp_path: Path) -> None:
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, hierarchy=self._hierarchy_with_drum_hits())
+        root = ET.parse(out).getroot()
+        display_els = {e.get("name"): e for e in root.find("DisplayElements").findall("Element")
+                       if e.get("type") == "timing"}
+        assert display_els["Kick Hits"].get("visible") == "1"
+        assert display_els["Snare Hits"].get("visible") == "1"
+        assert display_els["Hihat Hits"].get("visible") == "1"
+
+    def test_drum_hit_tracks_omitted_when_extra_timing_disabled(self):
+        tracks = _collect_timing_tracks(
+            self._hierarchy_with_drum_hits(), include_extra_timing=False)
+        assert "Kick Hits" not in tracks
+        assert "Snare Hits" not in tracks
+        assert "Hihat Hits" not in tracks
+
+
 class TestLyricsTimingTrack:
     """Synced-lyrics lines get embedded as a "Lyrics" timing track."""
 

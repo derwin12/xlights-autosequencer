@@ -37,6 +37,9 @@ interface Analysis {
   impacts?: { t_ms: number; label?: string }[];
   drops?: { t_ms: number; label?: string }[];
   onsets?: Record<string, number[]>;
+  kick_hits?: number[];
+  snare_hits?: number[];
+  hihat_hits?: number[];
   section_boundaries?: number[];
   chord_changes?: number[];
   key_changes?: number[];
@@ -88,6 +91,11 @@ function getDetectorEvents(
   _markCount: number,
 ): number[] {
   const lower = name.toLowerCase();
+  // Exact matches for the per-instrument drum-hit detectors — checked before
+  // the generic 'kick' substring match below (which routes to L0 impacts).
+  if (lower === 'kick_hits') return (analysis.kick_hits ?? []);
+  if (lower === 'snare_hits') return (analysis.snare_hits ?? []);
+  if (lower === 'hihat_hits') return (analysis.hihat_hits ?? []);
   if (lower.includes('beat')) return analysis.beats.map((b) => b.t_ms);
   if (lower.includes('half_bar') || lower.includes('half bar')) return (analysis.half_bars ?? []);
   if (lower.includes('eighth') || lower.includes('8th')) return (analysis.eighth_notes ?? []);

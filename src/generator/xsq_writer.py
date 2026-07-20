@@ -1120,6 +1120,17 @@ def _collect_timing_tracks(
                 if track.marks:
                     tracks[f"Onsets ({stem_name})"] = track.marks
 
+            # Per-instrument drum hits, split from the classified "drums"
+            # onset track (see src/analyzer/drum_classifier.py) — previously
+            # only visible in the standalone analyzer .xtiming export, never
+            # in the generated .xsq itself.
+            if hierarchy.kick_hits:
+                tracks["Kick Hits"] = hierarchy.kick_hits
+            if hierarchy.snare_hits:
+                tracks["Snare Hits"] = hierarchy.snare_hits
+            if hierarchy.hihat_hits:
+                tracks["Hihat Hits"] = hierarchy.hihat_hits
+
     if lyrics:
         tracks["Lyrics"] = [
             TimingMark(time_ms=line["t_ms"], confidence=None,
