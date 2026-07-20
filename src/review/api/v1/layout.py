@@ -1,20 +1,20 @@
 """Layout endpoints — T053.
 
-GET  /api/v1/layout  — return current layout or null
-POST /api/v1/layout  — import xlights_rgbeffects.xml
+GET /api/v1/layout — return the repo-committed xlights_rgbeffects.xml's layout
+
+The layout is a fixed file committed at layout/xlights_rgbeffects.xml — there
+is no per-session upload/replace; every song exports against this one layout.
 """
 from __future__ import annotations
 
 import datetime
 import hashlib
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
-from flask import jsonify, request
+from flask import jsonify
 
 from . import api_v1
-from src.review.storage.library import load_library, save_library
-from src.review.storage.paths import layout_xml_path
+from src.paths import get_committed_layout_xml_path
 
 
 def _now_iso() -> str:
@@ -43,75 +43,48 @@ def _parse_props(root: ET.Element) -> list[dict]:
     return props
 
 
-@api_v1.route("/layout", methods=["GET"])
-def get_layout():
-    lib = load_library()
-    layout = lib.get("layout")
-    if layout is None:
-        return jsonify({"layout": None}), 200
-    return jsonify(layout), 200
+_committed_layout_cache: dict | None = None
 
 
-@api_v1.route("/layout", methods=["POST"])
-def post_layout():
-    if "layout_xml" not in request.files:
-        return jsonify({"error": {"code": "missing_file",
-                                   "message": "No layout_xml file provided"}}), 400
+def get_committed_layout() -> dict | None:
+    """Return the parsed committed layout, or None if the file is missing/unreadable.
 
-    f = request.files["layout_xml"]
-    xml_bytes = f.read()
+    Cached after first parse — the committed file only changes via a repo
+    checkout + server restart, never at runtime.
+    """
+    global _committed_layout_cache
+    if _committed_layout_cache is not None:
+        return _committed_layout_cache
 
-    if len(xml_bytes) > 20 * 1024 * 1024:
-        return jsonify({"error": {"code": "file_too_large",
-                                   "message": "File exceeds 20 MB limit"}}), 413
+    path = get_committed_layout_xml_path()
+    if not path.exists():
+        return None
 
+    xml_bytes = path.read_bytes()
     try:
         root = ET.fromstring(xml_bytes)
-    except ET.ParseError as exc:
-        return jsonify({"error": {"code": "invalid_xml",
-                                   "message": f"XML parse error: {exc}"}}), 400
+    except ET.ParseError:
+        return None
 
     props = _parse_props(root)
-    if not props:
-        return jsonify({"error": {"code": "no_props_found",
-                                   "message": "No xLights models found in the layout file"}}), 400
-
-    layout_id = "layout_" + hashlib.sha256(xml_bytes).hexdigest()[:6]
-    display_name = request.form.get("display_name") or (
-        root.get("name") or root.findtext("layoutGroup") or "xLights Layout"
-    )
     total_pixels = sum(p["pixel_count"] for p in props)
+    layout_id = "layout_" + hashlib.sha256(xml_bytes).hexdigest()[:6]
+    display_name = root.get("name") or root.findtext("layoutGroup") or path.name
 
-    # Persist the raw XML so the generator pipeline (which needs a real file
-    # path to re-parse full model geometry, not just this summary) can find it.
-    saved_path = layout_xml_path(layout_id)
-    saved_path.parent.mkdir(parents=True, exist_ok=True)
-    saved_path.write_bytes(xml_bytes)
-
-    from src.settings import save_settings
-    save_settings({"layout_path": str(saved_path)})
-
-    layout = {
+    _committed_layout_cache = {
         "layout_id": layout_id,
         "display_name": display_name,
         "imported_at": _now_iso(),
         "props": props,
         "total_pixels": total_pixels,
-        "xml_path": str(saved_path),
+        "xml_path": str(path),
     }
+    return _committed_layout_cache
 
-    lib = load_library()
-    replaced_prior = lib.get("layout") is not None
-    lib["layout"] = layout
-    if "preferences" in lib:
-        lib["preferences"]["layout_id"] = layout_id
-    save_library(lib)
 
-    resp = {
-        "layout": layout,
-        "replaced_prior": replaced_prior,
-    }
-    if replaced_prior:
-        resp["warning"] = "Re-exporting any prior song against the new layout may produce different output."
-
-    return jsonify(resp), 201
+@api_v1.route("/layout", methods=["GET"])
+def get_layout():
+    layout = get_committed_layout()
+    if layout is None:
+        return jsonify({"layout": None}), 200
+    return jsonify(layout), 200

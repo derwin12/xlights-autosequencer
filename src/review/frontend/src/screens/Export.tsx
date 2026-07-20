@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './Export.module.css';
 
 interface Song {
@@ -13,7 +13,6 @@ interface ExportProps {
   layoutId: string | null;
   layoutXmlPath?: string | null;
   onExportComplete?: (outputPath: string) => void;
-  onLayoutImported?: (layoutId: string, xmlPath: string) => void;
 }
 
 // Known render stages, in pipeline order (src/review/api/v1/export.py).
@@ -33,7 +32,7 @@ interface RenderLogLine {
   kind: 'info' | 'ok' | 'err' | 'progress';
 }
 
-export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayoutImported }: ExportProps) {
+export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: ExportProps) {
   const [exporting, setExporting] = useState(false);
   const [outputPath, setOutputPath] = useState<string | null>(null);
   // Onsets (per-stem) + Chords timing tracks are display-only in the .xsq;
@@ -66,13 +65,9 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
   useEffect(() => () => {
     if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
   }, []);
-  const [importingLayout, setImportingLayout] = useState(false);
-  const [layoutError, setLayoutError] = useState<string | null>(null);
-  const layoutInputRef = useRef<HTMLInputElement>(null);
 
-  // Details of the currently-stored layout, shown so the user always sees —
-  // and can replace — which rgbeffects file a render will target (rather
-  // than silently reusing whatever was imported in an earlier session).
+  // Details of the repo-committed layout (layout/xlights_rgbeffects.xml),
+  // shown so the user always sees which rgbeffects file a render targets.
   const [layoutInfo, setLayoutInfo] = useState<{
     display_name?: string;
     props?: unknown[];
@@ -80,11 +75,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
   } | null>(null);
 
   const isThemed = song.status === 'themed';
-  // A layout imported before file persistence was added has a layoutId but
-  // no xml_path on disk — treat that the same as "no layout" so re-import
-  // stays reachable instead of only surfacing as an export-time failure.
   const hasLayout = layoutId != null && layoutXmlPath != null;
-  const needsReimport = layoutId != null && layoutXmlPath == null;
 
   useEffect(() => {
     if (layoutId == null) return;
@@ -95,37 +86,6 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
       })
       .catch(() => {});
   }, [layoutId, layoutXmlPath]);
-
-  async function handleLayoutFile(file: File) {
-    setLayoutError(null);
-    setImportingLayout(true);
-    try {
-      const formData = new FormData();
-      formData.append('layout_xml', file);
-
-      const res = await fetch('/api/v1/layout', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const body = await res.json();
-      if (!res.ok) {
-        setLayoutError(body?.error?.message ?? 'Layout import failed');
-        return;
-      }
-
-      onLayoutImported?.(body.layout.layout_id, body.layout.xml_path);
-    } catch (err) {
-      setLayoutError(err instanceof Error ? err.message : 'Layout import failed');
-    } finally {
-      setImportingLayout(false);
-    }
-  }
-
-  function handleLayoutInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) handleLayoutFile(file);
-  }
 
   // Auto-scroll the stream log
   useEffect(() => {
@@ -269,34 +229,12 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
   if (!hasLayout) {
     return (
       <div data-testid="layout-required" className={styles.block}>
-        <h3>Layout Required</h3>
-        {needsReimport ? (
-          <p>
-            This layout was imported before file persistence was added.
-            Re-import your <code>xlights_rgbeffects.xml</code> below, then
-            try exporting again.
-          </p>
-        ) : (
-          <p>Import your <code>xlights_rgbeffects.xml</code> to continue.</p>
-        )}
-        <input
-          data-testid="layout-file-input"
-          ref={layoutInputRef}
-          type="file"
-          accept=".xml"
-          style={{ display: 'none' }}
-          onChange={handleLayoutInputChange}
-        />
-        <button
-          className={styles.layoutBtn}
-          onClick={() => layoutInputRef.current?.click()}
-          disabled={importingLayout}
-        >
-          {importingLayout ? 'Importing…' : 'Import Layout'}
-        </button>
-        {layoutError && (
-          <p data-testid="layout-error-message" className={styles.error}>{layoutError}</p>
-        )}
+        <h3>Layout Missing</h3>
+        <p>
+          <code>layout/xlights_rgbeffects.xml</code> is missing from this
+          checkout. Add it to the repo's <code>layout/</code> directory and
+          restart the server.
+        </p>
       </div>
     );
   }
@@ -324,25 +262,6 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
             ? ` · imported ${new Date(layoutInfo.imported_at).toLocaleDateString()}`
             : ''}
         </p>
-        <input
-          data-testid="layout-file-input"
-          ref={layoutInputRef}
-          type="file"
-          accept=".xml"
-          style={{ display: 'none' }}
-          onChange={handleLayoutInputChange}
-        />
-        <button
-          data-testid="layout-replace-btn"
-          className={styles.layoutBtn}
-          onClick={() => layoutInputRef.current?.click()}
-          disabled={importingLayout}
-        >
-          {importingLayout ? 'Importing…' : 'Replace Layout…'}
-        </button>
-        {layoutError && (
-          <p data-testid="layout-error-message" className={styles.error}>{layoutError}</p>
-        )}
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
@@ -524,10 +443,10 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
                   <div className={styles.resultFile}>{outputPath.split('/').pop()}</div>
                   <a
                     className={styles.inspectorDownload}
-                    href={`/api/v1/songs/${song.song_id}/export/download`}
+                    href={`/api/v1/songs/${song.song_id}/export/download-package`}
                     download
                   >
-                    Download .xsq
+                    Download Package
                   </a>
                 </>
               )}

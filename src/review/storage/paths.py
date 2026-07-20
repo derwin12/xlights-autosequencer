@@ -19,7 +19,3 @@ def library_json_path() -> Path:
 
 def song_session_path(song_id: str) -> Path:
     return library_root() / "songs" / song_id / "session.json"
-
-
-def layout_xml_path(layout_id: str) -> Path:
-    return _state_home() / "layouts" / f"{layout_id}.xml"

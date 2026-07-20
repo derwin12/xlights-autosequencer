@@ -42,11 +42,13 @@ fast. Your song library and cached analysis persist in named Docker
 volumes across restarts.
 
 Once the page loads, the first-run flow is: drop an MP3/WAV onto the
-**Drop** tab and let the analysis pipeline run, then also drop your
-`xlights_rgbeffects.xml` layout file there (Export is blocked until a
-layout is imported). From there walk the numbered tabs left-to-right and
-finish with an `.xsq` on the Export tab — the full walkthrough is in
-[Launch the App](#launch-the-app) and [The screens](#the-screens) below.
+**Drop** tab and let the analysis pipeline run. The xLights layout is
+fixed — every song exports against the `xlights_rgbeffects.xml` and
+`xlights_networks.xml` committed at [`layout/`](layout/), so there's no
+per-song layout import step. From there walk the numbered tabs
+left-to-right and finish with a Download Package on the Export tab — the
+full walkthrough is in [Launch the App](#launch-the-app) and
+[The screens](#the-screens) below.
 
 #### Updating
 
@@ -200,16 +202,12 @@ Per-section overrides are remembered when you switch sections; the **Accept All 
 
 ![Export — layout required](assets/screenshots/07-export.png)
 
-The terminal step. Generates the xLights `.xsq` sequence from the analyzed song + assigned themes + your prop layout.
+The terminal step. Generates the xLights `.xsq` sequence from the analyzed song + assigned themes + the repo's committed prop layout.
 
-1. **Layout-required notice** (shown when no layout has been imported yet) — *"Import your `xlights_rgbeffects.xml` to continue."* Drop your xLights layout file onto the Drop tab; the export tab unblocks.
-
-After importing a layout, this screen shows:
-
-- **Generate button** — produces the `.xsq` and offers a download link.
-- **Layout summary** — number of models / groups / props detected, and which 8-tier Power Groups were auto-generated (heroes, compounds, props, beats, etc.).
+- **Generate button** — produces the `.xsq`.
+- **Layout summary** — number of models / groups / props detected from `layout/xlights_rgbeffects.xml`, and which 8-tier Power Groups were auto-generated (heroes, compounds, props, beats, etc.).
 - **Generation options** — variation seed, repetition policy, palette restraint, duration scaling. Most users leave defaults.
-- **Recent exports** — the last few `.xsq` files generated for this song, ready to re-download.
+- **Download Package** — bundles the generated `.xsq` with `layout/xlights_rgbeffects.xml` and `layout/xlights_networks.xml` into a single `.xsqz` (xLights' own zipped-sequence-package extension) ready to import directly into xLights.
 
 ---
 

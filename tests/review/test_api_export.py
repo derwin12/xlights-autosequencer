@@ -9,12 +9,6 @@ import wave
 import pytest
 
 
-_VALID_XML = b"""<?xml version="1.0"?><xlights_rgbeffects>
-  <model name="Tree 1" DisplayAs="Tree 360" parm1="100" parm2="16"
-         WorldPosX="0" WorldPosY="0" WorldPosZ="0" ScaleX="1" ScaleY="1"/>
-</xlights_rgbeffects>"""
-
-
 def _make_wav_bytes(duration_secs: float = 6.0) -> bytes:
     """6-second sine WAV that passes import-time validation (≥ 5 s, non-silent)."""
     import math
@@ -51,32 +45,13 @@ def _import_and_analyze(client) -> str:
     return song_id
 
 
-def _import_layout(client):
-    client.post(
-        "/api/v1/layout",
-        data={"layout_xml": (io.BytesIO(_VALID_XML), "xlights_rgbeffects.xml")},
-        content_type="multipart/form-data",
-    )
-
-
 def _theme_song(client, song_id: str):
     client.post(f"/api/v1/songs/{song_id}/assignments/accept-all")
 
 
 class TestExportStart:
-    def test_layout_required_without_layout(self, client):
-        song_id = _import_and_analyze(client)
-        _theme_song(client, song_id)
-        resp = client.post(
-            f"/api/v1/songs/{song_id}/export",
-            json={"format": "xsq"},
-        )
-        assert resp.status_code == 409
-        assert resp.get_json()["error"]["code"] == "layout_required"
-
     def test_incomplete_theming_without_theming(self, client):
         song_id = _import_and_analyze(client)
-        _import_layout(client)
         # Don't theme — status is "analyzed"
         resp = client.post(
             f"/api/v1/songs/{song_id}/export",
@@ -115,7 +90,6 @@ class TestExportStart:
             if song and song.get("status") == "analyzed":
                 break
 
-        _import_layout(client)
         _theme_song(client, song_id)
 
         resp = client.post(
@@ -156,7 +130,6 @@ class TestExportStart:
             song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
             if song and song.get("status") == "analyzed":
                 break
-        _import_layout(client)
         _theme_song(client, song_id)
 
         resp = client.post(f"/api/v1/songs/{song_id}/export", json={"format": "xsq"})
@@ -170,7 +143,6 @@ class TestExportStart:
     def test_export_missing_sections_in_409(self, client):
         """incomplete_theming error must include missing_sections in details."""
         song_id = _import_and_analyze(client)
-        _import_layout(client)
         resp = client.post(
             f"/api/v1/songs/{song_id}/export",
             json={"format": "xsq"},
@@ -244,6 +216,69 @@ class TestRunExportTitleArtistOverride:
         assert captured["artist_override"] == "Wet Wet Wet"
 
 
+class TestDownloadPackage:
+    def test_download_package_zips_xsq_and_layout_files(self, client, tmp_path, monkeypatch):
+        # Stub out the real generator pipeline (same pattern as
+        # test_default_destination_name_has_ai_suffix) — this test only
+        # checks the zip-packaging behavior, not generation itself.
+        import src.review.api.v1.export as export_module
+
+        def _fake_run_export(state, song, session, layout, destination_name, fmt,
+                              genre="pop", occasion="general", include_extra_timing=True):
+            out_dir = tmp_path / "export_out"
+            out_dir.mkdir(exist_ok=True)
+            output_path = out_dir / (destination_name or "output.xsq")
+            output_path.write_bytes(b"<xsequence></xsequence>")
+            with state.lock:
+                state.output_path = str(output_path)
+                state.status = "done"
+
+        monkeypatch.setattr(export_module, "_run_export", _fake_run_export)
+
+        wav_path = tmp_path / "test.wav"
+        wav_bytes = _make_wav_bytes()
+        wav_path.write_bytes(wav_bytes)
+
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav_bytes), "test.wav"), "source_path": str(wav_path)},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        for _ in range(20):
+            time.sleep(0.1)
+            lib_data = client.get("/api/v1/library").get_json()
+            song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
+            if song and song.get("status") == "analyzed":
+                break
+
+        _theme_song(client, song_id)
+        resp = client.post(f"/api/v1/songs/{song_id}/export", json={"format": "xsq"})
+        assert resp.status_code == 202
+
+        resp = None
+        for _ in range(20):
+            time.sleep(0.1)
+            resp = client.get(f"/api/v1/songs/{song_id}/export/download-package")
+            if resp.status_code == 200:
+                break
+        assert resp is not None and resp.status_code == 200
+        assert ".xsqz" in resp.headers["Content-Disposition"]
+
+        import io as _io
+        import zipfile
+
+        zf = zipfile.ZipFile(_io.BytesIO(resp.data))
+        names = zf.namelist()
+        assert any(n.endswith(".xsq") for n in names)
+        assert "xlights_rgbeffects.xml" in names
+
+    def test_download_package_not_ready_returns_404(self, client):
+        resp = client.get("/api/v1/songs/nosuchsong/export/download-package")
+        assert resp.status_code == 404
+
+
 class TestExportSSE:
     def test_sse_status_endpoint_exists(self, client, tmp_path):
         wav_path = tmp_path / "test.wav"
@@ -267,7 +302,6 @@ class TestExportSSE:
             if song and song.get("status") == "analyzed":
                 break
 
-        _import_layout(client)
         _theme_song(client, song_id)
         export_data = client.post(
             f"/api/v1/songs/{song_id}/export", json={"format": "xsq"}
@@ -304,7 +338,6 @@ class TestExportOverrides:
             if song and song.get("status") == "analyzed":
                 break
 
-        _import_layout(client)
         return song_id
 
     @pytest.mark.skip(

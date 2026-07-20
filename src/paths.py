@@ -136,6 +136,20 @@ def resolve_show_path(stored: str) -> Path:
     return p  # give up — return original; caller handles
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def get_committed_layout_xml_path() -> Path:
+    """Return the repo-committed xlights_rgbeffects.xml (the one, fixed layout)."""
+    return _repo_root() / "layout" / "xlights_rgbeffects.xml"
+
+
+def get_committed_networks_xml_path() -> Path:
+    """Return the repo-committed xlights_networks.xml."""
+    return _repo_root() / "layout" / "xlights_networks.xml"
+
+
 # ---------------------------------------------------------------------------
 # PathContext class (backwards compatible)
 # ---------------------------------------------------------------------------

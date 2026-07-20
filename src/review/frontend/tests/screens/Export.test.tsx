@@ -20,15 +20,14 @@ describe('Export screen', () => {
     mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) });
   });
 
-  it('shows layout-required block when no layout', () => {
+  it('shows layout-required block when the committed layout is missing', () => {
     render(<Export song={song} layoutId={null} />);
     expect(screen.getByTestId('layout-required')).toBeTruthy();
   });
 
-  it('shows layout-required block when layout was imported before xml_path persistence', () => {
+  it('shows layout-required block when layout has no xml_path', () => {
     render(<Export song={song} layoutId="layout_abc123" layoutXmlPath={null} />);
     expect(screen.getByTestId('layout-required')).toBeTruthy();
-    expect(screen.getByText(/imported before file persistence/i)).toBeTruthy();
   });
 
   it('shows export form when layout is present', () => {

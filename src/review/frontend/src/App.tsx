@@ -661,9 +661,6 @@ export default function App() {
             onExportComplete={(outputPath) => {
               void outputPath;
             }}
-            onLayoutImported={(newLayoutId, newXmlPath) => {
-              setData((d) => ({ ...d, layoutId: newLayoutId, layoutXmlPath: newXmlPath }));
-            }}
           />
         );
 

@@ -1,8 +1,9 @@
 """Export endpoints — T055.
 
-POST /api/v1/songs/<song_id>/export         — start export
-GET  /api/v1/songs/<song_id>/export/status  — SSE progress
-GET  /api/v1/songs/<song_id>/export/mapping — prop-theme mapping table
+POST /api/v1/songs/<song_id>/export                  — start export
+GET  /api/v1/songs/<song_id>/export/status           — SSE progress
+GET  /api/v1/songs/<song_id>/export/download-package — zip: .xsq + committed layout files
+GET  /api/v1/songs/<song_id>/export/mapping          — prop-theme mapping table
 """
 from __future__ import annotations
 
@@ -13,13 +14,16 @@ import string
 import tempfile
 import threading
 import time
+import zipfile
 from pathlib import Path
 from typing import Any
 
 from flask import Response, jsonify, request, send_file, stream_with_context
 
 from . import api_v1
-from src.review.storage.library import load_library, save_library
+from .layout import get_committed_layout
+from src.paths import get_committed_networks_xml_path
+from src.review.storage.library import load_library
 from src.review.storage.assignments import load_session
 
 
@@ -68,11 +72,9 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             # Do NOT fall through to generator_runner's global-settings fallback —
             # that resolves whatever xLights layout happens to be configured
             # machine-wide, which silently generates against the wrong layout
-            # instead of this song's actual imported one (see bug-172 follow-up).
+            # instead of the repo-committed one (see bug-172 follow-up).
             raise GeneratorError(
-                "This layout was imported before file persistence was added. "
-                "Re-import your xlights_rgbeffects.xml via the Export screen's "
-                "Import Layout button, then try exporting again."
+                "layout/xlights_rgbeffects.xml is missing from the repo checkout."
             )
 
         # Honor the user's per-section theme picks from the Theme screen
@@ -162,11 +164,11 @@ def start_export(song_id: str):
         return jsonify({"error": {"code": "song_not_found",
                                    "message": "Song not found"}}), 404
 
-    # Check layout
-    layout = lib.get("layout")
+    # Layout is a fixed file committed to the repo (layout/xlights_rgbeffects.xml)
+    layout = get_committed_layout()
     if layout is None:
-        return jsonify({"error": {"code": "layout_required",
-                                   "message": "No xLights layout has been imported"}}), 409
+        return jsonify({"error": {"code": "layout_missing",
+                                   "message": "layout/xlights_rgbeffects.xml is missing from the repo"}}), 409
 
     # Check theming complete
     if song.get("status") not in ("themed",):
@@ -259,8 +261,8 @@ def export_status(song_id: str):
     )
 
 
-@api_v1.route("/songs/<song_id>/export/download", methods=["GET"])
-def download_export(song_id: str):
+@api_v1.route("/songs/<song_id>/export/download-package", methods=["GET"])
+def download_export_package(song_id: str):
     with _exports_lock:
         exp_id = _song_exports.get(song_id)
         state = _exports.get(exp_id) if exp_id else None
@@ -269,12 +271,31 @@ def download_export(song_id: str):
         return jsonify({"error": {"code": "export_not_ready",
                                    "message": "No completed export found for this song"}}), 404
 
-    output_path = Path(state.output_path)
-    if not output_path.exists():
+    xsq_path = Path(state.output_path)
+    if not xsq_path.exists():
         return jsonify({"error": {"code": "file_missing",
                                    "message": "Exported file is no longer available"}}), 404
 
-    return send_file(output_path, as_attachment=True, download_name=output_path.name)
+    layout = get_committed_layout()
+    if layout is None:
+        return jsonify({"error": {"code": "layout_missing",
+                                   "message": "layout/xlights_rgbeffects.xml is missing from the repo"}}), 409
+
+    rgbeffects_path = Path(layout["xml_path"])
+    networks_path = get_committed_networks_xml_path()
+
+    # .xsqz is xLights' own recognized extension for a zipped sequence
+    # package (.xsq + supporting layout files) — same zip container, just
+    # the extension xLights knows to unpack on import.
+    package_path = xsq_path.with_suffix("")
+    package_path = package_path.parent / f"{package_path.name}_package.xsqz"
+    with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.write(xsq_path, arcname=xsq_path.name)
+        zf.write(rgbeffects_path, arcname=rgbeffects_path.name)
+        if networks_path.exists():
+            zf.write(networks_path, arcname=networks_path.name)
+
+    return send_file(package_path, as_attachment=True, download_name=package_path.name)
 
 
 @api_v1.route("/songs/<song_id>/export/mapping", methods=["GET"])
@@ -285,10 +306,10 @@ def export_mapping(song_id: str):
         return jsonify({"error": {"code": "song_not_found",
                                    "message": "Song not found"}}), 404
 
-    layout = lib.get("layout")
+    layout = get_committed_layout()
     if layout is None:
-        return jsonify({"error": {"code": "layout_required",
-                                   "message": "No layout imported"}}), 409
+        return jsonify({"error": {"code": "layout_missing",
+                                   "message": "layout/xlights_rgbeffects.xml is missing from the repo"}}), 409
 
     session = load_session(song_id)
     if session is None:
