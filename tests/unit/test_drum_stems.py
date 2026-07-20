@@ -183,6 +183,56 @@ class TestSeparateSnare:
         assert call_count["n"] == 1
 
 
+class TestSeparateKick:
+    def test_empty_audio_returns_none(self):
+        assert drum_stems.separate_kick(np.array([]), 22050) is None
+
+    def test_missing_source_in_model_output_returns_none(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint",
+                            lambda: tmp_path / "49469ca8.th")
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess",
+                            lambda *a, **k: ({"platillos": np.ones(10, dtype=np.float32)}, 44100))
+        assert drum_stems.separate_kick(_drums(), 22050) is None
+
+    def test_successful_separation_returns_kick_source(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint",
+                            lambda: tmp_path / "49469ca8.th")
+        kick = (0.4 * np.ones(22050, dtype=np.float32))
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess",
+                            lambda *a, **k: ({"bombo": kick}, 22050))
+        result = drum_stems.separate_kick(_drums(), 22050)
+        assert result is not None
+        arr, sr = result
+        assert sr == 22050
+        assert np.array_equal(arr, kick)
+
+    def test_one_inference_run_caches_all_three(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(drum_stems, "ensure_checkpoint",
+                            lambda: tmp_path / "49469ca8.th")
+        cym = (0.2 * np.ones(22050, dtype=np.float32))
+        snare = (0.3 * np.ones(22050, dtype=np.float32))
+        kick = (0.4 * np.ones(22050, dtype=np.float32))
+        call_count = {"n": 0}
+        def _run(*a, **k):
+            call_count["n"] += 1
+            return {"platillos": cym, "redoblante": snare, "bombo": kick}, 22050
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess", _run)
+
+        kick_result = drum_stems.separate_kick(_drums(), 22050, cache_dir=tmp_path)
+        assert kick_result is not None
+        assert call_count["n"] == 1
+
+        if not (tmp_path / "drums_cymbals.mp3").exists():
+            pytest.skip("ffmpeg unavailable — cross-cache write not testable here")
+
+        def _boom(*a, **k):
+            raise AssertionError("model path must not run on cache hit")
+        monkeypatch.setattr(drum_stems, "_run_drumsep_inprocess", _boom)
+        cym_result = drum_stems.separate_cymbals(_drums(), 22050, cache_dir=tmp_path)
+        assert cym_result is not None
+        assert call_count["n"] == 1
+
+
 class TestEnsureCheckpoint:
     def test_existing_checkpoint_returned_without_download(self, monkeypatch, tmp_path):
         ckpt = tmp_path / "49469ca8.th"

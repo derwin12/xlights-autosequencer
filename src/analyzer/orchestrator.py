@@ -521,16 +521,6 @@ def run_orchestrator(
     # Filter L4 events to top-60% energy onsets per stem (removes ghost notes)
     events = _filter_events_by_energy(events, _early_energy_curves, energy_curve_full)
 
-    # Classify drum events as kick / snare / hihat
-    if "drums" in events and stems is not None:
-        drum_audio = stems.get("drums")
-        if drum_audio is not None:
-            try:
-                from src.analyzer.drum_classifier import classify_drum_events
-                classify_drum_events(events["drums"], drum_audio, sr)
-            except Exception as exc:
-                warnings.append(f"Drum classification failed: {exc}")
-
     # Label non-drum events with energy tier: h / m / l
     _label_energy_tiers(events, _early_energy_curves, energy_curve_full)
 
@@ -679,6 +669,9 @@ def run_orchestrator(
     # No cymbals stem -> no marks: zero marks beats wrong marks.
     crash_accents: list["TimingMark"] = []
     ending_punches: list["TimingMark"] = []
+    _cym_arr = _cym_sr = None
+    _snare_arr = _snare_sr = None
+    _kick_arr = _kick_sr = None
     _drums_arr = stems.get("drums") if stems is not None else None
     if _drums_arr is not None and _drums_arr.size > 1:
         from src.analyzer.crash_accents import detect_crash_accents, detect_ending_punches
@@ -718,6 +711,33 @@ def run_orchestrator(
             warnings.append("L0 Riff bursts: skipped — snare separation unavailable")
     else:
         warnings.append("L0 Riff bursts: skipped — drums stem unavailable")
+
+    # Classify drum events as kick / snare / hihat. Prefers the drumsep-
+    # separated stems above (real per-instrument evidence, reused at zero
+    # extra cost when crash_accents/riff_bursts already separated them) over
+    # guessing from spectral bands on the combined drums stem — see
+    # drum_classifier.py's module docstring for the rationale. Falls back
+    # to the spectral classifier when no separated stem is available at all
+    # (drumsep unavailable/offline).
+    if "drums" in events and _drums_arr is not None:
+        try:
+            from src.analyzer.drum_classifier import (
+                classify_drum_events, classify_drum_events_from_stems,
+            )
+            from src.analyzer.drum_stems import separate_kick
+            _kick = separate_kick(_drums_arr, stems.sample_rate,
+                                  cache_dir=_stem_cache.stem_dir)
+            if _kick is not None:
+                _kick_arr, _kick_sr = _kick
+            if _cym_arr is not None or _snare_arr is not None or _kick_arr is not None:
+                classify_drum_events_from_stems(
+                    events["drums"],
+                    _kick_arr, _kick_sr, _snare_arr, _snare_sr, _cym_arr, _cym_sr,
+                )
+            else:
+                classify_drum_events(events["drums"], _drums_arr, sr)
+        except Exception as exc:
+            warnings.append(f"Drum classification failed: {exc}")
 
     # ── Stage 9: Interaction analysis ────────────────────────────────────────
     interactions = None

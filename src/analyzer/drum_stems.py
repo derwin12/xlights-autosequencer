@@ -1,4 +1,4 @@
-"""Cymbal separation: chain a drumsep checkpoint on the demucs drums stem.
+"""Drum-kit stem separation: chain a drumsep checkpoint on the demucs drums stem.
 
 The crash-accent detector (src/analyzer/crash_accents.py) needs a
 cymbal-isolated signal: 2026-07-16 validation on Dream On showed the
@@ -6,6 +6,10 @@ isolation score ranks all 6 user-confirmed crashes top-6 on a cymbals stem
 but fails on the full drum kit (kick/snare/tom transients swamp the
 envelope) and on the full mix (vocal sibilance/bright guitar bury the
 quieter crashes). See openspec/changes/crash-stem-impact-score/design.html.
+The same isolation-over-combined-kit reasoning is why drum_classifier.py
+(2026-07-20) also uses separate_kick()/separate_snare()/separate_cymbals()
+instead of guessing kick/snare/hihat from spectral bands on the combined
+drums stem.
 
 The model is drumsep (inagoy/drumsep) — a Hybrid Demucs fine-tune that
 splits a drum stem into bombo (kick), redoblante (snare), platillos
@@ -16,7 +20,8 @@ downloads).
 
 Everything here degrades gracefully: any unavailability (no demucs/torch,
 download failure, separation error) returns None and the caller emits no
-crash marks. For a rare-by-design feature, zero marks beats wrong marks.
+crash marks / falls back to the spectral-band classifier. For a rare-by-
+design feature, zero marks beats wrong marks.
 """
 from __future__ import annotations
 
@@ -29,8 +34,10 @@ DRUMSEP_MODEL_NAME = "49469ca8"
 _DRUMSEP_GDRIVE_ID = "1-Dm666ScPkg8Gt2-lK3Ua0xOudWHZBGC"
 _CYMBALS_SOURCE = "platillos"
 _SNARE_SOURCE = "redoblante"
+_KICK_SOURCE = "bombo"
 _CACHE_FILENAME = "drums_cymbals.mp3"
 _SNARE_CACHE_FILENAME = "drums_snare.mp3"
+_KICK_CACHE_FILENAME = "drums_kick.mp3"
 
 
 def default_model_dir() -> Path:
@@ -131,6 +138,21 @@ def separate_snare(
                             drums_audio, sample_rate, cache_dir)
 
 
+def separate_kick(
+    drums_audio: np.ndarray,
+    sample_rate: int,
+    cache_dir: Path | None = None,
+) -> tuple[np.ndarray, int] | None:
+    """Return (kick_mono_float32, sample_rate) for a drums-stem array.
+
+    Same drumsep run as separate_cymbals/separate_snare -- whichever of the
+    three is called first opportunistically caches all three. See
+    separate_cymbals for the cache/degrade-gracefully contract.
+    """
+    return _separate_source(_KICK_SOURCE, _KICK_CACHE_FILENAME, "kick",
+                            drums_audio, sample_rate, cache_dir)
+
+
 def _separate_source(
     source_name: str,
     cache_filename: str,
@@ -176,12 +198,13 @@ def _separate_source(
         return None
 
     # Opportunistically cache every known source from this one inference
-    # run, not just the one requested, so a later call for the other
+    # run, not just the one requested, so a later call for another
     # source hits cache instead of re-running the model.
     if cache_dir is not None:
         from src.analyzer.stems import _write_mp3
         for name, filename in ((_CYMBALS_SOURCE, _CACHE_FILENAME),
-                                (_SNARE_SOURCE, _SNARE_CACHE_FILENAME)):
+                                (_SNARE_SOURCE, _SNARE_CACHE_FILENAME),
+                                (_KICK_SOURCE, _KICK_CACHE_FILENAME)):
             arr = sources.get(name)
             if arr is None:
                 continue
