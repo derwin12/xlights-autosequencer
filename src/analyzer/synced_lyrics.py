@@ -27,12 +27,32 @@ _ALLOWED_PROVIDERS = ["lrclib", "musixmatch", "netease", "deezer", "megalobiz", 
 
 _LRC_LINE_RE = re.compile(r"^\[(\d+):(\d+(?:\.\d+)?)\](.*)$")
 
+# Credit/attribution lines some providers (notably netease, a Chinese
+# source) inject as timed LRC lines rather than a proper [ar:]/[ti:] tag —
+# syntactically valid lyric lines that aren't lyrics (e.g. a real generated
+# .xsq surfaced "作词 : Paul McCartney/John Lennon" as the song's first
+# on-screen "lyric", 2026-07-19). CJK labels require a colon; English labels
+# require "by" as a whole word so an ordinary lyric that merely starts with
+# "Music ..." isn't caught.
+_CREDIT_LINE_RE = re.compile(
+    r"^(?:作词|作曲|编曲|填词|制作人|监制|混音|母带|演唱|和声|录音)\s*[:：]"
+    r"|^(?:lyrics?|lyricist|composed?|composer|music|written|produced?|producer"
+    r"|arranged?|arranger|mixed|mixing|mastered|mastering|performed)\s+by\b"
+    r"|^(?:lyricist|composer|producer|arranger)\s*:",
+    re.IGNORECASE,
+)
+
+
+def _is_credit_line(text: str) -> bool:
+    return bool(_CREDIT_LINE_RE.match(text.strip()))
+
 
 def parse_lrc(lrc_text: str) -> list[tuple[int, str]]:
     """Parse LRC-format text into a list of ``(start_ms, line_text)`` tuples.
 
     Skips metadata tags (e.g. ``[ar:Artist]``, ``[ti:Title]``), timestamp
-    tags with empty text, and blank lines. Returned in chronological order.
+    tags with empty text, blank lines, and credit/attribution lines (see
+    ``_CREDIT_LINE_RE``). Returned in chronological order.
     """
     lines: list[tuple[int, str]] = []
     for raw_line in lrc_text.splitlines():
@@ -41,7 +61,7 @@ def parse_lrc(lrc_text: str) -> list[tuple[int, str]]:
             continue
         minutes, seconds, text = m.groups()
         text = text.strip()
-        if not text:
+        if not text or _is_credit_line(text):
             continue
         start_ms = int(round((int(minutes) * 60 + float(seconds)) * 1000))
         lines.append((start_ms, text))
@@ -199,7 +219,10 @@ def check_synced_lyrics_with_text(title: str, artist: str) -> tuple[dict, Option
         preview = [text for _, text in lines[:3]]
         return {"found": True, "reason": None, "line_count": len(lines), "preview": preview}, result
 
-    plain_lines = [ln.strip() for ln in result.splitlines() if ln.strip()]
+    plain_lines = [
+        ln.strip() for ln in result.splitlines()
+        if ln.strip() and not _is_credit_line(ln)
+    ]
     return {"found": True, "reason": None, "line_count": len(plain_lines), "preview": plain_lines[:3]}, result
 
 
@@ -245,7 +268,10 @@ def get_boundary_refinement_inputs(
 
     lines = parse_lrc(lyrics_text)
     if not lines:
-        plain_lines = [(0, ln.strip()) for ln in lyrics_text.splitlines() if ln.strip()]
+        plain_lines = [
+            (0, ln.strip()) for ln in lyrics_text.splitlines()
+            if ln.strip() and not _is_credit_line(ln)
+        ]
         return [], find_chorus_body(plain_lines), []
 
     forced_words = lines_to_word_marks(lines, duration_ms)

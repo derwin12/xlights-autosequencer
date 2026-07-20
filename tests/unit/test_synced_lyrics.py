@@ -47,6 +47,36 @@ def test_parse_lrc_empty_input_returns_empty_list():
     assert sl.parse_lrc("not lrc at all, just plain text") == []
 
 
+def test_parse_lrc_skips_cjk_credit_lines():
+    lrc = (
+        "[00:00.00]作词 : Placeholder Writer\n"
+        "[00:01.00]作曲 : Placeholder Composer\n"
+        "[00:02.00]制作人 : Placeholder Producer\n"
+        "[00:03.00]la la placeholder line one\n"
+    )
+    lines = sl.parse_lrc(lrc)
+    assert lines == [(3000, "la la placeholder line one")]
+
+
+def test_parse_lrc_skips_english_credit_lines():
+    lrc = (
+        "[00:00.00]Lyrics by Placeholder Writer\n"
+        "[00:01.00]Composed by Placeholder Composer\n"
+        "[00:02.00]Producer: Placeholder Producer\n"
+        "[00:03.00]la la placeholder line one\n"
+    )
+    lines = sl.parse_lrc(lrc)
+    assert lines == [(3000, "la la placeholder line one")]
+
+
+def test_parse_lrc_does_not_false_positive_on_ordinary_lyric():
+    # A real lyric line merely containing a credit-label word shouldn't be
+    # dropped -- only "<label> by"/"<label>:" openers are treated as credits.
+    lrc = "[00:00.00]Music was my first love\n"
+    lines = sl.parse_lrc(lrc)
+    assert lines == [(0, "Music was my first love")]
+
+
 # ---------------------------------------------------------------------------
 # lines_to_word_marks
 # ---------------------------------------------------------------------------
