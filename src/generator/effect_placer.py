@@ -118,7 +118,7 @@ _MATRIX_SHADER_VARIANTS: tuple[str, ...] = (
     "Shader Creation Silexars",
     "Shader Black Cherry Cosmos",
     "Shader Continua Variation",
-    "Shader Audio Fractal",
+    "Shader xLights Fractal Audio",
 )
 
 

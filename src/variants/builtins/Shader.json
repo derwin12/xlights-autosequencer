@@ -151,11 +151,11 @@
       }
     },
     {
-      "name": "Shader Audio Fractal",
+      "name": "Shader xLights Fractal Audio",
       "base_effect": "Shader",
-      "description": "Mined Audio - Fractal Audio shader preset -- audio-reactive, naturally sparse/dark in its quiet regions so Normal blend still reads as enhancing whatever's beneath rather than fully blocking it (user-confirmed 2026-07-20, not a blend-mode effect -- the shader's own content is what lets things through).",
+      "description": "Mined \"xLights Audio - fractal audio.fs\" preset -- the officially-bundled xLights shader (not a third-party community one), which integrates with the sequence's own xLights color palette rather than a hardcoded internal scheme. Audio-reactive and naturally sparse/dark in its quiet regions, so Normal blend still reads as enhancing whatever's beneath rather than fully blocking it (user-confirmed 2026-07-20). 148 placements across the user's own corpus, 95% explicitly Normal blend.",
       "parameter_overrides": {
-        "E_0FILEPICKERCTRL_IFS": "Shaders/Audio - Fractal Audio.fs",
+        "E_0FILEPICKERCTRL_IFS": "Shaders/xLights Audio - fractal audio.fs",
         "E_SLIDER_Shader_Speed": 100,
         "E_TEXTCTRL_Shader_Zoom": 0
       },
