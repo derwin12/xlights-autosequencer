@@ -287,8 +287,7 @@ def download_export_package(song_id: str):
     # .xsqz is xLights' own recognized extension for a zipped sequence
     # package (.xsq + supporting layout files) — same zip container, just
     # the extension xLights knows to unpack on import.
-    package_path = xsq_path.with_suffix("")
-    package_path = package_path.parent / f"{package_path.name}_package.xsqz"
+    package_path = xsq_path.with_suffix(".xsqz")
     with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write(xsq_path, arcname=xsq_path.name)
         zf.write(rgbeffects_path, arcname=rgbeffects_path.name)
