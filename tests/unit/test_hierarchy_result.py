@@ -46,6 +46,9 @@ def _make_full_result() -> HierarchyResult:
     result.energy_impacts = [TimingMark(time_ms=5000, confidence=None, label="impact")]
     result.energy_drops = [TimingMark(time_ms=10000, confidence=None, label="drop")]
     result.gaps = [TimingMark(time_ms=15000, confidence=None, label="gap", duration_ms=2000)]
+    result.kick_hits = [TimingMark(time_ms=1000, confidence=None, label="kick")]
+    result.snare_hits = [TimingMark(time_ms=1500, confidence=None, label="snare")]
+    result.hihat_hits = [TimingMark(time_ms=1250, confidence=None, label="hihat")]
     result.sections = [
         TimingMark(time_ms=0, confidence=None, label="A", duration_ms=30000),
         TimingMark(time_ms=30000, confidence=None, label="B", duration_ms=30000),
@@ -85,7 +88,8 @@ class TestHierarchyResultSchema:
         expected_keys = {
             "schema_version", "source_file", "source_hash", "duration_ms", "estimated_bpm",
             "energy_impacts", "energy_drops", "gaps", "crash_accents",
-            "ending_punches", "riff_bursts", "sections",
+            "ending_punches", "riff_bursts", "kick_hits", "snare_hits", "hihat_hits",
+            "sections",
             "bars", "beats", "half_bars", "eighth_notes", "events", "solos",
             "energy_curves", "spectral_flux",
             "chords", "key_changes", "chroma_curve", "interactions", "essentia_features",
@@ -108,6 +112,17 @@ class TestHierarchyResultSchema:
         json_str = json.dumps(d)
         data = json.loads(json_str)
         assert data["schema_version"] == "2.0.0"
+
+    def test_kick_snare_hihat_hits_round_trip(self):
+        r = _make_full_result()
+        d = r.to_dict()
+        r2 = HierarchyResult.from_dict(d)
+        assert [m.time_ms for m in r2.kick_hits] == [1000]
+        assert r2.kick_hits[0].label == "kick"
+        assert [m.time_ms for m in r2.snare_hits] == [1500]
+        assert r2.snare_hits[0].label == "snare"
+        assert [m.time_ms for m in r2.hihat_hits] == [1250]
+        assert r2.hihat_hits[0].label == "hihat"
 
 
 # ── Value curve tests ─────────────────────────────────────────────────────────

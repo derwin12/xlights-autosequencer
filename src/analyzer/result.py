@@ -579,6 +579,14 @@ class HierarchyResult:
     # Distinct from crash_accents (isolated treble transient) and
     # energy_impacts (section-level energy jump).
     riff_bursts: list[TimingMark] = field(default_factory=list)
+    # Per-instrument drum onsets, split from the classified "drums" track
+    # (src/analyzer/drum_classifier.py) so each instrument has its own
+    # visible .xtiming layer instead of being bundled unlabeled inside
+    # events["drums"]. hihat_hits covers drumsep's "cymbals" bucket
+    # (hihat+crash+ride combined, not hihat alone — see drum_classifier.py).
+    kick_hits: list[TimingMark] = field(default_factory=list)
+    snare_hits: list[TimingMark] = field(default_factory=list)
+    hihat_hits: list[TimingMark] = field(default_factory=list)
 
     # L1: Structure
     sections: list[TimingMark] = field(default_factory=list)
@@ -662,6 +670,9 @@ class HierarchyResult:
             "crash_accents": [self._mark_to_dict(m) for m in self.crash_accents],
             "ending_punches": [self._mark_to_dict(m) for m in self.ending_punches],
             "riff_bursts": [self._mark_to_dict(m) for m in self.riff_bursts],
+            "kick_hits": [self._mark_to_dict(m) for m in self.kick_hits],
+            "snare_hits": [self._mark_to_dict(m) for m in self.snare_hits],
+            "hihat_hits": [self._mark_to_dict(m) for m in self.hihat_hits],
             "sections": [self._mark_to_dict(m) for m in self.sections],
             "bars": self.bars.to_dict() if self.bars else None,
             "beats": self.beats.to_dict() if self.beats else None,
@@ -732,6 +743,21 @@ class HierarchyResult:
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
                        label=m.get("label"), duration_ms=m.get("duration_ms"))
             for m in d.get("riff_bursts", [])
+        ]
+        obj.kick_hits = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("kick_hits", [])
+        ]
+        obj.snare_hits = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("snare_hits", [])
+        ]
+        obj.hihat_hits = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("hihat_hits", [])
         ]
         obj.sections = [
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),

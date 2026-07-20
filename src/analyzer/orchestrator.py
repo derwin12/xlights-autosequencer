@@ -39,7 +39,13 @@ if TYPE_CHECKING:
 # unchanged, but its VALUES differ completely under the new detector, so
 # this must bump too or fresh=False silently serves stale marks computed
 # by the retired algorithm.
-SCHEMA_VERSION = "2.4.0"
+# 2.5.0 (2026-07-20): kick_hits/snare_hits/hihat_hits added — split out of
+# the classified "drums" onset track (see drum_classifier.py, shipped
+# 2026-07-19) so each instrument gets its own visible .xtiming layer instead
+# of being bundled together, unlabeled to the user, inside "events_drums".
+# Bumped per the bug-265 lesson: pre-feature caches lack these fields and
+# fresh=False must not silently serve them empty.
+SCHEMA_VERSION = "2.5.0"
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -719,6 +725,13 @@ def run_orchestrator(
     # drum_classifier.py's module docstring for the rationale. Falls back
     # to the spectral classifier when no separated stem is available at all
     # (drumsep unavailable/offline).
+    # Per-instrument mark lists split from the classified "drums" track below
+    # (Stage 10 assembles these into HierarchyResult.kick_hits/snare_hits/
+    # hihat_hits and _write_xtiming exports each as its own .xtiming layer —
+    # previously only visible bundled together inside "events_drums").
+    kick_hits: list["TimingMark"] = []
+    snare_hits: list["TimingMark"] = []
+    hihat_hits: list["TimingMark"] = []
     if "drums" in events and _drums_arr is not None:
         try:
             from src.analyzer.drum_classifier import (
@@ -736,6 +749,13 @@ def run_orchestrator(
                 )
             else:
                 classify_drum_events(events["drums"], _drums_arr, sr)
+            for _mark in events["drums"].marks:
+                if _mark.label == "kick":
+                    kick_hits.append(_mark)
+                elif _mark.label == "snare":
+                    snare_hits.append(_mark)
+                elif _mark.label == "hihat":
+                    hihat_hits.append(_mark)
         except Exception as exc:
             warnings.append(f"Drum classification failed: {exc}")
 
@@ -823,6 +843,9 @@ def run_orchestrator(
         crash_accents=crash_accents,
         ending_punches=ending_punches,
         riff_bursts=riff_bursts,
+        kick_hits=kick_hits,
+        snare_hits=snare_hits,
+        hihat_hits=hihat_hits,
         sections=sections,
         bars=bars,
         beats=beats,
@@ -904,6 +927,30 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
                         element_type="riff", marks=result.riff_bursts,
                         quality_score=0.0),
             fixed_width_ms=700,
+        )
+    if result.kick_hits:
+        _add_mark_layer(
+            root, "kick_hits",
+            TimingTrack(name="kick_hits", algorithm_name="derived",
+                        element_type="kick", marks=result.kick_hits,
+                        quality_score=0.0),
+            fixed_width_ms=150,
+        )
+    if result.snare_hits:
+        _add_mark_layer(
+            root, "snare_hits",
+            TimingTrack(name="snare_hits", algorithm_name="derived",
+                        element_type="snare", marks=result.snare_hits,
+                        quality_score=0.0),
+            fixed_width_ms=120,
+        )
+    if result.hihat_hits:
+        _add_mark_layer(
+            root, "hihat_hits",
+            TimingTrack(name="hihat_hits", algorithm_name="derived",
+                        element_type="hihat", marks=result.hihat_hits,
+                        quality_score=0.0),
+            fixed_width_ms=60,
         )
     _add_section_layer(root, "sections", result.sections)
 
