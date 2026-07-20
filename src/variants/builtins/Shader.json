@@ -149,6 +149,25 @@
         "scope": "group",
         "genre_affinity": "any"
       }
+    },
+    {
+      "name": "Shader Audio Fractal",
+      "base_effect": "Shader",
+      "description": "Mined Audio - Fractal Audio shader preset -- audio-reactive, naturally sparse/dark in its quiet regions so Normal blend still reads as enhancing whatever's beneath rather than fully blocking it (user-confirmed 2026-07-20, not a blend-mode effect -- the shader's own content is what lets things through).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Audio - Fractal Audio.fs",
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
     }
   ]
 }
