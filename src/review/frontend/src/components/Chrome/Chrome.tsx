@@ -28,6 +28,15 @@ function isBackendStale(backendCommit: string | null | undefined, repoHeadCommit
   return baseCommit(backendCommit) !== baseCommit(repoHeadCommit);
 }
 
+/** True when the local checkout's HEAD is behind origin/main -- distinct
+ * from isBackendStale (pulled but not restarted): this is "haven't even
+ * pulled yet." origin_main_commit is cached server-side and may be null
+ * (offline, no network) -- treated as "unknown," not stale. */
+function isUpdateAvailable(repoHeadCommit: string | null | undefined, originMainCommit: string | null | undefined): boolean {
+  if (!repoHeadCommit || !originMainCommit) return false;
+  return baseCommit(repoHeadCommit) !== baseCommit(originMainCommit);
+}
+
 const TABS: { id: Screen; label: string; key: string }[] = [
   { id: 'library', label: 'Library', key: '1' },
   { id: 'drop', label: 'Import', key: '2' },
@@ -87,6 +96,7 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
   const loadManifest = useManifestStore((s) => s.load);
   React.useEffect(() => { void loadManifest(); }, [loadManifest]);
   const backendStale = isBackendStale(manifest?.backend_commit, manifest?.repo_head_commit);
+  const updateAvailable = isUpdateAvailable(manifest?.repo_head_commit, manifest?.origin_main_commit);
 
   return (
     <div className={styles.shell}>
@@ -111,7 +121,9 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
           data-testid="build-stamp"
           onClick={() => setAboutOpen(true)}
           title={
-            (backendStale
+            (updateAvailable
+              ? `origin/main has moved past this checkout (${manifest?.origin_main_commit}) — run "git pull" (then restart) to update. `
+              : backendStale
               ? `Backend is running an older commit than HEAD (${manifest?.repo_head_commit}) — restart the server to pick up the latest code. `
               : 'ui = frontend bundle, api = running backend code — click for details')
             + (manifest?.backend_started_at ? ` (backend up since ${fmtBuildTime(manifest.backend_started_at)})` : '')
@@ -121,17 +133,17 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: backendStale ? 'var(--color-warning, #f59e0b)' : 'var(--color-text-muted, #666)',
+            color: (updateAvailable || backendStale) ? 'var(--color-warning, #f59e0b)' : 'var(--color-text-muted, #666)',
             fontSize: 11,
             fontFamily: 'monospace',
             whiteSpace: 'nowrap',
             padding: '0 12px',
-            fontWeight: backendStale ? 600 : 'normal',
+            fontWeight: (updateAvailable || backendStale) ? 600 : 'normal',
           }}
         >
           ui {__GIT_COMMIT__} · built {fmtBuildTime(__BUILD_TIME__)}
           {manifest?.backend_commit ? ` · api ${shortCommit(manifest.backend_commit)}` : ''}
-          {backendStale ? ' ⚠ restart needed' : ''}
+          {updateAvailable ? ' ⚠ update available' : backendStale ? ' ⚠ restart needed' : ''}
         </button>
       </header>
       <About open={aboutOpen} onClose={() => setAboutOpen(false)} />

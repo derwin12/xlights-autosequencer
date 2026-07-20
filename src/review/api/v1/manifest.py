@@ -10,6 +10,7 @@ invisible — the header build stamp only covers the frontend bundle).
 from __future__ import annotations
 
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -53,6 +54,42 @@ def _backend_commit() -> str | None:
 
 _BACKEND_COMMIT = _backend_commit()
 
+# Most Docker deployments never restart the process on every request, so
+# repo_head_commit (a free local `git rev-parse`) already catches "pulled
+# but forgot to restart." It can't catch "haven't pulled yet" -- that needs
+# a network round-trip to the remote, so it's cached separately from the
+# free local checks above.
+_ORIGIN_CHECK_TTL_SECONDS = 30 * 60
+_origin_main_commit_cache: str | None = None
+_origin_main_checked_at: float = 0.0
+
+
+def _origin_main_commit() -> str | None:
+    """Short SHA of origin/main on GitHub, cached for _ORIGIN_CHECK_TTL_SECONDS.
+
+    Uses `git ls-remote` (not the GitHub REST API) -- no auth, no rate
+    limit, consistent with _backend_commit's git-subprocess approach. Never
+    raises: offline dev environments, corporate proxies, or a missing
+    remote must not break the manifest endpoint. A transient failure keeps
+    serving the last known-good value instead of clearing it.
+    """
+    global _origin_main_commit_cache, _origin_main_checked_at
+    now = time.monotonic()
+    if _origin_main_checked_at > 0 and (now - _origin_main_checked_at) < _ORIGIN_CHECK_TTL_SECONDS:
+        return _origin_main_commit_cache
+    _origin_main_checked_at = now
+    cwd = Path(__file__).resolve().parent
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", "origin", "main"],
+            cwd=cwd, capture_output=True, text=True, timeout=5, check=True,
+        ).stdout.strip()
+        if result:
+            _origin_main_commit_cache = result.split()[0][:7]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return _origin_main_commit_cache
+
 
 @api_v1.get("/manifest")
 def manifest():
@@ -73,6 +110,7 @@ def manifest():
         "frontend_commit": None,
         "backend_commit": _BACKEND_COMMIT,
         "repo_head_commit": _backend_commit(),
+        "origin_main_commit": _origin_main_commit(),
         "backend_started_at": _SERVER_STARTED_AT,
         "bundled_vamp_plugins": [],
         "download_model_manifest_url": None,

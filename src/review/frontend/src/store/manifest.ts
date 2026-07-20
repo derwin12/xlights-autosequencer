@@ -12,6 +12,11 @@ export interface Manifest {
   // start) so the UI can tell when code has been committed/pulled since
   // this backend process launched and flag that a restart is needed.
   repo_head_commit?: string | null;
+  // Latest commit on origin/main, cached server-side (git ls-remote — no
+  // GitHub API call). Compared against repo_head_commit to flag "you
+  // haven't pulled yet", distinct from repo_head_commit vs backend_commit
+  // ("you pulled but haven't restarted").
+  origin_main_commit?: string | null;
   backend_started_at?: string | null;
   bundled_vamp_plugins: string[];
   download_model_manifest_url: string | null;

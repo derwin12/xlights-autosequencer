@@ -47,6 +47,56 @@ def test_dev_mode_reports_repo_head_commit_for_staleness_check(client_dev):
     assert re.fullmatch(r"[0-9a-f]{7,}(-dirty)?", body["repo_head_commit"])
 
 
+def test_dev_mode_reports_origin_main_commit(client_dev):
+    """origin_main_commit lets the UI detect 'haven't pulled yet', distinct
+    from repo_head_commit vs backend_commit ('pulled but not restarted').
+    Tests run from a real git checkout with a remote, so this should
+    resolve to a real short SHA (or None if genuinely offline)."""
+    import re
+
+    body = client_dev.get("/api/v1/manifest").get_json()
+    assert "origin_main_commit" in body
+    if body["origin_main_commit"] is not None:
+        assert re.fullmatch(r"[0-9a-f]{7}", body["origin_main_commit"])
+
+
+def test_origin_main_commit_failure_returns_none_not_error(monkeypatch):
+    """A failed `git ls-remote` (offline, no remote, etc.) must not break
+    the manifest endpoint -- it should just omit the value."""
+    import subprocess as subprocess_module
+
+    import src.review.api.v1.manifest as manifest_module
+
+    manifest_module._origin_main_commit_cache = None
+    manifest_module._origin_main_checked_at = 0.0
+
+    def _raise(*args, **kwargs):
+        raise subprocess_module.SubprocessError("network unreachable")
+
+    monkeypatch.setattr(manifest_module.subprocess, "run", _raise)
+    assert manifest_module._origin_main_commit() is None
+
+
+def test_origin_main_commit_is_cached_within_ttl(monkeypatch):
+    """The remote check costs a network round-trip -- it must not run on
+    every manifest request within the TTL window."""
+    import src.review.api.v1.manifest as manifest_module
+
+    manifest_module._origin_main_commit_cache = "abc1234"
+    manifest_module._origin_main_checked_at = manifest_module.time.monotonic()
+
+    call_count = 0
+
+    def _fail_if_called(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        raise AssertionError("git ls-remote should not run again within the TTL")
+
+    monkeypatch.setattr(manifest_module.subprocess, "run", _fail_if_called)
+    assert manifest_module._origin_main_commit() == "abc1234"
+    assert call_count == 0
+
+
 def test_bundled_stub_when_manifest_file_absent(monkeypatch, tmp_path):
     # Simulate bundled mode but without the manifest file on disk — the
     # endpoint must fall back to the dev stub (shape-compatible) rather
