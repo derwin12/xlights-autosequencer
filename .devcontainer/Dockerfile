@@ -383,4 +383,4 @@ USER node
 # Requires "overrideCommand": false in devcontainer.json -- otherwise the
 # Dev Containers CLI replaces this CMD with its own `sleep infinity` and
 # xlight-review never gets launched.
-CMD ["sh", "-c", "sh /workspace/scripts/startapp.sh || true; exec sleep infinity"]
+CMD ["sh", "-c", "bash /workspace/scripts/startapp.sh || true; exec sleep infinity"]
