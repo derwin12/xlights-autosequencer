@@ -35,6 +35,7 @@ from src.generator.moving_head import (
     place_moving_head_beat_bursts,
     place_moving_head_crash_accents,
     place_moving_head_ending_punches,
+    place_moving_head_keyword_accents,
     place_moving_head_moves,
     place_moving_head_pattern_accents,
 )
@@ -347,6 +348,18 @@ def build_plan(
     if config.video_path is not None:
         video_effects = _place_video_effect(props, config.video_path, hierarchy.duration_ms)
 
+    # 5cz. Keyword-triggered Moving Head accents (config.moving_head_keywords)
+    # -- user-curated, not mined (see moving_head.py's module comment above
+    # place_moving_head_keyword_accents). Computed FIRST among every Moving
+    # Head pass so a specific lyric moment (e.g. "shake") always claims its
+    # accent; every other pass below treats these placements as already-
+    # occupied via existing_placements/existing_mh.
+    keyword_head_effects: dict[str, list] = {}
+    if config.moving_head_effects and layout is not None and config.moving_head_keywords:
+        keyword_head_effects = place_moving_head_keyword_accents(
+            layout, config.vocal_words, config.moving_head_keywords, hierarchy.duration_ms,
+        )
+
     # 5d0. DMX moving-head fixture groups (config.moving_head_effects) --
     # one gated move per section that's genuinely "strong and powerful"
     # (top energy tier or chorus/drop role), placed per individual head
@@ -355,7 +368,12 @@ def build_plan(
     # docstring for the v1 continuous-wash rationale this replaced.
     moving_head_effects: dict[str, list] = {}
     if config.moving_head_effects and layout is not None:
-        moving_head_effects = place_moving_head_moves(layout, assignments, bars=hierarchy.bars)
+        moving_head_effects = place_moving_head_moves(
+            layout, assignments, bars=hierarchy.bars, existing_placements=keyword_head_effects,
+        )
+    for gname, placements in keyword_head_effects.items():
+        moving_head_effects.setdefault(gname, [])
+        moving_head_effects[gname] = placements + moving_head_effects[gname]
 
     # 5d. Rare whole-house crash accents (config.crash_accents). Song-scoped,
     # same rationale as vocal_effects/video_effects. Computed here (before

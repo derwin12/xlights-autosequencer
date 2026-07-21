@@ -259,6 +259,15 @@ class GenerationConfig:
     crash_accents: bool = True          # Rare whole-house Shockwave on 01_BASE_All_FADES at extreme percussive transients
     picture_effects: bool = True        # Cycle catalog images (show_dir/Images) on matrix/tree props
     moving_head_effects: bool = True    # Gated reference-sequence moves + crash punch on DMX moving-head fixture groups
+    # User-curated lyric keywords that trigger a Moving Head accent when
+    # sung (moving_head.place_moving_head_keyword_accents) -- NOT mined
+    # from the corpus (checked: neither vendor reference package with real
+    # Moving Head content ties a placement to a single keyword), so this is
+    # a deliberate per-song choice rather than a general idiom. Runs before
+    # every other Moving Head pass so a specific lyric moment always claims
+    # its accent. "shake"=Pan L-R-L, "spin"=Pattern Circle, "bounce"=Tilt
+    # up-down-up; an unrecognized keyword is silently ignored.
+    moving_head_keywords: tuple[str, ...] = ("shake", "spin", "bounce")
     # Pinwheel burst on Star-family groups at each rare drum fill
     # (hierarchy.riff_bursts, riff_bursts.detect_riff_bursts — snare-roll
     # detection on an isolated snare stem). Replaced an earlier bass+chord

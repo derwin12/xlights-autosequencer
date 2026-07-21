@@ -767,6 +767,7 @@ def place_moving_head_moves(
     layout: Layout,
     assignments: list[SectionAssignment],
     bars: Optional[TimingTrack] = None,
+    existing_placements: Optional[dict[str, list[EffectPlacement]]] = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place one gated move per qualifying section on each moving-head
     group's fixtures, each preceded by a silent warmup pre-positioning
@@ -814,11 +815,24 @@ def place_moving_head_moves(
     warmup via the natural gap instead of relying on trimming the prior
     move down to the bare minimum. Omitting ``bars`` preserves the old
     fill-the-section-or-20s behavior unchanged.
+
+    ``existing_placements`` (normally the output of
+    place_moving_head_keyword_accents, which runs first and takes
+    priority) is checked coarsely: if ANY placement on this group's
+    channels falls anywhere inside a qualifying section's natural move
+    window, that section's move is skipped entirely for this call,
+    leaving the section dark rather than colliding with the keyword
+    accent -- the section-move engine's trim/warmup machinery
+    (``_resolve_warmup``) only knows how to shorten an owner that ends
+    before the desired start, not route around an obstacle sitting in the
+    middle of the window, so a full skip is the safe option here rather
+    than extending that machinery to a case it wasn't built for.
     """
     mh_groups = find_moving_head_groups(layout)
     if not mh_groups:
         return {}
 
+    existing_placements = existing_placements or {}
     song_peak_energy = _song_peak_qualifying_energy(assignments)
 
     result: dict[str, list[EffectPlacement]] = {}
@@ -874,6 +888,14 @@ def place_moving_head_moves(
                 natural_end_ms = _bar_capped_end_ms(
                     bars, natural_start_ms, natural_end_ms, section.end_ms,
                 )
+
+            if existing_placements:
+                blocking = [
+                    p for h in (mh_group.name, *mh_group.head_names)
+                    for p in existing_placements.get(h, [])
+                ]
+                if _has_overlap(blocking, natural_start_ms, natural_end_ms):
+                    continue
 
             if move.target == "group":
                 heads = mh_group.head_names
@@ -1069,6 +1091,260 @@ def _heads_already_posed(
             return False
     target_pose = _pose_fields(target_params)
     return bool(target_pose) and _pose_fields(prev.parameters) == target_pose
+
+
+# ---------------------------------------------------------------------------
+# Keyword-triggered accents (2026-07-21) -- user-curated, NOT mined. Checked
+# the two vendor reference packages that actually have Moving Head content
+# (Beautiful People, The Hockey Song): neither ties a Moving Head placement
+# to a single lyric keyword -- Beautiful People's 6 placements track a
+# repeating HOOK PHRASE ("this is the high life" / "people don't stress...
+# they never rest... people say yes"), and Hockey Song's 14 are evenly
+# spaced regardless of lyrics at all. So this isn't an idiom pulled from the
+# corpus like every other Moving Head accent in this module -- it's a
+# deliberate per-song user choice (default keywords: shake/spin/bounce, see
+# GenerationConfig.moving_head_keywords), same category as a manual
+# override.
+#
+# Runs FIRST among every Moving Head pass (before place_moving_head_moves)
+# so a specific lyric moment always gets to claim its accent -- every other
+# pass (section moves, crash/ending/beat-burst/pattern accents) treats
+# these placements as already-occupied via existing_placements/existing_mh,
+# same convention already used between those passes themselves.
+#
+# "spin" reuses the existing Pattern Circle accent verbatim (mined from
+# MH Samples.xsq, already shipped via place_moving_head_beat_bursts/
+# place_moving_head_pattern_accents) -- applied to every head in the group
+# rather than a random subset, since a keyword accent is meant to read as a
+# single deliberate moment, not a subtle randomized touch.
+# "shake"/"bounce" are new: a quick 3-point value-curve oscillation (the
+# same "Ramp Up/Down" technique u_d_tilt already validates for Tilt) on Pan
+# (shake, L-R-L) or Tilt (bounce, up-down-up). Amplitude/duration are
+# first-draft guesses, NOT vendor-validated -- flagged to the user as
+# needing a real-render check, same as every other first-cut Moving Head
+# value in this module's history.
+_KEYWORD_ACCENT_DURATION_MS = 900
+# Consecutive matches of the SAME keyword within this gap collapse into one
+# trigger (using the first occurrence's start_ms) -- a triple utterance
+# like "shake, shake, shake" would otherwise fire the accent three times in
+# under a second, faster than a real fixture can usefully move.
+_KEYWORD_ACCENT_MIN_GAP_MS = 1500
+_SHAKE_PAN_AMPLITUDE_DEG = 30.0
+_SHAKE_STATIC_TILT_DEG = 45.0
+_BOUNCE_TILT_LO_DEG = 30.0
+_BOUNCE_TILT_HI_DEG = 70.0
+
+
+def _pan_lrl_vc_descriptor(lo_deg: float, hi_deg: float, lo2_deg: float) -> str:
+    """3-point Pan value curve (Ramp Up/Down) -- mirrors _tilt_vc_descriptor
+    exactly but for the Pan axis (Id=ID_VALUECURVE_MHPan). No existing move
+    drives Pan with more than a 2-point straight ramp, so this is new, but
+    it's the identical technique/encoding u_d_tilt already ships for Tilt."""
+    return (
+        "Active=TRUE|Id=ID_VALUECURVE_MHPan|Type=Ramp Up/Down|"
+        f"Min=-1800.00|Max=1800.00|P1={lo_deg * 10:.2f}|"
+        f"P2={hi_deg * 10:.2f}|P3={lo2_deg * 10:.2f}|RV=TRUE|"
+    )
+
+
+def _build_shake_head_settings(head_count: int) -> str:
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    pan_vc = _pan_lrl_vc_descriptor(
+        -_SHAKE_PAN_AMPLITUDE_DEG, _SHAKE_PAN_AMPLITUDE_DEG, -_SHAKE_PAN_AMPLITUDE_DEG,
+    )
+    return (
+        f"Dimmer: {_DIMMER_FULL_ON};"
+        f"Wheel: {_COLOR_WHITE};"
+        "Shutter: On;"
+        f"Pan VC: {pan_vc};Tilt: {_SHAKE_STATIC_TILT_DEG};"
+        "PanOffset: 0.0;TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {heads_field}"
+    )
+
+
+def _build_bounce_head_settings(head_count: int) -> str:
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    tilt_vc = _tilt_vc_descriptor(_BOUNCE_TILT_LO_DEG, _BOUNCE_TILT_HI_DEG, _BOUNCE_TILT_LO_DEG)
+    return (
+        f"Dimmer: {_DIMMER_FULL_ON};"
+        f"Wheel: {_COLOR_WHITE};"
+        "Shutter: On;"
+        f"Pan: 0.0;Tilt VC: {tilt_vc};"
+        "PanOffset: 0.0;TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {heads_field}"
+    )
+
+
+def _build_static_warmup_settings(head_count: int, pan_deg: float, tilt_deg: float) -> str:
+    """Static pre-position pose (no Dimmer/Wheel/Shutter, same convention as
+    _build_warmup_head_settings) -- used as the lead-in for shake/bounce so
+    heads are already at the accent's starting angle and dark beforehand."""
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    return (
+        f"Pan: {pan_deg};Tilt: {tilt_deg};"
+        "PanOffset: 0.0;TiltOffset: 0.0;"
+        "Groupings: 1;Cycles: 1.0;"
+        f"Heads: {heads_field}"
+    )
+
+
+def _keyword_triggers(
+    vocal_words: Optional[list[dict]], keywords: tuple[str, ...],
+) -> list[tuple[str, int]]:
+    """Scan ``vocal_words`` for exact (case-insensitive) matches against
+    ``keywords``, collapsing consecutive same-keyword hits within
+    _KEYWORD_ACCENT_MIN_GAP_MS into one trigger. Returns
+    ``[(keyword, start_ms), ...]`` in chronological order."""
+    keyword_set = {k.lower() for k in keywords}
+    hits: list[tuple[str, int]] = []
+    for w in (vocal_words or []):
+        raw = str(w.get("label") or w.get("word") or "").strip().lower()
+        token = re.sub(r"[^a-z]", "", raw)
+        if token in keyword_set:
+            hits.append((token, int(w["start_ms"])))
+    hits.sort(key=lambda h: h[1])
+
+    triggers: list[tuple[str, int]] = []
+    last_ms_by_keyword: dict[str, int] = {}
+    for keyword, start_ms in hits:
+        last_ms = last_ms_by_keyword.get(keyword)
+        if last_ms is not None and start_ms - last_ms < _KEYWORD_ACCENT_MIN_GAP_MS:
+            continue
+        triggers.append((keyword, start_ms))
+        last_ms_by_keyword[keyword] = start_ms
+    return triggers
+
+
+def place_moving_head_keyword_accents(
+    layout: Layout,
+    vocal_words: Optional[list[dict]],
+    keywords: tuple[str, ...],
+    duration_ms: int,
+    existing_placements: Optional[dict[str, list[EffectPlacement]]] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a Moving Head accent every time a user-curated keyword is sung
+    (see the module comment above for the design/validation caveats).
+    Returns ``{}`` when the layout has no moving-head group, there are no
+    words, or no keyword ever matches."""
+    mh_groups = find_moving_head_groups(layout)
+    if not mh_groups or not vocal_words or not keywords:
+        return {}
+
+    triggers = _keyword_triggers(vocal_words, keywords)
+    if not triggers:
+        return {}
+
+    existing_placements = existing_placements or {}
+    result: dict[str, list[EffectPlacement]] = {}
+
+    for mh_group in mh_groups:
+        head_count = len(mh_group.head_names)
+        relevant_keys = (mh_group.name, *mh_group.head_names)
+
+        for keyword, mark_ms in triggers:
+            start_ms = mark_ms
+            end_ms = min(start_ms + _KEYWORD_ACCENT_DURATION_MS, duration_ms)
+            if end_ms <= start_ms:
+                continue
+
+            if keyword == "spin":
+                # Per-head placements, every head (not a random subset) --
+                # the exact validated Pattern Circle mechanic.
+                for head_name in mh_group.head_names:
+                    head_index = mh_group.head_names.index(head_name) + 1
+                    head_existing = existing_placements.get(head_name, []) + result.get(head_name, [])
+                    if _has_overlap(head_existing, start_ms, end_ms):
+                        continue
+                    params = _build_accent_parameters(
+                        _ACCENT_STATIC_PAN_DEG, _ACCENT_STATIC_TILT_DEG, head_index,
+                        pattern_name="Circle",
+                    )
+                    warmup_settings = _build_move_warmup_settings(
+                        _HeadPose(pan=_ACCENT_STATIC_PAN_DEG, tilt=_ACCENT_STATIC_TILT_DEG),
+                        0.0, 0.0, heads_field=str(head_index),
+                    )
+                    warmup_params = _build_parameters(
+                        {head_index: warmup_settings},
+                        slider_pan=_deg_to_slider(_ACCENT_STATIC_PAN_DEG),
+                        slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
+                    )
+                    prior_ends = [p.end_ms for p in head_existing if p.end_ms <= start_ms]
+                    warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+                    if _heads_already_posed(head_existing, start_ms, warmup_params):
+                        warmup_duration_ms = 0
+                    placements = result.setdefault(head_name, [])
+                    if warmup_duration_ms > 0:
+                        placements.append(EffectPlacement(
+                            effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                            model_or_group=head_name,
+                            start_ms=start_ms - warmup_duration_ms, end_ms=start_ms,
+                            parameters=dict(warmup_params),
+                        ))
+                    placements.append(EffectPlacement(
+                        effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                        model_or_group=head_name,
+                        start_ms=start_ms, end_ms=end_ms,
+                        parameters=params,
+                    ))
+                continue
+
+            # shake/bounce: one group-level placement, all heads at once.
+            channel_existing = [
+                p for key in relevant_keys for p in existing_placements.get(key, [])
+            ] + result.get(mh_group.name, [])
+            if _has_overlap(channel_existing, start_ms, end_ms):
+                continue
+
+            if keyword == "shake":
+                settings = _build_shake_head_settings(head_count)
+                warmup_pan, warmup_tilt = -_SHAKE_PAN_AMPLITUDE_DEG, _SHAKE_STATIC_TILT_DEG
+                params = _build_parameters(
+                    {i: settings for i in range(1, head_count + 1)},
+                    slider_tilt=_deg_to_slider(_SHAKE_STATIC_TILT_DEG),
+                )
+                params["E_VALUECURVE_MHPan"] = _pan_lrl_vc_descriptor(
+                    -_SHAKE_PAN_AMPLITUDE_DEG, _SHAKE_PAN_AMPLITUDE_DEG, -_SHAKE_PAN_AMPLITUDE_DEG,
+                )
+            elif keyword == "bounce":
+                settings = _build_bounce_head_settings(head_count)
+                warmup_pan, warmup_tilt = 0.0, _BOUNCE_TILT_LO_DEG
+                params = _build_parameters(
+                    {i: settings for i in range(1, head_count + 1)},
+                    slider_pan=_deg_to_slider(0.0),
+                )
+                params["E_VALUECURVE_MHTilt"] = _tilt_vc_descriptor(
+                    _BOUNCE_TILT_LO_DEG, _BOUNCE_TILT_HI_DEG, _BOUNCE_TILT_LO_DEG,
+                )
+            else:
+                continue  # unrecognized keyword -- no mapping, skip silently
+
+            warmup_settings = _build_static_warmup_settings(head_count, warmup_pan, warmup_tilt)
+            warmup_params = _build_parameters(
+                {i: warmup_settings for i in range(1, head_count + 1)},
+                slider_pan=_deg_to_slider(warmup_pan), slider_tilt=_deg_to_slider(warmup_tilt),
+            )
+            prior_ends = [p.end_ms for p in channel_existing if p.end_ms <= start_ms]
+            warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+            if _heads_already_posed(channel_existing, start_ms, warmup_params):
+                warmup_duration_ms = 0
+            placements = result.setdefault(mh_group.name, [])
+            if warmup_duration_ms > 0:
+                placements.append(EffectPlacement(
+                    effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                    model_or_group=mh_group.name,
+                    start_ms=start_ms - warmup_duration_ms, end_ms=start_ms,
+                    parameters=dict(warmup_params),
+                ))
+            placements.append(EffectPlacement(
+                effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                model_or_group=mh_group.name,
+                start_ms=start_ms, end_ms=end_ms,
+                parameters=params,
+            ))
+
+    return result
 
 
 def place_moving_head_crash_accents(
