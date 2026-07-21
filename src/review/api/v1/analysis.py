@@ -610,7 +610,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         try:
             from src.analyzer.phoneme_align import align_words_and_phonemes
             words_list, phonemes_list = align_words_and_phonemes(
-                str(src), lyrics_list or None,
+                str(src), lyrics_list or None, cached_lyrics_text,
             )
             state.push({"detector": "phonemes (whisperx)", "library": "story",
                         "status": "done", "confidence": None,

@@ -117,6 +117,7 @@ else:
 def align_words_and_phonemes(
     audio_path: str,
     lyric_lines: Optional[list[dict]] = None,
+    lyrics_text: Optional[str] = None,
 ) -> tuple[list[dict], list[dict]]:
     """Return ``(words, phonemes)`` mark dicts for the song's vocals.
 
@@ -126,9 +127,15 @@ def align_words_and_phonemes(
     definitions.
 
     When ``lyric_lines`` (session ``lyrics`` — ``{t_ms, duration_ms,
-    text}``) is provided, WhisperX force-aligns the known lyric text;
-    otherwise it transcribes freely. Prefers the cached demucs vocals stem
-    over the full mix when one exists.
+    text}``, i.e. real LRC timestamps) is provided, WhisperX force-aligns
+    that known lyric text. Otherwise, when ``lyrics_text`` (raw plain text —
+    e.g. a user-pasted lyrics fallback, or an untimed provider result) is
+    provided, WhisperX force-aligns THAT instead. Both produce far more
+    accurate word text than free transcription, which only guesses words
+    from audio alone (user-confirmed 2026-07-21: free transcription on a
+    pasted-but-untimed song produced garbage words). Only when NEITHER is
+    available does it fall back to free transcription. Prefers the cached
+    demucs vocals stem over the full mix when one exists.
 
     Never raises: returns ``([], [])`` when WhisperX is unavailable in both
     the main venv and the ``.venv-vamp`` sidecar, or when alignment fails.
@@ -139,13 +146,16 @@ def align_words_and_phonemes(
     lyrics_path: Optional[str] = None
     tmp_file: Optional[str] = None
     try:
+        reference_text: str = ""
         if lyric_lines:
-            text = _lyric_lines_to_text(lyric_lines)
-            if text.strip():
-                fd, tmp_file = tempfile.mkstemp(suffix=".txt", text=True)
-                with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                    fh.write(text)
-                lyrics_path = tmp_file
+            reference_text = _lyric_lines_to_text(lyric_lines)
+        elif lyrics_text:
+            reference_text = lyrics_text
+        if reference_text.strip():
+            fd, tmp_file = tempfile.mkstemp(suffix=".txt", text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(reference_text)
+            lyrics_path = tmp_file
 
         try:
             return _run_in_process(align_audio, lyrics_path)
