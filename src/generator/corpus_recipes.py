@@ -798,10 +798,26 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         ),
         color_over_mask=True,
     ),
+    # Spiral trees — a distinct physical shape (tight vertical wrap) from an
+    # ordinary mini tree, added to the layout 2026-07-21. Wired up as its
+    # own recipe (rather than letting the "tree" token below claim it) so it
+    # can be tuned independently once the user has seen how it actually
+    # renders; for now it reuses the exact same mined mini-tree treatment as
+    # a placeholder, not a genuinely distinct idiom yet.
+    PropFamilyRecipe(
+        family="spiraltree",
+        match_tokens=("spiral",),
+        effect_name="Single Strand",
+        alt_effect_name="Shockwave",
+        parameter_overrides=_CHASE_MINITREE,
+        alt_parameter_overrides=_SHOCKWAVE_BURST,
+        color_over_mask=True,
+        mask_sparkles=True,
+    ),
     PropFamilyRecipe(
         family="minitree",
         match_tokens=("tree",),
-        exclude_tokens=("mega", "star", "topper", "singing"),
+        exclude_tokens=("mega", "star", "topper", "singing", "spiral"),
         effect_name="Single Strand",
         alt_effect_name="Shockwave",
         parameter_overrides=_CHASE_MINITREE,

@@ -866,6 +866,40 @@ class TestMinitreeRecipe:
         )
         assert recipe_for_group(group) is None
 
+    def test_spiral_tree_group_excluded_from_minitree(self) -> None:
+        group = PowerGroup(
+            name="06_PROP_Spiral_Tree", tier=6,
+            members=["Spiral Tree 1", "Spiral Tree 2"],
+        )
+        recipe = recipe_for_group(group)
+        assert recipe is not None
+        assert recipe.family != "minitree"
+
+
+class TestSpiralTreeRecipe:
+    """Spiral trees get their own recipe (family='spiraltree'), separate
+    from ordinary mini trees, so their effects can be tuned independently
+    once real-world rendering is evaluated -- see corpus_recipes.py's
+    2026-07-21 comment above the recipe definition."""
+
+    def test_spiral_tree_group_name_matches_spiraltree(self) -> None:
+        group = PowerGroup(
+            name="06_PROP_Spiral_Tree", tier=6,
+            members=["Spiral Tree 1", "Spiral Tree 2"],
+        )
+        assert recipe_for_group(group).family == "spiraltree"
+
+    def test_ordinary_tree_group_is_unaffected(self) -> None:
+        assert recipe_for_group(_MINITREE_GROUP).family == "minitree"
+
+    def test_megatree_still_wins_over_spiraltree(self) -> None:
+        # "spiral" isn't a mega-tree token, so this just confirms the new
+        # recipe's insertion point doesn't shadow the earlier megatree match.
+        group = PowerGroup(
+            name="06_PROP_Mega_Tree", tier=6, members=["Mega Tree 1", "Mega Tree 2"],
+        )
+        assert recipe_for_group(group).family == "megatree"
+
     def test_minitree_chorus_gets_white_group_chase_per_beat(self) -> None:
         result = _place(_make_section(label="chorus"), _MINITREE_GROUP)
         placements = result["06_PROP_Tree"]
