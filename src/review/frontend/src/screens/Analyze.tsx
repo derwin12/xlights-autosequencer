@@ -415,11 +415,16 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       // misreport "not found" for a song that was actually resolved via
       // paste. Only fills in when nothing has been set yet this session
       // (?? — a live Check/Paste Lyrics result this session always wins).
-      const lyricsList: unknown[] = Array.isArray(data?.lyrics) ? data.lyrics : [];
+      const lyricsList: { text?: string }[] = Array.isArray(data?.lyrics) ? data.lyrics : [];
       const lyricsTextFound = Boolean(data?.lyrics_text_found);
       if (lyricsList.length > 0 || lyricsTextFound) {
         setLyricsCheckResult((prev) => prev ?? {
-          found: true, reason: null, line_count: lyricsList.length, preview: [],
+          found: true, reason: null, line_count: lyricsList.length,
+          // Persisted timed lines carry their own text -- shows the same
+          // "what was actually matched" preview a fresh Check Lyrics call
+          // gets, even after a page reload. Untimed (pasted, no-timing)
+          // results have no line text persisted anywhere to preview.
+          preview: lyricsList.slice(0, 2).map((l) => l.text ?? '').filter(Boolean),
         });
       }
     } catch {}
@@ -649,13 +654,13 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         >
           {checkingLyrics ? 'Checking…' : 'Check Lyrics'}
         </button>
-        {lyricsCheckResult && !lyricsCheckResult.found && (
+        {lyricsCheckResult && (
           <button
             className={styles.reanalyzeBtn}
             data-testid="paste-lyrics-btn"
             onClick={() => setShowPasteLyrics(true)}
           >
-            Paste Lyrics
+            {lyricsCheckResult.found ? 'Not this song? Paste Lyrics' : 'Paste Lyrics'}
           </button>
         )}
         <button
@@ -677,6 +682,22 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
                     : 'Lyrics found (no timing)'}
               </span>
             : <span className={styles.metadataError}>✗ {lyricsCheckReasonLabel(lyricsCheckResult.reason)}</span>
+        )}
+        {lyricsCheckResult?.found && lyricsCheckResult.preview.length > 0 && (
+          // Surfaces what was actually matched so a wrong-song false
+          // positive (real incident, 2026-07-21: an unrelated song's LRC
+          // matched this exact title/artist query) is visible at a glance
+          // instead of only a line count, which looks identical whether
+          // the match is right or wrong.
+          <div
+            data-testid="lyrics-preview"
+            style={{
+              flexBasis: '100%', marginTop: 4, fontSize: 12,
+              color: 'var(--color-text-muted, #888)', fontStyle: 'italic',
+            }}
+          >
+            "{lyricsCheckResult.preview.slice(0, 2).join(' / ')}"
+          </div>
         )}
         {showPasteLyrics && (
           <PasteLyricsDialog

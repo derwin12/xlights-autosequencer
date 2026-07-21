@@ -122,7 +122,11 @@ describe('Analyze screen', () => {
     expect(screen.queryByTestId('paste-lyrics-btn')).toBeNull();
   });
 
-  it('does not show Paste Lyrics when Check Lyrics found a match', async () => {
+  it('shows a reject-and-paste option even when Check Lyrics found a match', async () => {
+    // A found match can still be the WRONG song (real incident, 2026-07-21:
+    // an unrelated song's LRC matched this exact title/artist query) -- the
+    // user needs a way to reject it and paste their own text regardless of
+    // whether something was "found".
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ found: true, reason: null, line_count: 12, preview: [] }),
@@ -132,7 +136,37 @@ describe('Analyze screen', () => {
     await waitFor(() => {
       expect(screen.getByText(/Found \(12 lines\)/)).toBeTruthy();
     });
-    expect(screen.queryByTestId('paste-lyrics-btn')).toBeNull();
+    expect(screen.getByTestId('paste-lyrics-btn')).toBeTruthy();
+    expect(screen.getByTestId('paste-lyrics-btn').textContent).toMatch(/not this song/i);
+  });
+
+  it('shows a preview of the matched lyrics so a wrong match is visible at a glance', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        found: true, reason: null, line_count: 67,
+        preview: ['Ah ah ah ah', 'I was fine before I met you'],
+      }),
+    });
+    render(<Analyze song={{ ...mockSong, artist: 'Test Artist' }} onComplete={() => {}} />);
+    screen.getByText('Check Lyrics').click();
+    await waitFor(() => {
+      expect(screen.getByTestId('lyrics-preview').textContent).toContain('Ah ah ah ah');
+      expect(screen.getByTestId('lyrics-preview').textContent).toContain('I was fine before I met you');
+    });
+  });
+
+  it('shows no preview when nothing was found', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: false, reason: 'no_match', line_count: 0, preview: [] }),
+    });
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    screen.getByText('Check Lyrics').click();
+    await waitFor(() => {
+      expect(screen.getByTestId('paste-lyrics-btn')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('lyrics-preview')).toBeNull();
   });
 
   it('opens Paste Lyrics dialog and saves pasted text after a failed check', async () => {
