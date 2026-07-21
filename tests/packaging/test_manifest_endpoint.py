@@ -61,13 +61,14 @@ def test_dev_mode_reports_origin_main_commit(client_dev):
 
 
 def test_origin_main_commit_failure_returns_none_not_error(monkeypatch):
-    """A failed `git ls-remote` (offline, no remote, etc.) must not break
-    the manifest endpoint -- it should just omit the value."""
+    """A failed `git fetch` (offline, no remote, etc.) must not break the
+    manifest endpoint -- it should just omit the value."""
     import subprocess as subprocess_module
 
     import src.review.api.v1.manifest as manifest_module
 
     manifest_module._origin_main_commit_cache = None
+    manifest_module._origin_ahead_cache = None
     manifest_module._origin_main_checked_at = 0.0
 
     def _raise(*args, **kwargs):
@@ -75,6 +76,7 @@ def test_origin_main_commit_failure_returns_none_not_error(monkeypatch):
 
     monkeypatch.setattr(manifest_module.subprocess, "run", _raise)
     assert manifest_module._origin_main_commit() is None
+    assert manifest_module._origin_ahead_of_head() is None
 
 
 def test_origin_main_commit_is_cached_within_ttl(monkeypatch):
@@ -83,6 +85,7 @@ def test_origin_main_commit_is_cached_within_ttl(monkeypatch):
     import src.review.api.v1.manifest as manifest_module
 
     manifest_module._origin_main_commit_cache = "abc1234"
+    manifest_module._origin_ahead_cache = False
     manifest_module._origin_main_checked_at = manifest_module.time.monotonic()
 
     call_count = 0
@@ -90,11 +93,64 @@ def test_origin_main_commit_is_cached_within_ttl(monkeypatch):
     def _fail_if_called(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        raise AssertionError("git ls-remote should not run again within the TTL")
+        raise AssertionError("git fetch should not run again within the TTL")
 
     monkeypatch.setattr(manifest_module.subprocess, "run", _fail_if_called)
     assert manifest_module._origin_main_commit() == "abc1234"
+    assert manifest_module._origin_ahead_of_head() is False
     assert call_count == 0
+
+
+def test_origin_ahead_of_head_true_when_origin_has_new_commits(monkeypatch):
+    """`git merge-base --is-ancestor HEAD FETCH_HEAD` exiting 0 means HEAD's
+    history is a subset of origin/main's -- origin genuinely has new commits."""
+    import subprocess as subprocess_module
+
+    import src.review.api.v1.manifest as manifest_module
+
+    manifest_module._origin_main_commit_cache = None
+    manifest_module._origin_ahead_cache = None
+    manifest_module._origin_main_checked_at = 0.0
+
+    def _fake_run(cmd, **kwargs):
+        if cmd[:2] == ["git", "fetch"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="", stderr="")
+        if cmd[:3] == ["git", "rev-parse", "--short"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="bbb2222\n", stderr="")
+        if cmd[:3] == ["git", "merge-base", "--is-ancestor"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="", stderr="")
+        raise AssertionError(f"unexpected command: {cmd}")
+
+    monkeypatch.setattr(manifest_module.subprocess, "run", _fake_run)
+    assert manifest_module._origin_main_commit() == "bbb2222"
+    assert manifest_module._origin_ahead_of_head() is True
+
+
+def test_origin_ahead_of_head_false_when_head_has_unpushed_commits(monkeypatch):
+    """Regression for the false-positive 'update available' banner: HEAD
+    committed locally but not yet pushed also produces a different SHA from
+    origin/main, but merge-base --is-ancestor correctly reports HEAD is NOT
+    origin's ancestor, so this must be False, not True."""
+    import subprocess as subprocess_module
+
+    import src.review.api.v1.manifest as manifest_module
+
+    manifest_module._origin_main_commit_cache = None
+    manifest_module._origin_ahead_cache = None
+    manifest_module._origin_main_checked_at = 0.0
+
+    def _fake_run(cmd, **kwargs):
+        if cmd[:2] == ["git", "fetch"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="", stderr="")
+        if cmd[:3] == ["git", "rev-parse", "--short"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="aaa1111\n", stderr="")
+        if cmd[:3] == ["git", "merge-base", "--is-ancestor"]:
+            return subprocess_module.CompletedProcess(cmd, 1, stdout="", stderr="")
+        raise AssertionError(f"unexpected command: {cmd}")
+
+    monkeypatch.setattr(manifest_module.subprocess, "run", _fake_run)
+    assert manifest_module._origin_main_commit() == "aaa1111"
+    assert manifest_module._origin_ahead_of_head() is False
 
 
 def test_bundled_stub_when_manifest_file_absent(monkeypatch, tmp_path):

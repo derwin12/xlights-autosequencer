@@ -30,7 +30,9 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
   if (!open) return null;
 
   const backendStale = isBackendStale(manifest?.backend_commit, manifest?.repo_head_commit);
-  const updateAvailable = isUpdateAvailable(manifest?.repo_head_commit, manifest?.origin_main_commit);
+  const updateAvailable = isUpdateAvailable(
+    manifest?.repo_head_commit, manifest?.origin_main_commit, manifest?.origin_ahead_of_head,
+  );
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>

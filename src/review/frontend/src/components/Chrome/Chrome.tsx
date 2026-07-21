@@ -73,7 +73,9 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
   const loadManifest = useManifestStore((s) => s.load);
   React.useEffect(() => { void loadManifest(); }, [loadManifest]);
   const backendStale = isBackendStale(manifest?.backend_commit, manifest?.repo_head_commit);
-  const updateAvailable = isUpdateAvailable(manifest?.repo_head_commit, manifest?.origin_main_commit);
+  const updateAvailable = isUpdateAvailable(
+    manifest?.repo_head_commit, manifest?.origin_main_commit, manifest?.origin_ahead_of_head,
+  );
 
   return (
     <div className={styles.shell}>

@@ -61,34 +61,68 @@ _BACKEND_COMMIT = _backend_commit()
 # free local checks above.
 _ORIGIN_CHECK_TTL_SECONDS = 30 * 60
 _origin_main_commit_cache: str | None = None
+_origin_ahead_cache: bool | None = None
 _origin_main_checked_at: float = 0.0
 
 
-def _origin_main_commit() -> str | None:
-    """Short SHA of origin/main on GitHub, cached for _ORIGIN_CHECK_TTL_SECONDS.
+def _refresh_origin_main_state() -> None:
+    """Fetches origin/main and updates both the cached SHA and whether it's
+    strictly ahead of HEAD.
 
-    Uses `git ls-remote` (not the GitHub REST API) -- no auth, no rate
-    limit, consistent with _backend_commit's git-subprocess approach. Never
-    raises: offline dev environments, corporate proxies, or a missing
-    remote must not break the manifest endpoint. A transient failure keeps
-    serving the last known-good value instead of clearing it.
+    A plain SHA comparison (the previous implementation, via `git
+    ls-remote`) can't distinguish "origin is ahead -- pull to update" from
+    "HEAD is ahead of origin -- committed locally but not pushed yet": both
+    just produce two different SHAs. `git fetch` (unlike `ls-remote`) pulls
+    the actual commit objects into FETCH_HEAD, which lets a local
+    `git merge-base --is-ancestor HEAD FETCH_HEAD` answer the real
+    question -- true only when HEAD's history is a subset of origin/main's,
+    i.e. origin actually has new commits this checkout doesn't. `git fetch`
+    only updates FETCH_HEAD (not any local branch ref), so it can't disturb
+    the user's own working tree or branch state. Never raises: offline dev
+    environments, corporate proxies, or a missing remote must not break the
+    manifest endpoint -- a transient failure keeps serving the last
+    known-good values instead of clearing them.
     """
-    global _origin_main_commit_cache, _origin_main_checked_at
+    global _origin_main_commit_cache, _origin_ahead_cache, _origin_main_checked_at
     now = time.monotonic()
     if _origin_main_checked_at > 0 and (now - _origin_main_checked_at) < _ORIGIN_CHECK_TTL_SECONDS:
-        return _origin_main_commit_cache
+        return
     _origin_main_checked_at = now
     cwd = Path(__file__).resolve().parent
     try:
-        result = subprocess.run(
-            ["git", "ls-remote", "origin", "main"],
+        subprocess.run(
+            ["git", "fetch", "--quiet", "origin", "main"],
+            cwd=cwd, capture_output=True, text=True, timeout=15, check=True,
+        )
+        origin_sha = subprocess.run(
+            ["git", "rev-parse", "--short", "FETCH_HEAD"],
             cwd=cwd, capture_output=True, text=True, timeout=5, check=True,
         ).stdout.strip()
-        if result:
-            _origin_main_commit_cache = result.split()[0][:7]
+        if origin_sha:
+            _origin_main_commit_cache = origin_sha
+        ahead = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", "HEAD", "FETCH_HEAD"],
+            cwd=cwd, capture_output=True, timeout=5,
+        )
+        _origin_ahead_cache = ahead.returncode == 0
     except (OSError, subprocess.SubprocessError):
         pass
+
+
+def _origin_main_commit() -> str | None:
+    """Short SHA of origin/main, cached for _ORIGIN_CHECK_TTL_SECONDS."""
+    _refresh_origin_main_state()
     return _origin_main_commit_cache
+
+
+def _origin_ahead_of_head() -> bool | None:
+    """True when origin/main is strictly ahead of this checkout's HEAD --
+    i.e. a `git pull` would bring in new commits. False when HEAD is even
+    with or ahead of origin/main (including "committed locally, not pushed
+    yet" -- a different SHA that is NOT a case for pulling). None when the
+    remote couldn't be reached at all."""
+    _refresh_origin_main_state()
+    return _origin_ahead_cache
 
 
 @api_v1.get("/manifest")
@@ -111,6 +145,7 @@ def manifest():
         "backend_commit": _BACKEND_COMMIT,
         "repo_head_commit": _backend_commit(),
         "origin_main_commit": _origin_main_commit(),
+        "origin_ahead_of_head": _origin_ahead_of_head(),
         "backend_started_at": _SERVER_STARTED_AT,
         "bundled_vamp_plugins": [],
         "download_model_manifest_url": None,

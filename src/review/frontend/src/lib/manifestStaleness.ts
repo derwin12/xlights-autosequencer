@@ -23,12 +23,20 @@ export function isBackendStale(
 
 /** True when the local checkout's HEAD is behind origin/main -- distinct
  * from isBackendStale (pulled but not restarted): this is "haven't even
- * pulled yet." origin_main_commit is cached server-side and may be null
- * (offline, no network) -- treated as "unknown," not stale. */
+ * pulled yet." origin_main_commit/originAheadOfHead are cached server-side
+ * and may be null (offline, no network) -- treated as "unknown," not stale.
+ *
+ * A plain SHA inequality is NOT enough here: repoHeadCommit and
+ * originMainCommit also differ when HEAD has unpushed local commits ahead
+ * of origin (nothing to pull), so this only fires when the server has
+ * confirmed origin is actually ahead via `git merge-base --is-ancestor`
+ * (originAheadOfHead === true), not merely "different". */
 export function isUpdateAvailable(
   repoHeadCommit: string | null | undefined,
   originMainCommit: string | null | undefined,
+  originAheadOfHead: boolean | null | undefined,
 ): boolean {
   if (!repoHeadCommit || !originMainCommit) return false;
-  return baseCommit(repoHeadCommit) !== baseCommit(originMainCommit);
+  if (baseCommit(repoHeadCommit) === baseCommit(originMainCommit)) return false;
+  return originAheadOfHead === true;
 }
