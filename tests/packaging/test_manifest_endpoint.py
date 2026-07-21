@@ -102,8 +102,8 @@ def test_origin_main_commit_is_cached_within_ttl(monkeypatch):
 
 
 def test_origin_ahead_of_head_true_when_origin_has_new_commits(monkeypatch):
-    """`git merge-base --is-ancestor HEAD FETCH_HEAD` exiting 0 means HEAD's
-    history is a subset of origin/main's -- origin genuinely has new commits."""
+    """`git rev-list --count HEAD..FETCH_HEAD` > 0 means origin/main has
+    commits this checkout's HEAD doesn't -- a pull would bring in something new."""
     import subprocess as subprocess_module
 
     import src.review.api.v1.manifest as manifest_module
@@ -117,8 +117,8 @@ def test_origin_ahead_of_head_true_when_origin_has_new_commits(monkeypatch):
             return subprocess_module.CompletedProcess(cmd, 0, stdout="", stderr="")
         if cmd[:3] == ["git", "rev-parse", "--short"]:
             return subprocess_module.CompletedProcess(cmd, 0, stdout="bbb2222\n", stderr="")
-        if cmd[:3] == ["git", "merge-base", "--is-ancestor"]:
-            return subprocess_module.CompletedProcess(cmd, 0, stdout="", stderr="")
+        if cmd[:3] == ["git", "rev-list", "--count"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="3\n", stderr="")
         raise AssertionError(f"unexpected command: {cmd}")
 
     monkeypatch.setattr(manifest_module.subprocess, "run", _fake_run)
@@ -129,8 +129,9 @@ def test_origin_ahead_of_head_true_when_origin_has_new_commits(monkeypatch):
 def test_origin_ahead_of_head_false_when_head_has_unpushed_commits(monkeypatch):
     """Regression for the false-positive 'update available' banner: HEAD
     committed locally but not yet pushed also produces a different SHA from
-    origin/main, but merge-base --is-ancestor correctly reports HEAD is NOT
-    origin's ancestor, so this must be False, not True."""
+    origin/main, but rev-list --count reports 0 commits reachable from
+    FETCH_HEAD that aren't already reachable from HEAD, so this must be
+    False, not True."""
     import subprocess as subprocess_module
 
     import src.review.api.v1.manifest as manifest_module
@@ -144,12 +145,38 @@ def test_origin_ahead_of_head_false_when_head_has_unpushed_commits(monkeypatch):
             return subprocess_module.CompletedProcess(cmd, 0, stdout="", stderr="")
         if cmd[:3] == ["git", "rev-parse", "--short"]:
             return subprocess_module.CompletedProcess(cmd, 0, stdout="aaa1111\n", stderr="")
-        if cmd[:3] == ["git", "merge-base", "--is-ancestor"]:
-            return subprocess_module.CompletedProcess(cmd, 1, stdout="", stderr="")
+        if cmd[:3] == ["git", "rev-list", "--count"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="0\n", stderr="")
         raise AssertionError(f"unexpected command: {cmd}")
 
     monkeypatch.setattr(manifest_module.subprocess, "run", _fake_run)
     assert manifest_module._origin_main_commit() == "aaa1111"
+    assert manifest_module._origin_ahead_of_head() is False
+
+
+def test_origin_ahead_of_head_false_when_commits_are_equal(monkeypatch):
+    """origin/main and HEAD pointing at the same commit must not be reported
+    as 'origin ahead' -- 0 commits reachable from FETCH_HEAD that aren't
+    already reachable from HEAD."""
+    import subprocess as subprocess_module
+
+    import src.review.api.v1.manifest as manifest_module
+
+    manifest_module._origin_main_commit_cache = None
+    manifest_module._origin_ahead_cache = None
+    manifest_module._origin_main_checked_at = 0.0
+
+    def _fake_run(cmd, **kwargs):
+        if cmd[:2] == ["git", "fetch"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="", stderr="")
+        if cmd[:3] == ["git", "rev-parse", "--short"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="ccc3333\n", stderr="")
+        if cmd[:3] == ["git", "rev-list", "--count"]:
+            return subprocess_module.CompletedProcess(cmd, 0, stdout="0\n", stderr="")
+        raise AssertionError(f"unexpected command: {cmd}")
+
+    monkeypatch.setattr(manifest_module.subprocess, "run", _fake_run)
+    assert manifest_module._origin_main_commit() == "ccc3333"
     assert manifest_module._origin_ahead_of_head() is False
 
 

@@ -74,11 +74,15 @@ def _refresh_origin_main_state() -> None:
     "HEAD is ahead of origin -- committed locally but not pushed yet": both
     just produce two different SHAs. `git fetch` (unlike `ls-remote`) pulls
     the actual commit objects into FETCH_HEAD, which lets a local
-    `git merge-base --is-ancestor HEAD FETCH_HEAD` answer the real
-    question -- true only when HEAD's history is a subset of origin/main's,
-    i.e. origin actually has new commits this checkout doesn't. `git fetch`
-    only updates FETCH_HEAD (not any local branch ref), so it can't disturb
-    the user's own working tree or branch state. Never raises: offline dev
+    `git rev-list --count HEAD..FETCH_HEAD` answer the real question --
+    the count is 0 both when the two are equal and when HEAD is ahead
+    (nothing reachable from FETCH_HEAD that isn't already reachable from
+    HEAD), and only positive when origin genuinely has commits this
+    checkout doesn't (a plain `--is-ancestor` check was tried first but
+    rejected: it treats a commit as an ancestor of itself, so it can't
+    distinguish "equal" from "strictly ahead" on its own). `git fetch` only
+    updates FETCH_HEAD (not any local branch ref), so it can't disturb the
+    user's own working tree or branch state. Never raises: offline dev
     environments, corporate proxies, or a missing remote must not break the
     manifest endpoint -- a transient failure keeps serving the last
     known-good values instead of clearing them.
@@ -100,11 +104,11 @@ def _refresh_origin_main_state() -> None:
         ).stdout.strip()
         if origin_sha:
             _origin_main_commit_cache = origin_sha
-        ahead = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", "HEAD", "FETCH_HEAD"],
-            cwd=cwd, capture_output=True, timeout=5,
-        )
-        _origin_ahead_cache = ahead.returncode == 0
+        ahead_count = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD..FETCH_HEAD"],
+            cwd=cwd, capture_output=True, text=True, timeout=5, check=True,
+        ).stdout.strip()
+        _origin_ahead_cache = ahead_count.isdigit() and int(ahead_count) > 0
     except (OSError, subprocess.SubprocessError):
         pass
 
