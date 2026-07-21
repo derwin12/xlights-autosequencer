@@ -30,8 +30,8 @@ prerequisite is **Docker Desktop** (or Docker Engine on Linux) —
 [docker.com](https://www.docker.com/products/docker-desktop/).
 
 ```bash
-git clone https://github.com/derwin12/xlight-autosequencer.git
-cd xlight-autosequencer
+git clone https://github.com/derwin12/xlights-autosequencer.git
+cd xlights-autosequencer
 docker compose up
 ```
 
