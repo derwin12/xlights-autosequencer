@@ -1254,7 +1254,17 @@ def place_moving_head_keyword_accents(
                 # the exact validated Pattern Circle mechanic.
                 for head_name in mh_group.head_names:
                     head_index = mh_group.head_names.index(head_name) + 1
-                    head_existing = existing_placements.get(head_name, []) + result.get(head_name, [])
+                    # Checked under the head's own name AND the group name --
+                    # a group-level trigger from an earlier "shake"/"bounce"
+                    # in this same loop (or from an external existing_placements
+                    # caller) writes into every head's channel slots, so a
+                    # per-head "spin" scheduled during that window collides
+                    # even though it never appears under this head's own key
+                    # (same bug class found in _place_random_head_accents).
+                    head_existing = (
+                        existing_placements.get(head_name, []) + result.get(head_name, [])
+                        + existing_placements.get(mh_group.name, []) + result.get(mh_group.name, [])
+                    )
                     if _has_overlap(head_existing, start_ms, end_ms):
                         continue
                     params = _build_accent_parameters(
@@ -1630,7 +1640,17 @@ def _place_random_head_accents(
     sections, a beat mark near each section's midpoint, a random head count
     from ``head_counts``, and that many random heads; skips a section
     entirely if the chosen heads/window collide with anything already
-    placed on those channels."""
+    placed on those channels.
+
+    ``existing``/``result`` are checked under BOTH the chosen heads' own
+    names AND ``mh_group.name`` -- a group-targeted move (e.g. one of
+    place_moving_head_moves' "Fan" moves) writes into every head's channel
+    slots redundantly, so a per-head accent scheduled during that window
+    collides even though it never appears under that head's own key
+    (user-found real .xsq: a 46s group-level Fan move at 0-45975ms had
+    individual MH-1..4 accents from this function overlapping it the
+    entire time, since the old check only ever looked up per-head keys).
+    """
     beats = hierarchy.beats.marks if hierarchy.beats else []
     result: dict[str, list[EffectPlacement]] = {}
     placed = 0
@@ -1655,8 +1675,9 @@ def _place_random_head_accents(
         )
         heads = _choose_accent_heads(mh_group.head_names, count, seed)
 
-        occupied = [p for h in heads for p in existing.get(h, [])] + [
-            p for h in heads for p in result.get(h, [])
+        occupancy_keys = (mh_group.name, *heads)
+        occupied = [p for h in occupancy_keys for p in existing.get(h, [])] + [
+            p for h in occupancy_keys for p in result.get(h, [])
         ]
         if _has_overlap(occupied, start_ms, end_ms):
             continue
@@ -1718,7 +1739,15 @@ def place_moving_head_beat_bursts(
     ]
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
-        relevant = {h: existing_placements.get(h, []) for h in mh_group.head_names}
+        # Includes the group's own key, not just individual head names -- a
+        # group-targeted move (e.g. one of place_moving_head_moves' "Fan"
+        # moves) writes into every head's channel slots but only ever
+        # appears under mh_group.name in existing_placements. Omitting it
+        # here silently discarded that occupancy before _place_random_head_
+        # accents ever saw it (user-found real .xsq: a 46s group-level Fan
+        # move had individual head accents overlapping it for its entire
+        # duration).
+        relevant = {h: existing_placements.get(h, []) for h in (mh_group.name, *mh_group.head_names)}
         accents = _place_random_head_accents(
             mh_group, strong_sections, hierarchy,
             assignments[0].variation_seed if assignments else 0,
@@ -1751,7 +1780,15 @@ def place_moving_head_pattern_accents(
     ]
     result: dict[str, list[EffectPlacement]] = {}
     for mh_group in mh_groups:
-        relevant = {h: existing_placements.get(h, []) for h in mh_group.head_names}
+        # Includes the group's own key, not just individual head names -- a
+        # group-targeted move (e.g. one of place_moving_head_moves' "Fan"
+        # moves) writes into every head's channel slots but only ever
+        # appears under mh_group.name in existing_placements. Omitting it
+        # here silently discarded that occupancy before _place_random_head_
+        # accents ever saw it (user-found real .xsq: a 46s group-level Fan
+        # move had individual head accents overlapping it for its entire
+        # duration).
+        relevant = {h: existing_placements.get(h, []) for h in (mh_group.name, *mh_group.head_names)}
         accents = _place_random_head_accents(
             mh_group, quiet_sections, hierarchy,
             assignments[0].variation_seed if assignments else 0,

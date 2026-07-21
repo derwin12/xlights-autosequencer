@@ -142,6 +142,18 @@ class TestPlaceMovingHeadKeywordAccents:
             assert punch.parameters["E_CHOICE_MHPattern"] == "Circle"
             assert punch.parameters["E_CHECKBOX_MHPatternEnable"] == "1"
 
+    def test_spin_skipped_when_a_prior_shake_still_occupies_the_group(self):
+        # Regression (same bug class as _place_random_head_accents): a
+        # "shake" trigger writes one group-level placement covering all
+        # heads' channel slots. A "spin" trigger landing inside that same
+        # window must be skipped even though the per-head occupancy check
+        # only ever looked up individual head names before this fix.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        words = [_word("shake", 10_000, 10_300), _word("spin", 10_400, 10_700)]
+        result = place_moving_head_keyword_accents(layout, words, DEFAULT_KEYWORDS, 200_000)
+        assert "MH GRP" in result  # the shake fired
+        assert "MH1" not in result and "MH2" not in result  # the spin was skipped
+
     def test_unrecognized_keyword_in_config_is_silently_ignored(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         words = [_word("wiggle", 10_000, 10_300)]

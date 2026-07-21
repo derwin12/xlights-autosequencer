@@ -121,6 +121,23 @@ class TestPlaceMovingHeadBeatBursts:
         )
         assert result == {}
 
+    def test_skips_when_group_level_placement_occupies_the_channel(self):
+        # Regression: a group-targeted move (e.g. one of place_moving_head_moves'
+        # "Fan" moves) writes into every head's channel slots, but only ever
+        # appears under the GROUP's own key in existing_placements -- the
+        # occupancy check must still catch it even though it never appears
+        # under any individual head's key (user-found real .xsq: a 46s
+        # group-level Fan move had individual head accents overlapping it
+        # for the entire duration, since the old check only looked up
+        # per-head keys).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 0, 30_000, _STRONG_ENERGY_GATE, variation_seed=0)]
+        existing = {"MH GRP": [_fake_placement("MH GRP", 0, 30_000)]}
+        result = place_moving_head_beat_bursts(
+            layout, assignments, _hierarchy(30_000), existing_placements=existing,
+        )
+        assert result == {}
+
 
 class TestPlaceMovingHeadPatternAccents:
     def test_no_moving_head_group_returns_empty(self):
