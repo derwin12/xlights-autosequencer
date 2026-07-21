@@ -425,9 +425,13 @@ without per-line timing. Threaded through the three places
 `analysis.py` assembles/persists the API response's `lyrics` list (the
 initial analyze-stream result + session save, the analyze-commit
 carry-through, and the cached-session GET path) so it survives the
-same way `lyrics_list` already does. `LyricTrack` now shows "Pasted
-lyrics found (no timing)" instead of the generic empty message when
-`lyrics_text_found` is true but there are no timed lines to render.
+same way `lyrics_list` already does. `LyricTrack` now shows "Lyrics
+found (no timing)" instead of the generic empty message when
+`lyrics_text_found` is true but there are no timed lines to render —
+deliberately not phrased as "pasted" specifically, since an untimed
+plain-text *provider* result (a separate, already-documented case) hits
+this exact same flag/branch and can't be told apart from a user paste at
+this layer.
 **No change to section detection, merging, or role classification** —
 purely a display-layer flag riding the same `chorus_body` value Fix 2
 already computes; nothing about what qualifies as a chorus match changed.

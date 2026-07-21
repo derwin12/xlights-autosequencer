@@ -187,6 +187,41 @@ describe('Analyze screen', () => {
     expect(mockFetch.mock.calls.find(([url]) => url === '/api/v1/lyrics/paste')).toBeFalsy();
   });
 
+  it('shows the persisted lyrics status for an already-analyzed song without a fresh Check Lyrics click', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url === `/api/v1/songs/${mockSong.song_id}/analysis`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ detected_sections: [], lyrics: [], lyrics_text_found: true }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    render(<Analyze song={{ ...mockSong, status: 'analyzed' }} onComplete={() => {}} />);
+    await waitFor(() => {
+      expect(screen.getByText(/lyrics found \(no timing\)/i)).toBeTruthy();
+    });
+    // No fresh provider search was triggered to get this status.
+    expect(mockFetch.mock.calls.find(([url]) => url === '/api/v1/lyrics/check')).toBeFalsy();
+  });
+
+  it('does not show a lyrics status for an already-analyzed song with nothing found', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url === `/api/v1/songs/${mockSong.song_id}/analysis`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ detected_sections: [], lyrics: [], lyrics_text_found: false }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    render(<Analyze song={{ ...mockSong, status: 'analyzed' }} onComplete={() => {}} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('analyze-screen')).toBeTruthy();
+    });
+    expect(screen.queryByText(/lyrics found/i)).toBeNull();
+  });
+
 });
 
 // ──────────────────────────────────────────────────────────────────────

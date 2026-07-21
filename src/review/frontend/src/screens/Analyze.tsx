@@ -408,6 +408,20 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       if (secs.length > 0) {
         setFindings((prev) => ({ ...prev, sections: secs, themesAssigned: true }));
       }
+
+      // Surface the persisted lyrics status (from a prior session's Check
+      // Lyrics or Paste Lyrics) without requiring the user to click Check
+      // Lyrics again -- that would re-run a fresh provider search and could
+      // misreport "not found" for a song that was actually resolved via
+      // paste. Only fills in when nothing has been set yet this session
+      // (?? — a live Check/Paste Lyrics result this session always wins).
+      const lyricsList: unknown[] = Array.isArray(data?.lyrics) ? data.lyrics : [];
+      const lyricsTextFound = Boolean(data?.lyrics_text_found);
+      if (lyricsList.length > 0 || lyricsTextFound) {
+        setLyricsCheckResult((prev) => prev ?? {
+          found: true, reason: null, line_count: lyricsList.length, preview: [],
+        });
+      }
     } catch {}
   }, [song.song_id]);
 
@@ -658,7 +672,9 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         {lyricsCheckResult && (
           lyricsCheckResult.found
             ? <span className={styles.metadataSuccess}>
-                ✓ {lyricsCheckResult.source === 'pasted' ? 'Pasted' : 'Found'} ({lyricsCheckResult.line_count} lines)
+                ✓ {lyricsCheckResult.line_count > 0
+                    ? `${lyricsCheckResult.source === 'pasted' ? 'Pasted' : 'Found'} (${lyricsCheckResult.line_count} lines)`
+                    : 'Lyrics found (no timing)'}
               </span>
             : <span className={styles.metadataError}>✗ {lyricsCheckReasonLabel(lyricsCheckResult.reason)}</span>
         )}

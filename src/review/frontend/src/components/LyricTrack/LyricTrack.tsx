@@ -9,11 +9,14 @@ interface LyricLine {
 
 interface LyricTrackProps {
   lines: LyricLine[];
-  /** True when some lyric text was available (e.g. a user-pasted fallback
-   * that fed chorus/section detection) even though it produced no timed
-   * lines here -- distinguishes "pasted, just untimed" from "nothing was
-   * found at all" (user-reported confusion, 2026-07-21: both cases
-   * otherwise show the same "No synced lyrics found" message). */
+  /** True when some lyric text was available (fed chorus/section
+   * detection) even though it produced no timed lines here -- covers
+   * BOTH a user-pasted fallback and an untimed plain-text provider result
+   * (a documented existing case, not just paste) -- distinguishes either
+   * from "nothing was found at all" (user-reported confusion, 2026-07-21:
+   * both cases otherwise showed the same "No synced lyrics found"
+   * message). Deliberately doesn't say "pasted" specifically -- that
+   * can't be verified from this flag alone. */
   textFound?: boolean;
   durationMs: number;
   viewStartMs?: number;
@@ -29,7 +32,7 @@ export function LyricTrack({ lines, textFound, durationMs, viewStartMs, viewEndM
     return (
       <div className={styles.strip} data-testid="lyric-track-empty">
         <span className={styles.emptyLabel}>
-          {textFound ? 'Pasted lyrics found (no timing)' : 'No synced lyrics found'}
+          {textFound ? 'Lyrics found (no timing)' : 'No synced lyrics found'}
         </span>
       </div>
     );
