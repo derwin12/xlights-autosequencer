@@ -213,6 +213,48 @@ def test_fetch_synced_lyrics_empty_title_and_artist_returns_none():
 
 
 # ---------------------------------------------------------------------------
+# parse_pasted_lyrics — "Paste Lyrics" fallback for un-indexed songs
+# ---------------------------------------------------------------------------
+
+def test_parse_pasted_lyrics_empty_text_not_found():
+    result = sl.parse_pasted_lyrics("   ")
+    assert result == {"found": False, "reason": "empty", "line_count": 0,
+                       "preview": [], "source": "pasted"}
+
+
+def test_parse_pasted_lyrics_plain_text():
+    text = "First line\nSecond line\nThird line\n"
+    result = sl.parse_pasted_lyrics(text)
+    assert result["found"] is True
+    assert result["reason"] is None
+    assert result["line_count"] == 3
+    assert result["preview"] == ["First line", "Second line", "Third line"]
+    assert result["source"] == "pasted"
+
+
+def test_parse_pasted_lyrics_lrc_format():
+    text = "[00:01.00]la la placeholder\n[00:03.00]another line\n"
+    result = sl.parse_pasted_lyrics(text)
+    assert result["found"] is True
+    assert result["line_count"] == 2
+    assert result["preview"] == ["la la placeholder", "another line"]
+
+
+def test_parse_pasted_lyrics_strips_credit_lines():
+    text = "Real lyric line\nLyrics by Someone\nAnother real line\n"
+    result = sl.parse_pasted_lyrics(text)
+    assert result["found"] is True
+    assert result["line_count"] == 2
+    assert result["preview"] == ["Real lyric line", "Another real line"]
+
+
+def test_parse_pasted_lyrics_only_credit_lines_not_found():
+    result = sl.parse_pasted_lyrics("Lyrics by Someone\nMusic by Someone Else\n")
+    assert result["found"] is False
+    assert result["reason"] == "empty"
+
+
+# ---------------------------------------------------------------------------
 # check_synced_lyrics_with_text — exposes raw text for caching
 # ---------------------------------------------------------------------------
 

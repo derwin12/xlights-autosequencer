@@ -226,6 +226,37 @@ def check_synced_lyrics_with_text(title: str, artist: str) -> tuple[dict, Option
     return {"found": True, "reason": None, "line_count": len(plain_lines), "preview": plain_lines[:3]}, result
 
 
+def parse_pasted_lyrics(text: str) -> dict:
+    """Validate/preview user-pasted lyrics text for the "Paste Lyrics" fallback.
+
+    Runs pasted text through the same ``parse_lrc`` / plain-line /
+    ``_is_credit_line`` path ``check_synced_lyrics_with_text`` uses for a
+    provider result, so manually pasted text (e.g. copied from a lyrics site
+    with an attribution block) can't reintroduce the credit-line
+    contamination bug fixed there for provider results. Returns the same
+    ``{found, reason, line_count, preview}`` shape as
+    ``check_synced_lyrics_available``, plus ``source: "pasted"``.
+    """
+    text = (text or "").strip()
+    if not text:
+        return {"found": False, "reason": "empty", "line_count": 0, "preview": [], "source": "pasted"}
+
+    lines = parse_lrc(text)
+    if lines:
+        preview = [line_text for _, line_text in lines[:3]]
+        return {"found": True, "reason": None, "line_count": len(lines),
+                "preview": preview, "source": "pasted"}
+
+    plain_lines = [
+        ln.strip() for ln in text.splitlines()
+        if ln.strip() and not _is_credit_line(ln)
+    ]
+    if not plain_lines:
+        return {"found": False, "reason": "empty", "line_count": 0, "preview": [], "source": "pasted"}
+    return {"found": True, "reason": None, "line_count": len(plain_lines),
+            "preview": plain_lines[:3], "source": "pasted"}
+
+
 def check_synced_lyrics_available(title: str, artist: str) -> dict:
     """Look up synced lyrics for (title, artist) and report why, not just whether.
 

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design: paste-lyrics fallback</title>
+<link rel="stylesheet" href="../_design.css">
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Sections</h2>
+  <ol>
+    <li><a href="#goal">Goal</a></li>
+    <li><a href="#approach">Approach</a></li>
+    <li><a href="#alternative">Alternative considered</a></li>
+    <li><a href="#files">Files touched</a></li>
+    <li><a href="#regression">Regression surface</a></li>
+    <li><a href="#echoes">Historical echoes</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="doc-header">
+  <p class="kicker">OpenSpec design · paste-lyrics-fallback</p>
+  <h1>Design: paste-lyrics fallback</h1>
+  <div class="goal" id="goal">
+    Let a user paste lyrics text by hand, as an optional fallback for songs no
+    provider in the <code>syncedlyrics</code> allowlist has indexed &mdash;
+    confirmed for a brand-new release ("Shake the Snowglobe", Gwen Stefani) where
+    every provider returned nothing while a well-known song succeeded through
+    the same code path. The pasted text flows into the exact same
+    <code>lyrics_text_override</code> cache path an automatic provider match
+    already uses, so no downstream consumer needs to change.
+  </div>
+</header>
+
+<section class="block" id="approach">
+  <h2>Approach</h2>
+  <p>
+    Three additive pieces, no existing behavior changed:
+  </p>
+  <ol>
+    <li>
+      <strong><code>parse_pasted_lyrics(text)</code></strong> in
+      <code>src/analyzer/synced_lyrics.py</code> &mdash; validates/previews
+      user-supplied text using the same <code>parse_lrc</code> +
+      plain-line + <code>_is_credit_line</code> path
+      <code>check_synced_lyrics_with_text</code> already runs a provider
+      result through. Returns
+      <code>{found, reason, line_count, preview, source: "pasted"}</code>.
+      Empty/whitespace-only text returns <code>{found: false, reason: "empty"}</code>.
+    </li>
+    <li>
+      <strong><code>POST /api/v1/lyrics/paste</code></strong> in
+      <code>src/review/api/v1/analysis.py</code> &mdash; body
+      <code>{title, artist, lyrics_text}</code>. Writes the raw text into the
+      existing <code>_lyrics_cache[(title, artist)]</code> dict (the same one
+      <code>check_lyrics</code> populates and <code>start_analyze</code>
+      reads), keyed by the exact <code>title</code>/<code>artist</code>
+      strings sent &mdash; the same convention <code>check_lyrics</code>
+      already uses, so both routes agree on cache keys without new
+      coordination logic.
+    </li>
+    <li>
+      <strong><code>PasteLyricsDialog</code></strong> &mdash; a new modal
+      component (textarea + Save/Cancel), following the
+      <code>ReanalysisDialog</code> overlay/dialog CSS-module convention
+      already in the codebase. A "Paste Lyrics" button sits next to the
+      existing "Check Lyrics" button on the Analyze screen's pre-analysis
+      metadata panel. Submitting the dialog calls the new endpoint and feeds
+      the response into the same <code>lyricsCheckResult</code> state
+      <code>handleCheckLyrics</code> already populates, so the ✓/✗ display
+      is shared code, not a parallel implementation.
+    </li>
+  </ol>
+  <p>
+    Nothing in <code>build_song_story</code>, <code>get_boundary_refinement_inputs</code>,
+    or section classification/merging changes &mdash; pasted text is
+    indistinguishable, at the consumer layer, from a provider's untimed
+    plain-text result (the existing fallback path when <code>parse_lrc</code>
+    finds no LRC tags already exists and already feeds
+    <code>find_chorus_body</code>).
+  </p>
+</section>
+
+<section class="block" id="alternative">
+  <h2>Alternative considered</h2>
+  <p>
+    Extend <code>POST /api/v1/lyrics/check</code> with an optional
+    <code>lyrics_text</code> field: when present, skip the provider search
+    entirely and just validate/cache the given text.
+  </p>
+  <p>
+    <strong>Rejected.</strong> It would fold two different behaviors
+    (search-the-internet vs. accept-what-the-user-typed) into one route
+    behind a conditional, which muddies what "check lyrics" means for
+    logging and for the three existing tests
+    (<code>tests/review/test_api_analysis.py:260-306</code>) that assert the
+    route always calls <code>check_synced_lyrics_with_text</code>. A
+    dedicated <code>/lyrics/paste</code> route keeps each endpoint doing one
+    job, matching how <code>metadata</code> (PATCH), <code>analyze</code>
+    (POST), and <code>lyrics/check</code> (POST) are already separate
+    single-purpose routes in this file.
+  </p>
+</section>
+
+<section class="block" id="files">
+  <h2>Files touched</h2>
+  <table class="files-table">
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/analyzer/synced_lyrics.py</code></td><td>modified &mdash; add <code>parse_pasted_lyrics</code></td></tr>
+      <tr><td><code>src/review/api/v1/analysis.py</code></td><td>modified &mdash; add <code>POST /api/v1/lyrics/paste</code></td></tr>
+      <tr><td><code>src/review/frontend/src/screens/Analyze.tsx</code></td><td>modified &mdash; button + dialog wiring</td></tr>
+      <tr><td><code>src/review/frontend/src/components/PasteLyricsDialog/PasteLyricsDialog.tsx</code></td><td>added</td></tr>
+      <tr><td><code>src/review/frontend/src/components/PasteLyricsDialog/PasteLyricsDialog.module.css</code></td><td>added</td></tr>
+      <tr><td><code>tests/unit/test_synced_lyrics.py</code></td><td>modified &mdash; <code>parse_pasted_lyrics</code> tests</td></tr>
+      <tr><td><code>tests/review/test_api_analysis.py</code></td><td>modified &mdash; <code>/lyrics/paste</code> route tests</td></tr>
+      <tr><td><code>src/review/frontend/tests/screens/Analyze.test.tsx</code></td><td>modified &mdash; button wiring</td></tr>
+      <tr><td><code>src/review/frontend/tests/components/PasteLyricsDialog.test.tsx</code></td><td>added</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="regression">
+  <h2>Regression surface</h2>
+  <ul>
+    <li>
+      <code>_lyrics_cache</code> (<code>analysis.py:36</code>) &mdash;
+      currently written only by <code>check_lyrics</code>. The paste route
+      becomes a second writer. Sole reader:
+      <code>start_analyze</code>'s lookup by <code>(lib_title, lib_artist)</code>
+      (<code>analysis.py:422-428</code>) is provenance-agnostic (just reads
+      whatever text is cached for that key) &mdash; no change needed there.
+    </li>
+    <li>
+      <code>check_synced_lyrics_with_text</code>,
+      <code>check_synced_lyrics_available</code>,
+      <code>get_boundary_refinement_inputs</code> &mdash; signatures
+      unchanged, no new callers added.
+    </li>
+    <li>
+      No JSON/XML schema field changes. <code>/lyrics/paste</code>'s response
+      reuses <code>/lyrics/check</code>'s exact
+      <code>{found, reason, line_count, preview}</code> shape plus one
+      additive <code>source</code> field; existing frontend code that reads
+      this shape (only <code>handleCheckLyrics</code>'s state setter) doesn't
+      need to change to keep working, though the UI will use
+      <code>source</code> to label the result "Pasted" vs found-by-search.
+    </li>
+  </ul>
+</section>
+
+<section class="block" id="echoes">
+  <h2>Historical echoes</h2>
+  <ul>
+    <li>
+      <strong>2026-07-11, Genius removal</strong>
+      (<code>docs/segment-classification-changelog.md</code>): this project
+      does not access genius.com in any form. Pasting preserves that
+      boundary &mdash; the user's browser fetches whatever page they choose;
+      the app never does.
+    </li>
+    <li>
+      <strong>bug-414</strong> (<code>.wolf/buglog.json</code>,
+      2026-07-20): a provider (NetEase) injected credit lines
+      (<code>作词 : ...</code>) as ordinary timed lines, contaminating the
+      lyrics timeline before <code>_is_credit_line</code> was added.
+      Copy-pasted text from a lyrics site is at least as likely to carry an
+      attribution block. Routing pasted text through the existing
+      <code>parse_lrc</code>/plain-line path (both already filtered by
+      <code>_is_credit_line</code>) avoids reintroducing this rather than
+      writing a second, unfiltered parser.
+    </li>
+    <li>
+      <strong>bug-406</strong> (<code>.wolf/buglog.json</code>,
+      2026-07-19): lyrics lookups silently failed against filename-derived
+      title + "Unknown" artist because search fired before the user could
+      correct metadata; the fix added the title/artist review step ahead of
+      "Check Lyrics". "Paste Lyrics" lives in that same reviewed panel and
+      keys into <code>_lyrics_cache</code> by the same confirmed
+      <code>(title, artist)</code> pair &mdash; no new metadata-timing issue.
+    </li>
+  </ul>
+</section>
+
+<section class="block" id="scope">
+  <h2>Out of scope</h2>
+  <ul>
+    <li>The <code>syncedlyrics</code> provider allowlist or search logic &mdash; unchanged.</li>
+    <li>Section detection, merging, or role classification &mdash; unchanged; per
+      <code>docs/segment-classification-changelog.md</code>'s mandatory-changelog
+      rule, no entry is needed there since this changes only where input text
+      originates, not how it's used.</li>
+    <li>Fixing the Musixmatch 401 / Megalobiz timeout issues noted separately
+      during investigation of this bug report &mdash; unrelated provider-health
+      issues, not blocking this fallback.</li>
+  </ul>
+</section>
+
+</main>
+</div>
+</body>
+</html>

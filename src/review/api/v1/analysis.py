@@ -827,6 +827,35 @@ def check_lyrics():
     return jsonify(result), 200
 
 
+@api_v1.route("/lyrics/paste", methods=["POST"])
+def paste_lyrics():
+    """Accept manually-pasted lyrics text as a fallback for songs no
+    ``syncedlyrics`` provider has indexed (e.g. a brand-new release). The
+    user finds lyrics themselves (this project does not scrape genius.com or
+    any other site) and pastes them in; this route validates/previews the
+    text and caches it into the same ``_lyrics_cache`` the automatic
+    "Check Lyrics" lookup writes to, so ``start_analyze`` picks it up
+    identically regardless of where the text came from.
+    """
+    body = request.get_json(silent=True) or {}
+    title = str(body.get("title") or "").strip()
+    artist = str(body.get("artist") or "").strip()
+    lyrics_text = str(body.get("lyrics_text") or "").strip()
+    if not title and not artist:
+        return jsonify({"error": {"code": "missing_query",
+                                   "message": "title and/or artist is required"}}), 400
+    if not lyrics_text:
+        return jsonify({"error": {"code": "missing_lyrics_text",
+                                   "message": "lyrics_text is required"}}), 400
+
+    from src.analyzer.synced_lyrics import parse_pasted_lyrics
+    result = parse_pasted_lyrics(lyrics_text)
+    if result["found"]:
+        with _lyrics_cache_lock:
+            _lyrics_cache[(title, artist)] = lyrics_text
+    return jsonify(result), 200
+
+
 @api_v1.route("/songs/<song_id>/analyze", methods=["POST"])
 def start_analyze(song_id: str):
     lib = load_library()

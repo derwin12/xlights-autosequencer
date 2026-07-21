@@ -117,6 +117,76 @@ describe('Analyze screen', () => {
     });
   });
 
+  it('does not show Paste Lyrics before a Check Lyrics attempt', () => {
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    expect(screen.queryByTestId('paste-lyrics-btn')).toBeNull();
+  });
+
+  it('does not show Paste Lyrics when Check Lyrics found a match', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: true, reason: null, line_count: 12, preview: [] }),
+    });
+    render(<Analyze song={{ ...mockSong, artist: 'Test Artist' }} onComplete={() => {}} />);
+    screen.getByText('Check Lyrics').click();
+    await waitFor(() => {
+      expect(screen.getByText(/Found \(12 lines\)/)).toBeTruthy();
+    });
+    expect(screen.queryByTestId('paste-lyrics-btn')).toBeNull();
+  });
+
+  it('opens Paste Lyrics dialog and saves pasted text after a failed check', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ found: false, reason: 'no_match', line_count: 0, preview: [] }),
+    });
+    render(<Analyze song={{ ...mockSong, artist: 'Test Artist' }} onComplete={() => {}} />);
+    screen.getByText('Check Lyrics').click();
+    await waitFor(() => expect(screen.getByTestId('paste-lyrics-btn')).toBeTruthy());
+
+    screen.getByTestId('paste-lyrics-btn').click();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: /paste lyrics/i })).toBeTruthy();
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ found: true, reason: null, line_count: 2, preview: ['a', 'b'], source: 'pasted' }),
+    });
+    fireEvent.change(screen.getByLabelText('Lyrics text'), { target: { value: 'a\nb' } });
+    screen.getByTestId('paste-lyrics-save').click();
+
+    await waitFor(() => {
+      const pasteCall = mockFetch.mock.calls.find(([url]) => url === '/api/v1/lyrics/paste');
+      expect(pasteCall).toBeTruthy();
+      expect(JSON.parse(pasteCall![1].body)).toEqual({
+        title: 'Test Song', artist: 'Test Artist', lyrics_text: 'a\nb',
+      });
+      expect(screen.getByText(/Pasted \(2 lines\)/)).toBeTruthy();
+      expect(screen.queryByRole('dialog', { name: /paste lyrics/i })).toBeNull();
+    });
+  });
+
+  it('closes Paste Lyrics dialog on cancel without posting', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ found: false, reason: 'no_match', line_count: 0, preview: [] }),
+    });
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    screen.getByText('Check Lyrics').click();
+    await waitFor(() => expect(screen.getByTestId('paste-lyrics-btn')).toBeTruthy());
+
+    screen.getByTestId('paste-lyrics-btn').click();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: /paste lyrics/i })).toBeTruthy();
+    });
+    screen.getByTestId('paste-lyrics-cancel').click();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: /paste lyrics/i })).toBeNull();
+    });
+    expect(mockFetch.mock.calls.find(([url]) => url === '/api/v1/lyrics/paste')).toBeFalsy();
+  });
+
 });
 
 // ──────────────────────────────────────────────────────────────────────

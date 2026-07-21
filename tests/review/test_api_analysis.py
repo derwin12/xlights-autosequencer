@@ -306,3 +306,62 @@ class TestCheckLyrics:
             assert analysis_module._lyrics_cache.get(("Cached Title", "Cached Artist")) == (
                 "[00:01.00]a\n[00:02.00]b\n"
             )
+
+
+class TestPasteLyrics:
+    """POST /lyrics/paste — manual fallback when no provider has a song indexed."""
+
+    def test_missing_query_returns_400(self, client):
+        resp = client.post("/api/v1/lyrics/paste", json={"lyrics_text": "some lyrics"})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_query"
+
+    def test_missing_lyrics_text_returns_400(self, client):
+        resp = client.post("/api/v1/lyrics/paste", json={"title": "T", "artist": "A"})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_lyrics_text"
+
+    def test_blank_lyrics_text_returns_400(self, client):
+        resp = client.post("/api/v1/lyrics/paste", json={"title": "T", "artist": "A", "lyrics_text": "   "})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_lyrics_text"
+
+    def test_valid_text_returns_200_and_caches(self, client):
+        import src.review.api.v1.analysis as analysis_module
+
+        with analysis_module._lyrics_cache_lock:
+            analysis_module._lyrics_cache.clear()
+
+        resp = client.post(
+            "/api/v1/lyrics/paste",
+            json={"title": "Pasted Title", "artist": "Pasted Artist",
+                  "lyrics_text": "First line\nSecond line\n"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["found"] is True
+        assert data["line_count"] == 2
+        assert data["source"] == "pasted"
+
+        with analysis_module._lyrics_cache_lock:
+            assert analysis_module._lyrics_cache.get(("Pasted Title", "Pasted Artist")) == (
+                "First line\nSecond line"
+            )
+
+    def test_only_credit_lines_not_cached(self, client):
+        import src.review.api.v1.analysis as analysis_module
+
+        with analysis_module._lyrics_cache_lock:
+            analysis_module._lyrics_cache.clear()
+
+        resp = client.post(
+            "/api/v1/lyrics/paste",
+            json={"title": "Credits Only", "artist": "Nobody",
+                  "lyrics_text": "Lyrics by Someone\n"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["found"] is False
+
+        with analysis_module._lyrics_cache_lock:
+            assert ("Credits Only", "Nobody") not in analysis_module._lyrics_cache

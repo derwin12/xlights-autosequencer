@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import styles from './Analyze.module.css';
+import { PasteLyricsDialog, type LyricsCheckResult } from '../components/PasteLyricsDialog/PasteLyricsDialog';
 
 interface Song {
   song_id: string;
@@ -203,6 +204,7 @@ export function lyricsCheckReasonLabel(reason: string | null): string {
     case 'not_installed': return 'syncedlyrics not installed';
     case 'search_failed': return 'provider search failed';
     case 'no_match': return 'no match found';
+    case 'empty': return 'no text entered';
     default: return reason || 'not found';
   }
 }
@@ -244,12 +246,8 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [checkingLyrics, setCheckingLyrics] = useState(false);
-  const [lyricsCheckResult, setLyricsCheckResult] = useState<{
-    found: boolean;
-    reason: string | null;
-    line_count: number;
-    preview: string[];
-  } | null>(null);
+  const [lyricsCheckResult, setLyricsCheckResult] = useState<LyricsCheckResult | null>(null);
+  const [showPasteLyrics, setShowPasteLyrics] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
   // Seed forceRef with forceOnMount so the initial POST /analyze carries
@@ -644,14 +642,36 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         >
           {metadataSaving ? 'Saving…' : 'Save & Refresh'}
         </button>
+        {lyricsCheckResult && !lyricsCheckResult.found && (
+          <button
+            className={styles.reanalyzeBtn}
+            data-testid="paste-lyrics-btn"
+            onClick={() => setShowPasteLyrics(true)}
+          >
+            Paste Lyrics
+          </button>
+        )}
         {!artistInput.trim() && (
           <span className={styles.metadataWarning}>⚠ Artist is missing — lyrics lookup may fail or match the wrong song</span>
         )}
         {metadataError && <span className={styles.metadataError}>{metadataError}</span>}
         {lyricsCheckResult && (
           lyricsCheckResult.found
-            ? <span className={styles.metadataSuccess}>✓ Found ({lyricsCheckResult.line_count} lines)</span>
+            ? <span className={styles.metadataSuccess}>
+                ✓ {lyricsCheckResult.source === 'pasted' ? 'Pasted' : 'Found'} ({lyricsCheckResult.line_count} lines)
+              </span>
             : <span className={styles.metadataError}>✗ {lyricsCheckReasonLabel(lyricsCheckResult.reason)}</span>
+        )}
+        {showPasteLyrics && (
+          <PasteLyricsDialog
+            title={titleInput.trim()}
+            artist={artistInput.trim()}
+            onSaved={(result) => {
+              setLyricsCheckResult(result);
+              setShowPasteLyrics(false);
+            }}
+            onCancel={() => setShowPasteLyrics(false)}
+          />
         )}
       </div>
     );
