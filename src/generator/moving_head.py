@@ -427,11 +427,20 @@ _DIRECTIONAL_PARTNER = {
 
 
 def _choose_move(
-    section_index: int, variation_seed: int, *, dynamic: bool,
+    occurrence_index: int, variation_seed: int, *, dynamic: bool,
     previous_move: Optional[str] = None,
 ) -> str:
+    """Pick a move from the dynamic/static pool.
+
+    ``occurrence_index`` must be a per-pool QUALIFYING-occurrence counter
+    (0, 1, 2, ... for the 1st, 2nd, 3rd qualifying section that uses this
+    same ``dynamic`` pool) -- NOT the absolute section index. Indexing by
+    absolute position aliases whenever qualifying sections recur at a
+    regular stride, silently favoring whatever pool slots that stride
+    lands on (see caller's comment in place_moving_head_moves).
+    """
     pool = _DYNAMIC_MOVES if dynamic else _STATIC_MOVES
-    choice = pool[(variation_seed + section_index) % len(pool)]
+    choice = pool[(variation_seed + occurrence_index) % len(pool)]
     if choice == previous_move and choice in _DIRECTIONAL_PARTNER:
         choice = _DIRECTIONAL_PARTNER[choice]
     return choice
@@ -842,6 +851,23 @@ def place_moving_head_moves(
             name: None for name in mh_group.head_names
         }
         previous_move_name: Optional[str] = None
+        # Separate per-pool qualifying-occurrence counters (not the raw,
+        # absolute section_index) -- indexing a rotation pool by section
+        # position aliases whenever qualifying sections recur at a regular
+        # stride (e.g. every other section), silently favoring whichever
+        # pool slots that stride happens to land on for the whole song
+        # (same failure shape as bug-346/bug-182/bug-188). Both move pools
+        # put their single "group" move at index 0, so an aliased rotation
+        # can make the group move dominate almost the entire song instead
+        # of its intended 1-in-4/1-in-8 share, starving the per-head moves
+        # (user-reported 2026-07-21: Moving Heads Group occupied 0-110s of
+        # a song while MH-1..MH-4 only got real content after 116s). Two
+        # counters, not one shared counter, since "dynamic" and "static"
+        # are separately-sized pools -- a shared counter would still alias
+        # within each pool's own subsequence whenever the two types
+        # alternate at a regular stride too.
+        dynamic_occurrence = 0
+        static_occurrence = 0
         for section_index, assignment in enumerate(assignments):
             section = assignment.section
             if not _is_strong_section(section):
@@ -850,11 +876,17 @@ def place_moving_head_moves(
             if duration_ms < _MIN_SECTION_DURATION_MS:
                 continue
 
+            dynamic = section.energy_score >= _STRONG_ENERGY_GATE
+            occurrence = dynamic_occurrence if dynamic else static_occurrence
             move_name = _choose_move(
-                section_index, assignment.variation_seed,
-                dynamic=section.energy_score >= _STRONG_ENERGY_GATE,
+                occurrence, assignment.variation_seed,
+                dynamic=dynamic,
                 previous_move=previous_move_name,
             )
+            if dynamic:
+                dynamic_occurrence += 1
+            else:
+                static_occurrence += 1
             previous_move_name = move_name
             move = MOVE_LIBRARY[move_name]
             jitter_pan, jitter_tilt = _jitter(assignment.variation_seed, section_index)

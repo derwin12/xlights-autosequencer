@@ -413,7 +413,12 @@ class TestPlaceMovingHeadMoves:
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [
             _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move, natural end 15_000
-            _assignment("chorus", 10_000, 25_000, 40, variation_seed=0),  # per_head l_r_static, natural start 10_000
+            # variation_seed=1 (not 0): with the per-pool qualifying-occurrence
+            # counter fix (2026-07-21), the FIRST static-qualifying section at
+            # variation_seed=0 would land on _STATIC_MOVES[0] ("fan_pan_static",
+            # also a group move) -- seed=1 shifts it to index 1 ("l_r_static",
+            # per_head), matching what this test actually exercises.
+            _assignment("chorus", 10_000, 25_000, 40, variation_seed=1),  # per_head l_r_static, natural start 10_000
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
@@ -544,7 +549,9 @@ class TestPlaceMovingHeadMoves:
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [
             _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move
-            _assignment("chorus", 1_500, 25_000, 40, variation_seed=0),  # per_head l_r_static
+            # variation_seed=1: see comment in
+            # test_per_head_move_trims_prior_group_moves_tail_to_open_warmup_gap
+            _assignment("chorus", 1_500, 25_000, 40, variation_seed=1),  # per_head l_r_static
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
@@ -607,3 +614,56 @@ class TestMoveBarCap:
         result = place_moving_head_moves(layout, assignments, bars=None)
         move = result["MH1"][-1]
         assert move.end_ms == _MAX_MOVE_DURATION_MS
+
+
+class TestQualifyingOccurrenceRotation:
+    """_choose_move must be indexed by a per-pool qualifying-occurrence
+    counter, not the absolute section index -- otherwise a regular stride
+    between qualifying sections aliases onto a subset of pool slots for the
+    whole song (same failure shape as bug-346/bug-182/bug-188), and since
+    both pools put their "group" move at index 0, an aliased rotation can
+    make the group move dominate almost the entire song instead of its
+    intended 1-in-4/1-in-8 share (user-reported 2026-07-21)."""
+
+    def test_every_dynamic_slot_reachable_across_consecutive_occurrences(self):
+        from src.generator.moving_head import _DYNAMIC_MOVES
+        seen = {
+            _choose_move(i, variation_seed=0, dynamic=True)
+            for i in range(len(_DYNAMIC_MOVES))
+        }
+        assert seen == set(_DYNAMIC_MOVES)
+
+    def test_every_static_slot_reachable_across_consecutive_occurrences(self):
+        from src.generator.moving_head import _STATIC_MOVES
+        seen = {
+            _choose_move(i, variation_seed=0, dynamic=False)
+            for i in range(len(_STATIC_MOVES))
+        }
+        assert seen == set(_STATIC_MOVES)
+
+    def test_group_move_does_not_dominate_regularly_spaced_qualifying_sections(self):
+        # Reproduces the reported bug: qualifying "chorus" sections at a
+        # fixed stride (chorus/verse/chorus/verse/...), all landing on the
+        # same "dynamic" pool. Before the fix, aliasing on the absolute
+        # section_index could make EVERY one of these pick the group move
+        # (fan_pan_move, pool index 0); after the fix, the qualifying-
+        # occurrence counter must cycle through the pool normally.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = []
+        t = 0
+        for i in range(8):
+            if i % 2 == 0:
+                assignments.append(_assignment("chorus", t, t + 20_000, _STRONG_ENERGY_GATE, variation_seed=0))
+            else:
+                assignments.append(_assignment("verse", t, t + 20_000, 10, variation_seed=0))
+            t += 20_000
+        result = place_moving_head_moves(layout, assignments)
+
+        group_move_count = len(result.get("MH GRP", []))
+        # 4 qualifying (chorus) sections in the dynamic pool of 4 moves,
+        # only 1 of which ("fan_pan_move") targets the group -- must not
+        # produce a group move for every single qualifying section.
+        assert group_move_count < 4, (
+            f"Expected group moves to rotate away from fan_pan_move sometimes, "
+            f"got {group_move_count} group-move placements across 4 qualifying sections"
+        )
