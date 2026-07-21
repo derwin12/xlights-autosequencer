@@ -401,3 +401,33 @@ a display track, so an empty result is not a capability-skip warning).
 **No change to section detection, merging, or role classification** — this
 entry exists only because it modifies the same Step 15c call site as the
 2026-07-11 Fix 1/Fix 2 entry above and touches `builder.py`.
+
+## 2026-07-21 — `story["lyrics_text_found"]` flag added
+
+**Files:** `src/story/builder.py`, `src/review/api/v1/analysis.py`,
+`src/review/frontend/src/screens/Timeline.tsx`,
+`src/review/frontend/src/components/LyricTrack/LyricTrack.tsx`
+
+**Problem:** The "Paste Lyrics" fallback (added earlier the same day for
+songs no `syncedlyrics` provider has indexed) feeds plain, untimed text
+into the same `lyrics_text_override` path a timed provider result uses.
+Plain text produces a `chorus_body` (used by boundary-refinement Fix 2)
+but zero `lyric_line_marks`, so `story["lyrics"]` — the Timeline's
+`LyricTrack` display track — comes back empty exactly the same as when
+nothing was found at all. A user who successfully pasted lyrics that
+correctly drove chorus/section detection still saw the Timeline's
+"No synced lyrics found" message, indistinguishable from a total failure
+(user-reported confusion testing "Shake the Snowglobe").
+
+**Change:** `story["lyrics_text_found"] = bool(chorus_body)` — true
+whenever *some* lyric text contributed to section detection, even
+without per-line timing. Threaded through the three places
+`analysis.py` assembles/persists the API response's `lyrics` list (the
+initial analyze-stream result + session save, the analyze-commit
+carry-through, and the cached-session GET path) so it survives the
+same way `lyrics_list` already does. `LyricTrack` now shows "Pasted
+lyrics found (no timing)" instead of the generic empty message when
+`lyrics_text_found` is true but there are no timed lines to render.
+**No change to section detection, merging, or role classification** —
+purely a display-layer flag riding the same `chorus_body` value Fix 2
+already computes; nothing about what qualifies as a chorus match changed.

@@ -9,12 +9,18 @@ interface LyricLine {
 
 interface LyricTrackProps {
   lines: LyricLine[];
+  /** True when some lyric text was available (e.g. a user-pasted fallback
+   * that fed chorus/section detection) even though it produced no timed
+   * lines here -- distinguishes "pasted, just untimed" from "nothing was
+   * found at all" (user-reported confusion, 2026-07-21: both cases
+   * otherwise show the same "No synced lyrics found" message). */
+  textFound?: boolean;
   durationMs: number;
   viewStartMs?: number;
   viewEndMs?: number;
 }
 
-export function LyricTrack({ lines, durationMs, viewStartMs, viewEndMs }: LyricTrackProps) {
+export function LyricTrack({ lines, textFound, durationMs, viewStartMs, viewEndMs }: LyricTrackProps) {
   const viewStart = viewStartMs ?? 0;
   const viewEnd = viewEndMs ?? durationMs;
   const windowMs = viewEnd - viewStart || durationMs;
@@ -22,7 +28,9 @@ export function LyricTrack({ lines, durationMs, viewStartMs, viewEndMs }: LyricT
   if (lines.length === 0) {
     return (
       <div className={styles.strip} data-testid="lyric-track-empty">
-        <span className={styles.emptyLabel}>No synced lyrics found</span>
+        <span className={styles.emptyLabel}>
+          {textFound ? 'Pasted lyrics found (no timing)' : 'No synced lyrics found'}
+        </span>
       </div>
     );
   }

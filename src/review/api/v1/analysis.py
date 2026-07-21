@@ -595,6 +595,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
 
         # ── Synced lyric lines (display track, not a boundary-detection signal) ─
         lyrics_list = list((story or {}).get("lyrics") or [])
+        lyrics_text_found = bool((story or {}).get("lyrics_text_found"))
 
         # ── Word/phoneme alignment (singing faces + matrix lyric text) ──────
         # WhisperX force-aligns the synced lyric text (or transcribes freely
@@ -738,6 +739,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             "chord_changes": chord_changes_list,
             "key_changes": key_changes_list,
             "lyrics": lyrics_list,
+            "lyrics_text_found": lyrics_text_found,
             "words": words_list,
             "phonemes": phonemes_list,
             "image_suggestions": image_suggestions,
@@ -764,6 +766,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                     "assignments": assignments,
                     "ghost_boundaries": [],
                     "lyrics": lyrics_list,
+                    "lyrics_text_found": lyrics_text_found,
                     "words": words_list,
                     "phonemes": phonemes_list,
                     "image_suggestions": image_suggestions,
@@ -956,6 +959,10 @@ def commit_analyze(song_id: str):
     # produced once during analysis and aren't recomputed on this commit path.
     lyrics_list = (result.get("lyrics") if result else None) or \
         (session.get("lyrics") if session else None) or []
+    lyrics_text_found = bool(
+        (result.get("lyrics_text_found") if result else None)
+        or (session.get("lyrics_text_found") if session else None)
+    )
     words_list = (result.get("words") if result else None) or \
         (session.get("words") if session else None) or []
     phonemes_list = (result.get("phonemes") if result else None) or \
@@ -985,6 +992,7 @@ def commit_analyze(song_id: str):
             "assignments": final_assignments,
             "ghost_boundaries": [],
             "lyrics": lyrics_list,
+            "lyrics_text_found": lyrics_text_found,
             "words": words_list,
             "phonemes": phonemes_list,
         })
@@ -1297,6 +1305,7 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
     # session, or a hierarchy fallback.
     session = load_session(song_id)
     lyrics_list = list((session or {}).get("lyrics") or [])
+    lyrics_text_found = bool((session or {}).get("lyrics_text_found"))
     if session and "sections" in session:
         sections = []
         for sec in session["sections"]:
@@ -1356,6 +1365,7 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
         "chord_changes": chord_changes_list,
         "key_changes": key_changes_list,
         "lyrics": lyrics_list,
+        "lyrics_text_found": lyrics_text_found,
         "value_curves": curves_out,
         "peaks": peaks,
         "detectors": detectors,

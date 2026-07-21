@@ -632,6 +632,16 @@ def build_song_story(
             {"t_ms": m.time_ms, "duration_ms": m.duration_ms, "text": m.label}
             for m in lyric_line_marks
         ],
+        # True whenever SOME lyric text was available for chorus detection
+        # (chorus_body), even when it came from untimed plain text (e.g. a
+        # user-pasted lyrics fallback) and produced no per-line lyric_line_
+        # marks above -- distinguishes "pasted lyrics used, just no timing"
+        # from "nothing found at all" for the Timeline's LyricTrack, which
+        # otherwise shows the same "No synced lyrics found" message for
+        # both (user-reported confusion, 2026-07-21: pasting lyrics that
+        # correctly drove section/chorus detection still looked like a
+        # total failure in the UI).
+        "lyrics_text_found": bool(chorus_body),
         "review": {
             "status": "draft",
             "reviewed_at": None,

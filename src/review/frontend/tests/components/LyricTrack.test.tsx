@@ -19,6 +19,13 @@ describe('LyricTrack', () => {
     expect(screen.getByText(/no synced lyrics found/i)).toBeTruthy();
   });
 
+  it('shows a distinct message when pasted lyrics were used but produced no timed lines', () => {
+    render(<LyricTrack lines={[]} textFound durationMs={10000} />);
+    expect(screen.getByTestId('lyric-track-empty')).toBeTruthy();
+    expect(screen.getByText(/pasted lyrics found/i)).toBeTruthy();
+    expect(screen.queryByText(/no synced lyrics found/i)).toBeNull();
+  });
+
   it('line block position/width is proportional to time within the view window', () => {
     const { container } = render(<LyricTrack lines={lines} durationMs={10000} />);
     const blocks = container.querySelectorAll('[data-testid="lyric-line"]');

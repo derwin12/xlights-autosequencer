@@ -44,6 +44,7 @@ interface Analysis {
   chord_changes?: number[];
   key_changes?: number[];
   lyrics?: { t_ms: number; duration_ms: number; text: string }[];
+  lyrics_text_found?: boolean;
   value_curves?: Record<string, { fps: number; values: number[] }>;
   detectors: { name: string; library: string; status: string; confidence: number | null; error: string | null; marks?: number; kind?: string }[];
   completed_at: string;
@@ -442,6 +443,7 @@ export function Timeline({ song, analysis, assignments, themes, onNavigateTheme 
             <div className={styles.trackAlignedLabel}>LYRICS</div>
             <LyricTrack
               lines={analysis.lyrics ?? []}
+              textFound={analysis.lyrics_text_found ?? false}
               durationMs={durationMs}
               viewStartMs={zoomLevel > 1 ? viewStartMs : undefined}
               viewEndMs={zoomLevel > 1 ? viewEndMs : undefined}

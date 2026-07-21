@@ -252,3 +252,30 @@ def test_lyrics_text_override_populates_lyrics_without_network_fetch(hierarchy, 
     lrc = "[00:01.00]cached line one\n[00:03.00]cached line two\n"
     result = build_song_story(hierarchy, AUDIO_PATH, lyrics_text_override=lrc)
     assert [line["text"] for line in result["lyrics"]] == ["cached line one", "cached line two"]
+
+
+def test_lyrics_text_found_true_for_pasted_plain_text_with_no_timing(hierarchy):
+    """Plain pasted text (no LRC timestamps) produces a chorus_body for
+    section detection but zero timed lyric lines -- lyrics_text_found must
+    still report True so the Timeline can tell this apart from a genuine
+    'nothing found' case (both would otherwise show empty result['lyrics']).
+    Needs an actually-repeating 2-line block (find_chorus_body's default
+    min_repeats=2, block_size=2), not just a single repeated line."""
+    plain_text = "\n".join([
+        "verse line one", "verse line two",
+        "chorus line repeats", "next chorus line",
+        "verse line three",
+        "chorus line repeats", "next chorus line",
+    ])
+    result = build_song_story(hierarchy, AUDIO_PATH, lyrics_text_override=plain_text)
+    assert result["lyrics"] == []
+    assert result["lyrics_text_found"] is True
+
+
+def test_lyrics_text_found_false_when_nothing_available(hierarchy, monkeypatch):
+    from src.analyzer import synced_lyrics as sl
+
+    monkeypatch.setattr(sl, "fetch_synced_lyrics", lambda title, artist: None)
+    result = build_song_story(hierarchy, AUDIO_PATH)
+    assert result["lyrics"] == []
+    assert result["lyrics_text_found"] is False
