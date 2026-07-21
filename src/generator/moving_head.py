@@ -1688,7 +1688,16 @@ def _place_random_head_accents(
                 _ACCENT_STATIC_PAN_DEG, _ACCENT_STATIC_TILT_DEG, head_index,
                 pattern_name=effective_pattern,
             )
-            head_placements = existing.get(head_name, []) + result.get(head_name, [])
+            # Same fix as `occupied` above, applied to the warmup's own
+            # prior-occupant lookup: a group-level placement that ended
+            # shortly before this accent starts must count as this head's
+            # true previous occupant, or the warmup's duration/pose-check
+            # is computed as if nothing had been there, and can extend
+            # backward into the group placement's still-active tail.
+            head_placements = (
+                existing.get(head_name, []) + result.get(head_name, [])
+                + existing.get(mh_group.name, []) + result.get(mh_group.name, [])
+            )
             warmup_settings = _build_move_warmup_settings(
                 _HeadPose(pan=_ACCENT_STATIC_PAN_DEG, tilt=_ACCENT_STATIC_TILT_DEG),
                 0.0, 0.0, heads_field=str(head_index),

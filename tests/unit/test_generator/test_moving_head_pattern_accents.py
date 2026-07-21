@@ -138,6 +138,30 @@ class TestPlaceMovingHeadBeatBursts:
         )
         assert result == {}
 
+    def test_warmup_respects_group_level_placement_that_just_ended(self):
+        # Regression, one level deeper than the skip-check above: an accent
+        # whose OWN window doesn't overlap a group-level placement (so it
+        # isn't skipped) must still treat that group placement as its true
+        # prior occupant for the WARMUP's duration -- otherwise the warmup
+        # is computed as if nothing had been there and extends backward
+        # into the group placement's still-active tail.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 4_000, 8_000, _STRONG_ENERGY_GATE, variation_seed=0)]
+        # Beat marks land on exact 500ms multiples; section midpoint (6000)
+        # is itself a mark, so the accent starts at exactly 6000ms.
+        group_end_ms = 5_800
+        existing = {"MH GRP": [_fake_placement("MH GRP", 0, group_end_ms)]}
+        result = place_moving_head_beat_bursts(
+            layout, assignments, _hierarchy(30_000), existing_placements=existing,
+        )
+        assert result, "accent should have fired -- its own window doesn't overlap the group placement"
+        for placements in result.values():
+            warmup = min(placements, key=lambda p: p.start_ms)
+            assert warmup.start_ms == group_end_ms, (
+                f"warmup should start exactly at the group placement's end ({group_end_ms}), "
+                f"not extend back to {warmup.start_ms}"
+            )
+
 
 class TestPlaceMovingHeadPatternAccents:
     def test_no_moving_head_group_returns_empty(self):
