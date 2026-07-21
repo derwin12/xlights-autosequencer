@@ -41,6 +41,12 @@
     }
   },
   "remoteUser": "node",
+  // Without this, the Dev Containers CLI overrides the image's CMD with its
+  // own `sleep infinity` so it can always attach a shell -- which would
+  // silently discard the Dockerfile's CMD that auto-launches xlight-review
+  // on every container start. false keeps our CMD (which still ends in
+  // `exec sleep infinity` itself, so attach behavior is unaffected).
+  "overrideCommand": false,
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",

@@ -369,3 +369,18 @@ RUN chmod +x /usr/local/bin/init-firewall.sh && \
   echo "node ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node-firewall && \
   chmod 0440 /etc/sudoers.d/node-firewall
 USER node
+
+# Auto-start xlight-review on every container start (not just the first),
+# so a `docker restart`/Docker Desktop restart doesn't require a manual
+# `scripts/startapp.sh` afterwards. Delegates to that same script (single
+# source of truth for the launch command) rather than duplicating it here;
+# the script's in-container branch (no `docker` CLI available) does the
+# nohup-launch-and-wait. `|| true` covers a container's very first boot,
+# before xlight-review is pip-installed -- the container must still come up
+# rather than exit immediately. `exec sleep infinity` afterwards keeps this
+# as the container's long-lived main process, matching what "overrideCommand"
+# used to synthesize, so `docker exec`/VS Code attach behavior is unchanged.
+# Requires "overrideCommand": false in devcontainer.json -- otherwise the
+# Dev Containers CLI replaces this CMD with its own `sleep infinity` and
+# xlight-review never gets launched.
+CMD ["sh", "-c", "sh /workspace/scripts/startapp.sh || true; exec sleep infinity"]
