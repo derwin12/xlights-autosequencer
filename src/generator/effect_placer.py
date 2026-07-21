@@ -3487,11 +3487,22 @@ _PICTURE_MOTIONS: dict[str, dict[str, str]] = {
     "normal": {},
     "explode": {"B_VALUECURVE_Zoom": _PICTURE_MOTION_ZOOM_RAMP},
     "shake": {
-        "B_SLIDER_Rotations": "10",
+        # Original values (Rotations=10, Cycles=50) came from xLights' own
+        # built-in "Shake" Roto-Zoom preset, copied verbatim -- not a
+        # copy-paste mistake on our end, the stock preset itself just
+        # doesn't read well as a picture-burst accent (user-confirmed
+        # 2026-07-21, "not good as we found out"). Tuned down instead:
+        # Rotations=0 (no continuous full-circle spin underneath) + a Sine
+        # value curve for the wobble itself (Start=P1/Min baseline,
+        # Amplitude=P2, Cycles=P3, Vertical Offset=P4 -- field mapping
+        # confirmed against xLights' own Value Curve dialog, 2026-07-21).
+        # Cycles dropped from 50 to 5: 50 sine oscillations across one
+        # effect read as a rapid buzz/vibration, not a shake.
+        "B_SLIDER_Rotations": "0",
         "B_SLIDER_ZoomQuality": "2",
         "B_VALUECURVE_Rotation": (
             "Active=TRUE|Id=ID_VALUECURVE_Rotation|Type=Sine|Min=0.00|Max=100.00"
-            "|P2=10.00|P3=50.00|P4=25.00|WRAP=TRUE|RV=TRUE|"
+            "|P2=10.00|P3=5.00|P4=25.00|WRAP=TRUE|RV=TRUE|"
         ),
     },
     "explode_spin": {
