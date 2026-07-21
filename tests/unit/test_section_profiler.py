@@ -60,29 +60,48 @@ class TestReturnStructure:
 # ── Energy level thresholds ────────────────────────────────────────────────────
 
 class TestEnergyLevel:
-    """energy_score 0-33 → "low", 34-66 → "medium", 67-100 → "high"."""
+    """energy_score 0-33 → "low", 34-66 → "medium", 67-100 → "high".
 
-    def test_intro_energy_level_is_low(self, intro_profile):
-        # Fixture intro energy = 0.2 → score ≈ 20 → "low"
-        assert intro_profile["character"]["energy_level"] == "low"
+    Energy curve values are already 0-100 scale (see
+    src/story/section_profiler.py's "Do NOT multiply by 100 again" comment,
+    fixed 2026-04 in #42) -- these tests override the shared fixture's
+    energy_curves locally to exact 0-100 values rather than relying on its
+    baked-in 0.0-1.0-scale intro/verse/chorus energy (0.2/0.5/0.8), which
+    predates that scale fix and would silently collapse to ~0-1 here.
+    """
 
-    def test_chorus_energy_level_is_high(self, chorus_profile):
-        # Fixture chorus energy = 0.8 → score ≈ 80 → "high"
-        assert chorus_profile["character"]["energy_level"] == "high"
+    def test_intro_energy_level_is_low(self, hierarchy):
+        import copy
+        h = copy.deepcopy(hierarchy)
+        h["energy_curves"]["full_mix"]["values"] = [20] * len(
+            h["energy_curves"]["full_mix"]["values"]
+        )
+        profile = profile_section(INTRO_START, INTRO_END, h)
+        assert profile["character"]["energy_level"] == "low"
+
+    def test_chorus_energy_level_is_high(self, hierarchy):
+        import copy
+        h = copy.deepcopy(hierarchy)
+        h["energy_curves"]["full_mix"]["values"] = [80] * len(
+            h["energy_curves"]["full_mix"]["values"]
+        )
+        profile = profile_section(CHORUS_START, CHORUS_END, h)
+        assert profile["character"]["energy_level"] == "high"
 
     def test_energy_level_medium_at_score_50(self, hierarchy):
-        # Verse (12s-36s) has energy 0.5 → score ≈ 50 → "medium"
-        profile = profile_section(12_000, 36_000, hierarchy)
+        import copy
+        h = copy.deepcopy(hierarchy)
+        h["energy_curves"]["full_mix"]["values"] = [50] * len(
+            h["energy_curves"]["full_mix"]["values"]
+        )
+        profile = profile_section(12_000, 36_000, h)
         assert profile["character"]["energy_level"] == "medium"
 
     def test_energy_level_low_boundary_score_33(self, hierarchy):
-        # Build a minimal hierarchy where average energy maps to exactly score 33
         import copy
         h = copy.deepcopy(hierarchy)
-        rate = h["energy_curves"]["full_mix"]["sample_rate"]
-        n = int((INTRO_END - INTRO_START) / 1000 * rate)
-        # 33/100 = 0.33 → values all 0.33 → score 33 → "low"
-        h["energy_curves"]["full_mix"]["values"] = [0.33] * len(
+        # score 33 → "low"
+        h["energy_curves"]["full_mix"]["values"] = [33] * len(
             h["energy_curves"]["full_mix"]["values"]
         )
         profile = profile_section(INTRO_START, INTRO_END, h)
@@ -91,7 +110,7 @@ class TestEnergyLevel:
     def test_energy_level_medium_boundary_score_34(self, hierarchy):
         import copy
         h = copy.deepcopy(hierarchy)
-        h["energy_curves"]["full_mix"]["values"] = [0.34] * len(
+        h["energy_curves"]["full_mix"]["values"] = [34] * len(
             h["energy_curves"]["full_mix"]["values"]
         )
         profile = profile_section(INTRO_START, INTRO_END, h)
@@ -100,7 +119,7 @@ class TestEnergyLevel:
     def test_energy_level_high_boundary_score_67(self, hierarchy):
         import copy
         h = copy.deepcopy(hierarchy)
-        h["energy_curves"]["full_mix"]["values"] = [0.67] * len(
+        h["energy_curves"]["full_mix"]["values"] = [67] * len(
             h["energy_curves"]["full_mix"]["values"]
         )
         profile = profile_section(INTRO_START, INTRO_END, h)
@@ -120,13 +139,26 @@ class TestEnergyScore:
     def test_chorus_energy_score_gt_intro(self, intro_profile, chorus_profile):
         assert chorus_profile["character"]["energy_score"] > intro_profile["character"]["energy_score"]
 
-    def test_intro_energy_score_approx_20(self, intro_profile):
-        # Fixture intro energy is a flat 0.2 → score should be 20
-        assert intro_profile["character"]["energy_score"] == pytest.approx(20, abs=5)
+    def test_intro_energy_score_approx_20(self, hierarchy):
+        # Energy curve values are 0-100 scale (see TestEnergyLevel docstring) --
+        # override locally to a flat 20 rather than relying on the shared
+        # fixture's pre-scale-fix 0.2.
+        import copy
+        h = copy.deepcopy(hierarchy)
+        h["energy_curves"]["full_mix"]["values"] = [20] * len(
+            h["energy_curves"]["full_mix"]["values"]
+        )
+        profile = profile_section(INTRO_START, INTRO_END, h)
+        assert profile["character"]["energy_score"] == pytest.approx(20, abs=5)
 
-    def test_chorus_energy_score_approx_80(self, chorus_profile):
-        # Fixture chorus energy is a flat 0.8 → score should be 80
-        assert chorus_profile["character"]["energy_score"] == pytest.approx(80, abs=5)
+    def test_chorus_energy_score_approx_80(self, hierarchy):
+        import copy
+        h = copy.deepcopy(hierarchy)
+        h["energy_curves"]["full_mix"]["values"] = [80] * len(
+            h["energy_curves"]["full_mix"]["values"]
+        )
+        profile = profile_section(CHORUS_START, CHORUS_END, h)
+        assert profile["character"]["energy_score"] == pytest.approx(80, abs=5)
 
 
 # ── energy_peak ───────────────────────────────────────────────────────────────
@@ -358,20 +390,26 @@ class TestDrumPattern:
         assert "style" in dp
 
     def test_drum_pattern_style_sparse_when_low_density(self, hierarchy):
-        """A section with fewer than 1 drum event/sec → style == 'sparse'."""
+        """A section under the sparse density threshold → style == 'sparse'.
+
+        Threshold is combined_density < 0.3 events/sec (lowered from 1.0 in
+        #44 -- src/story/section_profiler.py's "sparse" branch); the intro
+        window has no bass marks, so 3 kick events / 12s = 0.25/sec clears
+        it (a stale test previously used 5 events = 0.42/sec, which no
+        longer qualifies as sparse under the current threshold).
+        """
         import copy
         h = copy.deepcopy(hierarchy)
-        # Replace drum marks with only 5 events spread over intro duration of 12s
         sparse_marks = [
             {"time_ms": ms, "label": "kick", "confidence": 0.9}
-            for ms in [0, 2500, 5000, 7500, 10000]
+            for ms in [0, 4000, 8000]
         ]
         h["events"]["drums"]["marks"] = sparse_marks
         profile = profile_section(INTRO_START, INTRO_END, h)
         dp = profile["stems"]["drum_pattern"]
-        if dp is not None:
-            # 5 events / 12 seconds = 0.42 /sec → sparse
-            assert dp["style"] == "sparse"
+        assert dp is not None
+        # 3 events / 12 seconds = 0.25 /sec → sparse
+        assert dp["style"] == "sparse"
 
     def test_drum_pattern_style_driving_when_kick_dominant(self, chorus_profile):
         """Fixture chorus: kick count > 50% of total → 'driving'."""

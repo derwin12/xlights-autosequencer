@@ -39,6 +39,8 @@ def run(
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
+    vocal_diarization: bool = False,
+    story_path: Optional[Path | str] = None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Run the generator deterministically and return .xsq bytes.
@@ -70,6 +72,19 @@ def run(
         include_extra_timing: When False, the Chords and per-stem Onsets (...)
                     timing tracks are omitted from the .xsq (display-only
                     tracks; effect placement is unaffected).
+        vocal_diarization: When True and ``words`` carries a confidently-
+                    detected second voice (``speaker`` key from
+                    ``src.analyzer.vocal_diarization``), routes it to a
+                    second face prop and a "Lyrics - Backup" timing track
+                    (GenerationConfig.vocal_diarization). Default False
+                    pending broader real-song validation.
+        story_path: Optional path to a ``<audio_stem>_story.json`` written
+                    by the review/analyze flow (or the older CLI pipeline).
+                    When present, section energies/roles/moods come from
+                    this already-classified story instead of being
+                    re-derived from raw, unclassified detector boundaries
+                    (GenerationConfig.story_path) — keeps generation
+                    consistent with what was reviewed on the Theme screen.
 
     Returns:
         Raw .xsq XML bytes.
@@ -109,6 +124,8 @@ def run(
                               ignored_image_words=ignored_image_words,
                               include_extra_timing=include_extra_timing,
                               title_override=title_override, artist_override=artist_override,
+                              vocal_diarization=vocal_diarization,
+                              story_path=Path(story_path) if story_path else None,
                               progress_cb=progress_cb)
     except GeneratorError:
         raise
@@ -131,6 +148,8 @@ def _run_pipeline(
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
+    vocal_diarization: bool = False,
+    story_path: Optional[Path] = None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> bytes:
     """Execute the full generation pipeline and return .xsq bytes."""
@@ -179,6 +198,8 @@ def _run_pipeline(
             # Faces placements reference the "Phonemes" timing track, so
             # only enable vocal placements when both mark sets exist.
             vocal_words=words if (words and phonemes) else None,
+            vocal_diarization=vocal_diarization,
+            story_path=story_path,
             video_path=video_path,
             ignored_image_words=ignored_image_words,
             title_override=title_override,
@@ -197,6 +218,7 @@ def _run_pipeline(
         output_path = Path(tmp_dir) / "output.xsq"
         write_xsq(plan, output_path, hierarchy=hierarchy, audio_path=audio_path,
                   lyrics=lyrics, words=words, phonemes=phonemes,
-                  include_extra_timing=include_extra_timing)
+                  include_extra_timing=include_extra_timing,
+                  vocal_diarization=vocal_diarization)
 
         return output_path.read_bytes()

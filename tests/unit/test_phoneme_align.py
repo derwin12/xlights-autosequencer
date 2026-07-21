@@ -18,7 +18,7 @@ def _capture_run_in_process(monkeypatch, tmp_path):
     def _fake_run_in_process(audio_path, lyrics_path):
         captured["lyrics_path"] = lyrics_path
         captured["content"] = Path(lyrics_path).read_text(encoding="utf-8") if lyrics_path else None
-        return [], []
+        return [], [], []
 
     monkeypatch.setattr(phoneme_align, "_run_in_process", _fake_run_in_process)
     monkeypatch.setattr(phoneme_align, "_discover_vocals_stem", lambda audio_path: None)
@@ -65,3 +65,29 @@ class TestReferenceTextSelection:
         captured = _capture_run_in_process(monkeypatch, tmp_path)
         phoneme_align.align_words_and_phonemes("song.mp3", None, "   \n  ")
         assert captured["lyrics_path"] is None
+
+
+class TestWarningsPropagation:
+    """PhonemeAnalyzer's lyrics-mismatch warning must reach the caller
+    instead of being silently discarded (user-reported 2026-07-21: pasted
+    lyrics replaced with 'made up' words with no explanation)."""
+
+    def test_warnings_from_run_in_process_are_returned(self, monkeypatch):
+        monkeypatch.setattr(phoneme_align, "_discover_vocals_stem", lambda audio_path: None)
+        monkeypatch.setattr(
+            phoneme_align, "_run_in_process",
+            lambda audio_path, lyrics_path: (
+                [], [], ["Lyrics mismatch — only 30% of words aligned. Falling back to audio-only."]
+            ),
+        )
+        _, _, warnings = phoneme_align.align_words_and_phonemes("song.mp3", None, "pasted text")
+        assert warnings == ["Lyrics mismatch — only 30% of words aligned. Falling back to audio-only."]
+
+    def test_no_warnings_returns_empty_list(self, monkeypatch):
+        monkeypatch.setattr(phoneme_align, "_discover_vocals_stem", lambda audio_path: None)
+        monkeypatch.setattr(
+            phoneme_align, "_run_in_process",
+            lambda audio_path, lyrics_path: ([], [], []),
+        )
+        _, _, warnings = phoneme_align.align_words_and_phonemes("song.mp3")
+        assert warnings == []

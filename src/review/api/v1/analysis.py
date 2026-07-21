@@ -36,6 +36,13 @@ _runs_lock = threading.Lock()
 _lyrics_cache: dict[tuple[str, str], str] = {}
 _lyrics_cache_lock = threading.Lock()
 
+# Caches an uploaded .xtiming file's already-correct word/phoneme marks by
+# song_id — when present, the analyze pass skips WhisperX transcription/
+# alignment entirely for that song, sidestepping the all-or-nothing
+# lyrics-mismatch fallback (see PhonemeAnalyzer._align_with_lyrics).
+_xtiming_override_cache: dict[str, tuple[list[dict], list[dict]]] = {}
+_xtiming_override_cache_lock = threading.Lock()
+
 
 class _RunState:
     def __init__(self, run_id: str, song_id: str, force: bool = False) -> None:
@@ -49,6 +56,7 @@ class _RunState:
         self.committed = False  # True after analyze/commit called
         self.pending_sections: list[dict] | None = None
         self.pending_assignments: list[dict] | None = None
+        self.pending_story: dict | None = None
         self.lock = threading.Lock()
 
     def push(self, event: dict) -> None:
@@ -62,6 +70,31 @@ def _now_iso() -> str:
 
 def _run_id() -> str:
     return "run_" + "".join(random.choices(string.ascii_letters + string.digits, k=5))
+
+
+def _write_story_json(audio_path: Path, story: dict) -> None:
+    """Persist the full classified story (character/energy/lighting per
+    section, not just the flattened UI-facing ``sections`` list) to
+    ``<audio_stem>_story.json`` next to the audio file, via the existing
+    ``write_song_story`` (archives/overwrite-protects a manually reviewed
+    story, matching the older CLI story-review workflow's convention).
+
+    This is the SAME on-disk schema ``src.generator.plan.build_plan``
+    already loads via ``GenerationConfig.story_path``
+    (``_section_energies_from_story``) — the review/analyze flow
+    previously computed this data (to build the flattened session
+    ``sections`` list) but never persisted it, so generation silently fell
+    back to re-deriving unclassified section energies from raw detector
+    boundaries instead of using what the user actually reviewed on the
+    Theme screen. Never raises — a failed write just means generation
+    falls back to that same pre-existing behavior.
+    """
+    try:
+        from src.story.builder import write_song_story
+        story_path = audio_path.parent / (audio_path.stem + "_story.json")
+        write_song_story(story, str(story_path))
+    except Exception:
+        pass
 
 
 def _default_overrides() -> dict:
@@ -629,21 +662,34 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         # shapes. Persisted in the session so Export can embed Words/Phonemes
         # timing tracks and place Faces/Text effects. Degrades to empty lists
         # when whisperx is unavailable — export then behaves as before.
+        #
+        # A user-uploaded .xtiming file (POST .../lyrics/xtiming) takes
+        # priority and skips WhisperX entirely — it's already-correct timing,
+        # so there's no alignment to run and no mismatch to fall back from.
         words_list: list[dict] = []
         phonemes_list: list[dict] = []
-        state.push({"detector": "phonemes (whisperx)", "library": "story",
-                    "status": "running", "progress": 0.0})
-        try:
-            from src.analyzer.phoneme_align import align_words_and_phonemes
-            words_list, phonemes_list = align_words_and_phonemes(
-                str(src), lyrics_list or None, cached_lyrics_text,
-            )
-            state.push({"detector": "phonemes (whisperx)", "library": "story",
-                        "status": "done", "confidence": None,
+        lyrics_warnings: list[str] = []
+        with _xtiming_override_cache_lock:
+            xtiming_override = _xtiming_override_cache.get(song_id)
+        if xtiming_override is not None:
+            words_list, phonemes_list = xtiming_override
+            state.push({"detector": "phonemes (xtiming override)", "library": "story",
+                        "status": "done", "confidence": 1.0,
                         "marks": len(phonemes_list)})
-        except Exception as exc:
+        else:
             state.push({"detector": "phonemes (whisperx)", "library": "story",
-                        "status": "failed", "error": str(exc)})
+                        "status": "running", "progress": 0.0})
+            try:
+                from src.analyzer.phoneme_align import align_words_and_phonemes
+                words_list, phonemes_list, lyrics_warnings = align_words_and_phonemes(
+                    str(src), lyrics_list or None, cached_lyrics_text,
+                )
+                state.push({"detector": "phonemes (whisperx)", "library": "story",
+                            "status": "done", "confidence": None,
+                            "marks": len(phonemes_list), "warnings": lyrics_warnings})
+            except Exception as exc:
+                state.push({"detector": "phonemes (whisperx)", "library": "story",
+                            "status": "failed", "error": str(exc)})
 
         # ── Image suggestions (advisory only, see image_catalog.py) ──────────
         # Fuzzy-matches lyric words against the global uploaded-image
@@ -768,6 +814,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             "lyrics_text_found": lyrics_text_found,
             "words": words_list,
             "phonemes": phonemes_list,
+            "lyrics_warnings": lyrics_warnings,
             "image_suggestions": image_suggestions,
             "image_topics": image_topics,
             "value_curves": curves_out,
@@ -795,11 +842,14 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                     "lyrics_text_found": lyrics_text_found,
                     "words": words_list,
                     "phonemes": phonemes_list,
+                    "lyrics_warnings": lyrics_warnings,
                     "image_suggestions": image_suggestions,
                     "image_topics": image_topics,
                 })
             except Exception:
                 pass
+            if story is not None and src is not None:
+                _write_story_json(src, story)
             try:
                 lib = load_library()
                 for s in lib["songs"]:
@@ -813,6 +863,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             with state.lock:
                 state.pending_sections = sections
                 state.pending_assignments = assignments
+                state.pending_story = story
 
         with state.lock:
             state.result = result
@@ -883,6 +934,45 @@ def paste_lyrics():
         with _lyrics_cache_lock:
             _lyrics_cache[(title, artist)] = lyrics_text
     return jsonify(result), 200
+
+
+@api_v1.route("/songs/<song_id>/lyrics/xtiming", methods=["POST"])
+def upload_xtiming(song_id: str):
+    """Accept a user-uploaded .xtiming file's Lyrics track as a WhisperX
+    override for this song. The Lyrics track is identified structurally
+    (see ``src.analyzer.xtiming_import`` — it isn't reliably named "Lyrics").
+
+    Caches the parsed words/phonemes by song_id so the next ``analyze`` run
+    uses them directly instead of running WhisperX transcription/alignment
+    at all — sidesteps the all-or-nothing lyrics-mismatch fallback entirely
+    rather than working around it.
+    """
+    lib = load_library()
+    song = next((s for s in lib["songs"] if s["song_id"] == song_id), None)
+    if song is None:
+        return jsonify({"error": {"code": "song_not_found",
+                                   "message": "Song not found"}}), 404
+
+    uploaded = request.files.get("file")
+    if uploaded is None:
+        return jsonify({"error": {"code": "missing_file",
+                                   "message": "file is required"}}), 400
+
+    from src.analyzer.xtiming_import import XTimingImportError, parse_xtiming_lyrics
+    try:
+        words, phonemes = parse_xtiming_lyrics(uploaded.read())
+    except XTimingImportError as exc:
+        return jsonify({"error": {"code": "invalid_xtiming", "message": str(exc)}}), 400
+
+    with _xtiming_override_cache_lock:
+        _xtiming_override_cache[song_id] = (words, phonemes)
+
+    return jsonify({
+        "found": True,
+        "word_count": len(words),
+        "phoneme_count": len(phonemes),
+        "preview": [w["label"] for w in words[:10]],
+    }), 200
 
 
 @api_v1.route("/songs/<song_id>/analyze", methods=["POST"])
@@ -967,6 +1057,7 @@ def commit_analyze(song_id: str):
     with state.lock:
         pending_sections = state.pending_sections
         pending_assignments = state.pending_assignments
+        pending_story = state.pending_story
         result = state.result
 
     if pending_sections is None and result is not None:
@@ -986,6 +1077,7 @@ def commit_analyze(song_id: str):
     lyrics_text_found = bool(_carry_forward_field(result, session, "lyrics_text_found", False))
     words_list = _carry_forward_field(result, session, "words", [])
     phonemes_list = _carry_forward_field(result, session, "phonemes", [])
+    lyrics_warnings = _carry_forward_field(result, session, "lyrics_warnings", [])
 
     final_assignments = list(pending_assignments)  # start from suggested defaults
     for entry in assignment_mapping:
@@ -1014,9 +1106,15 @@ def commit_analyze(song_id: str):
             "lyrics_text_found": lyrics_text_found,
             "words": words_list,
             "phonemes": phonemes_list,
+            "lyrics_warnings": lyrics_warnings,
         })
     except Exception as exc:
         return jsonify({"error": {"code": "internal_error", "message": str(exc)}}), 500
+
+    if pending_story is not None:
+        source_paths = song.get("source_paths") or []
+        if source_paths:
+            _write_story_json(Path(source_paths[0]), pending_story)
 
     # Update song status
     try:

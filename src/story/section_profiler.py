@@ -408,70 +408,76 @@ def profile_section(start_ms: int, end_ms: int, hierarchy: dict) -> dict:
             m for m in drum_marks if start_ms <= m.get("time_ms", -1) < end_ms
         ]
 
-        kick_count = sum(1 for m in section_drum_marks if m.get("label") == "kick")
-        snare_count = sum(1 for m in section_drum_marks if m.get("label") == "snare")
-        hihat_count = sum(1 for m in section_drum_marks if m.get("label") == "hihat")
-        total_drum_count = len(section_drum_marks)
+        # No drum marks in this section's window -- leave drum_pattern as the
+        # None sentinel (models.py: "no drum data in this section") rather
+        # than fabricating an all-zero dict. This guard was accidentally
+        # dropped in a later refactor (bass-onset proxying / big-hit
+        # detection) that never intended to change the None-vs-dict contract.
+        if section_drum_marks:
+            kick_count = sum(1 for m in section_drum_marks if m.get("label") == "kick")
+            snare_count = sum(1 for m in section_drum_marks if m.get("label") == "snare")
+            hihat_count = sum(1 for m in section_drum_marks if m.get("label") == "hihat")
+            total_drum_count = len(section_drum_marks)
 
-        # Bass onsets as proxy for sub-bass kick hits (demucs routes bass drums here)
-        bass_onset_count = _count_marks_in_section(bass_events)
+            # Bass onsets as proxy for sub-bass kick hits (demucs routes bass drums here)
+            bass_onset_count = _count_marks_in_section(bass_events)
 
-        # Combined percussion = drum onsets + bass onsets (deduplicated by density)
-        combined_count = total_drum_count + bass_onset_count
-        combined_density = float(combined_count / duration_sec) if duration_sec > 0 else 0.0
-        drum_density = float(total_drum_count / duration_sec) if duration_sec > 0 else 0.0
+            # Combined percussion = drum onsets + bass onsets (deduplicated by density)
+            combined_count = total_drum_count + bass_onset_count
+            combined_density = float(combined_count / duration_sec) if duration_sec > 0 else 0.0
+            drum_density = float(total_drum_count / duration_sec) if duration_sec > 0 else 0.0
 
-        # Drum energy from the curves (for intensity measure)
-        drum_energy = _stem_mean_in_range("drums")
-        bass_energy = _stem_mean_in_range("bass")
+            # Drum energy from the curves (for intensity measure)
+            drum_energy = _stem_mean_in_range("drums")
+            bass_energy = _stem_mean_in_range("bass")
 
-        # Dominant element
-        element_counts = {"kick": kick_count, "snare": snare_count, "hihat": hihat_count}
-        dominant_element = max(element_counts, key=lambda e: element_counts[e])
+            # Dominant element
+            element_counts = {"kick": kick_count, "snare": snare_count, "hihat": hihat_count}
+            dominant_element = max(element_counts, key=lambda e: element_counts[e])
 
-        # Style classification
-        kick_ratio = kick_count / total_drum_count if total_drum_count > 0 else 0
-        snare_ratio = snare_count / total_drum_count if total_drum_count > 0 else 0
-        hihat_ratio = hihat_count / total_drum_count if total_drum_count > 0 else 0
+            # Style classification
+            kick_ratio = kick_count / total_drum_count if total_drum_count > 0 else 0
+            snare_ratio = snare_count / total_drum_count if total_drum_count > 0 else 0
+            hihat_ratio = hihat_count / total_drum_count if total_drum_count > 0 else 0
 
-        # "kick_heavy": pronounced bass drum — either high kick ratio with
-        # strong drum/bass energy, or very few onsets but high bass energy
-        # (sub-bass drops that demucs puts in bass stem)
-        bass_dominant = bass_energy > drum_energy * 1.5
-        kick_dominant = kick_ratio > 0.6
+            # "kick_heavy": pronounced bass drum — either high kick ratio with
+            # strong drum/bass energy, or very few onsets but high bass energy
+            # (sub-bass drops that demucs puts in bass stem)
+            bass_dominant = bass_energy > drum_energy * 1.5
+            kick_dominant = kick_ratio > 0.6
 
-        if combined_density < 0.3:
-            style = "sparse"
-        elif kick_dominant and (drum_energy > 20 or bass_energy > 20):
-            style = "kick_heavy"
-        elif bass_dominant and combined_density > 0.5:
-            style = "kick_heavy"  # sub-bass hits via bass stem
-        elif kick_ratio > 0.5:
-            style = "driving"
-        elif snare_ratio > 0.4:
-            style = "fills"
-        elif hihat_ratio > 0.6:
-            style = "riding"
-        else:
-            style = "balanced"
+            if combined_density < 0.3:
+                style = "sparse"
+            elif kick_dominant and (drum_energy > 20 or bass_energy > 20):
+                style = "kick_heavy"
+            elif bass_dominant and combined_density > 0.5:
+                style = "kick_heavy"  # sub-bass hits via bass stem
+            elif kick_ratio > 0.5:
+                style = "driving"
+            elif snare_ratio > 0.4:
+                style = "fills"
+            elif hihat_ratio > 0.6:
+                style = "riding"
+            else:
+                style = "balanced"
 
-        # ── Detect big hits on drums ──
-        big_hits = _detect_accents(energy_curves, "drums", start_ms, end_ms)
+            # ── Detect big hits on drums ──
+            big_hits = _detect_accents(energy_curves, "drums", start_ms, end_ms)
 
-        drum_pattern = {
-            "kick_count": kick_count,
-            "snare_count": snare_count,
-            "hihat_count": hihat_count,
-            "bass_onset_count": bass_onset_count,
-            "total_density": drum_density,
-            "combined_density": combined_density,
-            "drum_energy": round(drum_energy, 1),
-            "bass_energy": round(bass_energy, 1),
-            "dominant_element": dominant_element,
-            "style": style,
-            "big_hits": big_hits,
-            "big_hit_count": len(big_hits),
-        }
+            drum_pattern = {
+                "kick_count": kick_count,
+                "snare_count": snare_count,
+                "hihat_count": hihat_count,
+                "bass_onset_count": bass_onset_count,
+                "total_density": drum_density,
+                "combined_density": combined_density,
+                "drum_energy": round(drum_energy, 1),
+                "bass_energy": round(bass_energy, 1),
+                "dominant_element": dominant_element,
+                "style": style,
+                "big_hits": big_hits,
+                "big_hit_count": len(big_hits),
+            }
 
     # ── Tightness ─────────────────────────────────────────────────────────────
     drums_active = "drums" in active_stems

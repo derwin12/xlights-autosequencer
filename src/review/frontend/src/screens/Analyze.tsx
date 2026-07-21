@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import styles from './Analyze.module.css';
 import { PasteLyricsDialog, type LyricsCheckResult } from '../components/PasteLyricsDialog/PasteLyricsDialog';
+import { XTimingUploadDialog, type XTimingUploadResult } from '../components/XTimingUploadDialog/XTimingUploadDialog';
 
 interface Song {
   song_id: string;
@@ -248,6 +249,8 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   const [checkingLyrics, setCheckingLyrics] = useState(false);
   const [lyricsCheckResult, setLyricsCheckResult] = useState<LyricsCheckResult | null>(null);
   const [showPasteLyrics, setShowPasteLyrics] = useState(false);
+  const [showXTimingUpload, setShowXTimingUpload] = useState(false);
+  const [xtimingResult, setXTimingResult] = useState<XTimingUploadResult | null>(null);
 
   const esRef = useRef<EventSource | null>(null);
   // Seed forceRef with forceOnMount so the initial POST /analyze carries
@@ -665,6 +668,13 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         )}
         <button
           className={styles.reanalyzeBtn}
+          data-testid="xtiming-upload-btn"
+          onClick={() => setShowXTimingUpload(true)}
+        >
+          Add xTiming
+        </button>
+        <button
+          className={styles.reanalyzeBtn}
           onClick={handleSaveMetadata}
           disabled={metadataSaving || (!titleInput.trim() && !artistInput.trim())}
         >
@@ -708,6 +718,21 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
               setShowPasteLyrics(false);
             }}
             onCancel={() => setShowPasteLyrics(false)}
+          />
+        )}
+        {xtimingResult?.found && (
+          <span className={styles.metadataSuccess}>
+            ✓ xTiming loaded ({xtimingResult.word_count} words) — will be used on the next Analyze
+          </span>
+        )}
+        {showXTimingUpload && (
+          <XTimingUploadDialog
+            songId={song.song_id}
+            onSaved={(result) => {
+              setXTimingResult(result);
+              setShowXTimingUpload(false);
+            }}
+            onCancel={() => setShowXTimingUpload(false)}
           />
         )}
       </div>

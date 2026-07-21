@@ -367,6 +367,79 @@ class TestPasteLyrics:
             assert ("Credits Only", "Nobody") not in analysis_module._lyrics_cache
 
 
+_XTIMING_LYRICS = """<?xml version="1.0" encoding="UTF-8"?>
+<timings>
+    <timing name="somesongname" SourceVersion="2021.09">
+        <EffectLayer>
+            <Effect label="hello world" starttime="0" endtime="1000" />
+        </EffectLayer>
+        <EffectLayer>
+            <Effect label="HELLO" starttime="0" endtime="400" />
+            <Effect label="WORLD" starttime="500" endtime="1000" />
+        </EffectLayer>
+        <EffectLayer>
+            <Effect label="E" starttime="0" endtime="200" />
+            <Effect label="L" starttime="200" endtime="400" />
+            <Effect label="WQ" starttime="500" endtime="750" />
+            <Effect label="etc" starttime="750" endtime="1000" />
+        </EffectLayer>
+    </timing>
+</timings>
+"""
+
+
+class TestUploadXTiming:
+    """POST /songs/<id>/lyrics/xtiming — user-supplied Lyrics track overrides
+    WhisperX entirely. The track is identified structurally, not by name
+    (a real user-exported file names it after the sanitized source
+    filename, confirmed 2026-07-21)."""
+
+    def test_unknown_song_404(self, client):
+        resp = client.post(
+            "/api/v1/songs/does-not-exist/lyrics/xtiming",
+            data={"file": (io.BytesIO(_XTIMING_LYRICS.encode()), "output.xtiming")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 404
+
+    def test_missing_file_returns_400(self, client):
+        song_id = _import_wav(client)
+        resp = client.post(f"/api/v1/songs/{song_id}/lyrics/xtiming", data={})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_file"
+
+    def test_valid_file_returns_200_and_caches(self, client):
+        import src.review.api.v1.analysis as analysis_module
+
+        song_id = _import_wav(client)
+        resp = client.post(
+            f"/api/v1/songs/{song_id}/lyrics/xtiming",
+            data={"file": (io.BytesIO(_XTIMING_LYRICS.encode()), "output.xtiming")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["found"] is True
+        assert data["word_count"] == 2
+        assert data["phoneme_count"] == 4
+        assert data["preview"] == ["HELLO", "WORLD"]
+
+        with analysis_module._xtiming_override_cache_lock:
+            words, phonemes = analysis_module._xtiming_override_cache[song_id]
+        assert [w["label"] for w in words] == ["HELLO", "WORLD"]
+        assert len(phonemes) == 4
+
+    def test_invalid_xtiming_returns_400(self, client):
+        song_id = _import_wav(client)
+        resp = client.post(
+            f"/api/v1/songs/{song_id}/lyrics/xtiming",
+            data={"file": (io.BytesIO(b"not xml"), "output.xtiming")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "invalid_xtiming"
+
+
 class TestCarryForwardField:
     """_carry_forward_field: analyze-commit's lyrics/words/phonemes carry-
     through must not resurrect stale session data when the fresh result
@@ -407,3 +480,36 @@ class TestCarryForwardField:
         result = {"lyrics": [{"t_ms": 0, "duration_ms": 1000, "text": "fresh correct"}]}
         session = {"lyrics": [{"t_ms": 0, "duration_ms": 1000, "text": "old wrong"}]}
         assert analysis_module._carry_forward_field(result, session, "lyrics", []) == result["lyrics"]
+
+
+class TestWriteStoryJson:
+    """_write_story_json persists the full classified story (energy/role/
+    lighting per section) alongside the audio file so the generator can
+    use the same section classification the user reviewed on the Theme
+    screen, instead of re-deriving unclassified energies from raw detector
+    boundaries (fixed 2026-07-21)."""
+
+    def test_writes_story_json_next_to_audio(self, tmp_path):
+        import json
+        import src.review.api.v1.analysis as analysis_module
+        from pathlib import Path
+
+        audio_path = tmp_path / "song.mp3"
+        audio_path.write_bytes(b"fake")
+        story = {"sections": [{"role": "verse", "start": 0.0, "end": 5.0,
+                                "character": {"energy_score": 40}}]}
+
+        analysis_module._write_story_json(audio_path, story)
+
+        story_path = tmp_path / "song_story.json"
+        assert story_path.exists()
+        assert json.loads(story_path.read_text(encoding="utf-8")) == story
+
+    def test_does_not_raise_on_unwritable_path(self, tmp_path):
+        import src.review.api.v1.analysis as analysis_module
+        from pathlib import Path
+
+        # A path whose parent directory doesn't exist -- write_song_story
+        # would raise FileNotFoundError; must be swallowed, not propagated.
+        bad_audio_path = tmp_path / "does_not_exist_dir" / "song.mp3"
+        analysis_module._write_story_json(bad_audio_path, {"sections": []})

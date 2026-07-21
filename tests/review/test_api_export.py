@@ -108,7 +108,8 @@ class TestExportStart:
         captured: dict = {}
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
-                              genre="pop", occasion="general", include_extra_timing=True):
+                              genre="pop", occasion="general", include_extra_timing=True,
+                              vocal_diarization=False):
             captured["destination_name"] = destination_name
             with state.lock:
                 state.status = "done"
@@ -216,6 +217,108 @@ class TestRunExportTitleArtistOverride:
         assert captured["artist_override"] == "Wet Wet Wet"
 
 
+class TestRunExportStoryPath:
+    """_run_export must find and pass a "<audio_stem>_story.json" written
+    by the review/analyze flow, so generation uses the already-classified
+    section roles/energies reviewed on the Theme screen instead of
+    silently re-deriving unclassified ones from raw detector boundaries
+    (fixed 2026-07-21)."""
+
+    def _run(self, tmp_path, monkeypatch, write_story: bool):
+        import src.review.api.v1.export as export_module
+        import src.evaluation.generator_runner as generator_runner_module
+
+        captured: dict = {}
+
+        def _fake_run(**kwargs):
+            captured.update(kwargs)
+            return b"<xsequence></xsequence>"
+
+        monkeypatch.setattr(generator_runner_module, "run", _fake_run)
+
+        audio_path = tmp_path / "test.mp3"
+        audio_path.write_bytes(b"fake-audio")
+        layout_path = tmp_path / "layout.xml"
+        layout_path.write_text("<xlights_rgbeffects></xlights_rgbeffects>")
+        story_path = tmp_path / "test_story.json"
+        if write_story:
+            story_path.write_text('{"sections": []}')
+
+        state = export_module._ExportState("exp_test")
+        song = {"song_id": "abc123", "source_paths": [str(audio_path)]}
+        session = {"assignments": [], "lyrics": [], "words": [], "phonemes": []}
+        layout = {"xml_path": str(layout_path)}
+
+        export_module._run_export(state, song, session, layout, "test_AI.xsq", "xsq")
+        return captured, story_path
+
+    def test_story_json_found_and_passed(self, tmp_path, monkeypatch):
+        captured, story_path = self._run(tmp_path, monkeypatch, write_story=True)
+        assert captured["story_path"] == story_path
+
+    def test_no_story_json_passes_none(self, tmp_path, monkeypatch):
+        captured, _ = self._run(tmp_path, monkeypatch, write_story=False)
+        assert captured["story_path"] is None
+
+
+class TestLyricTracksStageDetail:
+    """The 'lyric_tracks' SSE stage surfaces whether a confident second
+    voice (src.analyzer.vocal_diarization) was actually detected, since the
+    accept-gate silently collapses everything to speaker 0 otherwise."""
+
+    def _run(self, tmp_path, monkeypatch, words, lyrics_warnings=None):
+        import src.review.api.v1.export as export_module
+        import src.evaluation.generator_runner as generator_runner_module
+
+        monkeypatch.setattr(generator_runner_module, "run",
+                             lambda **kwargs: b"<xsequence></xsequence>")
+
+        audio_path = tmp_path / "test.mp3"
+        audio_path.write_bytes(b"fake-audio")
+        layout_path = tmp_path / "layout.xml"
+        layout_path.write_text("<xlights_rgbeffects></xlights_rgbeffects>")
+
+        state = export_module._ExportState("exp_test")
+        song = {"song_id": "abc123", "source_paths": [str(audio_path)]}
+        session = {"assignments": [], "lyrics": [], "words": words, "phonemes": [],
+                   "lyrics_warnings": lyrics_warnings or []}
+        layout = {"xml_path": str(layout_path)}
+
+        export_module._run_export(state, song, session, layout, "test_AI.xsq", "xsq")
+        return next(e for e in state.events if e.get("stage") == "lyric_tracks")
+
+    def test_backup_singer_detected(self, tmp_path, monkeypatch):
+        words = [
+            {"label": "HELLO", "start_ms": 0, "end_ms": 400, "speaker": 0},
+            {"label": "WORLD", "start_ms": 500, "end_ms": 900, "speaker": 1},
+        ]
+        event = self._run(tmp_path, monkeypatch, words)
+        assert "backup singer detected (1 words)" in event["detail"]
+
+    def test_no_second_voice_detected(self, tmp_path, monkeypatch):
+        words = [{"label": "HELLO", "start_ms": 0, "end_ms": 400, "speaker": 0}]
+        event = self._run(tmp_path, monkeypatch, words)
+        assert "no second voice detected" in event["detail"]
+
+    def test_no_words_no_speaker_detail(self, tmp_path, monkeypatch):
+        event = self._run(tmp_path, monkeypatch, [])
+        assert "speaker" not in event["detail"] and "backup" not in event["detail"]
+
+    def test_lyrics_mismatch_warning_surfaced(self, tmp_path, monkeypatch):
+        # User-reported 2026-07-21: pasted lyrics silently replaced with
+        # "made up" words when <50% aligned -- the warning must now be
+        # visible on the Export screen instead of discarded.
+        words = [{"label": "HELLO", "start_ms": 0, "end_ms": 400, "speaker": 0}]
+        warning = "Lyrics mismatch — only 30% of words aligned. Falling back to audio-only."
+        event = self._run(tmp_path, monkeypatch, words, lyrics_warnings=[warning])
+        assert "⚠" in event["detail"] and warning in event["detail"]
+
+    def test_no_lyrics_warnings_key_is_silent(self, tmp_path, monkeypatch):
+        words = [{"label": "HELLO", "start_ms": 0, "end_ms": 400, "speaker": 0}]
+        event = self._run(tmp_path, monkeypatch, words)
+        assert "⚠" not in event["detail"]
+
+
 class TestDownloadPackage:
     def test_download_package_zips_xsq_and_layout_files(self, client, tmp_path, monkeypatch):
         # Stub out the real generator pipeline (same pattern as
@@ -224,7 +327,8 @@ class TestDownloadPackage:
         import src.review.api.v1.export as export_module
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
-                              genre="pop", occasion="general", include_extra_timing=True):
+                              genre="pop", occasion="general", include_extra_timing=True,
+                              vocal_diarization=False):
             out_dir = tmp_path / "export_out"
             out_dir.mkdir(exist_ok=True)
             output_path = out_dir / (destination_name or "output.xsq")
