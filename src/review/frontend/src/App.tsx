@@ -661,6 +661,13 @@ export default function App() {
             onExportComplete={(outputPath) => {
               void outputPath;
             }}
+            onLayoutChange={(layout) => {
+              setData((d) => ({
+                ...d,
+                layoutId: layout?.layout_id ?? null,
+                layoutXmlPath: layout?.xml_path ?? null,
+              }));
+            }}
           />
         );
 

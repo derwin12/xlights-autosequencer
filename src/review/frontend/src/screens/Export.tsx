@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './Export.module.css';
+import { LayoutUpload, type ActiveLayout } from '../components/LayoutUpload/LayoutUpload';
 
 interface Song {
   song_id: string;
@@ -13,6 +14,7 @@ interface ExportProps {
   layoutId: string | null;
   layoutXmlPath?: string | null;
   onExportComplete?: (outputPath: string) => void;
+  onLayoutChange?: (layout: ActiveLayout | null) => void;
 }
 
 // Known render stages, in pipeline order (src/review/api/v1/export.py).
@@ -32,7 +34,7 @@ interface RenderLogLine {
   kind: 'info' | 'ok' | 'err' | 'progress';
 }
 
-export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: ExportProps) {
+export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayoutChange }: ExportProps) {
   const [exporting, setExporting] = useState(false);
   const [outputPath, setOutputPath] = useState<string | null>(null);
   // Onsets (per-stem) + Chords timing tracks are display-only in the .xsq;
@@ -72,7 +74,13 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
     display_name?: string;
     props?: unknown[];
     imported_at?: string;
+    is_uploaded?: boolean;
   } | null>(null);
+
+  function handleLayoutChange(layout: ActiveLayout | null) {
+    setLayoutInfo(layout);
+    onLayoutChange?.(layout);
+  }
 
   const isThemed = song.status === 'themed';
   const hasLayout = layoutId != null && layoutXmlPath != null;
@@ -229,12 +237,13 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
   if (!hasLayout) {
     return (
       <div data-testid="layout-required" className={styles.block}>
-        <h3>Layout Missing</h3>
+        <h3>No Layout Yet</h3>
         <p>
-          <code>layout/xlights_rgbeffects.xml</code> is missing from this
-          checkout. Add it to the repo's <code>layout/</code> directory and
-          restart the server.
+          Upload your show's <code>xlights_rgbeffects.xml</code> below, or
+          add one at <code>layout/xlights_rgbeffects.xml</code> in the repo
+          checkout and restart the server.
         </p>
+        <LayoutUpload onLayoutChange={handleLayoutChange} />
       </div>
     );
   }
@@ -261,7 +270,13 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
           {layoutInfo?.imported_at
             ? ` · as of ${new Date(layoutInfo.imported_at).toLocaleDateString()}`
             : ''}
+          {layoutInfo?.is_uploaded ? ' · custom upload' : ' · repo default'}
         </p>
+        <LayoutUpload
+          onLayoutChange={handleLayoutChange}
+          compact
+          showRemove={layoutInfo?.is_uploaded === true}
+        />
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
@@ -448,6 +463,12 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
                   >
                     Download Package
                   </a>
+                  <p className={styles.groupsNote}>
+                    Includes an updated <code>xlights_rgbeffects.xml</code> with
+                    the model groups this sequence's effects need — replace
+                    your show's copy with it (back up first) before opening the
+                    sequence, or its group-targeted effects won't render.
+                  </p>
                 </>
               )}
             </div>

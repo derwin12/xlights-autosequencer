@@ -25,6 +25,12 @@ describe('Export screen', () => {
     expect(screen.getByTestId('layout-required')).toBeTruthy();
   });
 
+  it('shows the layout upload form when no layout is active', () => {
+    render(<Export song={song} layoutId={null} />);
+    expect(screen.getByTestId('layout-upload')).toBeTruthy();
+    expect(screen.getByTestId('layout-upload-submit')).toBeTruthy();
+  });
+
   it('shows layout-required block when layout has no xml_path', () => {
     render(<Export song={song} layoutId="layout_abc123" layoutXmlPath={null} />);
     expect(screen.getByTestId('layout-required')).toBeTruthy();
