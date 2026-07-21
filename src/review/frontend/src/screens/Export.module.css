@@ -426,3 +426,13 @@
   margin: 8px 0 0;
   max-width: 260px;
 }
+
+.layoutLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent, #4ade80);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+}

@@ -15,13 +15,14 @@ function fmtBuildTime(iso: string): string {
 }
 
 const TABS: { id: Screen; label: string; key: string }[] = [
-  { id: 'library', label: 'Library', key: '1' },
-  { id: 'drop', label: 'Import', key: '2' },
-  { id: 'analyze', label: 'Analyze', key: '3' },
-  { id: 'timeline', label: 'Timeline', key: '4' },
-  { id: 'theme', label: 'Theme', key: '5' },
-  { id: 'pictures', label: 'Pictures', key: '6' },
-  { id: 'export', label: 'Export', key: '7' },
+  { id: 'layout', label: 'Layout', key: '1' },
+  { id: 'library', label: 'Library', key: '2' },
+  { id: 'drop', label: 'Import', key: '3' },
+  { id: 'analyze', label: 'Analyze', key: '4' },
+  { id: 'timeline', label: 'Timeline', key: '5' },
+  { id: 'theme', label: 'Theme', key: '6' },
+  { id: 'pictures', label: 'Pictures', key: '7' },
+  { id: 'export', label: 'Export', key: '8' },
 ];
 
 // Which screen to route to based on song status

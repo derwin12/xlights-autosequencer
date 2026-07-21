@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './Export.module.css';
-import { LayoutUpload, type ActiveLayout } from '../components/LayoutUpload/LayoutUpload';
 
 interface Song {
   song_id: string;
@@ -14,7 +13,8 @@ interface ExportProps {
   layoutId: string | null;
   layoutXmlPath?: string | null;
   onExportComplete?: (outputPath: string) => void;
-  onLayoutChange?: (layout: ActiveLayout | null) => void;
+  /** Jump to the Layout tab (step 1) to upload/replace the active layout. */
+  onNavigateToLayout?: () => void;
 }
 
 // Known render stages, in pipeline order (src/review/api/v1/export.py).
@@ -34,7 +34,7 @@ interface RenderLogLine {
   kind: 'info' | 'ok' | 'err' | 'progress';
 }
 
-export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayoutChange }: ExportProps) {
+export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onNavigateToLayout }: ExportProps) {
   const [exporting, setExporting] = useState(false);
   const [outputPath, setOutputPath] = useState<string | null>(null);
   // Onsets (per-stem) + Chords timing tracks are display-only in the .xsq;
@@ -76,11 +76,6 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
     imported_at?: string;
     is_uploaded?: boolean;
   } | null>(null);
-
-  function handleLayoutChange(layout: ActiveLayout | null) {
-    setLayoutInfo(layout);
-    onLayoutChange?.(layout);
-  }
 
   const isThemed = song.status === 'themed';
   const hasLayout = layoutId != null && layoutXmlPath != null;
@@ -239,11 +234,13 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
       <div data-testid="layout-required" className={styles.block}>
         <h3>No Layout Yet</h3>
         <p>
-          Upload your show's <code>xlights_rgbeffects.xml</code> below, or
-          add one at <code>layout/xlights_rgbeffects.xml</code> in the repo
-          checkout and restart the server.
+          Set up your layout on the <strong>Layout</strong> tab (step 1)
+          before exporting — every song's effects are placed against
+          whichever <code>xlights_rgbeffects.xml</code> is active there.
         </p>
-        <LayoutUpload onLayoutChange={handleLayoutChange} />
+        <button className={styles.renderBtn} onClick={onNavigateToLayout}>
+          Go to Layout
+        </button>
       </div>
     );
   }
@@ -271,12 +268,15 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onLayo
             ? ` · as of ${new Date(layoutInfo.imported_at).toLocaleDateString()}`
             : ''}
           {layoutInfo?.is_uploaded ? ' · custom upload' : ' · repo default'}
+          {' · '}
+          <button
+            className={styles.layoutLink}
+            onClick={onNavigateToLayout}
+            data-testid="manage-layout-link"
+          >
+            Manage Layout →
+          </button>
         </p>
-        <LayoutUpload
-          onLayoutChange={handleLayoutChange}
-          compact
-          showRemove={layoutInfo?.is_uploaded === true}
-        />
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
