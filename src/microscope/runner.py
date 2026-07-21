@@ -109,6 +109,7 @@ def _import_all_metrics() -> None:
     import src.evaluation.metrics.suitability  # noqa: F401
     import src.evaluation.metrics.coverage  # noqa: F401
     import src.evaluation.metrics.tier_breakdown  # noqa: F401
+    import src.evaluation.metrics.restraint  # noqa: F401
 
 
 def _compute_metrics(

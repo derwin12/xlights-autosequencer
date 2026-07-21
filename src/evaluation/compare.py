@@ -46,6 +46,7 @@ def _import_all_metrics() -> None:
     import src.evaluation.metrics.alignment  # noqa: F401
     import src.evaluation.metrics.sections  # noqa: F401
     import src.evaluation.metrics.internal  # noqa: F401
+    import src.evaluation.metrics.restraint  # noqa: F401
 
 
 def _compute_metrics_for_summary(
