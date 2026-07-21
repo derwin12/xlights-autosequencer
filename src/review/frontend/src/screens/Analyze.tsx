@@ -635,13 +635,6 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         >
           {checkingLyrics ? 'Checking…' : 'Check Lyrics'}
         </button>
-        <button
-          className={styles.reanalyzeBtn}
-          onClick={handleSaveMetadata}
-          disabled={metadataSaving || (!titleInput.trim() && !artistInput.trim())}
-        >
-          {metadataSaving ? 'Saving…' : 'Save & Refresh'}
-        </button>
         {lyricsCheckResult && !lyricsCheckResult.found && (
           <button
             className={styles.reanalyzeBtn}
@@ -651,6 +644,13 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
             Paste Lyrics
           </button>
         )}
+        <button
+          className={styles.reanalyzeBtn}
+          onClick={handleSaveMetadata}
+          disabled={metadataSaving || (!titleInput.trim() && !artistInput.trim())}
+        >
+          {metadataSaving ? 'Saving…' : 'Save & Refresh'}
+        </button>
         {!artistInput.trim() && (
           <span className={styles.metadataWarning}>⚠ Artist is missing — lyrics lookup may fail or match the wrong song</span>
         )}
