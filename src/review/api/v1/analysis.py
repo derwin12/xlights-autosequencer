@@ -73,6 +73,32 @@ def _default_overrides() -> dict:
     }
 
 
+def _carry_forward_field(
+    result: dict | None, session: dict | None, key: str, default: object,
+) -> object:
+    """Carry a field (lyrics/lyrics_text_found/words/phonemes) through
+    analyze-commit re-persistence — these are produced once during analysis
+    and aren't recomputed on the commit path.
+
+    Falls back to the OLD session's value only when the fresh ``result``
+    doesn't have the key at all (e.g. an older schema predating it) --
+    NOT via a truthy-or chain, which would treat a legitimately empty/False
+    value from the current run (correct, e.g. no timed lyric lines for a
+    plain-text paste) as "missing" and silently resurrect stale data from a
+    PRIOR run instead. Real bug this fixes: a wrong provider LRC match
+    cached before the user pasted the correct lyrics kept leaking back in
+    on every later commit, even after the fresh analysis correctly found
+    nothing, because the old `result.get(key) or session.get(key) or
+    default` chain treated the fresh, correct `[]`/`False` as falsy and
+    fell through to the stale session value.
+    """
+    if result is not None and key in result:
+        return result[key]
+    if session is not None and key in session:
+        return session[key]
+    return default
+
+
 # Static fallback: default theme per section kind. Must reference real
 # theme_ids from the catalog (GET /api/v1/themes) — assignment PUTs validate
 # against it, so a stale id here produces defaults the user can never
@@ -955,18 +981,11 @@ def commit_analyze(song_id: str):
     # Apply assignment_mapping: carry over themes from old assignments where specified
     session = load_session(song_id)
     old_assignments = session.get("assignments", []) if session else []
-    # Carry the lyrics/words/phonemes tracks through re-persistence — they're
-    # produced once during analysis and aren't recomputed on this commit path.
-    lyrics_list = (result.get("lyrics") if result else None) or \
-        (session.get("lyrics") if session else None) or []
-    lyrics_text_found = bool(
-        (result.get("lyrics_text_found") if result else None)
-        or (session.get("lyrics_text_found") if session else None)
-    )
-    words_list = (result.get("words") if result else None) or \
-        (session.get("words") if session else None) or []
-    phonemes_list = (result.get("phonemes") if result else None) or \
-        (session.get("phonemes") if session else None) or []
+
+    lyrics_list = _carry_forward_field(result, session, "lyrics", [])
+    lyrics_text_found = bool(_carry_forward_field(result, session, "lyrics_text_found", False))
+    words_list = _carry_forward_field(result, session, "words", [])
+    phonemes_list = _carry_forward_field(result, session, "phonemes", [])
 
     final_assignments = list(pending_assignments)  # start from suggested defaults
     for entry in assignment_mapping:

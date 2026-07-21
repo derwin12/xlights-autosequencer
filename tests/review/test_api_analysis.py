@@ -365,3 +365,45 @@ class TestPasteLyrics:
 
         with analysis_module._lyrics_cache_lock:
             assert ("Credits Only", "Nobody") not in analysis_module._lyrics_cache
+
+
+class TestCarryForwardField:
+    """_carry_forward_field: analyze-commit's lyrics/words/phonemes carry-
+    through must not resurrect stale session data when the fresh result
+    legitimately has an empty/False value (bug: a wrong provider LRC match
+    cached before the user pasted correct lyrics kept leaking back in on
+    every later commit)."""
+
+    def test_fresh_empty_list_is_not_replaced_by_stale_session_value(self):
+        import src.review.api.v1.analysis as analysis_module
+
+        result = {"lyrics": []}  # fresh analysis correctly found nothing
+        session = {"lyrics": [{"t_ms": 0, "duration_ms": 1000, "text": "WRONG STALE SONG"}]}
+        assert analysis_module._carry_forward_field(result, session, "lyrics", []) == []
+
+    def test_fresh_false_is_not_replaced_by_stale_session_true(self):
+        import src.review.api.v1.analysis as analysis_module
+
+        result = {"lyrics_text_found": False}
+        session = {"lyrics_text_found": True}
+        assert analysis_module._carry_forward_field(result, session, "lyrics_text_found", False) is False
+
+    def test_missing_key_in_result_falls_back_to_session(self):
+        import src.review.api.v1.analysis as analysis_module
+
+        result = {}  # legacy schema predating this key
+        session = {"lyrics": [{"t_ms": 0, "duration_ms": 1000, "text": "from session"}]}
+        assert analysis_module._carry_forward_field(result, session, "lyrics", []) == session["lyrics"]
+
+    def test_missing_from_both_returns_default(self):
+        import src.review.api.v1.analysis as analysis_module
+
+        assert analysis_module._carry_forward_field({}, {}, "lyrics", []) == []
+        assert analysis_module._carry_forward_field(None, None, "lyrics", []) == []
+
+    def test_fresh_non_empty_value_wins_over_session(self):
+        import src.review.api.v1.analysis as analysis_module
+
+        result = {"lyrics": [{"t_ms": 0, "duration_ms": 1000, "text": "fresh correct"}]}
+        session = {"lyrics": [{"t_ms": 0, "duration_ms": 1000, "text": "old wrong"}]}
+        assert analysis_module._carry_forward_field(result, session, "lyrics", []) == result["lyrics"]
