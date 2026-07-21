@@ -6,10 +6,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy
+from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy, frame_align
 from src.generator.moving_head import (
     _KEYWORD_ACCENT_DURATION_MS,
-    _KEYWORD_ACCENT_MIN_GAP_MS,
+    _KEYWORD_PULSE_GAP_MS,
+    _keyword_trigger_end_ms,
     _keyword_triggers,
     place_moving_head_keyword_accents,
     place_moving_head_moves,
@@ -60,19 +61,24 @@ class TestKeywordTriggers:
         words = [_word("Shake,", 1000, 1300)]
         assert _keyword_triggers(words, DEFAULT_KEYWORDS) == [("shake", 1000)]
 
-    def test_consecutive_same_keyword_collapses_to_one_trigger(self):
-        # "Shake, shake, shake the snow globe" -- three hits within ~1s.
+    def test_consecutive_same_keyword_each_gets_its_own_trigger(self):
+        # "Shake, shake, shake, shake the snow globe" -- one trigger per
+        # word, NOT collapsed (user-confirmed 2026-07-21 after testing a
+        # hand-built version: "one shake per word... was good and quick").
         words = [
-            _word("Shake", 1000, 1300),
-            _word("shake", 1350, 1600),
-            _word("shake", 1650, 1900),
+            _word("Shake,", 1000, 1141),
+            _word("shake,", 1181, 1481),
+            _word("shake,", 1681, 2002),
+            _word("shake", 2222, 2503),
         ]
-        assert _keyword_triggers(words, DEFAULT_KEYWORDS) == [("shake", 1000)]
+        assert _keyword_triggers(words, DEFAULT_KEYWORDS) == [
+            ("shake", 1000), ("shake", 1181), ("shake", 1681), ("shake", 2222),
+        ]
 
     def test_same_keyword_far_apart_both_trigger(self):
         words = [
             _word("shake", 1000, 1300),
-            _word("shake", 1000 + _KEYWORD_ACCENT_MIN_GAP_MS + 500, 1300 + _KEYWORD_ACCENT_MIN_GAP_MS + 500),
+            _word("shake", 60_000, 60_300),
         ]
         triggers = _keyword_triggers(words, DEFAULT_KEYWORDS)
         assert len(triggers) == 2
@@ -85,6 +91,36 @@ class TestKeywordTriggers:
         assert _keyword_triggers([{"word": "bounce", "start_ms": 0, "end_ms": 300}], DEFAULT_KEYWORDS) == [
             ("bounce", 0),
         ]
+
+
+class TestKeywordTriggerEndMs:
+    def test_uses_full_base_duration_when_no_next_same_keyword(self):
+        triggers = [("shake", 1000)]
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        assert end_ms == 1000 + _KEYWORD_ACCENT_DURATION_MS["shake"]
+
+    def test_shortened_to_fit_before_a_tight_next_same_keyword_hit(self):
+        # Real reference-song gap: only 40ms between two consecutive
+        # "shake" words -- the pulse must shrink to fit, not overlap.
+        triggers = [("shake", 1000), ("shake", 1040)]
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        assert end_ms == 1040 - _KEYWORD_PULSE_GAP_MS
+
+    def test_full_duration_used_when_next_trigger_is_a_different_keyword(self):
+        triggers = [("shake", 1000), ("spin", 1040)]
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        assert end_ms == 1000 + _KEYWORD_ACCENT_DURATION_MS["shake"]
+
+    def test_clamped_to_song_duration(self):
+        triggers = [("shake", 199_900)]
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        assert end_ms == 200_000
+
+    def test_spin_uses_pattern_accent_duration(self):
+        from src.generator.moving_head import _ACCENT_DURATION_MS
+        triggers = [("spin", 1000)]
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        assert end_ms == 1000 + _ACCENT_DURATION_MS
 
 
 class TestPlaceMovingHeadKeywordAccents:
@@ -114,10 +150,36 @@ class TestPlaceMovingHeadKeywordAccents:
         assert set(result) == {"MH GRP"}
         punch = next(p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"])
         assert punch.start_ms == 10_000
-        assert punch.end_ms == 10_000 + _KEYWORD_ACCENT_DURATION_MS
+        assert punch.end_ms == 10_000 + _KEYWORD_ACCENT_DURATION_MS["shake"]
         assert "Pan VC:" in punch.parameters["E_TEXTCTRL_MH1_Settings"]
         assert "Id=ID_VALUECURVE_MHPan" in punch.parameters["E_VALUECURVE_MHPan"]
         assert "Type=Ramp Up/Down" in punch.parameters["E_VALUECURVE_MHPan"]
+
+    def test_repeated_shake_words_each_get_their_own_quick_pulse(self):
+        # The actual user-reported scenario: "Shake, shake, shake, shake"
+        # sung in rapid succession (real reference-song gaps as tight as
+        # 40ms) must produce FOUR distinct pulses, not one merged trigger.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        words = [
+            _word("Shake,", 46_054, 46_195),
+            _word("shake,", 46_235, 46_535),
+            _word("shake,", 46_735, 47_056),
+            _word("shake", 47_276, 47_557),
+        ]
+        result = place_moving_head_keyword_accents(layout, words, DEFAULT_KEYWORDS, 200_000)
+        punches = sorted(
+            (p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]),
+            key=lambda p: p.start_ms,
+        )
+        assert len(punches) == 4
+        # Placement timing is frame-aligned (nearest 25ms) like every other
+        # EffectPlacement in this project -- compare against the aligned
+        # word starts, not the raw millisecond values.
+        assert [p.start_ms for p in punches] == [frame_align(t) for t in (46_054, 46_235, 46_735, 47_276)]
+        # No punch overlaps the next word's own start, and each is shortened
+        # to fit the tighter gaps rather than colliding.
+        for punch, next_word_start in zip(punches, [46_235, 46_735, 47_276]):
+            assert punch.end_ms <= next_word_start
 
     def test_bounce_places_group_level_tilt_vc_accent(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
@@ -149,7 +211,10 @@ class TestPlaceMovingHeadKeywordAccents:
         # window must be skipped even though the per-head occupancy check
         # only ever looked up individual head names before this fix.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
-        words = [_word("shake", 10_000, 10_300), _word("spin", 10_400, 10_700)]
+        # shake's own duration is short (250ms) -- put the spin inside that
+        # window rather than after it, so this test still exercises the
+        # actual overlap-skip case regardless of shake's tuned duration.
+        words = [_word("shake", 10_000, 10_300), _word("spin", 10_100, 10_400)]
         result = place_moving_head_keyword_accents(layout, words, DEFAULT_KEYWORDS, 200_000)
         assert "MH GRP" in result  # the shake fired
         assert "MH1" not in result and "MH2" not in result  # the spin was skipped

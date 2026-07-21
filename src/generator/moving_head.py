@@ -1123,12 +1123,22 @@ def _heads_already_posed(
 # first-draft guesses, NOT vendor-validated -- flagged to the user as
 # needing a real-render check, same as every other first-cut Moving Head
 # value in this module's history.
-_KEYWORD_ACCENT_DURATION_MS = 900
-# Consecutive matches of the SAME keyword within this gap collapse into one
-# trigger (using the first occurrence's start_ms) -- a triple utterance
-# like "shake, shake, shake" would otherwise fire the accent three times in
-# under a second, faster than a real fixture can usefully move.
-_KEYWORD_ACCENT_MIN_GAP_MS = 1500
+# One trigger PER matched word, not collapsed (2026-07-21, user-confirmed
+# after testing a hand-built version: "one shake per word... was good and
+# quick"). Consecutive same-keyword hits (e.g. "shake, shake, shake, shake")
+# each get their own accent instead of being merged into one. Duration is
+# capped per-trigger to whatever room exists before the NEXT same-keyword
+# hit (see _keyword_trigger_end_ms below), so a tight back-to-back
+# repeat (observed as close as 40ms apart on the real reference song)
+# still gets a real, non-overlapping pulse instead of colliding with the
+# next one or being silently skipped.
+_KEYWORD_ACCENT_DURATION_MS: dict[str, int] = {
+    "shake": 250,
+    "bounce": 900,
+}
+# Small buffer left between two consecutive same-keyword pulses so they
+# read as distinct quick hits rather than one continuous blur.
+_KEYWORD_PULSE_GAP_MS = 20
 _SHAKE_PAN_AMPLITUDE_DEG = 30.0
 _SHAKE_STATIC_TILT_DEG = 45.0
 _BOUNCE_TILT_LO_DEG = 30.0
@@ -1194,8 +1204,8 @@ def _keyword_triggers(
     vocal_words: Optional[list[dict]], keywords: tuple[str, ...],
 ) -> list[tuple[str, int]]:
     """Scan ``vocal_words`` for exact (case-insensitive) matches against
-    ``keywords``, collapsing consecutive same-keyword hits within
-    _KEYWORD_ACCENT_MIN_GAP_MS into one trigger. Returns
+    ``keywords``. Returns one trigger per matched word (no collapsing --
+    see the module comment above _KEYWORD_ACCENT_DURATION_MS), as
     ``[(keyword, start_ms), ...]`` in chronological order."""
     keyword_set = {k.lower() for k in keywords}
     hits: list[tuple[str, int]] = []
@@ -1205,16 +1215,32 @@ def _keyword_triggers(
         if token in keyword_set:
             hits.append((token, int(w["start_ms"])))
     hits.sort(key=lambda h: h[1])
+    return hits
 
-    triggers: list[tuple[str, int]] = []
-    last_ms_by_keyword: dict[str, int] = {}
-    for keyword, start_ms in hits:
-        last_ms = last_ms_by_keyword.get(keyword)
-        if last_ms is not None and start_ms - last_ms < _KEYWORD_ACCENT_MIN_GAP_MS:
+
+def _keyword_base_duration_ms(keyword: str) -> int:
+    if keyword == "spin":
+        return _ACCENT_DURATION_MS  # forward-referenced module constant (1400ms)
+    return _KEYWORD_ACCENT_DURATION_MS.get(keyword, 900)
+
+
+def _keyword_trigger_end_ms(
+    triggers: list[tuple[str, int]], index: int, duration_ms: int,
+) -> int:
+    """End time for ``triggers[index]``, capped to whatever room exists
+    before the next trigger of the SAME keyword (leaving
+    _KEYWORD_PULSE_GAP_MS of daylight) so a tight back-to-back repeat gets
+    a real, shortened pulse instead of overlapping into -- or being
+    overlap-skipped by -- the next one."""
+    keyword, start_ms = triggers[index]
+    base_duration = _keyword_base_duration_ms(keyword)
+    end_ms = min(start_ms + base_duration, duration_ms)
+    for next_keyword, next_start_ms in triggers[index + 1:]:
+        if next_keyword != keyword:
             continue
-        triggers.append((keyword, start_ms))
-        last_ms_by_keyword[keyword] = start_ms
-    return triggers
+        end_ms = min(end_ms, next_start_ms - _KEYWORD_PULSE_GAP_MS)
+        break
+    return end_ms
 
 
 def place_moving_head_keyword_accents(
@@ -1243,9 +1269,9 @@ def place_moving_head_keyword_accents(
         head_count = len(mh_group.head_names)
         relevant_keys = (mh_group.name, *mh_group.head_names)
 
-        for keyword, mark_ms in triggers:
+        for trigger_index, (keyword, mark_ms) in enumerate(triggers):
             start_ms = mark_ms
-            end_ms = min(start_ms + _KEYWORD_ACCENT_DURATION_MS, duration_ms)
+            end_ms = _keyword_trigger_end_ms(triggers, trigger_index, duration_ms)
             if end_ms <= start_ms:
                 continue
 
