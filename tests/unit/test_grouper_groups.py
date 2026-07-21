@@ -356,6 +356,40 @@ class TestPropTypeLeadingDirectionStrip:
         assert prop_groups[0].name == "06_PROP_Beam"
         assert set(prop_groups[0].members) == {"Top Beam", "Bottom Beam"}
 
+
+class TestPropTypeHyphenatedIndexSideSuffixStrip:
+    """_tier6_prop_type strips a trailing "-<digits><letter>" suffix glued
+    with no space (e.g. "Spiral Tree-1L" / "Spiral Tree-2R") so a paired
+    fixture using this naming convention aggregates into one 06_PROP_ group
+    instead of each side staying its own singleton "type"."""
+
+    def test_hyphenated_index_letter_pair_aggregates(self):
+        props = [
+            make_prop("Spiral Tree-1L", world_x=0.0, world_y=50.0),
+            make_prop("Spiral Tree-2R", world_x=100.0, world_y=50.0),
+        ]
+        normalize_coords(props)
+        classify_props(props)
+        groups = generate_groups(props)
+        prop_groups = [g for g in groups if g.name.startswith("06_PROP_")]
+        assert len(prop_groups) == 1
+        assert prop_groups[0].name == "06_PROP_Spiral_Tree"
+        assert set(prop_groups[0].members) == {"Spiral Tree-1L", "Spiral Tree-2R"}
+
+    def test_plain_hyphenated_index_still_strips(self):
+        # No trailing letter -- must still behave like the existing
+        # trailing-number strip ("Arch-1" / "Arch-2" -> "Arch").
+        props = [
+            make_prop("Arch-1", world_x=0.0, world_y=50.0),
+            make_prop("Arch-2", world_x=100.0, world_y=50.0),
+        ]
+        normalize_coords(props)
+        classify_props(props)
+        groups = generate_groups(props)
+        prop_groups = [g for g in groups if g.name.startswith("06_PROP_")]
+        assert len(prop_groups) == 1
+        assert prop_groups[0].name == "06_PROP_Arch"
+
     def test_existing_door_aggregation_unchanged(self):
         # The first ' - ' split runs after the leading-direction strip; "Door"
         # has no leading direction so the split still yields "Door".

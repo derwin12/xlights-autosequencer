@@ -801,18 +801,33 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     # Spiral trees — a distinct physical shape (tight vertical wrap) from an
     # ordinary mini tree, added to the layout 2026-07-21. Wired up as its
     # own recipe (rather than letting the "tree" token below claim it) so it
-    # can be tuned independently once the user has seen how it actually
-    # renders; for now it reuses the exact same mined mini-tree treatment as
-    # a placeholder, not a genuinely distinct idiom yet.
+    # can be tuned independently. The reference corpus has no spiral-tree
+    # placements to mine at all (not a family in any of the 12 packages), so
+    # per explicit user direction this borrows the vertical-lines family's
+    # treatment instead of mini-tree's: a spiral-wrapped prop is a tall thin
+    # line shape, the same silhouette a vertical-lines element has, and the
+    # user specifically wants a Single-Strand-led idiom here rather than the
+    # mini-tree chase-across-the-whole-group preset. Same effect/alt/preset/
+    # direction+size rotation as "vertical" below, applied to this family
+    # instead — not a placeholder anymore, but still open to a genuinely
+    # spiral-specific idiom later if real rendering suggests one.
     PropFamilyRecipe(
         family="spiraltree",
         match_tokens=("spiral",),
         effect_name="Single Strand",
-        alt_effect_name="Shockwave",
-        parameter_overrides=_CHASE_MINITREE,
-        alt_parameter_overrides=_SHOCKWAVE_BURST,
+        alt_effect_name="Lightning",
+        parameter_overrides=_CHASE_FROM_HEAD,
+        alt_parameter_overrides=_LIGHTNING_FLICKER,
         color_over_mask=True,
         mask_sparkles=True,
+        color_cycle_bars=True,
+        color_cycle_beats_alt=8,
+        off_backdrop=True,
+        direction_field="E_CHOICE_Chase_Type1",
+        direction_ping_pong_values=("Left-Right", "Right-Left"),
+        direction_alt_value="From Middle",
+        size_field="E_SLIDER_Color_Mix1",
+        size_values=("46", "50"),
     ),
     PropFamilyRecipe(
         family="minitree",

@@ -231,14 +231,21 @@ def _tier6_prop_type(props: list[Prop]) -> list[PowerGroup]:
     """Group all props of the same kind — e.g. all candy canes, all windows, all flakes.
 
     Extracts the broadest category name by stripping a leading direction prefix
-    (Left/Right/Top/Bottom/Front/Back), the first ' - ' suffix, trailing
-    numbers, and single-letter variants.
+    (Left/Right/Top/Bottom/Front/Back), the first ' - ' suffix, a trailing
+    hyphenated index+side suffix, trailing numbers, and single-letter variants.
     """
     def _type_name(name: str) -> str:
-        s = _LEADING_DIRECTION.sub("", name)   # leading direction prefix
-        s = s.split(" - ")[0]                  # strip after first ' - '
-        s = re.sub(r"[\s-]*\d+\s*$", "", s)    # trailing numbers
-        s = re.sub(r"\s+[A-Z]\s*$", "", s)     # trailing single letter variant
+        s = _LEADING_DIRECTION.sub("", name)      # leading direction prefix
+        s = s.split(" - ")[0]                     # strip after first ' - '
+        # Trailing "-<digits><optional single letter>" glued with no space
+        # (e.g. "Spiral Tree-1L" / "Spiral Tree-2R") -- the plain trailing-
+        # number strip below requires the letter to be absent or space-
+        # separated, so a paired-fixture naming convention like this would
+        # otherwise keep each side as its own singleton "type" and never
+        # reach _tier6_prop_type's len(members) >= 2 threshold.
+        s = re.sub(r"-\d+[A-Za-z]?\s*$", "", s)
+        s = re.sub(r"[\s-]*\d+\s*$", "", s)        # trailing numbers
+        s = re.sub(r"\s+[A-Z]\s*$", "", s)         # trailing single letter variant
         return s.strip(" -")
 
     types: dict[str, list[str]] = defaultdict(list)

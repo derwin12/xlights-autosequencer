@@ -900,6 +900,23 @@ class TestSpiralTreeRecipe:
         )
         assert recipe_for_group(group).family == "megatree"
 
+    def test_spiraltree_borrows_vertical_treatment_not_minitree(self) -> None:
+        # The reference corpus has no spiral-tree family to mine, so per
+        # explicit user direction this borrows "vertical"'s Single-Strand-led
+        # treatment (shape match: a tall thin line) rather than mini-tree's
+        # chase-across-the-whole-group preset.
+        spiraltree = next(r for r in CORPUS_RECIPES if r.family == "spiraltree")
+        vertical = next(r for r in CORPUS_RECIPES if r.family == "vertical")
+        assert spiraltree.effect_name == vertical.effect_name == "Single Strand"
+        assert spiraltree.alt_effect_name == vertical.alt_effect_name == "Lightning"
+        assert spiraltree.parameter_overrides == vertical.parameter_overrides
+        assert spiraltree.alt_parameter_overrides == vertical.alt_parameter_overrides
+        assert spiraltree.direction_field == vertical.direction_field
+        assert spiraltree.direction_ping_pong_values == vertical.direction_ping_pong_values
+        assert spiraltree.direction_alt_value == vertical.direction_alt_value
+        assert spiraltree.size_field == vertical.size_field
+        assert spiraltree.size_values == vertical.size_values
+
     def test_minitree_chorus_gets_white_group_chase_per_beat(self) -> None:
         result = _place(_make_section(label="chorus"), _MINITREE_GROUP)
         placements = result["06_PROP_Tree"]
