@@ -12,6 +12,16 @@ import { isBackendStale, isUpdateAvailable } from "../../lib/manifestStaleness";
  */
 
 const DOWNLOAD_PAGE_URL = "https://github.com/derwin12/xlights-autosequencer/releases";
+const ORIGINAL_IDEA_URL = "https://github.com/bobbyfriday/xlight-autosequencer";
+
+async function openExternal(url: string) {
+  try {
+    const { open } = await import("@tauri-apps/plugin-shell");
+    await open(url);
+  } catch {
+    window.open(url, "_blank");
+  }
+}
 
 /** Full 40-char hashes (bundled manifests) are trimmed; short dev hashes
  * keep their "-dirty" suffix intact. */
@@ -37,7 +47,7 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>XLight</h2>
+        <h2 className={styles.title}>xLights-Autosequencer</h2>
         <div className={styles.version}>
           {manifest?.app_version ?? "…"}
           {manifest?.target_arch ? ` · ${manifest.target_arch}` : null}
@@ -50,14 +60,7 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
         <div className={styles.links}>
           <button
             className={styles.linkBtn}
-            onClick={async () => {
-              try {
-                const { open } = await import("@tauri-apps/plugin-shell");
-                await open(DOWNLOAD_PAGE_URL);
-              } catch {
-                window.open(DOWNLOAD_PAGE_URL, "_blank");
-              }
-            }}
+            onClick={() => void openExternal(DOWNLOAD_PAGE_URL)}
           >
             Check for updates
           </button>
@@ -109,6 +112,17 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
             )}
           </div>
         )}
+
+        <div className={styles.credit}>
+          Maintained by DarylE. Original idea from{" "}
+          <button
+            className={styles.creditLink}
+            onClick={() => void openExternal(ORIGINAL_IDEA_URL)}
+          >
+            bobbyfriday
+          </button>
+          .
+        </div>
 
         <div className={styles.actions}>
           <button className={styles.btnPrimary} onClick={onClose}>
