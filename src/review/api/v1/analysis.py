@@ -895,12 +895,14 @@ def check_lyrics():
     body = request.get_json(silent=True) or {}
     title = str(body.get("title") or "").strip()
     artist = str(body.get("artist") or "").strip()
+    duration_ms = body.get("duration_ms")
+    duration_ms = int(duration_ms) if isinstance(duration_ms, (int, float)) and duration_ms > 0 else None
     if not title and not artist:
         return jsonify({"error": {"code": "missing_query",
                                    "message": "title and/or artist is required"}}), 400
 
     from src.analyzer.synced_lyrics import check_synced_lyrics_with_text
-    result, text = check_synced_lyrics_with_text(title, artist)
+    result, text = check_synced_lyrics_with_text(title, artist, duration_ms)
     if text:
         with _lyrics_cache_lock:
             _lyrics_cache[(title, artist)] = text
@@ -1078,6 +1080,8 @@ def commit_analyze(song_id: str):
     words_list = _carry_forward_field(result, session, "words", [])
     phonemes_list = _carry_forward_field(result, session, "phonemes", [])
     lyrics_warnings = _carry_forward_field(result, session, "lyrics_warnings", [])
+    image_suggestions = _carry_forward_field(result, session, "image_suggestions", [])
+    image_topics = _carry_forward_field(result, session, "image_topics", [])
 
     final_assignments = list(pending_assignments)  # start from suggested defaults
     for entry in assignment_mapping:
@@ -1107,6 +1111,8 @@ def commit_analyze(song_id: str):
             "words": words_list,
             "phonemes": phonemes_list,
             "lyrics_warnings": lyrics_warnings,
+            "image_suggestions": image_suggestions,
+            "image_topics": image_topics,
         })
     except Exception as exc:
         return jsonify({"error": {"code": "internal_error", "message": str(exc)}}), 500
@@ -1207,6 +1213,11 @@ def get_analysis(song_id: str):
             "detected_sections": session["sections"],
             "alt_boundaries": [], "beats": [], "bars": [], "impacts": [],
             "drops": [], "peaks": [], "detectors": [],
+            "words": session.get("words") or [],
+            "phonemes": session.get("phonemes") or [],
+            "lyrics_warnings": session.get("lyrics_warnings") or [],
+            "image_suggestions": session.get("image_suggestions") or [],
+            "image_topics": session.get("image_topics") or [],
             "completed_at": _now_iso(), "pipeline_version": "stub",
         }), 200
     return jsonify({"error": {"code": "not_analyzed",
@@ -1423,6 +1434,11 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
     session = load_session(song_id)
     lyrics_list = list((session or {}).get("lyrics") or [])
     lyrics_text_found = bool((session or {}).get("lyrics_text_found"))
+    words_list = list((session or {}).get("words") or [])
+    phonemes_list = list((session or {}).get("phonemes") or [])
+    lyrics_warnings = list((session or {}).get("lyrics_warnings") or [])
+    image_suggestions = list((session or {}).get("image_suggestions") or [])
+    image_topics = list((session or {}).get("image_topics") or [])
     if session and "sections" in session:
         sections = []
         for sec in session["sections"]:
@@ -1483,6 +1499,11 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
         "key_changes": key_changes_list,
         "lyrics": lyrics_list,
         "lyrics_text_found": lyrics_text_found,
+        "words": words_list,
+        "phonemes": phonemes_list,
+        "lyrics_warnings": lyrics_warnings,
+        "image_suggestions": image_suggestions,
+        "image_topics": image_topics,
         "value_curves": curves_out,
         "peaks": peaks,
         "detectors": detectors,

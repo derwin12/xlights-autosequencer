@@ -4187,3 +4187,75 @@ def _place_floodlight_pulses(
         result.setdefault(member, []).append(p)
 
     return result
+
+
+# Hihat-driven individual floodlight accent, user request 2026-07-22. Unlike
+# _place_floodlight_pulses (a rare kick-roll flourish, deliberately filtered
+# down to occasional moments), this wires hierarchy.hihat_hits directly --
+# every classified hihat onset rotates to the next floodlight in turn, no
+# burst/rarity filtering. hihat_hits is already a validated per-instrument
+# classification (drum_classifier.py), not a fresh detector, and its density
+# varies naturally by song (sparse on some tracks, closer to continuous
+# 8th-note chase on others) rather than needing to be forced rare. No vocal
+# exclusion: this is a background rhythmic texture riding under the whole
+# song, not a single discrete accent competing with a lyric moment the way
+# crash/riff/kick accents are.
+_FLOODLIGHT_HIHAT_DURATION_MS = 120
+_FLOODLIGHT_HIHAT_FADE_IN_MS = 15
+_FLOODLIGHT_HIHAT_FADE_OUT_MS = 40
+
+
+def _place_floodlight_hihat_accents(
+    groups: list[PowerGroup],
+    hierarchy: HierarchyResult,
+    fade_exclusion_start_ms: Optional[int] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a very short white "On" tick on one individual floodlight at
+    each classified hihat hit (``hierarchy.hihat_hits``), rotating through
+    every floodlight-family member -- same rotation strategy as
+    ``_place_floodlight_pulses``/``_place_star_bursts`` (bug-514), just
+    driven directly by the raw hihat track instead of a derived rare-burst
+    detector.
+
+    Song-scoped like its siblings, not routed through the per-section
+    pipeline.
+    """
+    result: dict[str, list[EffectPlacement]] = {}
+    if not hierarchy.hihat_hits:
+        return result
+
+    floodlight_groups = [g for g in groups if "floodlight" in g.name.lower()]
+    if not floodlight_groups:
+        return result
+
+    floodlight_members = [
+        member for g in floodlight_groups for member in (g.members or [g.name])
+    ]
+
+    member_idx = 0
+    for mark in hierarchy.hihat_hits:
+        if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
+            continue
+        start_ms = mark.time_ms
+        end_ms = min(mark.time_ms + _FLOODLIGHT_HIHAT_DURATION_MS, hierarchy.duration_ms)
+        if end_ms <= start_ms:
+            continue
+        member = floodlight_members[member_idx % len(floodlight_members)]
+        member_idx += 1
+        p = EffectPlacement(
+            effect_name="On",
+            xlights_id="eff_ON",
+            model_or_group=member,
+            start_ms=start_ms,
+            end_ms=end_ms,
+            parameters={},
+            color_palette=["#FFFFFF"],
+            fade_in_ms=_FLOODLIGHT_HIHAT_FADE_IN_MS,
+            fade_out_ms=_FLOODLIGHT_HIHAT_FADE_OUT_MS,
+        )
+        # xLights renders the FIRST EffectLayer on top (bug-248); a
+        # negative index sorts above the recipe's layers 0-2.
+        p.layer = -1
+        result.setdefault(member, []).append(p)
+
+    return result

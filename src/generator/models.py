@@ -294,6 +294,15 @@ class GenerationConfig:
     # crash_accents), and synthetic-burst unit tests confirm the detector
     # fires correctly when the underlying kick-roll signal exists.
     floodlight_pulses: bool = True
+    # Short "On" tick on one individual floodlight at every classified hihat
+    # hit (hierarchy.hihat_hits), rotating through every floodlight the same
+    # way floodlight_pulses/riff_bursts do. Unlike floodlight_pulses (a rare
+    # kick-roll flourish), this wires the raw hihat track directly -- no
+    # burst filtering -- since hihat_hits is already a validated per-
+    # instrument classification, not an experimental detector. Default False
+    # pending real-world listening on a generated sequence before enabling
+    # broadly — same rollout discipline as riff_bursts/floodlight_pulses.
+    floodlight_hihat_accents: bool = False
     # Nominal fields (spec 047) — stored but not read in Phase 3. Phase 4
     # (spec 048 follow-up) will wire them into build_plan/theme_selector so
     # the Brief tab can drop its client-side MOOD_DEFAULTS ruleset.
