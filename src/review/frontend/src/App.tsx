@@ -532,6 +532,27 @@ export default function App() {
       .catch(() => {});
   }, [upsertSong]);
 
+  // Create a new library folder. Returns an error message string on
+  // failure (e.g. duplicate name) so the rail can show it inline, or null
+  // on success.
+  const handleCreateFolder = useCallback(async (name: string): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/v1/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        return body?.error?.message ?? 'Failed to create folder';
+      }
+      setFolders([...folders, body]);
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Failed to create folder';
+    }
+  }, [folders, setFolders]);
+
   // T099: remove from library → cache purge dialog
   const handleRemoveSong = useCallback((song: Song) => {
     fetch(`/api/v1/songs/${song.song_id}`, { method: 'DELETE' })
@@ -546,6 +567,18 @@ export default function App() {
       })
       .catch(() => {});
   }, [songs, setSongs]);
+
+  // Delete a folder: backend moves its songs to Unfiled, then mirror that
+  // locally so the rail doesn't have to wait on a refetch.
+  const handleRemoveFolder = useCallback((folderId: string) => {
+    fetch(`/api/v1/folders/${folderId}`, { method: 'DELETE' })
+      .then((r) => {
+        if (!r.ok) return;
+        setFolders(folders.filter((f) => (f.folder_id ?? (f as any).id) !== folderId));
+        setSongs(songs.map((s) => (s.folder_id === folderId ? { ...s, folder_id: 'unfiled' } : s)));
+      })
+      .catch(() => {});
+  }, [folders, setFolders, songs, setSongs]);
 
   const handlePurgeCache = useCallback((songId: string) => {
     fetch(`/api/v1/songs/${songId}/purge`, {
@@ -698,6 +731,8 @@ export default function App() {
         onSelectSong={handleSelectSong}
         onSongMoved={handleSongMoved}
         onRemoveSong={handleRemoveSong}
+        onCreateFolder={handleCreateFolder}
+        onRemoveFolder={handleRemoveFolder}
       >
         {renderScreen()}
       </Chrome>

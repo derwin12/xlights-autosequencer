@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Chrome } from 'src/components/Chrome/Chrome';
 
 describe('Chrome', () => {
@@ -143,5 +143,92 @@ describe('Chrome LibraryRail (T097)', () => {
       </Chrome>,
     );
     expect(screen.queryByTestId('library-rail')).toBeNull();
+  });
+
+  it('does not show a New Folder control without an onCreateFolder handler', () => {
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS}>
+        <div />
+      </Chrome>,
+    );
+    expect(screen.queryByTestId('new-folder-button')).toBeNull();
+  });
+
+  it('shows a name input when New Folder is clicked, and creates on Enter', async () => {
+    const onCreateFolder = vi.fn().mockResolvedValue(null);
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS} onCreateFolder={onCreateFolder}>
+        <div />
+      </Chrome>,
+    );
+    fireEvent.click(screen.getByTestId('new-folder-button'));
+    const input = screen.getByTestId('new-folder-input');
+    fireEvent.change(input, { target: { value: 'Halloween' } });
+    await act(async () => { fireEvent.keyDown(input, { key: 'Enter' }); });
+
+    expect(onCreateFolder).toHaveBeenCalledWith('Halloween');
+  });
+
+  it('shows the server error inline when folder creation fails', async () => {
+    const onCreateFolder = vi.fn().mockResolvedValue('A folder with this name already exists');
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS} onCreateFolder={onCreateFolder}>
+        <div />
+      </Chrome>,
+    );
+    fireEvent.click(screen.getByTestId('new-folder-button'));
+    const input = screen.getByTestId('new-folder-input');
+    fireEvent.change(input, { target: { value: 'Christmas' } });
+    await act(async () => { fireEvent.keyDown(input, { key: 'Enter' }); });
+
+    expect(await screen.findByText(/already exists/i)).toBeTruthy();
+    // Input stays open so the user can fix the name rather than losing it.
+    expect(screen.getByTestId('new-folder-input')).toBeTruthy();
+  });
+
+  it('cancels on Escape without calling onCreateFolder', () => {
+    const onCreateFolder = vi.fn();
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS} onCreateFolder={onCreateFolder}>
+        <div />
+      </Chrome>,
+    );
+    fireEvent.click(screen.getByTestId('new-folder-button'));
+    const input = screen.getByTestId('new-folder-input');
+    fireEvent.change(input, { target: { value: 'Halloween' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+
+    expect(onCreateFolder).not.toHaveBeenCalled();
+    expect(screen.getByTestId('new-folder-button')).toBeTruthy();
+  });
+
+  it('does not show a delete control on any folder without an onRemoveFolder handler', () => {
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS}>
+        <div />
+      </Chrome>,
+    );
+    expect(screen.queryByTestId('remove-folder-xmas')).toBeNull();
+  });
+
+  it('shows a delete control on a regular folder and calls onRemoveFolder on click', () => {
+    const onRemoveFolder = vi.fn();
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS} onRemoveFolder={onRemoveFolder}>
+        <div />
+      </Chrome>,
+    );
+    fireEvent.click(screen.getByTestId('remove-folder-xmas'));
+    expect(onRemoveFolder).toHaveBeenCalledWith('xmas');
+  });
+
+  it('never shows a delete control on the reserved Unfiled folder', () => {
+    const onRemoveFolder = vi.fn();
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS} onRemoveFolder={onRemoveFolder}>
+        <div />
+      </Chrome>,
+    );
+    expect(screen.queryByTestId('remove-folder-unfiled')).toBeNull();
   });
 });

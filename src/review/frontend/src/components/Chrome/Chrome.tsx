@@ -49,9 +49,11 @@ interface Props {
   onSelectSong?: (song: Song, screen: string) => void;
   onSongMoved?: (songId: string, targetFolderId: string) => void;
   onRemoveSong?: (song: Song) => void;
+  onCreateFolder?: (name: string) => Promise<string | null>;
+  onRemoveFolder?: (folderId: string) => void;
 }
 
-export function Chrome({ activeScreen, onNavigate, children, songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong }: Props) {
+export function Chrome({ activeScreen, onNavigate, children, songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong, onCreateFolder, onRemoveFolder }: Props) {
   const showRail = songs && folders && songs.length > 0;
   const [railCollapsed, setRailCollapsed] = React.useState<boolean>(() => {
     try { return localStorage.getItem('xonset.railCollapsed') === '1'; }
@@ -153,6 +155,8 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
               onSelectSong={onSelectSong}
               onSongMoved={onSongMoved}
               onRemoveSong={onRemoveSong}
+              onCreateFolder={onCreateFolder}
+              onRemoveFolder={onRemoveFolder}
             />
           </div>
         )}
@@ -172,14 +176,40 @@ interface RailProps {
   onSelectSong?: (song: Song, screen: string) => void;
   onSongMoved?: (songId: string, targetFolderId: string) => void;
   onRemoveSong?: (song: Song) => void;
+  onCreateFolder?: (name: string) => Promise<string | null>;
+  onRemoveFolder?: (folderId: string) => void;
 }
 
-function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong }: RailProps) {
+function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong, onCreateFolder, onRemoveFolder }: RailProps) {
   const [collapsedFolders, setCollapsedFolders] = React.useState<Set<string>>(
     () => new Set(folders.filter((f) => f.collapsed).map((f) => (f as any).folder_id ?? (f as any).id)),
   );
   const [dragOverFolder, setDragOverFolder] = React.useState<string | null>(null);
   const dragSongId = React.useRef<string | null>(null);
+  const [creatingFolder, setCreatingFolder] = React.useState(false);
+  const [newFolderName, setNewFolderName] = React.useState('');
+  const [createError, setCreateError] = React.useState<string | null>(null);
+  const [creating, setCreating] = React.useState(false);
+
+  async function submitNewFolder() {
+    const name = newFolderName.trim();
+    if (!name) {
+      setCreatingFolder(false);
+      setCreateError(null);
+      return;
+    }
+    if (!onCreateFolder) return;
+    setCreating(true);
+    const errorMessage = await onCreateFolder(name);
+    setCreating(false);
+    if (errorMessage) {
+      setCreateError(errorMessage);
+      return;
+    }
+    setCreatingFolder(false);
+    setNewFolderName('');
+    setCreateError(null);
+  }
 
   // Build folder → songs map
   const songsByFolder = React.useMemo(() => {
@@ -244,28 +274,49 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
             style={{ background: isDragTarget ? 'rgba(74,222,128,0.05)' : undefined }}
           >
             {/* Folder header */}
-            <button
-              onClick={() => toggleFolder(folderId)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-text-muted, #888)',
-                fontWeight: 600,
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                padding: '6px 12px',
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
-              {folder.name}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <button
+                onClick={() => toggleFolder(folderId)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted, #888)',
+                  fontWeight: 600,
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  padding: '6px 12px',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
+                {folder.name}
+              </button>
+              {onRemoveFolder && folderId !== 'unfiled' && (
+                <button
+                  data-testid={`remove-folder-${folderId}`}
+                  onClick={(e) => { e.stopPropagation(); onRemoveFolder(folderId); }}
+                  title="Delete folder"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted, #888)',
+                    fontSize: 12,
+                    padding: '0 12px 0 4px',
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
 
             {!isCollapsed && folderSongs.map((song) => (
               <RailSongItem
@@ -280,6 +331,60 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
           </div>
         );
       })}
+
+      {onCreateFolder && (
+        creatingFolder ? (
+          <div style={{ padding: '6px 12px' }}>
+            <input
+              data-testid="new-folder-input"
+              autoFocus
+              value={newFolderName}
+              disabled={creating}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitNewFolder();
+                if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); setCreateError(null); }
+              }}
+              onBlur={submitNewFolder}
+              placeholder="Folder name"
+              style={{
+                width: '100%',
+                background: 'var(--color-surface-2, #1e1e24)',
+                border: '1px solid var(--color-accent, #4ade80)',
+                borderRadius: 4,
+                color: 'var(--color-text, #f5f5f0)',
+                fontSize: 12,
+                padding: '4px 6px',
+              }}
+            />
+            {createError && (
+              <p style={{ color: 'var(--color-error, #ef4444)', fontSize: 11, margin: '4px 0 0' }}>
+                {createError}
+              </p>
+            )}
+          </div>
+        ) : (
+          <button
+            data-testid="new-folder-button"
+            onClick={() => { setCreatingFolder(true); setCreateError(null); }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-muted, #888)',
+              fontSize: 11,
+              padding: '6px 12px',
+              textAlign: 'left',
+            }}
+          >
+            + New Folder
+          </button>
+        )
+      )}
     </aside>
   );
 }
