@@ -135,6 +135,54 @@ def test_run_pipeline_threads_video_path_into_config(monkeypatch, tmp_path):
     assert config.video_path == video
 
 
+def test_run_pipeline_threads_story_path_into_config(monkeypatch, tmp_path):
+    """story_path (the already-classified section roles/energies written by
+    the review/analyze flow) must reach GenerationConfig so build_plan()
+    uses it instead of re-deriving unclassified section energies from raw
+    detector boundaries (fixed 2026-07-21 -- this was the root cause of
+    "Sections" showing raw segmentino/QM labels like N1/A_1/qm_boundary
+    instead of verse/chorus in the exported .xsq)."""
+    from types import SimpleNamespace
+
+    captured: dict = {}
+
+    monkeypatch.setattr("src.analyzer.orchestrator.run_orchestrator",
+                        lambda *a, **k: object())
+    monkeypatch.setattr("src.grouper.layout.parse_layout",
+                        lambda p: SimpleNamespace(props=[]))
+    monkeypatch.setattr("src.grouper.classifier.normalize_coords", lambda props: None)
+    monkeypatch.setattr("src.grouper.classifier.classify_props", lambda props: None)
+    monkeypatch.setattr("src.grouper.grouper.generate_groups", lambda props: [])
+    monkeypatch.setattr("src.effects.library.load_effect_library", lambda: object())
+    monkeypatch.setattr("src.variants.library.load_variant_library",
+                        lambda **k: object())
+    monkeypatch.setattr("src.themes.library.load_theme_library", lambda **k: object())
+
+    def fake_build_plan(config, *a, **k):
+        captured["config"] = config
+        return object()
+
+    def fake_write_xsq(plan, output_path, **k):
+        Path(output_path).write_bytes(b"<xsequence/>")
+
+    monkeypatch.setattr("src.generator.plan.build_plan", fake_build_plan)
+    monkeypatch.setattr("src.generator.xsq_writer.write_xsq", fake_write_xsq)
+
+    from src.evaluation.generator_runner import _run_pipeline
+
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"x")
+    layout = tmp_path / "l.xml"
+    layout.write_bytes(b"<x/>")
+    story = tmp_path / "a_story.json"
+    story.write_text('{"sections": []}')
+
+    _run_pipeline(audio, layout, seed=1, story_path=story)
+
+    config = captured["config"]
+    assert config.story_path == story
+
+
 def test_run_pipeline_passes_layout_into_build_plan(monkeypatch, tmp_path):
     """build_plan's layout kwarg must receive the parsed Layout object, not
     the default None -- Moving Head placement is gated on

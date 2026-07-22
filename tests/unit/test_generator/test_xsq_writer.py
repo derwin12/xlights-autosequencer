@@ -1520,6 +1520,121 @@ class TestLyricLayeredTimingTrack:
         assert [e.get("label") for e in layers[1].findall("Effect")] == ["HELLO", "WORLD"]
 
 
+class TestSectionRoleLabels:
+    """The "Sections" timing track uses classified section roles
+    (verse/chorus/bridge/...) from plan.sections, not the raw segmentino/
+    QM-segmenter labels (letters, N#, "qm_boundary") -- user request
+    2026-07-21: the raw letters weren't meaningful in xLights."""
+
+    def test_sections_track_uses_role_labels(self, tmp_path: Path) -> None:
+        # _make_plan()'s two sections are labeled "verse" and "chorus".
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out)
+        root = ET.parse(out).getroot()
+        effect_els = root.find("ElementEffects").findall("Element")
+        sections_el = [e for e in effect_els
+                       if e.get("type") == "timing" and e.get("name") == "Sections"][0]
+        labels = [e.get("label") for e in sections_el.findall("EffectLayer")[0].findall("Effect")]
+        assert labels == ["verse", "chorus"]
+
+    def test_repeated_roles_get_numeric_suffix(self, tmp_path: Path) -> None:
+        plan = _make_plan()
+        plan.sections[0].section.label = "verse"
+        plan.sections[1].section.label = "verse"
+        out = tmp_path / "test.xsq"
+        write_xsq(plan, out)
+        root = ET.parse(out).getroot()
+        effect_els = root.find("ElementEffects").findall("Element")
+        sections_el = [e for e in effect_els
+                       if e.get("type") == "timing" and e.get("name") == "Sections"][0]
+        labels = [e.get("label") for e in sections_el.findall("EffectLayer")[0].findall("Effect")]
+        assert labels == ["verse_1", "verse_2"]
+
+    def test_sections_track_written_without_a_hierarchy(self, tmp_path: Path) -> None:
+        # Role labels come from plan.sections, not hierarchy -- must appear
+        # even when no HierarchyResult is passed to write_xsq at all.
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, hierarchy=None)
+        root = ET.parse(out).getroot()
+        names = {e.get("name") for e in root.find("ElementEffects").findall("Element")
+                 if e.get("type") == "timing"}
+        assert "Sections" in names
+
+    def test_no_sections_omits_the_track(self, tmp_path: Path) -> None:
+        plan = _make_plan()
+        plan.sections = []
+        out = tmp_path / "test.xsq"
+        write_xsq(plan, out)
+        root = ET.parse(out).getroot()
+        names = {e.get("name") for e in root.find("ElementEffects").findall("Element")
+                 if e.get("type") == "timing"}
+        assert "Sections" not in names
+
+
+class TestVocalDiarizationBackupTrack:
+    """vocal_diarization=True splits words/phonemes tagged speaker=1 into a
+    second "Lyrics - Backup" 3-layer timing track."""
+
+    WORDS = [
+        {"label": "HELLO", "start_ms": 1000, "end_ms": 1400, "speaker": 0},
+        {"label": "WORLD", "start_ms": 9000, "end_ms": 9500, "speaker": 1},
+    ]
+    PHONEMES = [
+        {"label": "E", "start_ms": 1000, "end_ms": 1200},
+        {"label": "O", "start_ms": 1200, "end_ms": 1400},
+        {"label": "L", "start_ms": 9000, "end_ms": 9250},
+        {"label": "D", "start_ms": 9250, "end_ms": 9500},
+    ]
+
+    def test_backup_track_written_when_enabled(self, tmp_path: Path) -> None:
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, words=self.WORDS, phonemes=self.PHONEMES,
+                  vocal_diarization=True)
+        root = ET.parse(out).getroot()
+        effect_els = root.find("ElementEffects").findall("Element")
+
+        lead_el = [e for e in effect_els
+                   if e.get("type") == "timing" and e.get("name") == "Lyrics"][0]
+        backup_el = [e for e in effect_els
+                     if e.get("type") == "timing" and e.get("name") == "Lyrics - Backup"][0]
+
+        lead_layers = lead_el.findall("EffectLayer")
+        backup_layers = backup_el.findall("EffectLayer")
+        assert [e.get("label") for e in lead_layers[1].findall("Effect")] == ["HELLO"]
+        assert [e.get("label") for e in lead_layers[2].findall("Effect")] == ["E", "O"]
+        assert [e.get("label") for e in backup_layers[1].findall("Effect")] == ["WORLD"]
+        assert [e.get("label") for e in backup_layers[2].findall("Effect")] == ["L", "D"]
+
+        display_names = {
+            e.get("name") for e in root.find("DisplayElements").findall("Element")
+            if e.get("type") == "timing"
+        }
+        assert "Lyrics - Backup" in display_names
+
+    def test_flag_off_keeps_single_combined_track(self, tmp_path: Path) -> None:
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, words=self.WORDS, phonemes=self.PHONEMES,
+                  vocal_diarization=False)
+        root = ET.parse(out).getroot()
+        effect_els = root.find("ElementEffects").findall("Element")
+        names = {e.get("name") for e in effect_els if e.get("type") == "timing"}
+        assert "Lyrics - Backup" not in names
+        lyrics_el = [e for e in effect_els
+                     if e.get("type") == "timing" and e.get("name") == "Lyrics"][0]
+        assert [e.get("label") for e in lyrics_el.findall("EffectLayer")[1].findall("Effect")] \
+            == ["HELLO", "WORLD"]
+
+    def test_no_speaker_one_words_keeps_single_combined_track(self, tmp_path: Path) -> None:
+        words = [{"label": "HELLO", "start_ms": 1000, "end_ms": 1400, "speaker": 0}]
+        phonemes = [{"label": "E", "start_ms": 1000, "end_ms": 1400}]
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, words=words, phonemes=phonemes, vocal_diarization=True)
+        root = ET.parse(out).getroot()
+        names = {e.get("name") for e in root.find("ElementEffects").findall("Element")
+                 if e.get("type") == "timing"}
+        assert "Lyrics - Backup" not in names
+
+
 class TestFacesAndTextEffectSerialization:
     """Faces/Text placements merge the real-xLights defaults with per-placement params."""
 

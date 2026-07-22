@@ -337,8 +337,12 @@ def build_plan(
     # no assignments at all) still renders them.
     vocal_effects: dict[str, list] = {}
     if config.vocal_words:
-        vocal_effects = _place_singing_faces(effect_props, config.vocal_words)
-        for gname, placements in _place_lyric_text(effect_props, config.vocal_words).items():
+        vocal_effects = _place_singing_faces(
+            effect_props, config.vocal_words, config.vocal_diarization,
+        )
+        for gname, placements in _place_lyric_text(
+            effect_props, config.vocal_words, config.vocal_diarization,
+        ).items():
             vocal_effects.setdefault(gname, []).extend(placements)
 
     # 5c. Imported video on a matrix (config.video_path). Song-scoped,

@@ -5,16 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.analyzer.result import TimingMark, TimingTrack
-from src.generator.models import SectionAssignment, SectionEnergy
+from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy
 from src.generator.moving_head import (
     _choose_lit_pair,
     _choose_move,
     _DIMMER_FULL_ON,
     _DIMMER_OFF,
+    _free_windows,
     _FULL_HEADS_ENERGY_GATE,
     _jitter,
     _MAX_MOVE_DURATION_MS,
     _MIN_SECTION_DURATION_MS,
+    _MIN_SPLIT_SEGMENT_MS,
     _MIN_WARMUP_DURATION_MS,
     _MOVE_BAR_CAP,
     _PREFERRED_WARMUP_DURATION_MS,
@@ -138,6 +140,144 @@ class TestPlaceMovingHeadMoves:
         assert f"Dimmer: {_DIMMER_OFF}" in move_settings("MH2", 2)
         assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH3", 3)
         assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH4", 4)
+
+    def test_static_held_move_alternates_full_and_half_lit_per_bar(self):
+        # User request (2026-07-22): a long held static pose (e.g.
+        # l_r_static) read as boring -- alternate all-4-heads-lit /
+        # half-heads-lit per bar instead of one flat 4-heads-lit hold for
+        # the whole move. Bar 0 (first bar) is always full; bars after
+        # that alternate. Purely a Dimmer toggle -- Pan/Tilt/PanOffset
+        # never change (same held pose throughout).
+        # role="chorus" + energy=40 -> qualifies via role, dynamic=False
+        # (40 < _STRONG_ENERGY_GATE) -> static pool. variation_seed=1,
+        # section_index=0 -> static pool index 1 ("l_r_static", per_head).
+        # toggle_pair = _choose_lit_pair(0, variation_seed+1=2) = (1, 4) --
+        # MH1/MH4 stay lit every bar, MH2/MH3 toggle off on odd bars.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=1)]
+        bars = _bars(2_000, 5)  # bar marks at 0, 2000, 4000, 6000, 8000
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+
+        def dimmer_states(head_name, head_index):
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            placements = sorted(
+                (p for p in result[head_name] if "Shutter: On" in p.parameters[key]),
+                key=lambda p: p.start_ms,
+            )
+            return [
+                "full" if f"Dimmer: {_DIMMER_FULL_ON}" in p.parameters[key]
+                else "off" if f"Dimmer: {_DIMMER_OFF}" in p.parameters[key]
+                else "?"
+                for p in placements
+            ]
+
+        assert dimmer_states("MH1", 1) == ["full", "full", "full", "full"]
+        assert dimmer_states("MH4", 4) == ["full", "full", "full", "full"]
+        assert dimmer_states("MH2", 2) == ["full", "off", "full", "off"]
+        assert dimmer_states("MH3", 3) == ["full", "off", "full", "off"]
+
+        # Position never changes across bars for the toggling heads --
+        # only Dimmer varies.
+        key2 = "E_TEXTCTRL_MH2_Settings"
+        placements2 = sorted(
+            (p for p in result["MH2"] if "Shutter: On" in p.parameters[key2]),
+            key=lambda p: p.start_ms,
+        )
+        pan_tilt = {p.parameters[key2].split("Pan:")[1].split(";Tilt")[0] for p in placements2}
+        assert len(pan_tilt) == 1  # identical Pan value on every bar
+
+    def test_short_static_move_under_one_bar_is_unaffected(self):
+        # A move too short to contain more than one bar shouldn't split at
+        # all -- degrades to the original single-placement behavior.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=1)]
+        bars = _bars(20_000, 3)  # bar marks far apart -- none fall inside the move
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+        for head_name, head_index in (("MH1", 1), ("MH2", 2)):
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            moves = [p for p in result[head_name] if "Shutter: On" in p.parameters[key]]
+            assert len(moves) == 1
+
+    def test_group_static_held_move_also_alternates_per_bar(self):
+        # Same bar-level 4-heads/2-heads alternation as the per-head test
+        # above, but for a group-targeted static move (fan_pan_static) --
+        # user-reported 2026-07-22: a real generated .xsq showed this
+        # specific move flat/unmodified even after the per-head fix, since
+        # fan_pan_static is target="group", not "per_head". All 4 heads'
+        # settings are combined into ONE "MH GRP" effect per bar, with
+        # different Dimmer values per head slot (confirmed against two
+        # real reference-sequence samples pasted directly by the user).
+        # variation_seed=0, static_occurrence=0 -> static pool index 0
+        # ("fan_pan_static", group). toggle_pair =
+        # _choose_lit_pair(0, variation_seed+1=1) = (3, 4).
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=0)]
+        bars = _bars(2_000, 5)  # bar marks at 0, 2000, 4000, 6000, 8000
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+        assert set(result) == {"MH GRP"}
+
+        def dimmer_states_by_head():
+            placements = sorted(
+                (p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]),
+                key=lambda p: p.start_ms,
+            )
+            per_head = {i: [] for i in range(1, 5)}
+            for p in placements:
+                for i in range(1, 5):
+                    text = p.parameters[f"E_TEXTCTRL_MH{i}_Settings"]
+                    per_head[i].append(
+                        "full" if f"Dimmer: {_DIMMER_FULL_ON}" in text
+                        else "off" if f"Dimmer: {_DIMMER_OFF}" in text
+                        else "?"
+                    )
+            return per_head
+
+        states = dimmer_states_by_head()
+        assert states[3] == ["full", "full", "full", "full"]
+        assert states[4] == ["full", "full", "full", "full"]
+        assert states[1] == ["full", "off", "full", "off"]
+        assert states[2] == ["full", "off", "full", "off"]
+
+    def test_group_toggle_still_applies_when_lit_pair_is_active_elsewhere(self):
+        # Regression for the actual bug (2026-07-22): group_toggle_pair was
+        # originally gated by `lit_pair is None`, but lit_pair only ever
+        # affects the PER-HEAD branch (_reduce_to_lit_pair) -- group moves
+        # always write the same pose into every head slot regardless of
+        # lit_pair. That gating meant the group toggle silently never fired
+        # for any section that wasn't at/near the song's peak energy, i.e.
+        # most real sections (user's real export: a 53-energy chorus with a
+        # much louder section elsewhere in the song never toggled).
+        # A second, much louder section establishes a song peak the first
+        # section's energy=40 sits well below (peak - _RELATIVE_PEAK_MARGIN),
+        # so lit_pair is active (non-None) for the first section -- yet the
+        # group toggle must still alternate.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [
+            _assignment("chorus", 0, 8_000, 40, variation_seed=0),
+            _assignment("chorus", 100_000, 108_000, 95, variation_seed=0),
+        ]
+        bars = _bars(2_000, 55)  # bar marks every 2s through 108s
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+        assert "MH GRP" in result
+
+        placements = sorted(
+            (p for p in result["MH GRP"]
+             if p.start_ms < 8_000 and "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]),
+            key=lambda p: p.start_ms,
+        )
+        assert len(placements) > 1, "expected the bar-toggle split, not one flat placement"
+
+        def state(p, head_index):
+            text = p.parameters[f"E_TEXTCTRL_MH{head_index}_Settings"]
+            if f"Dimmer: {_DIMMER_FULL_ON}" in text:
+                return "full"
+            if f"Dimmer: {_DIMMER_OFF}" in text:
+                return "off"
+            return "?"
+
+        # At least one head must actually toggle off in an odd bar --
+        # proving the group placement isn't just the old flat all-full output.
+        assert any(state(p, i) == "off" for p in placements[1::2] for i in range(1, 5))
 
     def test_consistently_intense_song_never_reduces_below_own_peak(self):
         # User concern (2026-07-18): a song that's intense throughout but
@@ -413,7 +553,12 @@ class TestPlaceMovingHeadMoves:
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [
             _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move, natural end 15_000
-            _assignment("chorus", 10_000, 25_000, 40, variation_seed=0),  # per_head l_r_static, natural start 10_000
+            # variation_seed=1 (not 0): with the per-pool qualifying-occurrence
+            # counter fix (2026-07-21), the FIRST static-qualifying section at
+            # variation_seed=0 would land on _STATIC_MOVES[0] ("fan_pan_static",
+            # also a group move) -- seed=1 shifts it to index 1 ("l_r_static",
+            # per_head), matching what this test actually exercises.
+            _assignment("chorus", 10_000, 25_000, 40, variation_seed=1),  # per_head l_r_static, natural start 10_000
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
@@ -544,7 +689,9 @@ class TestPlaceMovingHeadMoves:
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [
             _assignment("verse", 0, 15_000, _STRONG_ENERGY_GATE, variation_seed=0),  # group fan_pan_move
-            _assignment("chorus", 1_500, 25_000, 40, variation_seed=0),  # per_head l_r_static
+            # variation_seed=1: see comment in
+            # test_per_head_move_trims_prior_group_moves_tail_to_open_warmup_gap
+            _assignment("chorus", 1_500, 25_000, 40, variation_seed=1),  # per_head l_r_static
         ]
         result = place_moving_head_moves(layout, assignments)
         group_move = result["MH GRP"][0]
@@ -607,3 +754,157 @@ class TestMoveBarCap:
         result = place_moving_head_moves(layout, assignments, bars=None)
         move = result["MH1"][-1]
         assert move.end_ms == _MAX_MOVE_DURATION_MS
+
+
+class TestQualifyingOccurrenceRotation:
+    """_choose_move must be indexed by a per-pool qualifying-occurrence
+    counter, not the absolute section index -- otherwise a regular stride
+    between qualifying sections aliases onto a subset of pool slots for the
+    whole song (same failure shape as bug-346/bug-182/bug-188), and since
+    both pools put their "group" move at index 0, an aliased rotation can
+    make the group move dominate almost the entire song instead of its
+    intended 1-in-4/1-in-8 share (user-reported 2026-07-21)."""
+
+    def test_every_dynamic_slot_reachable_across_consecutive_occurrences(self):
+        from src.generator.moving_head import _DYNAMIC_MOVES
+        seen = {
+            _choose_move(i, variation_seed=0, dynamic=True)
+            for i in range(len(_DYNAMIC_MOVES))
+        }
+        assert seen == set(_DYNAMIC_MOVES)
+
+    def test_every_static_slot_reachable_across_consecutive_occurrences(self):
+        from src.generator.moving_head import _STATIC_MOVES
+        seen = {
+            _choose_move(i, variation_seed=0, dynamic=False)
+            for i in range(len(_STATIC_MOVES))
+        }
+        assert seen == set(_STATIC_MOVES)
+
+    def test_group_move_does_not_dominate_regularly_spaced_qualifying_sections(self):
+        # Reproduces the reported bug: qualifying "chorus" sections at a
+        # fixed stride (chorus/verse/chorus/verse/...), all landing on the
+        # same "dynamic" pool. Before the fix, aliasing on the absolute
+        # section_index could make EVERY one of these pick the group move
+        # (fan_pan_move, pool index 0); after the fix, the qualifying-
+        # occurrence counter must cycle through the pool normally.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = []
+        t = 0
+        for i in range(8):
+            if i % 2 == 0:
+                assignments.append(_assignment("chorus", t, t + 20_000, _STRONG_ENERGY_GATE, variation_seed=0))
+            else:
+                assignments.append(_assignment("verse", t, t + 20_000, 10, variation_seed=0))
+            t += 20_000
+        result = place_moving_head_moves(layout, assignments)
+
+        group_move_count = len(result.get("MH GRP", []))
+        # 4 qualifying (chorus) sections in the dynamic pool of 4 moves,
+        # only 1 of which ("fan_pan_move") targets the group -- must not
+        # produce a group move for every single qualifying section.
+        assert group_move_count < 4, (
+            f"Expected group moves to rotate away from fan_pan_move sometimes, "
+            f"got {group_move_count} group-move placements across 4 qualifying sections"
+        )
+
+
+def _obstacle(model: str, start_ms: int, end_ms: int) -> EffectPlacement:
+    return EffectPlacement(
+        effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+        model_or_group=model, start_ms=start_ms, end_ms=end_ms,
+    )
+
+
+class TestFreeWindows:
+    """_free_windows splits a section's natural window around obstacles
+    instead of an all-or-nothing overlap check (user-reported 2026-07-21:
+    a song whose lyrics repeat "shake" throughout the chorus had every
+    chorus/pre_chorus move dropped entirely, one scattered 250ms
+    keyword-accent pulse at a time)."""
+
+    def test_no_obstacles_returns_whole_window(self):
+        assert _free_windows(0, 10_000, []) == [(0, 10_000)]
+
+    def test_single_obstacle_in_middle_splits_into_two(self):
+        blocking = [_obstacle("MH GRP", 4_000, 4_250)]
+        assert _free_windows(0, 10_000, blocking) == [(0, 4_000), (4_250, 10_000)]
+
+    def test_obstacle_covering_entire_window_yields_nothing(self):
+        blocking = [_obstacle("MH GRP", 0, 10_000)]
+        assert _free_windows(0, 10_000, blocking) == []
+
+    def test_obstacle_at_the_very_start(self):
+        blocking = [_obstacle("MH GRP", 0, 500)]
+        assert _free_windows(0, 10_000, blocking) == [(500, 10_000)]
+
+    def test_obstacle_at_the_very_end(self):
+        blocking = [_obstacle("MH GRP", 9_500, 10_000)]
+        assert _free_windows(0, 10_000, blocking) == [(0, 9_500)]
+
+    def test_multiple_scattered_obstacles(self):
+        # Mirrors the real scenario: several short "shake" pulses through
+        # a single chorus section.
+        blocking = [
+            _obstacle("MH GRP", 2_000, 2_250),
+            _obstacle("MH GRP", 5_000, 5_250),
+            _obstacle("MH GRP", 8_000, 8_250),
+        ]
+        assert _free_windows(0, 10_000, blocking) == [
+            (0, 2_000), (2_250, 5_000), (5_250, 8_000), (8_250, 10_000),
+        ]
+
+    def test_overlapping_obstacles_merge(self):
+        blocking = [
+            _obstacle("MH GRP", 2_000, 3_000),
+            _obstacle("MH1", 2_500, 3_500),
+        ]
+        assert _free_windows(0, 10_000, blocking) == [(0, 2_000), (3_500, 10_000)]
+
+    def test_obstacle_outside_window_ignored(self):
+        blocking = [_obstacle("MH GRP", 20_000, 21_000)]
+        assert _free_windows(0, 10_000, blocking) == [(0, 10_000)]
+
+
+class TestSectionMoveSplitsAroundObstacle:
+    def test_small_obstacle_in_middle_still_places_moves_before_and_after(self):
+        # Before this fix: a single 250ms obstacle anywhere in the section
+        # dropped the WHOLE section's move. Now it should still place
+        # moves in the usable segments on either side.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 20_000, _STRONG_ENERGY_GATE, variation_seed=0),
+        ]
+        existing = {"MH GRP": [_obstacle("MH GRP", 10_000, 10_250)]}
+        result = place_moving_head_moves(layout, assignments, existing_placements=existing)
+        assert result, "Expected moves to survive around the small obstacle, got nothing"
+        all_placements = [p for placements in result.values() for p in placements]
+        # Nothing placed should overlap the obstacle itself.
+        assert not any(p.start_ms < 10_250 and p.end_ms > 10_000 for p in all_placements)
+        # Something should exist on both sides of the obstacle.
+        assert any(p.end_ms <= 10_000 for p in all_placements)
+        assert any(p.start_ms >= 10_250 for p in all_placements)
+
+    def test_obstacle_covering_whole_section_still_skips_entirely(self):
+        # A genuinely substantial obstacle (not a tiny pulse) should still
+        # result in no moves for that section -- there's no usable segment.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 20_000, _STRONG_ENERGY_GATE, variation_seed=0),
+        ]
+        existing = {"MH GRP": [_obstacle("MH GRP", 0, 20_000)]}
+        result = place_moving_head_moves(layout, assignments, existing_placements=existing)
+        assert result == {}
+
+    def test_tiny_leftover_segment_below_threshold_is_skipped(self):
+        # An obstacle leaving only a sliver (<_MIN_SPLIT_SEGMENT_MS) on one
+        # side must not produce a degenerate near-zero-duration move there.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 20_000, _STRONG_ENERGY_GATE, variation_seed=0),
+        ]
+        existing = {"MH GRP": [_obstacle("MH GRP", 500, 20_000)]}
+        result = place_moving_head_moves(layout, assignments, existing_placements=existing)
+        all_placements = [p for placements in result.values() for p in placements]
+        # The only free window is (0, 500), well under _MIN_SPLIT_SEGMENT_MS.
+        assert not any(p.end_ms <= 500 for p in all_placements)

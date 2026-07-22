@@ -12,6 +12,7 @@ from src.generator.moving_head import (
     _KEYWORD_PULSE_GAP_MS,
     _keyword_trigger_end_ms,
     _keyword_triggers,
+    _PREFERRED_WARMUP_DURATION_MS,
     place_moving_head_keyword_accents,
     place_moving_head_moves,
 )
@@ -181,6 +182,24 @@ class TestPlaceMovingHeadKeywordAccents:
         for punch, next_word_start in zip(punches, [46_235, 46_735, 47_276]):
             assert punch.end_ms <= next_word_start
 
+    def test_shake_warmup_is_capped_not_filling_the_whole_gap(self):
+        # Fixed 2026-07-21: this warmup used to fill the ENTIRE gap back to
+        # the previous placement (or to time 0), unbounded. Fine for
+        # crash_accents/ending_punches (rare-by-design, a handful per
+        # song), but a keyword can repeat throughout a song's own lyrics
+        # (real case: "Shake the Snow Globe" sings "shake" in clusters
+        # roughly every 40s) -- an unbounded warmup there monopolizes the
+        # group's channel for the entire span between clusters, starving
+        # place_moving_head_moves of any usable segment. Must now cap to
+        # _PREFERRED_WARMUP_DURATION_MS (3s) like every other move's warmup.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        words = [_word("shake", 50_000, 50_300)]
+        result = place_moving_head_keyword_accents(layout, words, DEFAULT_KEYWORDS, 200_000)
+        warmup = next(p for p in result["MH GRP"] if "Shutter: On" not in p.parameters["E_TEXTCTRL_MH1_Settings"])
+        assert warmup.end_ms == frame_align(50_000)
+        assert warmup.end_ms - warmup.start_ms == _PREFERRED_WARMUP_DURATION_MS
+        assert warmup.start_ms > 0  # NOT reaching all the way back to the start of the song
+
     def test_bounce_places_group_level_tilt_vc_accent(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         words = [_word("bounce", 10_000, 10_300)]
@@ -263,7 +282,13 @@ class TestPlaceMovingHeadMovesRespectsKeywordAccents:
     window, rather than colliding with it (bug class: real xLights channel-
     overlap warnings when two Moving Head placements share time+channels)."""
 
-    def test_section_move_dropped_when_keyword_accent_overlaps(self):
+    def test_section_move_splits_around_keyword_accent_overlap(self):
+        # Fixed 2026-07-21: a keyword-accent pulse in the middle of a
+        # section used to drop the section's move ENTIRELY (result=={}).
+        # A song whose lyrics repeat a keyword throughout the chorus (e.g.
+        # "shake") would then get zero per-head/group moves for nearly the
+        # whole song. Now the section's move splits around the obstacle
+        # into the usable segments on either side instead.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("chorus", 0, 20_000, 90)]
         existing = {
@@ -274,7 +299,11 @@ class TestPlaceMovingHeadMovesRespectsKeywordAccents:
             )],
         }
         result = place_moving_head_moves(layout, assignments, existing_placements=existing)
-        assert result == {}
+        assert result != {}
+        all_placements = [p for placements in result.values() for p in placements]
+        assert not any(p.start_ms < 5_900 and p.end_ms > 5_000 for p in all_placements)
+        assert any(p.end_ms <= 5_000 for p in all_placements)
+        assert any(p.start_ms >= 5_900 for p in all_placements)
 
     def test_section_move_placed_when_no_overlap(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")

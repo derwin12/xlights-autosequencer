@@ -136,7 +136,74 @@ class TestPlaceLyricText:
         ]
         result = _place_lyric_text(props, WORDS)
         assert "E_CHOICE_Text_Font" not in result["Lyrics Matrix"][0].parameters
-        assert result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_Font"] == "6-5x6 Thin"
+        assert result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_Font"] == "5-5x5 Thin"
         # Everything else about the effect is identical between targets.
         assert (result["Lyrics Matrix"][0].parameters["E_CHOICE_Text_LyricTrack"]
                 == result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_LyricTrack"])
+
+
+DUET_WORDS = [
+    {"label": "HELLO", "start_ms": 1000, "end_ms": 1400, "speaker": 0},
+    {"label": "WORLD", "start_ms": 1600, "end_ms": 2000, "speaker": 0},
+    # > 5s gap — second vocal region, sung by the backup voice
+    {"label": "AGAIN", "start_ms": 9000, "end_ms": 9500, "speaker": 1},
+]
+
+
+class TestSingingFacesDiarization:
+    def test_backup_speaker_routes_to_second_face_prop(self):
+        props = [
+            _prop("Lead Face", faces=["Female Face"]),
+            _prop("Backup Face", faces=["Male Face"]),
+        ]
+        result = _place_singing_faces(props, DUET_WORDS, vocal_diarization=True)
+        assert set(result) == {"Lead Face", "Backup Face"}
+        lead = result["Lead Face"]
+        backup = result["Backup Face"]
+        assert len(lead) == 1 and lead[0].start_ms == 1000 and lead[0].end_ms == 2000
+        assert lead[0].parameters["E_CHOICE_Faces_TimingTrack"] == "Lyrics"
+        assert len(backup) == 1 and backup[0].start_ms == 9000 and backup[0].end_ms == 9500
+        assert backup[0].parameters["E_CHOICE_Faces_TimingTrack"] == "Lyrics - Backup"
+
+    def test_flag_off_ignores_speaker_tag(self):
+        # Same tagged words, but the generator hasn't opted in yet -- every
+        # face prop gets every word, same as before diarization existed.
+        props = [_prop("Lead Face", faces=["Female Face"]),
+                 _prop("Backup Face", faces=["Male Face"])]
+        result = _place_singing_faces(props, DUET_WORDS, vocal_diarization=False)
+        assert len(result["Lead Face"]) == 2
+        assert len(result["Backup Face"]) == 2
+
+    def test_single_face_prop_degrades_to_all_words(self):
+        # No second prop to route the backup voice to -- render everything
+        # on the one prop rather than silently dropping speaker-1 words.
+        props = [_prop("Only Face", faces=["Face"])]
+        result = _place_singing_faces(props, DUET_WORDS, vocal_diarization=True)
+        assert len(result["Only Face"]) == 2
+
+    def test_no_backup_words_degrades_to_all_words(self):
+        result = _place_singing_faces(
+            [_prop("Lead Face", faces=["Face1"]), _prop("Backup Face", faces=["Face2"])],
+            WORDS, vocal_diarization=True,
+        )
+        assert len(result["Lead Face"]) == 2
+        assert len(result["Backup Face"]) == 2
+
+
+class TestLyricTextDiarization:
+    def test_backup_speaker_routes_to_second_matrix(self):
+        props = [
+            _prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
+            _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
+        ]
+        result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
+        assert len(result["Lyrics Matrix"]) == 1
+        assert result["Lyrics Matrix"][0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+        assert len(result["Lyrics Matrix Small"]) == 1
+        assert (result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_LyricTrack"]
+                == "Lyrics - Backup - Words")
+
+    def test_single_target_degrades_to_all_words(self):
+        props = [_prop("Matrix Big", display_as="Matrix", pixels=4800)]
+        result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
+        assert len(result["Matrix Big"]) == 2

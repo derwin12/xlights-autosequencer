@@ -292,10 +292,23 @@ class GenerationConfig:
     # microscope tool relies on this for deterministic runs (OpenSpec
     # ``visual-quality-microscope``).
     variation_seed: int = 0
-    # Word-level vocal marks ({label, start_ms, end_ms}) from WhisperX
-    # alignment. When present alongside face-capable props in the layout,
-    # build_plan places Faces effects over the vocal regions (singing faces).
+    # Word-level vocal marks ({label, start_ms, end_ms, speaker}) from
+    # WhisperX alignment. When present alongside face-capable props in the
+    # layout, build_plan places Faces effects over the vocal regions
+    # (singing faces).
     vocal_words: Optional[list[dict]] = None
+    # Route words tagged speaker=1 (src.analyzer.vocal_diarization) to a
+    # second face-capable prop and a second "Lyrics - Backup" timing track,
+    # for duets/featured-artist songs -- e.g. Natalie Grant feat. Bart
+    # Millard, where clustering held together as one coherent multi-
+    # utterance voice distinct from the lead (validated by ear, 2026-07-21).
+    # Diarization itself always runs at analysis time (cheap: collapses to
+    # speaker=0 for everyone when no confident second voice is found); this
+    # flag only gates whether the GENERATOR acts on a speaker=1 tag. Enabled
+    # by default per explicit user request (2026-07-21) to try it on real
+    # songs; the conservative accept-gate in vocal_diarization.py means a
+    # solo song is unaffected (no confident second voice -> no-op).
+    vocal_diarization: bool = True
     # Lyric words the user unmapped on the Pictures screen (per-song ignore).
     # Suppresses lyric-matched Pictures bursts for these words without
     # removing the image from the shared library. Case-insensitive.

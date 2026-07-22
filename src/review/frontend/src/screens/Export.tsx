@@ -39,7 +39,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onNavi
   const [outputPath, setOutputPath] = useState<string | null>(null);
   // Onsets (per-stem) + Chords timing tracks are display-only in the .xsq;
   // unchecking omits them for a leaner timing panel in xLights.
-  const [includeExtraTiming, setIncludeExtraTiming] = useState(true);
+  const [includeExtraTiming, setIncludeExtraTiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Render-progress panels (stage list + stream log), populated from the
   // export SSE. stageOrder holds known stages plus any new ones the backend

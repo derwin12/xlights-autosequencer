@@ -8,16 +8,22 @@ import pytest
 import src.generator.image_catalog as image_catalog
 from src.effects.library import load_effect_library
 from src.generator.effect_placer import (
-    _PICTURE_BURST_MS,
+    _PICTURE_BURST_JITTER_MS,
     _PICTURE_DIRECTIONS,
     _PICTURE_FADE_MS,
     _PICTURE_LEAD_MS,
+    _PICTURE_MIN_BURST_MS,
     _PICTURE_MIN_GAP_MS,
     _PICTURE_MOTIONS,
     _PICTURE_SCALE_PERCENT,
     _PICTURE_SPEED_RANGE,
     _place_picture_effects,
 )
+
+# Worst-case (largest possible) burst length for a word at/under the floor --
+# safe upper bound for tests that need bursts guaranteed apart regardless of
+# the seeded jitter's exact value.
+_MAX_FLOORED_BURST_MS = _PICTURE_MIN_BURST_MS + _PICTURE_BURST_JITTER_MS
 from src.generator.models import GenerationConfig
 from src.generator.image_catalog import (
     catalog_images,
@@ -273,7 +279,47 @@ class TestPlacePictureEffects:
         )
         placement = result["Matrix1"][0]
         assert placement.start_ms == 5_000 - _PICTURE_LEAD_MS
-        assert placement.end_ms == 5_000 - _PICTURE_LEAD_MS + _PICTURE_BURST_MS
+        # _match's default duration (500ms) is under the floor, and the
+        # exact jitter is seeded/deterministic but not worth hardcoding here.
+        burst_ms = placement.end_ms - placement.start_ms
+        assert _PICTURE_MIN_BURST_MS <= burst_ms <= _MAX_FLOORED_BURST_MS
+
+    def test_burst_scales_with_word_duration_above_the_floor(self):
+        library = load_effect_library()
+        # A word that itself lasts longer than the floor must not be
+        # truncated down to the floor -- the burst should cover at least
+        # the word's own duration.
+        word_duration_ms = _PICTURE_MIN_BURST_MS + 2_000
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 5_000, duration_ms=word_duration_ms)],
+        )
+        placement = result["Matrix1"][0]
+        burst_ms = placement.end_ms - placement.start_ms
+        assert word_duration_ms <= burst_ms <= word_duration_ms + _PICTURE_BURST_JITTER_MS
+
+    def test_burst_duration_varies_across_different_words(self):
+        library = load_effect_library()
+        # Same (short, under-floor) word duration for both matches -- the
+        # seeded jitter should still produce different burst lengths so
+        # same-length words don't all look identical (user request, 2026-07-21).
+        result = _place_picture_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[
+                _match("snowman", 1_000, stored_path="/lib/a.gif"),
+                _match("reindeer", 30_000, stored_path="/lib/b.gif"),
+            ],
+        )
+        durations = [p.end_ms - p.start_ms for p in result["Matrix1"]]
+        assert len(set(durations)) == 2
 
     def test_lead_in_clamped_to_zero_for_early_matches(self):
         library = load_effect_library()
@@ -319,9 +365,10 @@ class TestPlacePictureEffects:
     def test_close_matches_deduped_by_min_gap(self):
         library = load_effect_library()
         # Second match's burst window (starts 2000-1000=1000, per the lead-in)
-        # would literally overlap the first burst's window (0-6000) -- two
-        # different pictures can't be on screen at once regardless of image,
-        # so this must be dropped no matter which files are involved.
+        # would literally overlap the first burst's window (0-at least
+        # _PICTURE_MIN_BURST_MS) -- two different pictures can't be on
+        # screen at once regardless of image, so this must be dropped no
+        # matter which files are involved.
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
             _match("fool", 2_000, stored_path="/lib/fool.gif"),
@@ -343,10 +390,12 @@ class TestPlacePictureEffects:
         # repeated chorus line) used to crowd out a rarer, differently-imaged
         # match that fell within _PICTURE_MIN_GAP_MS of it, even though a
         # DIFFERENT picture right after the first doesn't read as flicker.
-        # First burst: word_start=1_000 -> placed 0-6_000. Second word_start
-        # chosen so its placed start (500ms after the first burst ends) is
-        # well inside the old min-gap window but doesn't overlap in time.
-        second_word_start = 6_000 + 500 + _PICTURE_LEAD_MS
+        # First burst: word_start=1_000 -> placed 0-_MAX_FLOORED_BURST_MS
+        # (worst case). Second word_start chosen so its placed start (500ms
+        # after the first burst's latest possible end) is well inside the
+        # old min-gap window but doesn't overlap in time regardless of the
+        # actual seeded jitter.
+        second_word_start = _MAX_FLOORED_BURST_MS + 500 + _PICTURE_LEAD_MS
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
             _match("fool", second_word_start, stored_path="/lib/fool.gif"),
@@ -367,7 +416,7 @@ class TestPlacePictureEffects:
         # Same setup as the different-image test above, but both matches
         # point at the same file -- the cooldown must still apply so the
         # identical picture doesn't flicker back on right after it left.
-        second_word_start = 6_000 + 500 + _PICTURE_LEAD_MS
+        second_word_start = _MAX_FLOORED_BURST_MS + 500 + _PICTURE_LEAD_MS
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
             _match("loved", second_word_start, stored_path="/lib/love.gif"),
@@ -384,7 +433,7 @@ class TestPlacePictureEffects:
 
     def test_far_apart_matches_both_fire(self):
         library = load_effect_library()
-        first_placed_end = max(0, 1_000 - _PICTURE_LEAD_MS) + _PICTURE_BURST_MS
+        first_placed_end = max(0, 1_000 - _PICTURE_LEAD_MS) + _MAX_FLOORED_BURST_MS
         second_start = first_placed_end + _PICTURE_LEAD_MS + _PICTURE_MIN_GAP_MS + 1_000
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),

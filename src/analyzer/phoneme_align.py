@@ -64,21 +64,24 @@ def _lyric_lines_to_text(lyric_lines: list[dict]) -> str:
     return "\n".join(line.get("text", "") for line in lyric_lines if line.get("text"))
 
 
-def _run_in_process(audio_path: str, lyrics_path: Optional[str]) -> tuple[list[dict], list[dict]]:
+def _run_in_process(
+    audio_path: str, lyrics_path: Optional[str],
+) -> tuple[list[dict], list[dict], list[str]]:
     from src.analyzer.phonemes import PhonemeAnalyzer
 
     analyzer = PhonemeAnalyzer(model_name="base", device="cpu", language="en")
     result = analyzer.analyze(audio_path, source_file=audio_path, lyrics_path=lyrics_path)
+    warnings = list(getattr(analyzer, "warnings", []) or [])
     if result is None:
-        return [], []
+        return [], [], warnings
     words = [m.to_dict() for m in result.word_track.marks]
     phonemes = [m.to_dict() for m in result.phoneme_track.marks]
-    return words, phonemes
+    return words, phonemes, warnings
 
 
 def _run_in_sidecar(
     sidecar: Path, audio_path: str, lyrics_path: Optional[str],
-) -> tuple[list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[str]]:
     repo_root = Path(__file__).resolve().parents[2]
     script = f'''
 import json, sys
@@ -95,12 +98,14 @@ except Exception:
 from src.analyzer.phonemes import PhonemeAnalyzer
 analyzer = PhonemeAnalyzer(model_name="base", device="cpu", language="en")
 result = analyzer.analyze({audio_path!r}, source_file={audio_path!r}, lyrics_path={lyrics_path!r})
+warnings = list(getattr(analyzer, "warnings", []) or [])
 if result is None:
-    print(json.dumps({{"words": [], "phonemes": []}}))
+    print(json.dumps({{"words": [], "phonemes": [], "warnings": warnings}}))
 else:
     print(json.dumps({{
         "words": [m.to_dict() for m in result.word_track.marks],
         "phonemes": [m.to_dict() for m in result.phoneme_track.marks],
+        "warnings": warnings,
     }}))
 '''
     proc = subprocess.run(
@@ -109,20 +114,23 @@ else:
     )
     if proc.returncode != 0:
         log.warning("phoneme sidecar subprocess failed:\n%s", proc.stderr[:800])
-        return [], []
+        return [], [], []
     payload = json.loads(proc.stdout.strip().split("\n")[-1])
-    return payload.get("words", []), payload.get("phonemes", [])
+    return payload.get("words", []), payload.get("phonemes", []), payload.get("warnings", [])
 
 
 def align_words_and_phonemes(
     audio_path: str,
     lyric_lines: Optional[list[dict]] = None,
     lyrics_text: Optional[str] = None,
-) -> tuple[list[dict], list[dict]]:
-    """Return ``(words, phonemes)`` mark dicts for the song's vocals.
+) -> tuple[list[dict], list[dict], list[str]]:
+    """Return ``(words, phonemes, warnings)`` for the song's vocals.
 
-    Each mark is ``{"label": str, "start_ms": int, "end_ms": int}`` —
-    word labels are uppercased words; phoneme labels are Papagayo mouth
+    Each word mark is ``{"label": str, "start_ms": int, "end_ms": int,
+    "speaker": int}`` — word labels are uppercased words; ``speaker`` is 0
+    (lead) or 1 (featured/backup), from :func:`diarize_words
+    <src.analyzer.vocal_diarization.diarize_words>` — always 0 when no
+    second voice is confidently detected. Phoneme labels are Papagayo mouth
     shapes (AI/E/O/U/WQ/L/MBP/FV/etc/rest) matching xLights face
     definitions.
 
@@ -137,12 +145,38 @@ def align_words_and_phonemes(
     available does it fall back to free transcription. Prefers the cached
     demucs vocals stem over the full mix when one exists.
 
-    Never raises: returns ``([], [])`` when WhisperX is unavailable in both
-    the main venv and the ``.venv-vamp`` sidecar, or when alignment fails.
+    ``warnings`` includes, notably, the case where lyric text was provided
+    but fewer than 50% of its words aligned to the audio — the analyzer
+    discards the provided text entirely and falls back to free
+    transcription for the WHOLE song in that case (see
+    ``PhonemeAnalyzer._align_with_lyrics``), so the returned words can look
+    like "made up" text even though real lyrics were supplied. Surface this
+    warning to the user rather than silently returning different words than
+    what they pasted.
+
+    Never raises: returns ``([], [], [])`` when WhisperX is unavailable in
+    both the main venv and the ``.venv-vamp`` sidecar, or when alignment
+    fails.
     """
     vocals = _discover_vocals_stem(audio_path)
     align_audio = str(vocals) if vocals is not None else str(audio_path)
 
+    words, phonemes, warnings = _run_alignment(align_audio, lyric_lines, lyrics_text)
+
+    if words and vocals is not None:
+        from src.analyzer.vocal_diarization import diarize_words
+        words = diarize_words(str(vocals), words)
+    else:
+        words = [{**w, "speaker": 0} for w in words]
+
+    return words, phonemes, warnings
+
+
+def _run_alignment(
+    align_audio: str,
+    lyric_lines: Optional[list[dict]],
+    lyrics_text: Optional[str],
+) -> tuple[list[dict], list[dict], list[str]]:
     lyrics_path: Optional[str] = None
     tmp_file: Optional[str] = None
     try:
@@ -168,11 +202,11 @@ def align_words_and_phonemes(
                     "phoneme alignment skipped: whisperx unavailable and no "
                     ".venv-vamp sidecar found"
                 )
-                return [], []
+                return [], [], []
             return _run_in_sidecar(sidecar, align_audio, lyrics_path)
         except Exception as exc:
             log.warning("phoneme alignment failed: %s", exc, exc_info=True)
-            return [], []
+            return [], [], []
     finally:
         if tmp_file is not None:
             try:

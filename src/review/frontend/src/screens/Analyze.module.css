@@ -642,6 +642,7 @@
   border-top: 1px solid var(--line, #222);
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -658,11 +659,13 @@
 .metadataError {
   color: var(--color-error, #e05252);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .metadataSuccess {
   color: var(--color-success, #4caf50);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .metadataWarning {
@@ -676,6 +679,7 @@
   border: 1px solid var(--line, #333);
   padding: 8px 18px;
   font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }

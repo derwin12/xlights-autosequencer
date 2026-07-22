@@ -301,6 +301,20 @@ _STATIC_MOVES = (
     "l_r_crisscross", "ll_rr_crisscross", "stagger_o_i", "stagger_i_o",
 )
 
+# Per-head moves that hold one fixed pose for their entire duration with no
+# built-in variety (stagger_o_i/stagger_i_o already pulse via their own
+# Dimmer curve, so they're excluded). User request (2026-07-22): a long
+# held pose reads as boring -- alternate all-4-heads-lit / half-heads-lit
+# (via the existing _reduce_to_lit_pair mechanism, one placement per bar)
+# instead of holding flat for the move's whole span. Confirmed against two
+# real reference-sequence samples that a flat Dimmer curve per head
+# (_DIMMER_FULL_ON / _DIMMER_OFF, no fancy multi-point curve) is the
+# correct native technique, not a stepped curve within one placement.
+_STATIC_HELD_MOVES = frozenset({"l_r_static", "r_static", "l_static", "l_r_crisscross", "ll_rr_crisscross"})
+# Group-targeted equivalent -- "fan_pan_move" already moves via tilt_vc so
+# it's excluded (matches the per-head dynamic moves' exclusion above).
+_STATIC_HELD_GROUP_MOVES = frozenset({"fan_pan_static"})
+
 
 def _format_pan(deg: float) -> str:
     return f"Pan: {deg:.1f}"
@@ -427,11 +441,20 @@ _DIRECTIONAL_PARTNER = {
 
 
 def _choose_move(
-    section_index: int, variation_seed: int, *, dynamic: bool,
+    occurrence_index: int, variation_seed: int, *, dynamic: bool,
     previous_move: Optional[str] = None,
 ) -> str:
+    """Pick a move from the dynamic/static pool.
+
+    ``occurrence_index`` must be a per-pool QUALIFYING-occurrence counter
+    (0, 1, 2, ... for the 1st, 2nd, 3rd qualifying section that uses this
+    same ``dynamic`` pool) -- NOT the absolute section index. Indexing by
+    absolute position aliases whenever qualifying sections recur at a
+    regular stride, silently favoring whatever pool slots that stride
+    lands on (see caller's comment in place_moving_head_moves).
+    """
     pool = _DYNAMIC_MOVES if dynamic else _STATIC_MOVES
-    choice = pool[(variation_seed + section_index) % len(pool)]
+    choice = pool[(variation_seed + occurrence_index) % len(pool)]
     if choice == previous_move and choice in _DIRECTIONAL_PARTNER:
         choice = _DIRECTIONAL_PARTNER[choice]
     return choice
@@ -497,6 +520,38 @@ def _build_group_move_parameters(
     heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field)
     per_head = {i: settings for i in range(1, head_count + 1)}
+    params = _build_parameters(
+        per_head,
+        slider_pan=None if pose.pan_vc is not None else _deg_to_slider((pose.pan or 0.0) + jitter_pan),
+        slider_tilt=None if pose.tilt_vc is not None else _deg_to_slider((pose.tilt or 0.0) + jitter_tilt),
+        slider_pan_offset=_deg_to_slider(pose.pan_offset),
+    )
+    params.update(_vc_top_level_params(pose, jitter_pan, jitter_tilt))
+    return params
+
+
+def _build_group_toggle_move_parameters(
+    head_count: int, pose: "_HeadPose", jitter_pan: float, jitter_tilt: float,
+    lit_heads: tuple[int, ...],
+) -> dict[str, str]:
+    """Like ``_build_group_move_parameters``, but heads NOT in
+    ``lit_heads`` get a darkened (``Dimmer: _DIMMER_OFF``) variant of the
+    same pose instead of the identical full text every slot normally
+    shares -- the per-bar 4-heads/2-heads toggle for a group-targeted
+    static move (fan_pan_static), same technique as
+    ``_reduce_to_lit_pair`` uses for per-head moves. Confirmed against two
+    real reference-sequence samples (raw xLights effect-string paste,
+    2026-07-22) that heads combined into ONE group-targeted effect can
+    carry different Dimmer values per slot."""
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    full_settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field)
+    dark_settings = _build_pose_settings(
+        replace(pose, dimmer=_DIMMER_OFF), jitter_pan, jitter_tilt, heads_field,
+    )
+    per_head = {
+        i: full_settings if i in lit_heads else dark_settings
+        for i in range(1, head_count + 1)
+    }
     params = _build_parameters(
         per_head,
         slider_pan=None if pose.pan_vc is not None else _deg_to_slider((pose.pan or 0.0) + jitter_pan),
@@ -688,7 +743,7 @@ def _best_trimmable_end_ms(owner: EffectPlacement) -> int:
 
 
 def _resolve_warmup(
-    owners: list[Optional[EffectPlacement]], desired_start_ms: int,
+    owners: list[Optional[EffectPlacement]], desired_start_ms: int, floor_ms: int = 0,
 ) -> tuple[int, int]:
     """Decide the upcoming move's actual start time and warmup duration,
     given every distinct placement currently occupying the channel(s) it
@@ -707,13 +762,23 @@ def _resolve_warmup(
     delaying the move to still guarantee ``_MIN_WARMUP_DURATION_MS`` only
     if even a maximal trim (down to an owner's own floor) can't reach it.
 
+    ``floor_ms`` is a hard lower bound the warmup/trim must never cross --
+    used when the caller is placing into one of several free segments
+    split around an external obstacle (see ``_free_windows``): an
+    ``owner``'s own ``end_ms`` may sit BEFORE the segment's start (the
+    obstacle occupies the space between them), and without this floor the
+    warmup would happily reach back through the obstacle to the owner's
+    real end, since owners alone don't encode where the obstacle is.
+    Defaults to 0 (no floor), preserving prior behavior for callers that
+    don't split around anything.
+
     Returns (start_ms, warmup_duration_ms).
     """
     real_owners = [o for o in owners if o is not None]
     if not real_owners:
-        return desired_start_ms, max(0, min(_PREFERRED_WARMUP_DURATION_MS, desired_start_ms))
+        return desired_start_ms, max(0, min(_PREFERRED_WARMUP_DURATION_MS, desired_start_ms - floor_ms))
 
-    latest_end_ms = max(o.end_ms for o in real_owners)
+    latest_end_ms = max(max(o.end_ms for o in real_owners), floor_ms)
     natural_gap_ms = desired_start_ms - latest_end_ms
     if natural_gap_ms >= _PREFERRED_WARMUP_DURATION_MS:
         return desired_start_ms, _PREFERRED_WARMUP_DURATION_MS  # nothing in the way for the full 3s
@@ -721,10 +786,11 @@ def _resolve_warmup(
         return desired_start_ms, natural_gap_ms  # no trim needed, use the natural gap as-is
 
     # An effect is genuinely in the way -- only ever trim it down to open
-    # the defined minimum, not the full 3s.
+    # the defined minimum, not the full 3s. Trimming (and the gap
+    # computation above) never reaches earlier than floor_ms.
     achievable_ms = min(
         _MIN_WARMUP_DURATION_MS,
-        min(desired_start_ms - _best_trimmable_end_ms(o) for o in real_owners),
+        min(desired_start_ms - max(_best_trimmable_end_ms(o), floor_ms) for o in real_owners),
     )
     if achievable_ms >= _MIN_WARMUP_DURATION_MS:
         new_end_ms = desired_start_ms - achievable_ms
@@ -738,10 +804,16 @@ def _resolve_warmup(
     # guarantee it.
     start_ms = desired_start_ms
     for o in real_owners:
-        best_end_ms = _best_trimmable_end_ms(o)
+        best_end_ms = max(_best_trimmable_end_ms(o), floor_ms)
         if best_end_ms < o.end_ms:
             o.end_ms = frame_align(best_end_ms)
-        start_ms = max(start_ms, o.end_ms + _MIN_WARMUP_DURATION_MS)
+        # Anchor against floor_ms too, not just o.end_ms: when the owner's
+        # true end already sits BEFORE floor_ms (nothing left to trim --
+        # the space between them belongs to an obstacle _resolve_warmup
+        # doesn't otherwise know about), anchoring on the owner's stale
+        # end alone would compute a warmup start that reaches back through
+        # the obstacle.
+        start_ms = max(start_ms, max(o.end_ms, floor_ms) + _MIN_WARMUP_DURATION_MS)
     return start_ms, _MIN_WARMUP_DURATION_MS
 
 
@@ -761,6 +833,15 @@ def _bar_capped_end_ms(
     if section_end_ms - bar_end_ms < _MIN_WARMUP_DURATION_MS:
         return natural_end_ms
     return bar_end_ms
+
+
+def _bar_boundaries_in_range(bars: TimingTrack, start_ms: int, end_ms: int) -> list[int]:
+    """Bar-mark timestamps strictly inside ``(start_ms, end_ms)``, bookended
+    by ``start_ms``/``end_ms`` themselves -- e.g. ``[1000, 1500, 2200,
+    3000]`` for two interior bar marks. Always at least ``[start_ms,
+    end_ms]`` (length 2, i.e. zero interior marks -- one whole segment)."""
+    interior = sorted(m.time_ms for m in bars.marks if start_ms < m.time_ms < end_ms)
+    return [start_ms, *interior, end_ms]
 
 
 def place_moving_head_moves(
@@ -842,6 +923,23 @@ def place_moving_head_moves(
             name: None for name in mh_group.head_names
         }
         previous_move_name: Optional[str] = None
+        # Separate per-pool qualifying-occurrence counters (not the raw,
+        # absolute section_index) -- indexing a rotation pool by section
+        # position aliases whenever qualifying sections recur at a regular
+        # stride (e.g. every other section), silently favoring whichever
+        # pool slots that stride happens to land on for the whole song
+        # (same failure shape as bug-346/bug-182/bug-188). Both move pools
+        # put their single "group" move at index 0, so an aliased rotation
+        # can make the group move dominate almost the entire song instead
+        # of its intended 1-in-4/1-in-8 share, starving the per-head moves
+        # (user-reported 2026-07-21: Moving Heads Group occupied 0-110s of
+        # a song while MH-1..MH-4 only got real content after 116s). Two
+        # counters, not one shared counter, since "dynamic" and "static"
+        # are separately-sized pools -- a shared counter would still alias
+        # within each pool's own subsequence whenever the two types
+        # alternate at a regular stride too.
+        dynamic_occurrence = 0
+        static_occurrence = 0
         for section_index, assignment in enumerate(assignments):
             section = assignment.section
             if not _is_strong_section(section):
@@ -850,11 +948,17 @@ def place_moving_head_moves(
             if duration_ms < _MIN_SECTION_DURATION_MS:
                 continue
 
+            dynamic = section.energy_score >= _STRONG_ENERGY_GATE
+            occurrence = dynamic_occurrence if dynamic else static_occurrence
             move_name = _choose_move(
-                section_index, assignment.variation_seed,
-                dynamic=section.energy_score >= _STRONG_ENERGY_GATE,
+                occurrence, assignment.variation_seed,
+                dynamic=dynamic,
                 previous_move=previous_move_name,
             )
+            if dynamic:
+                dynamic_occurrence += 1
+            else:
+                static_occurrence += 1
             previous_move_name = move_name
             move = MOVE_LIBRARY[move_name]
             jitter_pan, jitter_tilt = _jitter(assignment.variation_seed, section_index)
@@ -881,6 +985,34 @@ def place_moving_head_moves(
                 if not full_intensity and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
                 else None
             )
+            # Bar-level 4-heads/2-heads alternation for a long held static
+            # pose (user request 2026-07-22). A different variation_seed
+            # offset than lit_pair's own so the two don't always pick the
+            # same pair when both could apply in principle.
+            #
+            # GROUP moves never apply lit_pair at all (a group move writes
+            # one identical pose into every head slot, ignoring lit_pair --
+            # see the per-head branch below, which is the only branch that
+            # reads lit_pair). So gating group_toggle_pair on lit_pair is
+            # None was wrong: it silently disabled the group toggle for
+            # every section that wasn't at full energy, i.e. most sections
+            # (bug found 2026-07-22: user's real export showed the group's
+            # fan_pan_static at 19.7s on a 53-energy chorus never toggling,
+            # since lit_pair was set -- non-None -- for that section).
+            group_toggle_pair = (
+                _choose_lit_pair(section_index, assignment.variation_seed + 1)
+                if len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
+                else None
+            )
+            # PER-HEAD moves DO apply lit_pair (via _reduce_to_lit_pair
+            # below), so a section already reduced by the energy-based
+            # lit_pair shouldn't ALSO toggle on top of that -- keep the
+            # mutual-exclusivity for this branch only.
+            head_toggle_pair = (
+                _choose_lit_pair(section_index, assignment.variation_seed + 1)
+                if lit_pair is None and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
+                else None
+            )
 
             natural_start_ms = section.start_ms
             natural_end_ms = min(section.end_ms, natural_start_ms + _MAX_MOVE_DURATION_MS)
@@ -889,55 +1021,154 @@ def place_moving_head_moves(
                     bars, natural_start_ms, natural_end_ms, section.end_ms,
                 )
 
+            # Split the section's natural window around any obstacle
+            # (typically a keyword-accent pulse, e.g. "shake" -- see
+            # place_moving_head_keyword_accents) instead of dropping the
+            # WHOLE section the moment anything overlaps anywhere inside
+            # it (user-reported 2026-07-21: a song whose chorus repeats
+            # "shake" throughout had every chorus/pre_chorus move skipped
+            # entirely, one scattered 250ms pulse at a time, leaving only
+            # crash-accent group punches to cover those spans). Each
+            # resulting free segment gets its own full move+warmup via the
+            # same per-target logic below; a segment too short for even a
+            # minimal warmup+move is skipped on its own rather than
+            # collapsing the whole section.
             if existing_placements:
                 blocking = [
                     p for h in (mh_group.name, *mh_group.head_names)
                     for p in existing_placements.get(h, [])
                 ]
-                if _has_overlap(blocking, natural_start_ms, natural_end_ms):
-                    continue
-
-            if move.target == "group":
-                heads = mh_group.head_names
-                # A prior GROUP move leaves every head sharing ONE owner
-                # object; a prior PER-HEAD move leaves each head with its
-                # OWN distinct object -- dedupe by identity (EffectPlacement
-                # isn't hashable), but trim every distinct owner (not just
-                # whichever ends latest), since a group move touches every
-                # head's channel and each one needs its own tail opened up.
-                owners_by_id = {
-                    id(channel_owner[h]): channel_owner[h] for h in heads if channel_owner[h] is not None
-                }
-                start_ms, warmup_duration_ms = _resolve_warmup(list(owners_by_id.values()), natural_start_ms)
-                if start_ms >= natural_end_ms:
-                    continue  # no room left after opening the warmup gap
-                head_count = len(heads)
-                pose = move.poses[0]
-                move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
-                warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
-                move_placement = _add_with_warmup(
-                    by_target, mh_group.name, warmup_params, move_params,
-                    start_ms, natural_end_ms, warmup_duration_ms,
-                )
-                for h in heads:
-                    channel_owner[h] = move_placement
+                segments = _free_windows(natural_start_ms, natural_end_ms, blocking)
             else:
-                for head_idx, head_name in enumerate(mh_group.head_names):
-                    head_index = head_idx + 1  # 1-based: matches this model's own MH{N}_Settings slot
-                    pose = move.poses[head_idx % len(move.poses)]
-                    move_pose = pose if lit_pair is None else _reduce_to_lit_pair(pose, head_index, lit_pair)
+                segments = [(natural_start_ms, natural_end_ms)]
+
+            for seg_start_ms, seg_end_ms in segments:
+                if seg_end_ms - seg_start_ms < _MIN_SPLIT_SEGMENT_MS:
+                    continue
+                # Only a segment that starts right after an obstacle needs
+                # a warmup floor -- the FIRST segment (starting exactly at
+                # the section's own natural_start_ms) may still reach back
+                # into whatever the previous SECTION's move left off, same
+                # as before this obstacle-splitting existed.
+                warmup_floor_ms = seg_start_ms if seg_start_ms != natural_start_ms else 0
+
+                if move.target == "group":
+                    heads = mh_group.head_names
+                    # A prior GROUP move leaves every head sharing ONE owner
+                    # object; a prior PER-HEAD move leaves each head with its
+                    # OWN distinct object -- dedupe by identity (EffectPlacement
+                    # isn't hashable), but trim every distinct owner (not just
+                    # whichever ends latest), since a group move touches every
+                    # head's channel and each one needs its own tail opened up.
+                    owners_by_id = {
+                        id(channel_owner[h]): channel_owner[h] for h in heads if channel_owner[h] is not None
+                    }
                     start_ms, warmup_duration_ms = _resolve_warmup(
-                        [channel_owner[head_name]], natural_start_ms,
+                        list(owners_by_id.values()), seg_start_ms, floor_ms=warmup_floor_ms,
                     )
-                    if start_ms >= natural_end_ms:
-                        continue
-                    move_params = _build_per_head_move_parameters(move_pose, jitter_pan, jitter_tilt, head_index)
-                    warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
-                    move_placement = _add_with_warmup(
-                        by_target, head_name, warmup_params, move_params,
-                        start_ms, natural_end_ms, warmup_duration_ms,
+                    if start_ms >= seg_end_ms:
+                        continue  # no room left after opening the warmup gap
+                    head_count = len(heads)
+                    pose = move.poses[0]
+                    warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
+
+                    bar_bounds = (
+                        _bar_boundaries_in_range(bars, start_ms, seg_end_ms)
+                        if (move_name in _STATIC_HELD_GROUP_MOVES and group_toggle_pair is not None
+                            and bars is not None and bars.marks)
+                        else [start_ms, seg_end_ms]
                     )
-                    channel_owner[head_name] = move_placement
+                    if len(bar_bounds) <= 2:
+                        move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
+                        move_placement = _add_with_warmup(
+                            by_target, mh_group.name, warmup_params, move_params,
+                            start_ms, seg_end_ms, warmup_duration_ms,
+                        )
+                    else:
+                        # Same bar-level 4-heads/2-heads alternation as the
+                        # per-head branch below, but combined into ONE
+                        # group-targeted effect per bar with different
+                        # Dimmer values per head slot (see
+                        # _build_group_toggle_move_parameters).
+                        all_heads = tuple(range(1, head_count + 1))
+                        for bar_idx in range(len(bar_bounds) - 1):
+                            lit_heads = all_heads if bar_idx % 2 == 0 else group_toggle_pair
+                            bar_params = _build_group_toggle_move_parameters(
+                                head_count, pose, jitter_pan, jitter_tilt, lit_heads,
+                            )
+                            if bar_idx == 0:
+                                move_placement = _add_with_warmup(
+                                    by_target, mh_group.name, warmup_params, bar_params,
+                                    start_ms, bar_bounds[1], warmup_duration_ms,
+                                )
+                            else:
+                                move_placement = EffectPlacement(
+                                    effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                                    model_or_group=mh_group.name,
+                                    start_ms=bar_bounds[bar_idx], end_ms=bar_bounds[bar_idx + 1],
+                                    parameters=bar_params,
+                                )
+                                by_target.setdefault(mh_group.name, []).append(move_placement)
+                    for h in heads:
+                        channel_owner[h] = move_placement
+                else:
+                    for head_idx, head_name in enumerate(mh_group.head_names):
+                        head_index = head_idx + 1  # 1-based: matches this model's own MH{N}_Settings slot
+                        pose = move.poses[head_idx % len(move.poses)]
+                        move_pose = pose if lit_pair is None else _reduce_to_lit_pair(pose, head_index, lit_pair)
+                        start_ms, warmup_duration_ms = _resolve_warmup(
+                            [channel_owner[head_name]], seg_start_ms, floor_ms=warmup_floor_ms,
+                        )
+                        if start_ms >= seg_end_ms:
+                            continue
+                        warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
+
+                        bar_bounds = (
+                            _bar_boundaries_in_range(bars, start_ms, seg_end_ms)
+                            if (move_name in _STATIC_HELD_MOVES and head_toggle_pair is not None
+                                and bars is not None and bars.marks)
+                            else [start_ms, seg_end_ms]
+                        )
+                        if len(bar_bounds) <= 2:
+                            move_params = _build_per_head_move_parameters(
+                                move_pose, jitter_pan, jitter_tilt, head_index,
+                            )
+                            move_placement = _add_with_warmup(
+                                by_target, head_name, warmup_params, move_params,
+                                start_ms, seg_end_ms, warmup_duration_ms,
+                            )
+                        else:
+                            # Bar-level 4-heads/2-heads alternation: bar 0
+                            # is the full pose (all 4 lit), odd bars reduce
+                            # to toggle_pair, even bars (after the first)
+                            # return to full -- purely a Dimmer toggle, the
+                            # pose/position never changes (user request
+                            # 2026-07-22, confirmed against two real
+                            # reference-sequence samples that a flat
+                            # Dimmer curve per head, not a fancy multi-point
+                            # one, is the correct native technique).
+                            for bar_idx in range(len(bar_bounds) - 1):
+                                bar_pose = (
+                                    pose if bar_idx % 2 == 0
+                                    else _reduce_to_lit_pair(pose, head_index, head_toggle_pair)
+                                )
+                                bar_params = _build_per_head_move_parameters(
+                                    bar_pose, jitter_pan, jitter_tilt, head_index,
+                                )
+                                if bar_idx == 0:
+                                    move_placement = _add_with_warmup(
+                                        by_target, head_name, warmup_params, bar_params,
+                                        start_ms, bar_bounds[1], warmup_duration_ms,
+                                    )
+                                else:
+                                    move_placement = EffectPlacement(
+                                        effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                                        model_or_group=head_name,
+                                        start_ms=bar_bounds[bar_idx], end_ms=bar_bounds[bar_idx + 1],
+                                        parameters=bar_params,
+                                    )
+                                    by_target.setdefault(head_name, []).append(move_placement)
+                        channel_owner[head_name] = move_placement
         for target, placements in by_target.items():
             if placements:
                 result.setdefault(target, []).extend(placements)
@@ -1048,6 +1279,38 @@ def _has_overlap(
     placements: list[EffectPlacement], start_ms: int, end_ms: int,
 ) -> bool:
     return any(p.start_ms < end_ms and p.end_ms > start_ms for p in placements)
+
+
+# A free segment shorter than this isn't worth a move -- roughly a minimal
+# warmup (_MIN_WARMUP_DURATION_MS) plus a bit of actual move time; anything
+# smaller would be nearly all warmup with no real movement to show for it.
+_MIN_SPLIT_SEGMENT_MS = 2000
+
+
+def _free_windows(
+    start_ms: int, end_ms: int, blocking: list[EffectPlacement],
+) -> list[tuple[int, int]]:
+    """Split ``[start_ms, end_ms)`` into the sub-windows NOT covered by any
+    ``blocking`` placement, instead of an all-or-nothing overlap check.
+
+    A section with a single small obstacle in the middle (e.g. a 250ms
+    keyword-accent pulse) yields two usable segments -- one before it, one
+    after -- rather than being dropped entirely.
+    """
+    relevant = sorted(
+        (p for p in blocking if p.start_ms < end_ms and p.end_ms > start_ms),
+        key=lambda p: p.start_ms,
+    )
+    windows: list[tuple[int, int]] = []
+    cursor = start_ms
+    for p in relevant:
+        block_start, block_end = max(p.start_ms, start_ms), min(p.end_ms, end_ms)
+        if block_start > cursor:
+            windows.append((cursor, block_start))
+        cursor = max(cursor, block_end)
+    if cursor < end_ms:
+        windows.append((cursor, end_ms))
+    return windows
 
 
 # Pose fields of the per-head settings text DSL, longest alternatives first
@@ -1307,7 +1570,21 @@ def place_moving_head_keyword_accents(
                         slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
                     )
                     prior_ends = [p.end_ms for p in head_existing if p.end_ms <= start_ms]
-                    warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+                    # Capped to _PREFERRED_WARMUP_DURATION_MS (3s), NOT the
+                    # unbounded "fill the entire gap" pattern crash_accents/
+                    # ending_punches use -- those are rare-by-design (a
+                    # handful per song), but a user-curated keyword like
+                    # "shake" can repeat throughout a song's own hook/title
+                    # (real case, 2026-07-21: "Shake the Snow Globe" sings
+                    # "shake" in tight clusters roughly every 40s), and an
+                    # unbounded gap-fill there monopolizes the group's
+                    # channel for the ENTIRE span between clusters, leaving
+                    # place_moving_head_moves nothing to work with even
+                    # after it can split around a small obstacle.
+                    warmup_duration_ms = min(
+                        _PREFERRED_WARMUP_DURATION_MS,
+                        max(0, start_ms - max(prior_ends, default=0)),
+                    )
                     if _heads_already_posed(head_existing, start_ms, warmup_params):
                         warmup_duration_ms = 0
                     placements = result.setdefault(head_name, [])
@@ -1362,7 +1639,11 @@ def place_moving_head_keyword_accents(
                 slider_pan=_deg_to_slider(warmup_pan), slider_tilt=_deg_to_slider(warmup_tilt),
             )
             prior_ends = [p.end_ms for p in channel_existing if p.end_ms <= start_ms]
-            warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+            # Capped -- see the matching comment in the "spin" branch above.
+            warmup_duration_ms = min(
+                _PREFERRED_WARMUP_DURATION_MS,
+                max(0, start_ms - max(prior_ends, default=0)),
+            )
             if _heads_already_posed(channel_existing, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(mh_group.name, [])
@@ -1734,7 +2015,18 @@ def _place_random_head_accents(
                 slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
             )
             prior_ends = [p.end_ms for p in head_placements if p.end_ms <= start_ms]
-            warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+            # Capped -- confirmed against a real generated .xsq (2026-07-21)
+            # that this "rare by design" assumption doesn't hold in
+            # practice: max_per_song bounds how many Beat Burst/Pattern
+            # accents fire, but says nothing about the GAP between them,
+            # which can still be tens of seconds -- one real case showed a
+            # single head's warmup reaching back 38.9s to the previous
+            # placement. Same fix as place_moving_head_keyword_accents'
+            # matching cap.
+            warmup_duration_ms = min(
+                _PREFERRED_WARMUP_DURATION_MS,
+                max(0, start_ms - max(prior_ends, default=0)),
+            )
             if _heads_already_posed(head_placements, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(head_name, [])

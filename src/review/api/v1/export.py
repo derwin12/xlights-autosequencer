@@ -58,7 +58,8 @@ def _export_id() -> str:
 def _run_export(state: "_ExportState", song: dict, session: dict,
                 layout: dict, destination_name: str, fmt: str,
                 genre: str = "pop", occasion: str = "general",
-                include_extra_timing: bool = True) -> None:
+                include_extra_timing: bool = True,
+                vocal_diarization: bool = False) -> None:
     """Run the export in a background thread."""
     try:
         state.push({"stage": "building_plan", "progress": 0.1})
@@ -86,20 +87,54 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             if a.get("theme_id") and "section_index" in a
         }
 
+        # The already-classified section roles/energies (verse/chorus/...)
+        # from the Theme screen -- written by analysis.py at analyze/commit
+        # time as "<audio_stem>_story.json". Without this, build_plan()
+        # silently re-derives unclassified section energies straight from
+        # raw detector boundaries, and role labels are just the raw
+        # segmentino/QM-segmenter letters (fixed 2026-07-21: this was the
+        # actual root cause of "Sections" showing N1/A_1/qm_boundary
+        # instead of verse/chorus in the exported .xsq).
+        story_path = None
+        if audio_path:
+            candidate = Path(audio_path).parent / (Path(audio_path).stem + "_story.json")
+            if candidate.exists():
+                story_path = candidate
+
         # Surface the lyric/vocal track build in the render UI: report what
         # the session carries before the generator embeds it.
         lyrics = session.get("lyrics") or []
         words = session.get("words") or []
         phonemes = session.get("phonemes") or []
+        # words carry a "speaker" tag (0=lead, 1=backup) from
+        # src.analyzer.vocal_diarization -- surface whether a confident
+        # second voice was actually found, since the accept-gate silently
+        # collapses everything to speaker 0 otherwise (no other way to see
+        # this from the Export screen).
+        backup_word_count = sum(1 for w in words if w.get("speaker", 0) == 1)
+        detail = (
+            f"{len(lyrics)} lyric lines · {len(words)} words · {len(phonemes)} phonemes"
+            if (lyrics or words) else
+            "no lyrics in session — skipping vocal tracks"
+        )
+        if words:
+            detail += (
+                f" · backup singer detected ({backup_word_count} words)"
+                if backup_word_count else
+                " · no second voice detected"
+            )
+        # PhonemeAnalyzer discards the ENTIRE pasted lyrics text and
+        # re-transcribes the whole song from scratch when fewer than 50% of
+        # the pasted words aligned to the audio -- surface that here so
+        # "why is it making up words when I provided lyrics" is answerable
+        # from the Export screen instead of a silent, discarded warning.
+        lyrics_warnings = session.get("lyrics_warnings") or []
+        if lyrics_warnings:
+            detail += " · ⚠ " + "; ".join(lyrics_warnings)
         state.push({
             "stage": "lyric_tracks",
             "progress": 0.25,
-            "detail": (
-                f"{len(lyrics)} lyric lines - {len(words)} words - "
-                f"{len(phonemes)} phonemes"
-                if (lyrics or words) else
-                "no lyrics in session - skipping vocal tracks"
-            ),
+            "detail": detail,
         })
 
         state.push({"stage": "placing_effects", "progress": 0.4})
@@ -129,6 +164,8 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             include_extra_timing=include_extra_timing,
             title_override=song.get("title"),
             artist_override=song.get("artist"),
+            vocal_diarization=vocal_diarization,
+            story_path=story_path,
             progress_cb=_placement_progress,
         )
 
@@ -203,6 +240,10 @@ def start_export(song_id: str):
     body = request.get_json(silent=True) or {}
     fmt = body.get("format", "xsq")
     include_extra_timing = bool(body.get("include_extra_timing", True))
+    # Default True per explicit user request (2026-07-21, see
+    # GenerationConfig.vocal_diarization) -- no Export screen checkbox yet;
+    # opt out per-export via the POST body if it causes problems.
+    vocal_diarization = bool(body.get("vocal_diarization", True))
     default_name = Path(source_path).stem if source_path else song.get("title", song_id)
     destination_name = body.get("destination_name", f"{default_name}_AI.xsq")
 
@@ -223,7 +264,7 @@ def start_export(song_id: str):
     t = threading.Thread(
         target=_run_export,
         args=(state, song, session, layout, destination_name, fmt, genre, occasion,
-              include_extra_timing),
+              include_extra_timing, vocal_diarization),
         daemon=True,
     )
     t.start()

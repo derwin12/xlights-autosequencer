@@ -3230,11 +3230,31 @@ _FACES_VOCAL_GAP_MS = 5000
 # the track name; Text takes "<track> - Words" to select the word layer.
 _FACES_TIMING_TRACK = "Lyrics"
 _LYRIC_TEXT_TIMING_TRACK = "Lyrics - Words"
+# Second track for a featured/backup singer (src.analyzer.vocal_diarization),
+# gated by GenerationConfig.vocal_diarization. Mirrors the lead-singer track
+# names above; see xsq_writer._build_lyric_layers for the second Element.
+_FACES_BACKUP_TIMING_TRACK = "Lyrics - Backup"
+_LYRIC_TEXT_BACKUP_TIMING_TRACK = "Lyrics - Backup - Words"
+
+
+def _split_words_by_speaker(vocal_words: Optional[list[dict]]) -> tuple[list[dict], list[dict]]:
+    """Split word marks into (speaker 0, speaker 1) lists.
+
+    Words without a ``speaker`` key (e.g. from an analysis run before
+    diarization existed) default to speaker 0. Returns ``([], [])`` for
+    empty/``None`` input.
+    """
+    if not vocal_words:
+        return [], []
+    lead = [w for w in vocal_words if w.get("speaker", 0) == 0]
+    backup = [w for w in vocal_words if w.get("speaker", 0) == 1]
+    return lead, backup
 
 
 def _place_singing_faces(
     props: list[Any],
     vocal_words: Optional[list[dict]],
+    vocal_diarization: bool = False,
 ) -> dict[str, list[EffectPlacement]]:
     """Place xLights Faces effects on dedicated singing props over vocal regions.
 
@@ -3247,6 +3267,17 @@ def _place_singing_faces(
     phoneme-layer label. Effect settings are copied verbatim from a
     user-verified working effect.
 
+    When ``vocal_diarization`` is on, ``vocal_words`` carries WhisperX marks
+    tagged with a ``speaker`` key (0=lead, 1=featured/backup — see
+    ``src.analyzer.vocal_diarization``), and at least two face-capable props
+    exist, the second face prop (by layout order — no per-song "which prop
+    is the backup singer" config, per explicit user choice 2026-07-21)
+    renders only the speaker-1 words on a second "Lyrics - Backup" timing
+    track, while every other face prop renders only speaker-0 words. With
+    only one face prop, or no confidently-detected second voice
+    (``vocal_diarization.diarize_words`` collapses everyone to speaker 0),
+    this degrades to the original behavior: every face prop gets every word.
+
     Deliberately independent of hierarchy sections (bug-159: a 0-section
     analysis must not zero out face placements): regions derive from the
     word marks alone. Returns ``{}`` when there are no words or no
@@ -3257,11 +3288,23 @@ def _place_singing_faces(
     if not face_props:
         return result
 
-    regions = _vocal_regions(vocal_words)
-    if not regions:
+    if vocal_diarization:
+        lead_only_words, backup_words = _split_words_by_speaker(vocal_words)
+    else:
+        lead_only_words, backup_words = vocal_words, []
+    backup_prop = face_props[1] if (backup_words and len(face_props) >= 2) else None
+    lead_words = vocal_words if backup_prop is None else lead_only_words
+
+    lead_regions = _vocal_regions(lead_words)
+    backup_regions = _vocal_regions(backup_words) if backup_prop is not None else []
+    if not lead_regions and not backup_regions:
         return result
 
     for prop in face_props:
+        is_backup = prop is backup_prop
+        regions = backup_regions if is_backup else lead_regions
+        if not regions:
+            continue
         face_name = _best_face_definition(prop.name, prop.face_definitions)
         placements: list[EffectPlacement] = []
         for start, end in regions:
@@ -3273,15 +3316,17 @@ def _place_singing_faces(
                 end_ms=end,
                 parameters={
                     "E_CHOICE_Faces_FaceDefinition": face_name,
-                    "E_CHOICE_Faces_TimingTrack": _FACES_TIMING_TRACK,
+                    "E_CHOICE_Faces_TimingTrack": (
+                        _FACES_BACKUP_TIMING_TRACK if is_backup else _FACES_TIMING_TRACK
+                    ),
                 },
                 color_palette=["#FFFFFF"],
             ))
         result[prop.name] = placements
 
     logger.info(
-        "singing_faces: %d face prop(s) x %d vocal region(s) placed",
-        len(face_props), len(regions),
+        "singing_faces: %d face prop(s) placed%s",
+        len(result), " (with backup singer track)" if backup_prop is not None else "",
     )
     return result
 
@@ -3305,17 +3350,18 @@ def _best_face_definition(prop_name: str, face_definitions: list[str]) -> str:
 
 
 # Bitmap font for a "*Lyrics*Small*"-named matrix (user request,
-# 2026-07-18): xLights has no numeric font-size slider for the Text
-# effect's bitmap-font mode, only a fixed choice list; "6-5x6 Thin" is
-# 6px tall vs. the default "10-12x12 Bold"'s 12px -- the closest available
-# choice to a literal 50% of the size actually in use
-# (_XLIGHTS_EFFECT_DEFAULTS["Text"]["E_CHOICE_Text_Font"] in xsq_writer.py).
-_LYRIC_TEXT_SMALL_FONT = "6-5x6 Thin"
+# 2026-07-18, changed to 5-5x5 Thin 2026-07-21): xLights has no numeric
+# font-size slider for the Text effect's bitmap-font mode, only a fixed
+# choice list; "5-5x5 Thin" is 5px tall vs. the default "10-12x12 Bold"'s
+# 12px (_XLIGHTS_EFFECT_DEFAULTS["Text"]["E_CHOICE_Text_Font"] in
+# xsq_writer.py).
+_LYRIC_TEXT_SMALL_FONT = "5-5x5 Thin"
 
 
 def _place_lyric_text(
     props: list[Any],
     vocal_words: Optional[list[dict]],
+    vocal_diarization: bool = False,
 ) -> dict[str, list[EffectPlacement]]:
     """Place a word-synced Text effect on every matrix prop named for lyrics.
 
@@ -3334,14 +3380,18 @@ def _place_lyric_text(
     instead of the catalog default; everything else about the effect is
     identical between targets. When no prop is named for lyrics at all,
     falls back to the single largest matrix prop (unchanged behavior).
+
+    When ``vocal_diarization`` is on and at least two targets exist, the
+    second target (by the same order as above) renders only speaker-1
+    words on a second "Lyrics - Backup - Words" track (see
+    ``_place_singing_faces`` for the matching Faces behavior); every other
+    target renders only speaker-0 words. Degrades to the original
+    behavior — every target gets every word — with one target or no
+    confidently-detected second voice.
     """
     result: dict[str, list[EffectPlacement]] = {}
     matrix_props = [p for p in props if getattr(p, "display_as", "") == "Matrix"]
     if not matrix_props:
-        return result
-
-    regions = _vocal_regions(vocal_words)
-    if not regions:
         return result
 
     named = [p for p in matrix_props if "lyric" in p.name.lower()]
@@ -3350,9 +3400,27 @@ def _place_lyric_text(
     else:
         targets = [max(matrix_props, key=lambda p: (getattr(p, "pixel_count", 0), p.name))]
 
+    if vocal_diarization:
+        lead_only_words, backup_words = _split_words_by_speaker(vocal_words)
+    else:
+        lead_only_words, backup_words = vocal_words, []
+    backup_target = targets[1] if (backup_words and len(targets) >= 2) else None
+    lead_words = vocal_words if backup_target is None else lead_only_words
+
+    lead_regions = _vocal_regions(lead_words)
+    backup_regions = _vocal_regions(backup_words) if backup_target is not None else []
+    if not lead_regions and not backup_regions:
+        return result
+
     for target in targets:
+        is_backup = target is backup_target
+        regions = backup_regions if is_backup else lead_regions
+        if not regions:
+            continue
         parameters: dict[str, Any] = {
-            "E_CHOICE_Text_LyricTrack": _LYRIC_TEXT_TIMING_TRACK,
+            "E_CHOICE_Text_LyricTrack": (
+                _LYRIC_TEXT_BACKUP_TIMING_TRACK if is_backup else _LYRIC_TEXT_TIMING_TRACK
+            ),
         }
         if "small" in target.name.lower():
             parameters["E_CHOICE_Text_Font"] = _LYRIC_TEXT_SMALL_FONT
@@ -3432,7 +3500,15 @@ def _place_video_effect(
 # song. User request (2026-07-15): stay selective -- the same picture should
 # resurface only a handful of times across a whole song, not every time its
 # word comes up.
-_PICTURE_BURST_MS = 6_000
+# Burst duration scales with the matched word's own duration
+# (match["end_ms"] - match["start_ms"]) instead of a flat length, so a
+# quick word doesn't trigger a picture that visibly outlives it (user
+# request, 2026-07-21). Floored so very short words still give the image
+# enough screen time to register, and jittered per-burst (seeded, same
+# pattern as direction/motion/speed below) so same-length words don't all
+# produce identically-sized bursts.
+_PICTURE_MIN_BURST_MS = 3_000
+_PICTURE_BURST_JITTER_MS = 1_500
 _PICTURE_MIN_GAP_MS = 90_000
 _PICTURE_FADE_MS = 800
 # Start the burst this far ahead of the matched word's own start time, so the
@@ -3653,7 +3729,12 @@ def _place_picture_effects(
         start = max(0, word_start - _PICTURE_LEAD_MS)
         if start >= duration_ms:
             continue
-        end = min(start + _PICTURE_BURST_MS, duration_ms)
+        word_duration_ms = max(0, int(match["end_ms"]) - word_start)
+        jitter_ms = random.Random(
+            f"{variation_seed}:duration:{match.get('word')}:{word_start}"
+        ).randint(0, _PICTURE_BURST_JITTER_MS)
+        burst_ms = max(_PICTURE_MIN_BURST_MS, word_duration_ms) + jitter_ms
+        end = min(start + burst_ms, duration_ms)
         if end <= start:
             continue
         filename = match["stored_path"]

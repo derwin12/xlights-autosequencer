@@ -281,6 +281,7 @@ def write_xsq(
     words: list[dict] | None = None,
     phonemes: list[dict] | None = None,
     include_extra_timing: bool = True,
+    vocal_diarization: bool = False,
 ) -> None:
     """Write a SequencePlan as a valid xLights .xsq XML file.
 
@@ -312,6 +313,15 @@ def write_xsq(
       Onsets (...) timing tracks are omitted from the output (they are
       display-only — no placed effect references them by name). Beats,
       Bars, Sections, and Lyrics are always written.
+    - vocal_diarization: when True and ``words`` carries WhisperX marks
+      tagged ``speaker`` (0=lead, 1=featured/backup — see
+      ``src.analyzer.vocal_diarization``) with a confidently-detected
+      second voice, a second 3-layer "Lyrics - Backup" timing track is
+      written from the speaker-1 words/phonemes, and the primary "Lyrics"
+      track carries only speaker-0 words/phonemes. Phonemes (which have no
+      speaker tag of their own) inherit the speaker of whichever word's
+      time span contains them. Degrades to the original single-track
+      behavior when off, or when no speaker-1 words are present.
     """
     # Warn if audio is outside the mounted show directory (devcontainer-specific).
     # The XSQ will still be written, but xLights on the host won't find the audio.
@@ -630,15 +640,44 @@ def write_xsq(
     # reads the word layer via E_CHOICE_Text_LyricTrack="Lyrics - Words".
     # When word/phoneme marks are absent, "Lyrics" stays a plain single-layer
     # line track (pre-singing-faces behavior).
-    lyric_layers = _build_lyric_layers(lyrics, words, phonemes)
+    #
+    # When vocal_diarization detected a confident second voice (speaker=1),
+    # split into a second "Lyrics - Backup" 3-layer track instead of one
+    # combined track — see _place_singing_faces/_place_lyric_text in
+    # effect_placer.py for the matching Faces/Text placement split.
+    backup_words: list[dict] = []
+    backup_phonemes: list[dict] = []
+    if vocal_diarization and words and phonemes:
+        phonemes_with_speaker = _attribute_phoneme_speakers(phonemes, words)
+        lead_words = [w for w in words if w.get("speaker", 0) == 0]
+        backup_words = [w for w in words if w.get("speaker", 0) == 1]
+        lead_phonemes = [p for p in phonemes_with_speaker if p["speaker"] == 0]
+        backup_phonemes = [p for p in phonemes_with_speaker if p["speaker"] == 1]
+        if backup_words and backup_phonemes:
+            words, phonemes = lead_words, lead_phonemes
+        else:
+            backup_words, backup_phonemes = [], []
 
-    # Add timing track display elements
+    lyric_layers = _build_lyric_layers(lyrics, words, phonemes)
+    backup_lyric_layers = (
+        _build_lyric_layers(None, backup_words, backup_phonemes)
+        if backup_words else []
+    )
+
+    # Add timing track display elements. "Sections" uses the classified
+    # section roles (verse/chorus/bridge/...) instead of the raw segmentino/
+    # QM-segmenter labels (letters, N#, "qm_boundary") when available (user
+    # request 2026-07-21) -- see _section_role_marks.
+    section_role_marks = _section_role_marks(plan) if plan.sections else None
     timing_tracks = (_collect_timing_tracks(hierarchy, None if lyric_layers else lyrics,
-                                            include_extra_timing=include_extra_timing)
-                     if (hierarchy or lyrics) else {})
+                                            include_extra_timing=include_extra_timing,
+                                            section_role_marks=section_role_marks)
+                     if (hierarchy or lyrics or section_role_marks) else {})
     timing_names = list(timing_tracks)
     if lyric_layers:
         timing_names.append("Lyrics")
+    if backup_lyric_layers:
+        timing_names.append("Lyrics - Backup")
     for track_name in timing_names:
         elem = ET.SubElement(display_el, "Element")
         elem.set("type", "timing")
@@ -706,6 +745,16 @@ def write_xsq(
         timing_el.set("type", "timing")
         timing_el.set("name", "Lyrics")
         for layer_marks in lyric_layers:
+            layer_el = ET.SubElement(timing_el, "EffectLayer")
+            _emit_timing_layer(layer_el, layer_marks, offset,
+                               int(plan.song_profile.duration_ms))
+
+    # Second "Lyrics - Backup" track for a diarized featured/backup singer.
+    if backup_lyric_layers:
+        timing_el = ET.SubElement(effects_el, "Element")
+        timing_el.set("type", "timing")
+        timing_el.set("name", "Lyrics - Backup")
+        for layer_marks in backup_lyric_layers:
             layer_el = ET.SubElement(timing_el, "EffectLayer")
             _emit_timing_layer(layer_el, layer_marks, offset,
                                int(plan.song_profile.duration_ms))
@@ -1060,6 +1109,29 @@ def _emit_timing_layer(
         effect_el.set("endTime", str(end))
 
 
+def _attribute_phoneme_speakers(phonemes: list[dict], words: list[dict]) -> list[dict]:
+    """Tag each phoneme mark with the ``speaker`` of the word it falls within.
+
+    Phoneme marks carry no speaker tag of their own (diarization clusters
+    at the word/utterance level, see ``src.analyzer.vocal_diarization``) —
+    a phoneme inherits the speaker of whichever word's ``[start_ms,
+    end_ms)`` span contains its own ``start_ms``, defaulting to 0 (lead)
+    when no word overlaps.
+    """
+    sorted_words = sorted(words, key=lambda w: w["start_ms"])
+    tagged: list[dict] = []
+    for p in phonemes:
+        speaker = 0
+        for w in sorted_words:
+            if w["start_ms"] > p["start_ms"]:
+                break
+            if w["start_ms"] <= p["start_ms"] < w["end_ms"]:
+                speaker = w.get("speaker", 0)
+                break
+        tagged.append({**p, "speaker": speaker})
+    return tagged
+
+
 def _build_lyric_layers(
     lyrics: list[dict] | None,
     words: list[dict] | None,
@@ -1110,13 +1182,47 @@ def _build_lyric_layers(
     return [phrase_marks, word_marks, phoneme_marks]
 
 
+def _section_role_marks(plan: SequencePlan) -> list[TimingMark]:
+    """Build 'Sections' timing marks from classified section roles.
+
+    Replaces the raw segmentino/QM-segmenter labels (single letters, N#,
+    "qm_boundary" -- see src.analyzer.boundary_cluster/orchestrator) with
+    the human-readable role each section was actually classified as
+    (verse/chorus/bridge/...), from ``SectionAssignment.section.label``
+    (populated from the story's "role" field in plan.py). Repeated roles
+    get a numeric suffix (verse_1, verse_2) so each section is
+    distinguishable in xLights; a role that appears once keeps its bare
+    name -- same convention as ``xtiming.append_roles_layer`` (user
+    request 2026-07-21).
+    """
+    role_total: dict[str, int] = {}
+    for a in plan.sections:
+        role_total[a.section.label] = role_total.get(a.section.label, 0) + 1
+
+    marks: list[TimingMark] = []
+    role_seen: dict[str, int] = {}
+    for a in plan.sections:
+        role = a.section.label
+        role_seen[role] = role_seen.get(role, 0) + 1
+        label = f"{role}_{role_seen[role]}" if role_total[role] > 1 else role
+        marks.append(TimingMark(
+            time_ms=a.section.start_ms, confidence=None, label=label,
+            duration_ms=max(1, a.section.end_ms - a.section.start_ms),
+        ))
+    return marks
+
+
 def _collect_timing_tracks(
     hierarchy: HierarchyResult | None,
     lyrics: list[dict] | None = None,
     include_extra_timing: bool = True,
+    section_role_marks: list[TimingMark] | None = None,
 ) -> dict[str, list[TimingMark]]:
     """Collect single-layer timing tracks from hierarchy (+ optional lyric lines)."""
     tracks: dict[str, list[TimingMark]] = {}
+
+    if section_role_marks:
+        tracks["Sections"] = section_role_marks
 
     if hierarchy is not None:
         if hierarchy.beats and hierarchy.beats.marks:
@@ -1125,7 +1231,7 @@ def _collect_timing_tracks(
         if hierarchy.bars and hierarchy.bars.marks:
             tracks["Bars"] = hierarchy.bars.marks
 
-        if hierarchy.sections:
+        if "Sections" not in tracks and hierarchy.sections:
             tracks["Sections"] = hierarchy.sections
 
         if include_extra_timing:

@@ -12,6 +12,7 @@ from src.generator.moving_head import (
     _ACCENT_DURATION_MS,
     _MAX_BEAT_BURSTS_PER_SONG,
     _MAX_PATTERN_ACCENTS_PER_SONG,
+    _PREFERRED_WARMUP_DURATION_MS,
     _STRONG_ENERGY_GATE,
     place_moving_head_beat_bursts,
     place_moving_head_pattern_accents,
@@ -94,6 +95,26 @@ class TestPlaceMovingHeadBeatBursts:
         for placements in result.values():
             burst = placements[-1]
             assert burst.parameters["E_CHECKBOX_MHPatternEnable"] == "0"
+
+    def test_warmup_is_capped_not_filling_the_whole_gap(self):
+        # Fixed 2026-07-21: confirmed against a real generated .xsq that
+        # this warmup filled the ENTIRE gap back to the previous
+        # placement -- one real case showed a single head's warmup
+        # reaching back 38.9s to the prior placement. max_per_song bounds
+        # how many bursts fire per song, not how far apart they can land,
+        # so "rare by design" didn't prevent this. Must cap to
+        # _PREFERRED_WARMUP_DURATION_MS like every other move's warmup.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 10_000, _STRONG_ENERGY_GATE, variation_seed=0),
+            _assignment("chorus", 100_000, 110_000, _STRONG_ENERGY_GATE, variation_seed=0),
+        ]
+        result = place_moving_head_beat_bursts(layout, assignments, _hierarchy(110_000))
+        for placements in result.values():
+            for p in placements:
+                duration = p.end_ms - p.start_ms
+                if duration != _ACCENT_DURATION_MS:  # a warmup, not the burst itself
+                    assert duration <= _PREFERRED_WARMUP_DURATION_MS
 
     def test_capped_at_max_bursts_per_song(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
