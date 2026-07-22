@@ -17,11 +17,12 @@ interface Theme {
 interface ThemeCardProps {
   theme: Theme;
   assigned?: boolean;
+  assignedSections?: string[];
   onClick?: () => void;
   onEdit?: () => void;
 }
 
-export function ThemeCard({ theme, assigned = false, onClick, onEdit }: ThemeCardProps) {
+export function ThemeCard({ theme, assigned = false, assignedSections = [], onClick, onEdit }: ThemeCardProps) {
   return (
     <div
       data-testid="theme-card"
@@ -77,6 +78,15 @@ export function ThemeCard({ theme, assigned = false, onClick, onEdit }: ThemeCar
 
       {/* Description */}
       <p className={styles.description}>{theme.description}</p>
+
+      {/* Sections currently using this theme */}
+      {assignedSections.length > 0 && (
+        <div className={styles.sectionsRow} data-testid="assigned-sections">
+          {assignedSections.map((label, i) => (
+            <span key={i} className={styles.sectionChip}>{label}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

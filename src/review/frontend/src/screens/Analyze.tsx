@@ -205,6 +205,7 @@ export function lyricsCheckReasonLabel(reason: string | null): string {
     case 'not_installed': return 'syncedlyrics not installed';
     case 'search_failed': return 'provider search failed';
     case 'no_match': return 'no match found';
+    case 'duration_mismatch': return 'match runs longer than this song — likely wrong version';
     case 'empty': return 'no text entered';
     default: return reason || 'not found';
   }
@@ -332,7 +333,11 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       const res = await fetch('/api/v1/lyrics/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: titleInput.trim(), artist: artistInput.trim() }),
+        body: JSON.stringify({
+          title: titleInput.trim(),
+          artist: artistInput.trim(),
+          duration_ms: song.duration_ms,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message || 'Lyrics check failed');

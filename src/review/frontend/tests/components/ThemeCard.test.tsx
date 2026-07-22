@@ -46,4 +46,16 @@ describe('ThemeCard', () => {
     fireEvent.click(card);
     expect(onClick).toHaveBeenCalledOnce();
   });
+
+  it('shows a chip per section currently assigned this theme', () => {
+    render(<ThemeCard theme={theme} assignedSections={['Intro', 'Chorus']} />);
+    const row = screen.getByTestId('assigned-sections');
+    expect(row.textContent).toContain('Intro');
+    expect(row.textContent).toContain('Chorus');
+  });
+
+  it('renders no section-assignment row when no sections use this theme', () => {
+    render(<ThemeCard theme={theme} assignedSections={[]} />);
+    expect(screen.queryByTestId('assigned-sections')).toBeNull();
+  });
 });

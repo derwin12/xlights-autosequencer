@@ -183,6 +183,22 @@ export function Theme({
 
   const currentAssignment = localAssignments.find((a) => a.section_index === selectedSectionIdx);
 
+  // Reverse lookup for the theme grid: which section(s) currently use each
+  // theme, so the assignment is visible without clicking through every
+  // section tab. Derived from live localAssignments/sections state (not a
+  // stale/wrong list — see bug-355) so it stays in sync with edits.
+  const sectionLabelsByTheme = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const section of sections) {
+      const assignment = localAssignments.find((a) => a.section_index === section.index);
+      if (!assignment?.theme_id) continue;
+      const labels = map.get(assignment.theme_id) ?? [];
+      labels.push(section.label);
+      map.set(assignment.theme_id, labels);
+    }
+    return map;
+  }, [sections, localAssignments]);
+
   // Holiday (occasion) first — general-purpose themes sort last since
   // holiday-specific ones are the special case worth surfacing together —
   // then category (mood), then alphabetical by name (user request 2026-07-18).
@@ -367,6 +383,7 @@ export function Theme({
               key={theme.theme_id}
               theme={theme}
               assigned={currentAssignment?.theme_id === theme.theme_id}
+              assignedSections={sectionLabelsByTheme.get(theme.theme_id) ?? []}
               onClick={() => handleThemeSelect(theme.theme_id)}
               onEdit={theme.editable ? () => openEdit(theme) : undefined}
             />

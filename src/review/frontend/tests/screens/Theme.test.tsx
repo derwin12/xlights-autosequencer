@@ -74,6 +74,31 @@ describe('Theme screen', () => {
     expect(screen.getByText(/assigned/i)).toBeTruthy();
   });
 
+  it('shows every section using a theme as a chip on its card', () => {
+    const twoSections = [
+      { index: 0, start_ms: 0, end_ms: 30000, kind: 'intro', label: 'Intro' },
+      { index: 1, start_ms: 30000, end_ms: 60000, kind: 'verse', label: 'Verse' },
+    ];
+    const twoAssignments = [
+      { section_index: 0, theme_id: 'shimmer-wash', overrides: {}, user_confirmed: false },
+      { section_index: 1, theme_id: 'shimmer-wash', overrides: {}, user_confirmed: false },
+    ];
+    render(
+      <Theme
+        song={song}
+        themes={themes}
+        sections={twoSections}
+        assignments={twoAssignments}
+        onThemed={() => {}}
+        onAssignmentChange={() => {}}
+      />
+    );
+    const rows = screen.getAllByTestId('assigned-sections');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain('Intro');
+    expect(rows[0].textContent).toContain('Verse');
+  });
+
   it('accept-all button fires API and calls onThemed', async () => {
     mockFetch.mockResolvedValue({
       ok: true,

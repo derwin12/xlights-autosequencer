@@ -100,7 +100,7 @@ describe('Analyze screen', () => {
     await waitFor(() => {
       const checkCall = mockFetch.mock.calls.find(([url]) => url === '/api/v1/lyrics/check');
       expect(checkCall).toBeTruthy();
-      expect(JSON.parse(checkCall![1].body)).toEqual({ title: 'Test Song', artist: 'Test Artist' });
+      expect(JSON.parse(checkCall![1].body)).toEqual({ title: 'Test Song', artist: 'Test Artist', duration_ms: 60000 });
       expect(screen.getByText(/Found \(12 lines\)/)).toBeTruthy();
     });
   });

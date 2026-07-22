@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { Drop } from '../../src/screens/Drop';
 
 // Mock fetch globally
@@ -94,7 +94,27 @@ describe('Drop screen', () => {
     });
   });
 
-  it('imports via video file when toggled to video mode', async () => {
+  it('shows a type-specific status while a video import is in flight', async () => {
+    let resolveFetch: (value: unknown) => void;
+    mockFetch.mockReturnValue(new Promise((resolve) => { resolveFetch = resolve; }));
+
+    render(<Drop onSongImported={() => {}} />);
+    const input = screen.getByTestId('file-input') as HTMLInputElement;
+
+    const file = new File(['fake'], 'clip.mp4', { type: 'video/mp4' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    fireEvent.change(input);
+
+    await waitFor(() => {
+      expect(screen.getByText(/importing video/i)).toBeTruthy();
+    });
+
+    await act(async () => {
+      resolveFetch!({ ok: true, json: async () => ({ created: true, song: { song_id: 'x' } }) });
+    });
+  });
+
+  it('imports via video endpoint when a video extension is dropped', async () => {
     const songData = {
       song_id: 'vid123',
       title: 'Video Song',
@@ -113,7 +133,6 @@ describe('Drop screen', () => {
     const onImported = vi.fn();
     render(<Drop onSongImported={onImported} />);
 
-    fireEvent.click(screen.getByTestId('mode-video'));
     const input = screen.getByTestId('file-input') as HTMLInputElement;
     const file = new File(['fake'], 'clip.mp4', { type: 'video/mp4' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
@@ -131,21 +150,6 @@ describe('Drop screen', () => {
     });
   });
 
-  it('rejects an audio extension when in video mode', async () => {
-    render(<Drop onSongImported={() => {}} />);
-    fireEvent.click(screen.getByTestId('mode-video'));
-    const input = screen.getByTestId('file-input') as HTMLInputElement;
-
-    const file = new File(['fake'], 'song.mp3', { type: 'audio/mpeg' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    fireEvent.change(input);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeTruthy();
-    });
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
   it('shows server error message when video import fails', async () => {
     mockFetch.mockResolvedValue({
       ok: false,
@@ -157,7 +161,6 @@ describe('Drop screen', () => {
     const onImported = vi.fn();
     render(<Drop onSongImported={onImported} />);
 
-    fireEvent.click(screen.getByTestId('mode-video'));
     const input = screen.getByTestId('file-input') as HTMLInputElement;
     const file = new File(['fake'], 'clip.mp4', { type: 'video/mp4' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });

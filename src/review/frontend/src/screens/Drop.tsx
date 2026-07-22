@@ -28,35 +28,43 @@ interface DropProps {
 
 const ALLOWED_AUDIO_EXTS = new Set(['.mp3', '.wav', '.flac', '.aiff', '.aif']);
 const ALLOWED_VIDEO_EXTS = new Set(['.mp4', '.mov', '.avi', '.mkv', '.webm']);
+const ALL_ALLOWED_EXTS = new Set([...ALLOWED_AUDIO_EXTS, ...ALLOWED_VIDEO_EXTS]);
+
+type ImportMode = 'audio' | 'video';
 
 function getExt(filename: string): string {
   const i = filename.lastIndexOf('.');
   return i >= 0 ? filename.slice(i).toLowerCase() : '';
 }
 
-type ImportMode = 'audio' | 'video';
+// The audio/video extension sets are disjoint, so the file itself tells us
+// which import path to take -- no need to make the user pick a mode first.
+function detectMode(ext: string): ImportMode | null {
+  if (ALLOWED_AUDIO_EXTS.has(ext)) return 'audio';
+  if (ALLOWED_VIDEO_EXTS.has(ext)) return 'video';
+  return null;
+}
 
 export function Drop({ onSongImported }: DropProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<ImportMode>('audio');
+  const [loading, setLoading] = useState<ImportMode | null>(null);
 
   async function handleFile(file: File) {
     const ext = getExt(file.name);
-    const allowedExts = mode === 'audio' ? ALLOWED_AUDIO_EXTS : ALLOWED_VIDEO_EXTS;
-    if (!allowedExts.has(ext)) {
-      setError(`Unsupported file type: ${ext}. Supported: ${[...allowedExts].join(', ')}`);
+    const mode = detectMode(ext);
+    if (!mode) {
+      setError(`Unsupported file type: ${ext}. Supported: ${[...ALL_ALLOWED_EXTS].join(', ')}`);
       return;
     }
 
     setError(null);
-    setLoading(true);
+    setLoading(mode);
 
     try {
       const formData = new FormData();
       const endpoint = mode === 'audio' ? '/api/v1/import' : '/api/v1/import-video';
-      formData.append(mode === 'audio' ? 'audio' : 'video', file);
+      formData.append(mode, file);
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -75,7 +83,7 @@ export function Drop({ onSongImported }: DropProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed');
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
 
@@ -88,38 +96,16 @@ export function Drop({ onSongImported }: DropProps) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   }, []);
 
-  const acceptAttr = mode === 'audio'
-    ? [...ALLOWED_AUDIO_EXTS].join(',')
-    : [...ALLOWED_VIDEO_EXTS].join(',');
+  const acceptAttr = [...ALL_ALLOWED_EXTS].join(',');
 
   return (
     <div className={styles.root}>
-      <div className={styles.modeToggle} role="tablist">
-        <button
-          type="button"
-          data-testid="mode-audio"
-          className={mode === 'audio' ? styles.modeButtonActive : styles.modeButton}
-          onClick={() => setMode('audio')}
-        >
-          Audio file
-        </button>
-        <button
-          type="button"
-          data-testid="mode-video"
-          className={mode === 'video' ? styles.modeButtonActive : styles.modeButton}
-          onClick={() => setMode('video')}
-        >
-          Video file
-        </button>
-      </div>
-
       <div
         data-testid="drop-target"
         className={styles.dropZone}
@@ -136,18 +122,17 @@ export function Drop({ onSongImported }: DropProps) {
           onChange={handleChange}
         />
         {loading ? (
-          <p>Importing…</p>
-        ) : mode === 'audio' ? (
-          <>
-            <p className={styles.hint}>Drop an MP3 here or click to browse</p>
-            <p className={styles.sub}>Supports MP3, WAV, FLAC, AIFF</p>
-          </>
+          <p className={styles.hint}>
+            {loading === 'audio' ? 'Importing audio…' : 'Importing video, extracting its audio track…'}
+          </p>
         ) : (
           <>
-            <p className={styles.hint}>Drop an MP4 here or click to browse</p>
+            <p className={styles.hint}>Drop an audio or video file here, or click to browse</p>
             <p className={styles.sub}>
-              Supports MP4, MOV, AVI, MKV, WEBM. Audio drives the sequence;
-              the video can be placed on a matrix with the Video effect.
+              Audio: MP3, WAV, FLAC, AIFF — analyzed directly.<br />
+              Video: MP4, MOV, AVI, MKV, WEBM — its audio track drives the
+              sequence, and the video itself can be placed on a matrix with
+              the Video effect. Detected automatically from the file type.
             </p>
           </>
         )}
