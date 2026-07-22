@@ -45,7 +45,10 @@ if TYPE_CHECKING:
 # of being bundled together, unlabeled to the user, inside "events_drums".
 # Bumped per the bug-265 lesson: pre-feature caches lack these fields and
 # fresh=False must not silently serve them empty.
-SCHEMA_VERSION = "2.5.0"
+# 2.6.0 (2026-07-22): kick_pulses added (kick_pulses.detect_kick_pulses,
+# grouped from kick_hits) — same bug-265 reasoning: bump so pre-feature
+# caches re-analyze instead of silently skipping the new floodlight accent.
+SCHEMA_VERSION = "2.6.0"
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -766,6 +769,16 @@ def run_orchestrator(
         except Exception as exc:
             warnings.append(f"Drum classification failed: {exc}")
 
+    # Kick pulses: rare double-kick/kick-roll flourishes, grouped from the
+    # kick_hits just classified above (no extra separation or onset
+    # detection needed — see src/analyzer/kick_pulses.py).
+    kick_pulses: list["TimingMark"] = []
+    if kick_hits:
+        from src.analyzer.kick_pulses import detect_kick_pulses
+        kick_pulses = detect_kick_pulses(kick_hits)
+        if kick_pulses:
+            print(f"L0 Kick pulses: {len(kick_pulses)} moment(s)")
+
     # ── Stage 9: Interaction analysis ────────────────────────────────────────
     interactions = None
     if stems is not None:
@@ -850,6 +863,7 @@ def run_orchestrator(
         crash_accents=crash_accents,
         ending_punches=ending_punches,
         riff_bursts=riff_bursts,
+        kick_pulses=kick_pulses,
         kick_hits=kick_hits,
         snare_hits=snare_hits,
         hihat_hits=hihat_hits,
@@ -932,6 +946,14 @@ def _write_xtiming(audio_path: Path, result: "HierarchyResult") -> None:
             root, "riff_bursts",
             TimingTrack(name="riff_bursts", algorithm_name="derived",
                         element_type="riff", marks=result.riff_bursts,
+                        quality_score=0.0),
+            fixed_width_ms=700,
+        )
+    if result.kick_pulses:
+        _add_mark_layer(
+            root, "kick_pulses",
+            TimingTrack(name="kick_pulses", algorithm_name="derived",
+                        element_type="kick_pulse", marks=result.kick_pulses,
                         quality_score=0.0),
             fixed_width_ms=700,
         )

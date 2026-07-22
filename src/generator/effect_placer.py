@@ -4103,3 +4103,87 @@ def _place_star_bursts(
         result.setdefault(member, []).append(p)
 
     return result
+
+
+# Kick-pulse accent on individual floodlights (or any other single-pixel
+# prop group with no buffer resolution for a burst-style effect), user
+# request 2026-07-22. Floodlights (NodesPerString=1) can't render Shockwave/
+# Pinwheel meaningfully -- any effect on a 1-pixel model degrades to a plain
+# time-varying color/brightness, so a quick "On" punch (fast fade in/out) is
+# the effect that actually reads correctly on them, per CLAUDE.md's Prop
+# Effect Suitability note ("mini props: On/Off, Strobe, Twinkle").
+_FLOODLIGHT_PULSE_DURATION_MS = 350
+_FLOODLIGHT_PULSE_FADE_IN_MS = 40
+_FLOODLIGHT_PULSE_FADE_OUT_MS = 120
+_FLOODLIGHT_PULSE_VOCAL_EXCLUSION_MS = 500
+
+
+def _place_floodlight_pulses(
+    groups: list[PowerGroup],
+    hierarchy: HierarchyResult,
+    vocal_words: Optional[list[dict]],
+    fade_exclusion_start_ms: Optional[int] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a short white "On" pulse on one individual floodlight at each
+    rare kick-roll mark from ``hierarchy.kick_pulses``, rotating through
+    every floodlight-family member so accents land on a single prop at a
+    time -- same rotation strategy as ``_place_star_bursts`` (bug-514), just
+    matched by name token instead of a corpus_recipes family since
+    floodlights don't carry one.
+
+    Song-scoped like ``_place_star_bursts``/``_place_crash_accents``, not
+    routed through the per-section pipeline.
+    """
+    result: dict[str, list[EffectPlacement]] = {}
+    if not hierarchy.kick_pulses:
+        return result
+
+    floodlight_groups = [g for g in groups if "floodlight" in g.name.lower()]
+    if not floodlight_groups:
+        return result
+
+    floodlight_members = [
+        member for g in floodlight_groups for member in (g.members or [g.name])
+    ]
+
+    word_spans = [
+        (int(w["start_ms"]), int(w["end_ms"]))
+        for w in (vocal_words or [])
+        if int(w["end_ms"]) > int(w["start_ms"])
+    ]
+
+    def _near_vocal(time_ms: int) -> bool:
+        return any(
+            start - _FLOODLIGHT_PULSE_VOCAL_EXCLUSION_MS <= time_ms <= end + _FLOODLIGHT_PULSE_VOCAL_EXCLUSION_MS
+            for start, end in word_spans
+        )
+
+    member_idx = 0
+    for mark in hierarchy.kick_pulses:
+        if _near_vocal(mark.time_ms):
+            continue
+        if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
+            continue
+        start_ms = mark.time_ms
+        end_ms = min(mark.time_ms + _FLOODLIGHT_PULSE_DURATION_MS, hierarchy.duration_ms)
+        if end_ms <= start_ms:
+            continue
+        member = floodlight_members[member_idx % len(floodlight_members)]
+        member_idx += 1
+        p = EffectPlacement(
+            effect_name="On",
+            xlights_id="eff_ON",
+            model_or_group=member,
+            start_ms=start_ms,
+            end_ms=end_ms,
+            parameters={},
+            color_palette=["#FFFFFF"],
+            fade_in_ms=_FLOODLIGHT_PULSE_FADE_IN_MS,
+            fade_out_ms=_FLOODLIGHT_PULSE_FADE_OUT_MS,
+        )
+        # xLights renders the FIRST EffectLayer on top (bug-248); a
+        # negative index sorts above the recipe's layers 0-2.
+        p.layer = -1
+        result.setdefault(member, []).append(p)
+
+    return result
