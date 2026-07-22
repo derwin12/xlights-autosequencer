@@ -238,6 +238,47 @@ class TestPlaceMovingHeadMoves:
         assert states[1] == ["full", "off", "full", "off"]
         assert states[2] == ["full", "off", "full", "off"]
 
+    def test_group_toggle_still_applies_when_lit_pair_is_active_elsewhere(self):
+        # Regression for the actual bug (2026-07-22): group_toggle_pair was
+        # originally gated by `lit_pair is None`, but lit_pair only ever
+        # affects the PER-HEAD branch (_reduce_to_lit_pair) -- group moves
+        # always write the same pose into every head slot regardless of
+        # lit_pair. That gating meant the group toggle silently never fired
+        # for any section that wasn't at/near the song's peak energy, i.e.
+        # most real sections (user's real export: a 53-energy chorus with a
+        # much louder section elsewhere in the song never toggled).
+        # A second, much louder section establishes a song peak the first
+        # section's energy=40 sits well below (peak - _RELATIVE_PEAK_MARGIN),
+        # so lit_pair is active (non-None) for the first section -- yet the
+        # group toggle must still alternate.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [
+            _assignment("chorus", 0, 8_000, 40, variation_seed=0),
+            _assignment("chorus", 100_000, 108_000, 95, variation_seed=0),
+        ]
+        bars = _bars(2_000, 55)  # bar marks every 2s through 108s
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+        assert "MH GRP" in result
+
+        placements = sorted(
+            (p for p in result["MH GRP"]
+             if p.start_ms < 8_000 and "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]),
+            key=lambda p: p.start_ms,
+        )
+        assert len(placements) > 1, "expected the bar-toggle split, not one flat placement"
+
+        def state(p, head_index):
+            text = p.parameters[f"E_TEXTCTRL_MH{head_index}_Settings"]
+            if f"Dimmer: {_DIMMER_FULL_ON}" in text:
+                return "full"
+            if f"Dimmer: {_DIMMER_OFF}" in text:
+                return "off"
+            return "?"
+
+        # At least one head must actually toggle off in an odd bar --
+        # proving the group placement isn't just the old flat all-full output.
+        assert any(state(p, i) == "off" for p in placements[1::2] for i in range(1, 5))
+
     def test_consistently_intense_song_never_reduces_below_own_peak(self):
         # User concern (2026-07-18): a song that's intense throughout but
         # whose sections never numerically clear _FULL_HEADS_ENERGY_GATE
