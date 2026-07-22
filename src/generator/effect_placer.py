@@ -1010,6 +1010,20 @@ def place_effects(
                             result.setdefault(group.name, []).extend(recipe_placements)
                             continue
 
+                    # A second theme layer also mapped to tier 6 (any 3+-layer
+                    # theme: _assign_layers_to_tiers puts tier 6 in every
+                    # middle layer, not just layer 0) reaches this group after
+                    # the recipe already claimed it above. Falling through to
+                    # the rotation-plan pick here would default to layer 0
+                    # (EffectPlacement's default — nothing here overrides it)
+                    # and overwrite the recipe's own color-mask layer, which
+                    # is deliberately placed on layer 0 (bug report: Fire
+                    # blanking out the Shockwave/mask idiom underneath on
+                    # 06_PROP_Tree). The recipe already fully placed this
+                    # group for this section — no fallback needed.
+                    if tier == 6 and group.name in corpus_recipe_done:
+                        continue
+
                     entry = rotation_plan.lookup(section_index, group.name)
                     if entry is None:
                         continue
@@ -1131,6 +1145,14 @@ def place_effects(
                                 result.setdefault(group.name, []).extend(recipe_placements)
                                 continue
 
+                        # See the rotation-plan branch above: a second theme
+                        # layer also mapped to tier 6 must not fall through to
+                        # a working-set pick for a group the recipe already
+                        # placed this section — it would default to layer 0
+                        # and overwrite the recipe's own color-mask layer.
+                        if group.name in corpus_recipe_done:
+                            continue
+
                         ws_rng = random.Random(section_index * 10000 + gi * 100 + tier)
                         ws_entry = select_from_working_set(working_set, ws_rng)
                         ws_def = effect_library.effects.get(ws_entry.effect_name)
@@ -1201,6 +1223,14 @@ def place_effects(
                                 corpus_recipe_done.add(group.name)
                                 result.setdefault(group.name, []).extend(recipe_placements)
                                 continue
+
+                        # See the rotation-plan branch above: don't let a
+                        # second tier-6-mapped theme layer's pool pick
+                        # overwrite (layer 0 by default) the recipe's own
+                        # color-mask layer for a group already placed this
+                        # section.
+                        if group.name in corpus_recipe_done:
+                            continue
 
                         group_prop_type = getattr(group, "prop_type", None)
 

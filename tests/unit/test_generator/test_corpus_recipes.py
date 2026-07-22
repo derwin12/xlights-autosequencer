@@ -875,6 +875,36 @@ class TestMinitreeRecipe:
         assert recipe is not None
         assert recipe.family != "minitree"
 
+    def test_second_theme_layer_mapped_to_tier_6_does_not_overwrite_mask(self) -> None:
+        # Bug report: a generated sequence showed Fire painting over the
+        # Shockwave/On-mask idiom on a Tree group. Root cause: any theme with
+        # 3+ layers maps tier 6 to BOTH layer 0 and the middle layer(s)
+        # (_assign_layers_to_tiers), so a second theme layer reaches this
+        # group after the recipe already claimed it. Before the fix, that
+        # second layer fell through to a rotation-plan/pool pick which
+        # defaults to EffectPlacement.layer == 0 (nothing overrides it),
+        # silently overwriting the recipe's own color-mask "On" layer.
+        section = _make_section(label="chorus")
+        layers = [
+            EffectLayer(variant="Color Wash"),
+            EffectLayer(variant="Ripple"),
+            EffectLayer(variant="Spirals"),
+        ]
+        result = _place(
+            section, _MINITREE_GROUP, layers=layers,
+            library_names=_LIBRARY_WITH_ON + ("Ripple", "Spirals"),
+            active_tiers=frozenset({1, 6}),
+        )
+        placements = result["06_PROP_Tree"]
+
+        # The recipe's own On color-mask must be the ONLY thing on layer 0.
+        # Before the fix, a fallback pick from the second tier-6-mapped
+        # layer also defaulted to layer 0 (EffectPlacement.layer's default
+        # — the fallback path never overrides it), silently sitting
+        # alongside/overwriting the recipe's mask.
+        layer0_names = {p.effect_name for p in placements if p.layer == 0}
+        assert layer0_names == {"On"}
+
 
 class TestSpiralTreeRecipe:
     """Spiral trees get their own recipe (family='spiraltree'), separate
