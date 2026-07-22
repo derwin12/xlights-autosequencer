@@ -199,12 +199,25 @@ def fetch_synced_lyrics(title: str, artist: str) -> Optional[str]:
     return text
 
 
-def check_synced_lyrics_with_text(title: str, artist: str) -> tuple[dict, Optional[str]]:
+_DURATION_MISMATCH_TOLERANCE_MS = 5000
+
+
+def check_synced_lyrics_with_text(
+    title: str, artist: str, duration_ms: Optional[int] = None,
+) -> tuple[dict, Optional[str]]:
     """Same lookup as ``check_synced_lyrics_available``, also returning the
     raw lyrics text so a caller (the review API) can cache a confirmed-good
     result and reuse it for the real analyze pass instead of re-fetching —
     a second independent network round-trip against the same flaky provider
     could land on a worse (or no) result than what was already confirmed.
+
+    ``duration_ms``, when given, is compared against the last LRC line's
+    timestamp: a provider can return timed lyrics for a differently-timed
+    recording (e.g. a longer remix or extended version) of the same
+    title/artist, and nothing else here would catch that. A last line
+    timestamped more than ``_DURATION_MISMATCH_TOLERANCE_MS`` past the
+    analyzed song's actual duration is rejected with reason
+    ``"duration_mismatch"`` rather than accepted as a good match.
     """
     search_term = f"{title} {artist}".strip()
     if not search_term:
@@ -216,6 +229,9 @@ def check_synced_lyrics_with_text(title: str, artist: str) -> tuple[dict, Option
 
     lines = parse_lrc(result)
     if lines:
+        last_start_ms = lines[-1][0]
+        if duration_ms is not None and last_start_ms > duration_ms + _DURATION_MISMATCH_TOLERANCE_MS:
+            return {"found": False, "reason": "duration_mismatch", "line_count": 0, "preview": []}, None
         preview = [text for _, text in lines[:3]]
         return {"found": True, "reason": None, "line_count": len(lines), "preview": preview}, result
 
@@ -257,19 +273,21 @@ def parse_pasted_lyrics(text: str) -> dict:
             "preview": plain_lines[:3], "source": "pasted"}
 
 
-def check_synced_lyrics_available(title: str, artist: str) -> dict:
+def check_synced_lyrics_available(title: str, artist: str, duration_ms: Optional[int] = None) -> dict:
     """Look up synced lyrics for (title, artist) and report why, not just whether.
 
     Standalone diagnostic for the review UI's "Check Lyrics" button — same
-    underlying lookup as ``fetch_synced_lyrics``, but distinguishes the three
+    underlying lookup as ``fetch_synced_lyrics``, but distinguishes the four
     cases that otherwise all collapse to ``None`` there: the package isn't
-    installed, the provider search raised (network/rate-limit), or the
-    search genuinely found no match. Returns
+    installed, the provider search raised (network/rate-limit), the search
+    genuinely found no match, or (when ``duration_ms`` is given) the match
+    found is timed for a differently-timed recording. Returns
     ``{"found": bool, "reason": str | None, "line_count": int, "preview": list[str]}``
-    — ``reason`` is one of ``"not_installed"``, ``"search_failed"``, or
-    ``"no_match"`` when ``found`` is False, else ``None``.
+    — ``reason`` is one of ``"not_installed"``, ``"search_failed"``,
+    ``"no_match"``, or ``"duration_mismatch"`` when ``found`` is False, else
+    ``None``.
     """
-    result, _text = check_synced_lyrics_with_text(title, artist)
+    result, _text = check_synced_lyrics_with_text(title, artist, duration_ms)
     return result
 
 
@@ -304,6 +322,14 @@ def get_boundary_refinement_inputs(
             if ln.strip() and not _is_credit_line(ln)
         ]
         return [], find_chorus_body(plain_lines), []
+
+    if lines[-1][0] > duration_ms + _DURATION_MISMATCH_TOLERANCE_MS:
+        log.warning(
+            "synced lyrics for %r/%r run past the song's duration (last line at %dms, "
+            "song is %dms) — likely a different recording, discarding",
+            title, artist, lines[-1][0], duration_ms,
+        )
+        return [], None, []
 
     forced_words = lines_to_word_marks(lines, duration_ms)
     chorus_body = find_chorus_body(lines)

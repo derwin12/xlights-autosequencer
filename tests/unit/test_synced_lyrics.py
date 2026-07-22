@@ -284,6 +284,38 @@ def test_check_synced_lyrics_with_text_returns_none_when_not_found(monkeypatch):
     assert text is None
 
 
+def test_check_synced_lyrics_with_text_rejects_match_longer_than_song(monkeypatch):
+    """A provider can return LRC for a longer version (e.g. extended remix)
+    of the same title/artist — the last line lands well past the analyzed
+    song's actual duration, which must be rejected rather than accepted."""
+    lrc = "[00:01.00]first line\n[04:00.00]last line far past song end\n"
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return lrc
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result, text = sl.check_synced_lyrics_with_text("Title", "Artist", duration_ms=60_000)
+    assert result["found"] is False
+    assert result["reason"] == "duration_mismatch"
+    assert text is None
+
+
+def test_check_synced_lyrics_with_text_accepts_match_within_tolerance(monkeypatch):
+    lrc = "[00:01.00]first line\n[00:58.00]last line near song end\n"
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return lrc
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result, text = sl.check_synced_lyrics_with_text("Title", "Artist", duration_ms=60_000)
+    assert result["found"] is True
+    assert text == lrc
+
+
 # ---------------------------------------------------------------------------
 # get_boundary_refinement_inputs — end-to-end wiring
 # ---------------------------------------------------------------------------
@@ -302,6 +334,17 @@ def test_get_boundary_refinement_inputs_uses_cached_lyrics_text_without_refetchi
     )
     assert len(forced_words) > 0
     assert [m.label for m in line_marks] == ["cached line one", "cached line two"]
+
+
+def test_get_boundary_refinement_inputs_discards_lyrics_longer_than_song(monkeypatch):
+    lrc = "[00:01.00]first line\n[04:00.00]last line far past song end\n"
+
+    forced_words, chorus_body, line_marks = sl.get_boundary_refinement_inputs(
+        "Title", "Artist", 60_000, lyrics_text=lrc,
+    )
+    assert forced_words == []
+    assert chorus_body is None
+    assert line_marks == []
 
 
 def test_get_boundary_refinement_inputs_full_lrc(monkeypatch):
