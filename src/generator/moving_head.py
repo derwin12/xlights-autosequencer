@@ -1858,7 +1858,18 @@ def _place_random_head_accents(
                 slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
             )
             prior_ends = [p.end_ms for p in head_placements if p.end_ms <= start_ms]
-            warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+            # Capped -- confirmed against a real generated .xsq (2026-07-21)
+            # that this "rare by design" assumption doesn't hold in
+            # practice: max_per_song bounds how many Beat Burst/Pattern
+            # accents fire, but says nothing about the GAP between them,
+            # which can still be tens of seconds -- one real case showed a
+            # single head's warmup reaching back 38.9s to the previous
+            # placement. Same fix as place_moving_head_keyword_accents'
+            # matching cap.
+            warmup_duration_ms = min(
+                _PREFERRED_WARMUP_DURATION_MS,
+                max(0, start_ms - max(prior_ends, default=0)),
+            )
             if _heads_already_posed(head_placements, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(head_name, [])
