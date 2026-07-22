@@ -198,6 +198,46 @@ class TestPlaceMovingHeadMoves:
             moves = [p for p in result[head_name] if "Shutter: On" in p.parameters[key]]
             assert len(moves) == 1
 
+    def test_group_static_held_move_also_alternates_per_bar(self):
+        # Same bar-level 4-heads/2-heads alternation as the per-head test
+        # above, but for a group-targeted static move (fan_pan_static) --
+        # user-reported 2026-07-22: a real generated .xsq showed this
+        # specific move flat/unmodified even after the per-head fix, since
+        # fan_pan_static is target="group", not "per_head". All 4 heads'
+        # settings are combined into ONE "MH GRP" effect per bar, with
+        # different Dimmer values per head slot (confirmed against two
+        # real reference-sequence samples pasted directly by the user).
+        # variation_seed=0, static_occurrence=0 -> static pool index 0
+        # ("fan_pan_static", group). toggle_pair =
+        # _choose_lit_pair(0, variation_seed+1=1) = (3, 4).
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=0)]
+        bars = _bars(2_000, 5)  # bar marks at 0, 2000, 4000, 6000, 8000
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+        assert set(result) == {"MH GRP"}
+
+        def dimmer_states_by_head():
+            placements = sorted(
+                (p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]),
+                key=lambda p: p.start_ms,
+            )
+            per_head = {i: [] for i in range(1, 5)}
+            for p in placements:
+                for i in range(1, 5):
+                    text = p.parameters[f"E_TEXTCTRL_MH{i}_Settings"]
+                    per_head[i].append(
+                        "full" if f"Dimmer: {_DIMMER_FULL_ON}" in text
+                        else "off" if f"Dimmer: {_DIMMER_OFF}" in text
+                        else "?"
+                    )
+            return per_head
+
+        states = dimmer_states_by_head()
+        assert states[3] == ["full", "full", "full", "full"]
+        assert states[4] == ["full", "full", "full", "full"]
+        assert states[1] == ["full", "off", "full", "off"]
+        assert states[2] == ["full", "off", "full", "off"]
+
     def test_consistently_intense_song_never_reduces_below_own_peak(self):
         # User concern (2026-07-18): a song that's intense throughout but
         # whose sections never numerically clear _FULL_HEADS_ENERGY_GATE

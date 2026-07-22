@@ -311,6 +311,9 @@ _STATIC_MOVES = (
 # (_DIMMER_FULL_ON / _DIMMER_OFF, no fancy multi-point curve) is the
 # correct native technique, not a stepped curve within one placement.
 _STATIC_HELD_MOVES = frozenset({"l_r_static", "r_static", "l_static", "l_r_crisscross", "ll_rr_crisscross"})
+# Group-targeted equivalent -- "fan_pan_move" already moves via tilt_vc so
+# it's excluded (matches the per-head dynamic moves' exclusion above).
+_STATIC_HELD_GROUP_MOVES = frozenset({"fan_pan_static"})
 
 
 def _format_pan(deg: float) -> str:
@@ -517,6 +520,38 @@ def _build_group_move_parameters(
     heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field)
     per_head = {i: settings for i in range(1, head_count + 1)}
+    params = _build_parameters(
+        per_head,
+        slider_pan=None if pose.pan_vc is not None else _deg_to_slider((pose.pan or 0.0) + jitter_pan),
+        slider_tilt=None if pose.tilt_vc is not None else _deg_to_slider((pose.tilt or 0.0) + jitter_tilt),
+        slider_pan_offset=_deg_to_slider(pose.pan_offset),
+    )
+    params.update(_vc_top_level_params(pose, jitter_pan, jitter_tilt))
+    return params
+
+
+def _build_group_toggle_move_parameters(
+    head_count: int, pose: "_HeadPose", jitter_pan: float, jitter_tilt: float,
+    lit_heads: tuple[int, ...],
+) -> dict[str, str]:
+    """Like ``_build_group_move_parameters``, but heads NOT in
+    ``lit_heads`` get a darkened (``Dimmer: _DIMMER_OFF``) variant of the
+    same pose instead of the identical full text every slot normally
+    shares -- the per-bar 4-heads/2-heads toggle for a group-targeted
+    static move (fan_pan_static), same technique as
+    ``_reduce_to_lit_pair`` uses for per-head moves. Confirmed against two
+    real reference-sequence samples (raw xLights effect-string paste,
+    2026-07-22) that heads combined into ONE group-targeted effect can
+    carry different Dimmer values per slot."""
+    heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
+    full_settings = _build_pose_settings(pose, jitter_pan, jitter_tilt, heads_field)
+    dark_settings = _build_pose_settings(
+        replace(pose, dimmer=_DIMMER_OFF), jitter_pan, jitter_tilt, heads_field,
+    )
+    per_head = {
+        i: full_settings if i in lit_heads else dark_settings
+        for i in range(1, head_count + 1)
+    }
     params = _build_parameters(
         per_head,
         slider_pan=None if pose.pan_vc is not None else _deg_to_slider((pose.pan or 0.0) + jitter_pan),
@@ -1019,12 +1054,45 @@ def place_moving_head_moves(
                         continue  # no room left after opening the warmup gap
                     head_count = len(heads)
                     pose = move.poses[0]
-                    move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
                     warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
-                    move_placement = _add_with_warmup(
-                        by_target, mh_group.name, warmup_params, move_params,
-                        start_ms, seg_end_ms, warmup_duration_ms,
+
+                    bar_bounds = (
+                        _bar_boundaries_in_range(bars, start_ms, seg_end_ms)
+                        if (move_name in _STATIC_HELD_GROUP_MOVES and toggle_pair is not None
+                            and bars is not None and bars.marks)
+                        else [start_ms, seg_end_ms]
                     )
+                    if len(bar_bounds) <= 2:
+                        move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
+                        move_placement = _add_with_warmup(
+                            by_target, mh_group.name, warmup_params, move_params,
+                            start_ms, seg_end_ms, warmup_duration_ms,
+                        )
+                    else:
+                        # Same bar-level 4-heads/2-heads alternation as the
+                        # per-head branch below, but combined into ONE
+                        # group-targeted effect per bar with different
+                        # Dimmer values per head slot (see
+                        # _build_group_toggle_move_parameters).
+                        all_heads = tuple(range(1, head_count + 1))
+                        for bar_idx in range(len(bar_bounds) - 1):
+                            lit_heads = all_heads if bar_idx % 2 == 0 else toggle_pair
+                            bar_params = _build_group_toggle_move_parameters(
+                                head_count, pose, jitter_pan, jitter_tilt, lit_heads,
+                            )
+                            if bar_idx == 0:
+                                move_placement = _add_with_warmup(
+                                    by_target, mh_group.name, warmup_params, bar_params,
+                                    start_ms, bar_bounds[1], warmup_duration_ms,
+                                )
+                            else:
+                                move_placement = EffectPlacement(
+                                    effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                                    model_or_group=mh_group.name,
+                                    start_ms=bar_bounds[bar_idx], end_ms=bar_bounds[bar_idx + 1],
+                                    parameters=bar_params,
+                                )
+                                by_target.setdefault(mh_group.name, []).append(move_placement)
                     for h in heads:
                         channel_owner[h] = move_placement
                 else:
