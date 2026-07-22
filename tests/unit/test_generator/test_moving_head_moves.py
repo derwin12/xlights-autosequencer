@@ -5,16 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.analyzer.result import TimingMark, TimingTrack
-from src.generator.models import SectionAssignment, SectionEnergy
+from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy
 from src.generator.moving_head import (
     _choose_lit_pair,
     _choose_move,
     _DIMMER_FULL_ON,
     _DIMMER_OFF,
+    _free_windows,
     _FULL_HEADS_ENERGY_GATE,
     _jitter,
     _MAX_MOVE_DURATION_MS,
     _MIN_SECTION_DURATION_MS,
+    _MIN_SPLIT_SEGMENT_MS,
     _MIN_WARMUP_DURATION_MS,
     _MOVE_BAR_CAP,
     _PREFERRED_WARMUP_DURATION_MS,
@@ -667,3 +669,104 @@ class TestQualifyingOccurrenceRotation:
             f"Expected group moves to rotate away from fan_pan_move sometimes, "
             f"got {group_move_count} group-move placements across 4 qualifying sections"
         )
+
+
+def _obstacle(model: str, start_ms: int, end_ms: int) -> EffectPlacement:
+    return EffectPlacement(
+        effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+        model_or_group=model, start_ms=start_ms, end_ms=end_ms,
+    )
+
+
+class TestFreeWindows:
+    """_free_windows splits a section's natural window around obstacles
+    instead of an all-or-nothing overlap check (user-reported 2026-07-21:
+    a song whose lyrics repeat "shake" throughout the chorus had every
+    chorus/pre_chorus move dropped entirely, one scattered 250ms
+    keyword-accent pulse at a time)."""
+
+    def test_no_obstacles_returns_whole_window(self):
+        assert _free_windows(0, 10_000, []) == [(0, 10_000)]
+
+    def test_single_obstacle_in_middle_splits_into_two(self):
+        blocking = [_obstacle("MH GRP", 4_000, 4_250)]
+        assert _free_windows(0, 10_000, blocking) == [(0, 4_000), (4_250, 10_000)]
+
+    def test_obstacle_covering_entire_window_yields_nothing(self):
+        blocking = [_obstacle("MH GRP", 0, 10_000)]
+        assert _free_windows(0, 10_000, blocking) == []
+
+    def test_obstacle_at_the_very_start(self):
+        blocking = [_obstacle("MH GRP", 0, 500)]
+        assert _free_windows(0, 10_000, blocking) == [(500, 10_000)]
+
+    def test_obstacle_at_the_very_end(self):
+        blocking = [_obstacle("MH GRP", 9_500, 10_000)]
+        assert _free_windows(0, 10_000, blocking) == [(0, 9_500)]
+
+    def test_multiple_scattered_obstacles(self):
+        # Mirrors the real scenario: several short "shake" pulses through
+        # a single chorus section.
+        blocking = [
+            _obstacle("MH GRP", 2_000, 2_250),
+            _obstacle("MH GRP", 5_000, 5_250),
+            _obstacle("MH GRP", 8_000, 8_250),
+        ]
+        assert _free_windows(0, 10_000, blocking) == [
+            (0, 2_000), (2_250, 5_000), (5_250, 8_000), (8_250, 10_000),
+        ]
+
+    def test_overlapping_obstacles_merge(self):
+        blocking = [
+            _obstacle("MH GRP", 2_000, 3_000),
+            _obstacle("MH1", 2_500, 3_500),
+        ]
+        assert _free_windows(0, 10_000, blocking) == [(0, 2_000), (3_500, 10_000)]
+
+    def test_obstacle_outside_window_ignored(self):
+        blocking = [_obstacle("MH GRP", 20_000, 21_000)]
+        assert _free_windows(0, 10_000, blocking) == [(0, 10_000)]
+
+
+class TestSectionMoveSplitsAroundObstacle:
+    def test_small_obstacle_in_middle_still_places_moves_before_and_after(self):
+        # Before this fix: a single 250ms obstacle anywhere in the section
+        # dropped the WHOLE section's move. Now it should still place
+        # moves in the usable segments on either side.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 20_000, _STRONG_ENERGY_GATE, variation_seed=0),
+        ]
+        existing = {"MH GRP": [_obstacle("MH GRP", 10_000, 10_250)]}
+        result = place_moving_head_moves(layout, assignments, existing_placements=existing)
+        assert result, "Expected moves to survive around the small obstacle, got nothing"
+        all_placements = [p for placements in result.values() for p in placements]
+        # Nothing placed should overlap the obstacle itself.
+        assert not any(p.start_ms < 10_250 and p.end_ms > 10_000 for p in all_placements)
+        # Something should exist on both sides of the obstacle.
+        assert any(p.end_ms <= 10_000 for p in all_placements)
+        assert any(p.start_ms >= 10_250 for p in all_placements)
+
+    def test_obstacle_covering_whole_section_still_skips_entirely(self):
+        # A genuinely substantial obstacle (not a tiny pulse) should still
+        # result in no moves for that section -- there's no usable segment.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 20_000, _STRONG_ENERGY_GATE, variation_seed=0),
+        ]
+        existing = {"MH GRP": [_obstacle("MH GRP", 0, 20_000)]}
+        result = place_moving_head_moves(layout, assignments, existing_placements=existing)
+        assert result == {}
+
+    def test_tiny_leftover_segment_below_threshold_is_skipped(self):
+        # An obstacle leaving only a sliver (<_MIN_SPLIT_SEGMENT_MS) on one
+        # side must not produce a degenerate near-zero-duration move there.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [
+            _assignment("chorus", 0, 20_000, _STRONG_ENERGY_GATE, variation_seed=0),
+        ]
+        existing = {"MH GRP": [_obstacle("MH GRP", 500, 20_000)]}
+        result = place_moving_head_moves(layout, assignments, existing_placements=existing)
+        all_placements = [p for placements in result.values() for p in placements]
+        # The only free window is (0, 500), well under _MIN_SPLIT_SEGMENT_MS.
+        assert not any(p.end_ms <= 500 for p in all_placements)

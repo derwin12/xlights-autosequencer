@@ -697,7 +697,7 @@ def _best_trimmable_end_ms(owner: EffectPlacement) -> int:
 
 
 def _resolve_warmup(
-    owners: list[Optional[EffectPlacement]], desired_start_ms: int,
+    owners: list[Optional[EffectPlacement]], desired_start_ms: int, floor_ms: int = 0,
 ) -> tuple[int, int]:
     """Decide the upcoming move's actual start time and warmup duration,
     given every distinct placement currently occupying the channel(s) it
@@ -716,13 +716,23 @@ def _resolve_warmup(
     delaying the move to still guarantee ``_MIN_WARMUP_DURATION_MS`` only
     if even a maximal trim (down to an owner's own floor) can't reach it.
 
+    ``floor_ms`` is a hard lower bound the warmup/trim must never cross --
+    used when the caller is placing into one of several free segments
+    split around an external obstacle (see ``_free_windows``): an
+    ``owner``'s own ``end_ms`` may sit BEFORE the segment's start (the
+    obstacle occupies the space between them), and without this floor the
+    warmup would happily reach back through the obstacle to the owner's
+    real end, since owners alone don't encode where the obstacle is.
+    Defaults to 0 (no floor), preserving prior behavior for callers that
+    don't split around anything.
+
     Returns (start_ms, warmup_duration_ms).
     """
     real_owners = [o for o in owners if o is not None]
     if not real_owners:
-        return desired_start_ms, max(0, min(_PREFERRED_WARMUP_DURATION_MS, desired_start_ms))
+        return desired_start_ms, max(0, min(_PREFERRED_WARMUP_DURATION_MS, desired_start_ms - floor_ms))
 
-    latest_end_ms = max(o.end_ms for o in real_owners)
+    latest_end_ms = max(max(o.end_ms for o in real_owners), floor_ms)
     natural_gap_ms = desired_start_ms - latest_end_ms
     if natural_gap_ms >= _PREFERRED_WARMUP_DURATION_MS:
         return desired_start_ms, _PREFERRED_WARMUP_DURATION_MS  # nothing in the way for the full 3s
@@ -730,10 +740,11 @@ def _resolve_warmup(
         return desired_start_ms, natural_gap_ms  # no trim needed, use the natural gap as-is
 
     # An effect is genuinely in the way -- only ever trim it down to open
-    # the defined minimum, not the full 3s.
+    # the defined minimum, not the full 3s. Trimming (and the gap
+    # computation above) never reaches earlier than floor_ms.
     achievable_ms = min(
         _MIN_WARMUP_DURATION_MS,
-        min(desired_start_ms - _best_trimmable_end_ms(o) for o in real_owners),
+        min(desired_start_ms - max(_best_trimmable_end_ms(o), floor_ms) for o in real_owners),
     )
     if achievable_ms >= _MIN_WARMUP_DURATION_MS:
         new_end_ms = desired_start_ms - achievable_ms
@@ -747,10 +758,16 @@ def _resolve_warmup(
     # guarantee it.
     start_ms = desired_start_ms
     for o in real_owners:
-        best_end_ms = _best_trimmable_end_ms(o)
+        best_end_ms = max(_best_trimmable_end_ms(o), floor_ms)
         if best_end_ms < o.end_ms:
             o.end_ms = frame_align(best_end_ms)
-        start_ms = max(start_ms, o.end_ms + _MIN_WARMUP_DURATION_MS)
+        # Anchor against floor_ms too, not just o.end_ms: when the owner's
+        # true end already sits BEFORE floor_ms (nothing left to trim --
+        # the space between them belongs to an obstacle _resolve_warmup
+        # doesn't otherwise know about), anchoring on the owner's stale
+        # end alone would compute a warmup start that reaches back through
+        # the obstacle.
+        start_ms = max(start_ms, max(o.end_ms, floor_ms) + _MIN_WARMUP_DURATION_MS)
     return start_ms, _MIN_WARMUP_DURATION_MS
 
 
@@ -921,55 +938,80 @@ def place_moving_head_moves(
                     bars, natural_start_ms, natural_end_ms, section.end_ms,
                 )
 
+            # Split the section's natural window around any obstacle
+            # (typically a keyword-accent pulse, e.g. "shake" -- see
+            # place_moving_head_keyword_accents) instead of dropping the
+            # WHOLE section the moment anything overlaps anywhere inside
+            # it (user-reported 2026-07-21: a song whose chorus repeats
+            # "shake" throughout had every chorus/pre_chorus move skipped
+            # entirely, one scattered 250ms pulse at a time, leaving only
+            # crash-accent group punches to cover those spans). Each
+            # resulting free segment gets its own full move+warmup via the
+            # same per-target logic below; a segment too short for even a
+            # minimal warmup+move is skipped on its own rather than
+            # collapsing the whole section.
             if existing_placements:
                 blocking = [
                     p for h in (mh_group.name, *mh_group.head_names)
                     for p in existing_placements.get(h, [])
                 ]
-                if _has_overlap(blocking, natural_start_ms, natural_end_ms):
-                    continue
-
-            if move.target == "group":
-                heads = mh_group.head_names
-                # A prior GROUP move leaves every head sharing ONE owner
-                # object; a prior PER-HEAD move leaves each head with its
-                # OWN distinct object -- dedupe by identity (EffectPlacement
-                # isn't hashable), but trim every distinct owner (not just
-                # whichever ends latest), since a group move touches every
-                # head's channel and each one needs its own tail opened up.
-                owners_by_id = {
-                    id(channel_owner[h]): channel_owner[h] for h in heads if channel_owner[h] is not None
-                }
-                start_ms, warmup_duration_ms = _resolve_warmup(list(owners_by_id.values()), natural_start_ms)
-                if start_ms >= natural_end_ms:
-                    continue  # no room left after opening the warmup gap
-                head_count = len(heads)
-                pose = move.poses[0]
-                move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
-                warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
-                move_placement = _add_with_warmup(
-                    by_target, mh_group.name, warmup_params, move_params,
-                    start_ms, natural_end_ms, warmup_duration_ms,
-                )
-                for h in heads:
-                    channel_owner[h] = move_placement
+                segments = _free_windows(natural_start_ms, natural_end_ms, blocking)
             else:
-                for head_idx, head_name in enumerate(mh_group.head_names):
-                    head_index = head_idx + 1  # 1-based: matches this model's own MH{N}_Settings slot
-                    pose = move.poses[head_idx % len(move.poses)]
-                    move_pose = pose if lit_pair is None else _reduce_to_lit_pair(pose, head_index, lit_pair)
+                segments = [(natural_start_ms, natural_end_ms)]
+
+            for seg_start_ms, seg_end_ms in segments:
+                if seg_end_ms - seg_start_ms < _MIN_SPLIT_SEGMENT_MS:
+                    continue
+                # Only a segment that starts right after an obstacle needs
+                # a warmup floor -- the FIRST segment (starting exactly at
+                # the section's own natural_start_ms) may still reach back
+                # into whatever the previous SECTION's move left off, same
+                # as before this obstacle-splitting existed.
+                warmup_floor_ms = seg_start_ms if seg_start_ms != natural_start_ms else 0
+
+                if move.target == "group":
+                    heads = mh_group.head_names
+                    # A prior GROUP move leaves every head sharing ONE owner
+                    # object; a prior PER-HEAD move leaves each head with its
+                    # OWN distinct object -- dedupe by identity (EffectPlacement
+                    # isn't hashable), but trim every distinct owner (not just
+                    # whichever ends latest), since a group move touches every
+                    # head's channel and each one needs its own tail opened up.
+                    owners_by_id = {
+                        id(channel_owner[h]): channel_owner[h] for h in heads if channel_owner[h] is not None
+                    }
                     start_ms, warmup_duration_ms = _resolve_warmup(
-                        [channel_owner[head_name]], natural_start_ms,
+                        list(owners_by_id.values()), seg_start_ms, floor_ms=warmup_floor_ms,
                     )
-                    if start_ms >= natural_end_ms:
-                        continue
-                    move_params = _build_per_head_move_parameters(move_pose, jitter_pan, jitter_tilt, head_index)
-                    warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
+                    if start_ms >= seg_end_ms:
+                        continue  # no room left after opening the warmup gap
+                    head_count = len(heads)
+                    pose = move.poses[0]
+                    move_params = _build_group_move_parameters(head_count, pose, jitter_pan, jitter_tilt)
+                    warmup_params = _build_group_warmup_parameters(head_count, pose, jitter_pan, jitter_tilt)
                     move_placement = _add_with_warmup(
-                        by_target, head_name, warmup_params, move_params,
-                        start_ms, natural_end_ms, warmup_duration_ms,
+                        by_target, mh_group.name, warmup_params, move_params,
+                        start_ms, seg_end_ms, warmup_duration_ms,
                     )
-                    channel_owner[head_name] = move_placement
+                    for h in heads:
+                        channel_owner[h] = move_placement
+                else:
+                    for head_idx, head_name in enumerate(mh_group.head_names):
+                        head_index = head_idx + 1  # 1-based: matches this model's own MH{N}_Settings slot
+                        pose = move.poses[head_idx % len(move.poses)]
+                        move_pose = pose if lit_pair is None else _reduce_to_lit_pair(pose, head_index, lit_pair)
+                        start_ms, warmup_duration_ms = _resolve_warmup(
+                            [channel_owner[head_name]], seg_start_ms, floor_ms=warmup_floor_ms,
+                        )
+                        if start_ms >= seg_end_ms:
+                            continue
+                        move_params = _build_per_head_move_parameters(move_pose, jitter_pan, jitter_tilt, head_index)
+                        warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
+                        move_placement = _add_with_warmup(
+                            by_target, head_name, warmup_params, move_params,
+                            start_ms, seg_end_ms, warmup_duration_ms,
+                        )
+                        channel_owner[head_name] = move_placement
         for target, placements in by_target.items():
             if placements:
                 result.setdefault(target, []).extend(placements)
@@ -1080,6 +1122,38 @@ def _has_overlap(
     placements: list[EffectPlacement], start_ms: int, end_ms: int,
 ) -> bool:
     return any(p.start_ms < end_ms and p.end_ms > start_ms for p in placements)
+
+
+# A free segment shorter than this isn't worth a move -- roughly a minimal
+# warmup (_MIN_WARMUP_DURATION_MS) plus a bit of actual move time; anything
+# smaller would be nearly all warmup with no real movement to show for it.
+_MIN_SPLIT_SEGMENT_MS = 2000
+
+
+def _free_windows(
+    start_ms: int, end_ms: int, blocking: list[EffectPlacement],
+) -> list[tuple[int, int]]:
+    """Split ``[start_ms, end_ms)`` into the sub-windows NOT covered by any
+    ``blocking`` placement, instead of an all-or-nothing overlap check.
+
+    A section with a single small obstacle in the middle (e.g. a 250ms
+    keyword-accent pulse) yields two usable segments -- one before it, one
+    after -- rather than being dropped entirely.
+    """
+    relevant = sorted(
+        (p for p in blocking if p.start_ms < end_ms and p.end_ms > start_ms),
+        key=lambda p: p.start_ms,
+    )
+    windows: list[tuple[int, int]] = []
+    cursor = start_ms
+    for p in relevant:
+        block_start, block_end = max(p.start_ms, start_ms), min(p.end_ms, end_ms)
+        if block_start > cursor:
+            windows.append((cursor, block_start))
+        cursor = max(cursor, block_end)
+    if cursor < end_ms:
+        windows.append((cursor, end_ms))
+    return windows
 
 
 # Pose fields of the per-head settings text DSL, longest alternatives first
@@ -1339,7 +1413,21 @@ def place_moving_head_keyword_accents(
                         slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
                     )
                     prior_ends = [p.end_ms for p in head_existing if p.end_ms <= start_ms]
-                    warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+                    # Capped to _PREFERRED_WARMUP_DURATION_MS (3s), NOT the
+                    # unbounded "fill the entire gap" pattern crash_accents/
+                    # ending_punches use -- those are rare-by-design (a
+                    # handful per song), but a user-curated keyword like
+                    # "shake" can repeat throughout a song's own hook/title
+                    # (real case, 2026-07-21: "Shake the Snow Globe" sings
+                    # "shake" in tight clusters roughly every 40s), and an
+                    # unbounded gap-fill there monopolizes the group's
+                    # channel for the ENTIRE span between clusters, leaving
+                    # place_moving_head_moves nothing to work with even
+                    # after it can split around a small obstacle.
+                    warmup_duration_ms = min(
+                        _PREFERRED_WARMUP_DURATION_MS,
+                        max(0, start_ms - max(prior_ends, default=0)),
+                    )
                     if _heads_already_posed(head_existing, start_ms, warmup_params):
                         warmup_duration_ms = 0
                     placements = result.setdefault(head_name, [])
@@ -1394,7 +1482,11 @@ def place_moving_head_keyword_accents(
                 slider_pan=_deg_to_slider(warmup_pan), slider_tilt=_deg_to_slider(warmup_tilt),
             )
             prior_ends = [p.end_ms for p in channel_existing if p.end_ms <= start_ms]
-            warmup_duration_ms = max(0, start_ms - max(prior_ends, default=0))
+            # Capped -- see the matching comment in the "spin" branch above.
+            warmup_duration_ms = min(
+                _PREFERRED_WARMUP_DURATION_MS,
+                max(0, start_ms - max(prior_ends, default=0)),
+            )
             if _heads_already_posed(channel_existing, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(mh_group.name, [])
