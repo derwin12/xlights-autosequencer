@@ -218,28 +218,39 @@ def check_synced_lyrics_with_text(
     timestamped more than ``_DURATION_MISMATCH_TOLERANCE_MS`` past the
     analyzed song's actual duration is rejected with reason
     ``"duration_mismatch"`` rather than accepted as a good match.
+
+    The result dict always echoes ``song_duration_ms`` (the input
+    ``duration_ms``) and ``lyrics_duration_ms`` (the last LRC line's
+    timestamp, or ``None`` for plain/unsynced text) so a caller can display
+    both durations — this is what lets a user see *why* a match was
+    rejected as a duration mismatch, not just that it was.
     """
     search_term = f"{title} {artist}".strip()
     if not search_term:
-        return {"found": False, "reason": "no_match", "line_count": 0, "preview": []}, None
+        return {"found": False, "reason": "no_match", "line_count": 0, "preview": [],
+                "song_duration_ms": duration_ms, "lyrics_duration_ms": None}, None
 
     result, reason = _search_synced_lyrics(search_term)
     if result is None:
-        return {"found": False, "reason": reason, "line_count": 0, "preview": []}, None
+        return {"found": False, "reason": reason, "line_count": 0, "preview": [],
+                "song_duration_ms": duration_ms, "lyrics_duration_ms": None}, None
 
     lines = parse_lrc(result)
     if lines:
         last_start_ms = lines[-1][0]
         if duration_ms is not None and last_start_ms > duration_ms + _DURATION_MISMATCH_TOLERANCE_MS:
-            return {"found": False, "reason": "duration_mismatch", "line_count": 0, "preview": []}, None
+            return {"found": False, "reason": "duration_mismatch", "line_count": 0, "preview": [],
+                    "song_duration_ms": duration_ms, "lyrics_duration_ms": last_start_ms}, None
         preview = [text for _, text in lines[:3]]
-        return {"found": True, "reason": None, "line_count": len(lines), "preview": preview}, result
+        return {"found": True, "reason": None, "line_count": len(lines), "preview": preview,
+                "song_duration_ms": duration_ms, "lyrics_duration_ms": last_start_ms}, result
 
     plain_lines = [
         ln.strip() for ln in result.splitlines()
         if ln.strip() and not _is_credit_line(ln)
     ]
-    return {"found": True, "reason": None, "line_count": len(plain_lines), "preview": plain_lines[:3]}, result
+    return {"found": True, "reason": None, "line_count": len(plain_lines), "preview": plain_lines[:3],
+            "song_duration_ms": duration_ms, "lyrics_duration_ms": None}, result
 
 
 def parse_pasted_lyrics(text: str) -> dict:
@@ -282,8 +293,9 @@ def check_synced_lyrics_available(title: str, artist: str, duration_ms: Optional
     installed, the provider search raised (network/rate-limit), the search
     genuinely found no match, or (when ``duration_ms`` is given) the match
     found is timed for a differently-timed recording. Returns
-    ``{"found": bool, "reason": str | None, "line_count": int, "preview": list[str]}``
-    — ``reason`` is one of ``"not_installed"``, ``"search_failed"``,
+    ``{"found": bool, "reason": str | None, "line_count": int, "preview":
+    list[str], "song_duration_ms": int | None, "lyrics_duration_ms": int |
+    None}`` — ``reason`` is one of ``"not_installed"``, ``"search_failed"``,
     ``"no_match"``, or ``"duration_mismatch"`` when ``found`` is False, else
     ``None``.
     """

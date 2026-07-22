@@ -427,7 +427,7 @@ def test_check_synced_lyrics_no_match(monkeypatch):
 
     monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
     result = sl.check_synced_lyrics_available("Nonexistent Song Xyzzy", "Nobody")
-    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": [], "song_duration_ms": None, "lyrics_duration_ms": None}
 
 
 def test_check_synced_lyrics_search_failed(monkeypatch):
@@ -438,7 +438,7 @@ def test_check_synced_lyrics_search_failed(monkeypatch):
 
     monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
     result = sl.check_synced_lyrics_available("Title", "Artist")
-    assert result == {"found": False, "reason": "search_failed", "line_count": 0, "preview": []}
+    assert result == {"found": False, "reason": "search_failed", "line_count": 0, "preview": [], "song_duration_ms": None, "lyrics_duration_ms": None}
 
 
 def test_check_synced_lyrics_not_installed(monkeypatch):
@@ -452,7 +452,7 @@ def test_check_synced_lyrics_not_installed(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", _fake_import)
     result = sl.check_synced_lyrics_available("Title", "Artist")
-    assert result == {"found": False, "reason": "not_installed", "line_count": 0, "preview": []}
+    assert result == {"found": False, "reason": "not_installed", "line_count": 0, "preview": [], "song_duration_ms": None, "lyrics_duration_ms": None}
 
 
 def test_check_synced_lyrics_retries_and_prefers_timed_result_over_plain(monkeypatch):
@@ -506,7 +506,7 @@ def test_check_synced_lyrics_no_match_when_all_attempts_cleanly_return_none(monk
 
     monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
     result = sl.check_synced_lyrics_available("Nonexistent Song Xyzzy", "Nobody")
-    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": [], "song_duration_ms": None, "lyrics_duration_ms": None}
 
 
 def test_check_synced_lyrics_search_failed_only_when_every_attempt_raises(monkeypatch):
@@ -531,7 +531,7 @@ def test_check_synced_lyrics_search_failed_only_when_every_attempt_raises(monkey
 
 def test_check_synced_lyrics_empty_query_returns_no_match():
     result = sl.check_synced_lyrics_available("", "")
-    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": []}
+    assert result == {"found": False, "reason": "no_match", "line_count": 0, "preview": [], "song_duration_ms": None, "lyrics_duration_ms": None}
 
 
 def test_get_boundary_refinement_inputs_plain_text_no_timestamps(monkeypatch):

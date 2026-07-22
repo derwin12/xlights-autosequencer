@@ -6,6 +6,8 @@ export interface LyricsCheckResult {
   reason: string | null;
   line_count: number;
   preview: string[];
+  song_duration_ms?: number | null;
+  lyrics_duration_ms?: number | null;
   source?: 'pasted';
 }
 

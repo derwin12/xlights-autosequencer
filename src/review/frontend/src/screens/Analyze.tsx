@@ -698,6 +698,22 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
               </span>
             : <span className={styles.metadataError}>✗ {lyricsCheckReasonLabel(lyricsCheckResult.reason)}</span>
         )}
+        {lyricsCheckResult && (lyricsCheckResult.song_duration_ms || lyricsCheckResult.lyrics_duration_ms) && (
+          // Surfaces both durations so a duration_mismatch rejection (or a
+          // borderline accepted match) is explainable at a glance instead of
+          // just a reason label — see check_synced_lyrics_with_text.
+          <div
+            data-testid="lyrics-duration-compare"
+            style={{
+              flexBasis: '100%', marginTop: 4, fontSize: 12,
+              color: 'var(--color-text-muted, #888)',
+            }}
+          >
+            Song: {lyricsCheckResult.song_duration_ms ? fmtDuration(lyricsCheckResult.song_duration_ms) : '—'}
+            {' · '}
+            Lyrics timed to: {lyricsCheckResult.lyrics_duration_ms ? fmtDuration(lyricsCheckResult.lyrics_duration_ms) : '—'}
+          </div>
+        )}
         {lyricsCheckResult?.found && lyricsCheckResult.preview.length > 0 && (
           // Surfaces what was actually matched so a wrong-song false
           // positive (real incident, 2026-07-21: an unrelated song's LRC
