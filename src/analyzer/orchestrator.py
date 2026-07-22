@@ -215,6 +215,19 @@ def _build_algorithm_list(caps: dict[str, bool], stems_available: list[str]):
                     if "bbc_rhythm" in algo_map:
                         _add_stem("bbc_rhythm", stem)
 
+        # L5: amplitude_follower on full_mix + the same per-stem set as
+        # bbc_energy — an independent envelope signal (smooth VU-meter-style,
+        # vs. bbc_energy's spikier RMS-derived curve) used only as a fallback
+        # in the L5 assembly below when bbc_energy produced no curve for a
+        # given stem (e.g. that stem's bbc_energy plugin run failed
+        # independently — different Vamp plugin, different failure modes).
+        if "amplitude_follower" in algo_map:
+            _add("amplitude_follower")
+            energy_stems = [s for s in stems_available if s not in ("full_mix",)]
+            for stem in energy_stems[:5]:
+                if stem in ("drums", "bass", "vocals", "guitar", "other"):
+                    _add_stem("amplitude_follower", stem)
+
         _add("segmentino")    # L1 sections
         _add("qm_segments")   # L1 sections
 
@@ -227,6 +240,13 @@ def _build_algorithm_list(caps: dict[str, bool], stems_available: list[str]):
         _add_stem("nnls_chroma", "full_mix")
 
         _add("qm_key")        # L6 key
+
+        # L4: drums-only fallback when aubio_onset's drums track is missing
+        # (filtered out, or the plugin failed for that stem) — see the
+        # "Percussion onsets as drums fallback" consumer in the L4 assembly
+        # below, which already expected this track but had nothing to read
+        # it from until now.
+        _add("percussion_onsets")
 
         # L4: per-stem onset detection
         if "aubio_onset" in algo_map:
@@ -541,6 +561,18 @@ def run_orchestrator(
         vc = _get_value_curve(t)
         if vc:
             stem = t.stem_source or "full_mix"
+            energy_curves[stem] = vc
+
+    # Fallback: amplitude_follower fills any stem bbc_energy didn't cover
+    # (e.g. that stem's bbc_energy plugin run failed independently — a
+    # different Vamp plugin, so failures aren't correlated). Never
+    # overrides a bbc_energy curve that's already present.
+    for t in tracks_by_name.get("amplitude_follower", []):
+        stem = t.stem_source or "full_mix"
+        if stem in energy_curves:
+            continue
+        vc = _get_value_curve(t)
+        if vc:
             energy_curves[stem] = vc
 
     for t in tracks_by_name.get("bbc_spectral_flux", []):

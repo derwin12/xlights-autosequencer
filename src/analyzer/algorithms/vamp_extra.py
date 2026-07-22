@@ -5,7 +5,7 @@ import numpy as np
 
 from src.analyzer.algorithms.base import Algorithm
 from src.analyzer.algorithms.vamp_utils import vamp_list_to_marks
-from src.analyzer.result import TimingMark, TimingTrack
+from src.analyzer.result import TimingMark, TimingTrack, ValueCurve
 
 __all__ = [
     "QMKeyAlgorithm",
@@ -115,12 +115,12 @@ class AmplitudeFollowerAlgorithm(Algorithm):
     def _run(self, audio: np.ndarray, sample_rate: int) -> TimingTrack:
         import vamp
         outputs = vamp.collect(audio, sample_rate, self.plugin_key, parameters=self.parameters)
+        duration_ms = int(len(audio) / sample_rate * 1000)
         # amplitudefollower returns vector output
         vectors = outputs.get("vector", [])
-        marks = []
-        curve = []
+        curve: list[int] = []
         if vectors and len(vectors) >= 2:
-            timestamps, values = vectors
+            _timestamps, values = vectors
             arr = np.array(values, dtype=np.float64) if not isinstance(values, np.ndarray) else values.astype(np.float64)
             if arr.ndim > 1:
                 arr = arr.mean(axis=-1)
@@ -130,12 +130,18 @@ class AmplitudeFollowerAlgorithm(Algorithm):
                 curve = [max(0, min(100, int(v))) for v in normalized]
             else:
                 curve = [50] * len(arr)
-            marks = [TimingMark(time_ms=i * 50, confidence=None) for i in range(len(curve))]
+        fps = round(len(curve) * 1000 / duration_ms) if duration_ms > 0 and curve else 20
+        stem = getattr(self, "_stem_source", self.preferred_stem)
+        marks = [
+            TimingMark(time_ms=int(round(i * 1000 / fps)), confidence=None)
+            for i in range(len(curve))
+        ]
         track = TimingTrack(
             name=self.name, algorithm_name=self.name,
             element_type=self.element_type, marks=marks, quality_score=0.0,
+            stem_source=stem,
         )
-        track.value_curve = curve
+        track.value_curve = ValueCurve(name=self.name, stem_source=stem, fps=fps, values=curve)
         return track
 
 
