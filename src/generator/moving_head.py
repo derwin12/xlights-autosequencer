@@ -301,6 +301,17 @@ _STATIC_MOVES = (
     "l_r_crisscross", "ll_rr_crisscross", "stagger_o_i", "stagger_i_o",
 )
 
+# Per-head moves that hold one fixed pose for their entire duration with no
+# built-in variety (stagger_o_i/stagger_i_o already pulse via their own
+# Dimmer curve, so they're excluded). User request (2026-07-22): a long
+# held pose reads as boring -- alternate all-4-heads-lit / half-heads-lit
+# (via the existing _reduce_to_lit_pair mechanism, one placement per bar)
+# instead of holding flat for the move's whole span. Confirmed against two
+# real reference-sequence samples that a flat Dimmer curve per head
+# (_DIMMER_FULL_ON / _DIMMER_OFF, no fancy multi-point curve) is the
+# correct native technique, not a stepped curve within one placement.
+_STATIC_HELD_MOVES = frozenset({"l_r_static", "r_static", "l_static", "l_r_crisscross", "ll_rr_crisscross"})
+
 
 def _format_pan(deg: float) -> str:
     return f"Pan: {deg:.1f}"
@@ -789,6 +800,15 @@ def _bar_capped_end_ms(
     return bar_end_ms
 
 
+def _bar_boundaries_in_range(bars: TimingTrack, start_ms: int, end_ms: int) -> list[int]:
+    """Bar-mark timestamps strictly inside ``(start_ms, end_ms)``, bookended
+    by ``start_ms``/``end_ms`` themselves -- e.g. ``[1000, 1500, 2200,
+    3000]`` for two interior bar marks. Always at least ``[start_ms,
+    end_ms]`` (length 2, i.e. zero interior marks -- one whole segment)."""
+    interior = sorted(m.time_ms for m in bars.marks if start_ms < m.time_ms < end_ms)
+    return [start_ms, *interior, end_ms]
+
+
 def place_moving_head_moves(
     layout: Layout,
     assignments: list[SectionAssignment],
@@ -930,6 +950,18 @@ def place_moving_head_moves(
                 if not full_intensity and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
                 else None
             )
+            # Bar-level 4-heads/2-heads alternation for a long held static
+            # pose (user request 2026-07-22) -- only meaningful when the
+            # section is otherwise fully lit (lit_pair is None); a section
+            # already reduced by the energy-based lit_pair above shouldn't
+            # ALSO toggle on top of that. A different variation_seed offset
+            # than lit_pair's own so the two don't always pick the same
+            # pair when both could apply in principle.
+            toggle_pair = (
+                _choose_lit_pair(section_index, assignment.variation_seed + 1)
+                if lit_pair is None and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
+                else None
+            )
 
             natural_start_ms = section.start_ms
             natural_end_ms = min(section.end_ms, natural_start_ms + _MAX_MOVE_DURATION_MS)
@@ -1005,12 +1037,53 @@ def place_moving_head_moves(
                         )
                         if start_ms >= seg_end_ms:
                             continue
-                        move_params = _build_per_head_move_parameters(move_pose, jitter_pan, jitter_tilt, head_index)
                         warmup_params = _build_per_head_warmup_parameters(pose, jitter_pan, jitter_tilt, head_index)
-                        move_placement = _add_with_warmup(
-                            by_target, head_name, warmup_params, move_params,
-                            start_ms, seg_end_ms, warmup_duration_ms,
+
+                        bar_bounds = (
+                            _bar_boundaries_in_range(bars, start_ms, seg_end_ms)
+                            if (move_name in _STATIC_HELD_MOVES and toggle_pair is not None
+                                and bars is not None and bars.marks)
+                            else [start_ms, seg_end_ms]
                         )
+                        if len(bar_bounds) <= 2:
+                            move_params = _build_per_head_move_parameters(
+                                move_pose, jitter_pan, jitter_tilt, head_index,
+                            )
+                            move_placement = _add_with_warmup(
+                                by_target, head_name, warmup_params, move_params,
+                                start_ms, seg_end_ms, warmup_duration_ms,
+                            )
+                        else:
+                            # Bar-level 4-heads/2-heads alternation: bar 0
+                            # is the full pose (all 4 lit), odd bars reduce
+                            # to toggle_pair, even bars (after the first)
+                            # return to full -- purely a Dimmer toggle, the
+                            # pose/position never changes (user request
+                            # 2026-07-22, confirmed against two real
+                            # reference-sequence samples that a flat
+                            # Dimmer curve per head, not a fancy multi-point
+                            # one, is the correct native technique).
+                            for bar_idx in range(len(bar_bounds) - 1):
+                                bar_pose = (
+                                    pose if bar_idx % 2 == 0
+                                    else _reduce_to_lit_pair(pose, head_index, toggle_pair)
+                                )
+                                bar_params = _build_per_head_move_parameters(
+                                    bar_pose, jitter_pan, jitter_tilt, head_index,
+                                )
+                                if bar_idx == 0:
+                                    move_placement = _add_with_warmup(
+                                        by_target, head_name, warmup_params, bar_params,
+                                        start_ms, bar_bounds[1], warmup_duration_ms,
+                                    )
+                                else:
+                                    move_placement = EffectPlacement(
+                                        effect_name="Moving Head", xlights_id="eff_MOVINGHEAD",
+                                        model_or_group=head_name,
+                                        start_ms=bar_bounds[bar_idx], end_ms=bar_bounds[bar_idx + 1],
+                                        parameters=bar_params,
+                                    )
+                                    by_target.setdefault(head_name, []).append(move_placement)
                         channel_owner[head_name] = move_placement
         for target, placements in by_target.items():
             if placements:

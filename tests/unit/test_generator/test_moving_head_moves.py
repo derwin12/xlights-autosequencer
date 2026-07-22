@@ -141,6 +141,63 @@ class TestPlaceMovingHeadMoves:
         assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH3", 3)
         assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH4", 4)
 
+    def test_static_held_move_alternates_full_and_half_lit_per_bar(self):
+        # User request (2026-07-22): a long held static pose (e.g.
+        # l_r_static) read as boring -- alternate all-4-heads-lit /
+        # half-heads-lit per bar instead of one flat 4-heads-lit hold for
+        # the whole move. Bar 0 (first bar) is always full; bars after
+        # that alternate. Purely a Dimmer toggle -- Pan/Tilt/PanOffset
+        # never change (same held pose throughout).
+        # role="chorus" + energy=40 -> qualifies via role, dynamic=False
+        # (40 < _STRONG_ENERGY_GATE) -> static pool. variation_seed=1,
+        # section_index=0 -> static pool index 1 ("l_r_static", per_head).
+        # toggle_pair = _choose_lit_pair(0, variation_seed+1=2) = (1, 4) --
+        # MH1/MH4 stay lit every bar, MH2/MH3 toggle off on odd bars.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=1)]
+        bars = _bars(2_000, 5)  # bar marks at 0, 2000, 4000, 6000, 8000
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+
+        def dimmer_states(head_name, head_index):
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            placements = sorted(
+                (p for p in result[head_name] if "Shutter: On" in p.parameters[key]),
+                key=lambda p: p.start_ms,
+            )
+            return [
+                "full" if f"Dimmer: {_DIMMER_FULL_ON}" in p.parameters[key]
+                else "off" if f"Dimmer: {_DIMMER_OFF}" in p.parameters[key]
+                else "?"
+                for p in placements
+            ]
+
+        assert dimmer_states("MH1", 1) == ["full", "full", "full", "full"]
+        assert dimmer_states("MH4", 4) == ["full", "full", "full", "full"]
+        assert dimmer_states("MH2", 2) == ["full", "off", "full", "off"]
+        assert dimmer_states("MH3", 3) == ["full", "off", "full", "off"]
+
+        # Position never changes across bars for the toggling heads --
+        # only Dimmer varies.
+        key2 = "E_TEXTCTRL_MH2_Settings"
+        placements2 = sorted(
+            (p for p in result["MH2"] if "Shutter: On" in p.parameters[key2]),
+            key=lambda p: p.start_ms,
+        )
+        pan_tilt = {p.parameters[key2].split("Pan:")[1].split(";Tilt")[0] for p in placements2}
+        assert len(pan_tilt) == 1  # identical Pan value on every bar
+
+    def test_short_static_move_under_one_bar_is_unaffected(self):
+        # A move too short to contain more than one bar shouldn't split at
+        # all -- degrades to the original single-placement behavior.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=1)]
+        bars = _bars(20_000, 3)  # bar marks far apart -- none fall inside the move
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+        for head_name, head_index in (("MH1", 1), ("MH2", 2)):
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            moves = [p for p in result[head_name] if "Shutter: On" in p.parameters[key]]
+            assert len(moves) == 1
+
     def test_consistently_intense_song_never_reduces_below_own_peak(self):
         # User concern (2026-07-18): a song that's intense throughout but
         # whose sections never numerically clear _FULL_HEADS_ENERGY_GATE
