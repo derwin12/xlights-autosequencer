@@ -2872,9 +2872,9 @@
       ],
       "prop_suitability": {
         "matrix": "ideal",
-        "outline": "good",
+        "outline": "not_recommended",
         "arch": "possible",
-        "vertical": "good",
+        "vertical": "not_recommended",
         "tree": "good",
         "radial": "good"
       },
