@@ -162,6 +162,19 @@ _CORPUS_MASK_PRIMARIES: tuple[str, ...] = (
 
 _MIN_MASK_HUE_SEPARATION_DEG = 25.0
 
+# Bar-to-bar rotation needs at least this many distinct entries to read as
+# movement rather than a frozen color.
+_MIN_MASK_ROTATION_CANDIDATES = 3
+
+# (saturation, value) pairs used to synthesize extra rotation entries from a
+# theme's own accepted hue(s) when the palette has real color but not enough
+# distinct hues (see the "in-hue variants" branch below). Deliberately
+# distinct from the (0.75, 0.95) floor used when vivifying the original
+# palette color, so a variant never lands on the exact same RGB.
+_MASK_HUE_VARIANT_SV: tuple[tuple[float, float], ...] = (
+    (0.55, 1.0), (1.0, 0.6), (0.85, 0.8),
+)
+
 
 def _hue_distance_deg(a: float, b: float) -> float:
     d = abs(a - b) % 360.0
@@ -180,8 +193,7 @@ def _vivid_mask_color(
     section so different prop families carry different colors in the same
     section (the corpus runs blue/cyan/red/yellow masks simultaneously) —
     without spreading, every family inherits the same shared anchor color and
-    the whole yard converges on one hue. Thin palettes (fewer than 3
-    saturated colors) are extended with the corpus primaries.
+    the whole yard converges on one hue.
 
     Candidates within ``_MIN_MASK_HUE_SEPARATION_DEG`` of an already-picked
     hue are dropped rather than kept as a "different" candidate: a palette
@@ -189,6 +201,19 @@ def _vivid_mask_color(
     produce multiple candidate strings that were technically distinct RGB
     values but visually the same color, so bar-to-bar color_cycle_bars
     rotation looked frozen even though the index was changing every bar.
+
+    Bug-419: that hue-separation dedup left most builtin themes with only
+    1-2 distinct-hue accent candidates (many themes' accent_palette is one
+    hue at two lightness levels, by design), which used to trip a "< 3
+    candidates" fallback that padded the rotation out with
+    ``_CORPUS_MASK_PRIMARIES`` — an unrelated rainbow (blue/cyan/magenta/
+    yellow) that overrides the theme's own deliberate accent choice (e.g. a
+    red/green Christmas theme's mask flashing blue). The corpus primaries
+    are now reserved for the case the palette has genuinely NO usable
+    saturated color at all (all white/gray); when the theme has 1-2 real
+    hues, rotation variety comes from lightness/saturation variants of those
+    SAME hues instead, so the mask never drifts outside the theme's own
+    color identity.
     """
     import colorsys
     import zlib
@@ -213,11 +238,34 @@ def _vivid_mask_color(
             r, g, b = colorsys.hsv_to_rgb(h, max(s, 0.75), max(v, 0.95))
             vivid = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
             add_candidate(vivid, h * 360.0)
-    if len(candidates) < 3:
+
+    if not candidates:
+        # No usable saturated color anywhere in the palette (e.g. an
+        # all-white/gray theme) -- there's no theme hue to vary, so borrow
+        # the corpus's validated primary rotation rather than freezing on
+        # white.
         for c in _CORPUS_MASK_PRIMARIES:
             pr, pg, pb = (int(c[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
             ph, _, _ = colorsys.rgb_to_hsv(pr, pg, pb)
             add_candidate(c, ph * 360.0)
+    elif len(candidates) < _MIN_MASK_ROTATION_CANDIDATES:
+        # The palette DOES carry real color, just not enough distinct hues
+        # for bar-to-bar movement -- stay in-hue rather than importing an
+        # off-brand primary.
+        own_hues = list(candidate_hues)
+        variant_idx = 0
+        while (
+            len(candidates) < _MIN_MASK_ROTATION_CANDIDATES
+            and variant_idx < len(own_hues) * len(_MASK_HUE_VARIANT_SV)
+        ):
+            hue = own_hues[variant_idx % len(own_hues)]
+            sat, val = _MASK_HUE_VARIANT_SV[variant_idx // len(own_hues)]
+            r, g, b = colorsys.hsv_to_rgb(hue / 360.0, sat, val)
+            variant = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
+            if variant not in candidates:
+                candidates.append(variant)
+            variant_idx += 1
+
     spread = zlib.crc32(group_name.encode("utf-8")) if group_name else 0
     return candidates[(variation_seed + spread + offset) % len(candidates)]
 

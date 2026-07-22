@@ -1131,6 +1131,48 @@ class TestVividMaskColor:
         ons = [p for p in result["06_PROP_Matrix"] if p.effect_name == "On"]
         assert ons and ons[0].color_palette[0].upper() != "#FFFFFF"
 
+    def test_single_hue_accent_never_borrows_an_off_theme_primary(self) -> None:
+        # Bug-419: Festive Flash's accent_palette (gold/orange/green/dark-green)
+        # collapses to a single distinct hue bucket after hue-separation dedup
+        # (gold and orange are 11 degrees apart; the two greens are identical
+        # hue) -- this used to trip the old "< 3 candidates" fallback and mix
+        # in unrelated corpus primaries (blue/cyan/magenta) on a Christmas
+        # theme's mask layer. Every rotation entry must stay within the
+        # palette's own hue family now.
+        from src.generator.effect_placer import _hue_distance_deg, _vivid_mask_color
+        import colorsys
+        palette = ["#FFD700", "#FFAA00", "#00CC00", "#009900"]
+        own_hues = [50.6, 40.0, 120.0]  # gold, orange, green (both greens)
+        for seed in range(12):
+            color = _vivid_mask_color(palette, seed, "06_PROP_Horizontal_Lines", offset=seed)
+            c = color.lstrip("#")
+            r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+            hue, sat, _ = colorsys.rgb_to_hsv(r, g, b)
+            if sat < 0.05:
+                continue  # near-white/gray variants carry no meaningful hue
+            assert any(_hue_distance_deg(hue * 360.0, h) < 25.0 for h in own_hues), (
+                f"{color} is not within any of the theme's own hues {own_hues}"
+            )
+
+    def test_two_hue_accent_still_rotates_without_off_theme_primaries(self) -> None:
+        # A 2-distinct-hue accent_palette (e.g. Haunted Pulse) should rotate
+        # between its own two hues plus in-hue variants, never a corpus
+        # primary from an unrelated hue family.
+        from src.generator.effect_placer import _hue_distance_deg, _vivid_mask_color
+        import colorsys
+        palette = ["#00FF44", "#44FF00"]  # both acid-green, ~100-135 deg
+        own_hues = [100.0, 135.0]
+        for seed in range(12):
+            color = _vivid_mask_color(palette, seed, "06_PROP_Vertical_Lines", offset=seed)
+            c = color.lstrip("#")
+            r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+            hue, sat, _ = colorsys.rgb_to_hsv(r, g, b)
+            if sat < 0.05:
+                continue
+            assert any(_hue_distance_deg(hue * 360.0, h) < 25.0 for h in own_hues), (
+                f"{color} is not within any of the theme's own hues {own_hues}"
+            )
+
 
 # ── placement progress callback ──────────────────────────────────────────────
 
