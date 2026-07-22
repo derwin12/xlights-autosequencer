@@ -839,6 +839,10 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
         mask_sparkles=True,
+        # Off backdrop beneath the mask+motion stack, matching horizontal/
+        # vertical/spiraltree/megatopper/icicle (user request 2026-07-22,
+        # spotted on a real generated sequence's 06_PROP_Tree).
+        off_backdrop=True,
     ),
     # Stars — mined from the same 12 packages (docs/star_sequencing_corpus/,
     # 15.2k placements over 12 songs, the largest family). One idiom across
@@ -860,6 +864,10 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_parameter_overrides=_CHASE_FROM_HEAD,
         color_over_mask=True,
         color_cycle_bars=True,
+        # Off backdrop beneath the mask+motion stack, matching horizontal/
+        # vertical/spiraltree/megatopper/icicle (user request 2026-07-22,
+        # spotted on a real generated sequence's Star/TreeStar groups).
+        off_backdrop=True,
     ),
     # Mega toppers — mined from the same 12 packages (docs/topper_sequencing_
     # corpus/, 3.8k placements over 12 songs). The topper is the tree's

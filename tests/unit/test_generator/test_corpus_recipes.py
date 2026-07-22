@@ -1317,6 +1317,27 @@ class TestOffBackdrop:
         offs = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "Off"]
         assert offs == []
 
+    def test_minitree_recipe_adds_off_backdrop(self) -> None:
+        # User request 2026-07-22: match horizontal/vertical/spiraltree —
+        # an Off backdrop beneath the On-mask + motion stack instead of
+        # picking up whole-house bleed.
+        result = _place(_make_section(label="chorus"), _MINITREE_GROUP,
+                        library_names=_LIBRARY_WITH_OFF + ("On",))
+        offs = [p for p in result["06_PROP_Tree"] if p.effect_name == "Off"]
+        assert len(offs) == 1
+        # Beneath both the On-mask (layer 0) and motion (layer 1) layers.
+        assert offs[0].layer == 2
+
+    def test_star_recipe_adds_off_backdrop(self) -> None:
+        star_group = PowerGroup(
+            name="06_PROP_Star", tier=6, members=["Star 1", "Star 2"],
+        )
+        result = _place(_make_section(label="chorus"), star_group,
+                        library_names=_LIBRARY_WITH_OFF + ("On",))
+        offs = [p for p in result["06_PROP_Star"] if p.effect_name == "Off"]
+        assert len(offs) == 1
+        assert offs[0].layer == 2
+
     def test_off_missing_from_library_skips_backdrop(self) -> None:
         # A catalog without "Off" must not break the recipe placement.
         result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP)
