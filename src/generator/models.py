@@ -277,9 +277,11 @@ class GenerationConfig:
     # moments natively and 5/5 spot-checked follow-ups confirmed, and
     # targeting Stars instead of Moving Head avoids the warmup collision
     # entirely — see CLAUDE.md -> "Riff/Fill Detector for Moving Head
-    # Accent". Default False pending real-world listening on a generated
-    # sequence before enabling broadly.
-    riff_bursts: bool = False
+    # Accent". Was False pending real-world listening; enabled 2026-07-22
+    # after switching placement to rotate through individual star members
+    # (bug-514) instead of flashing the whole family at once, and verifying
+    # against a real generated sequence.
+    riff_bursts: bool = True
     # Nominal fields (spec 047) — stored but not read in Phase 3. Phase 4
     # (spec 048 follow-up) will wire them into build_plan/theme_selector so
     # the Brief tab can drop its client-side MOOD_DEFAULTS ruleset.

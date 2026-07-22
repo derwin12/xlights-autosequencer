@@ -4034,8 +4034,10 @@ def _place_star_bursts(
     vocal_words: Optional[list[dict]],
     fade_exclusion_start_ms: Optional[int] = None,
 ) -> dict[str, list[EffectPlacement]]:
-    """Place a short Pinwheel burst on Star-family groups at each rare
-    riff/fill mark from ``hierarchy.riff_bursts``.
+    """Place a short Pinwheel burst on one individual star model at each rare
+    riff/fill mark from ``hierarchy.riff_bursts``, rotating through every
+    member of every star-family group so accents land on a single prop at a
+    time instead of the whole family flashing in unison.
 
     Song-scoped like ``_place_crash_accents``, not routed through the
     per-section pipeline. Layered above the star group's regular recipe
@@ -4053,6 +4055,15 @@ def _place_star_bursts(
     if not star_groups:
         return result
 
+    # Target individual star models rather than the whole family group: firing
+    # the same burst on every member at once reads as one blob, not four
+    # distinct props. Rotate through members so each riff-burst mark accents
+    # a single star, and repeated marks spread the accent across all of them
+    # over the course of a song (2026-07-22 user request).
+    star_members = [
+        member for g in star_groups for member in (g.members or [g.name])
+    ]
+
     word_spans = [
         (int(w["start_ms"]), int(w["end_ms"]))
         for w in (vocal_words or [])
@@ -4065,6 +4076,7 @@ def _place_star_bursts(
             for start, end in word_spans
         )
 
+    member_idx = 0
     for mark in hierarchy.riff_bursts:
         if _near_vocal(mark.time_ms):
             continue
@@ -4074,19 +4086,20 @@ def _place_star_bursts(
         end_ms = min(mark.time_ms + _STAR_BURST_DURATION_MS, hierarchy.duration_ms)
         if end_ms <= start_ms:
             continue
-        for g in star_groups:
-            p = EffectPlacement(
-                effect_name="Pinwheel",
-                xlights_id="eff_PINWHEEL",
-                model_or_group=g.name,
-                start_ms=start_ms,
-                end_ms=end_ms,
-                parameters=dict(_STAR_BURST_PARAMS),
-                color_palette=list(_STAR_BURST_PALETTE),
-            )
-            # xLights renders the FIRST EffectLayer on top (bug-248); a
-            # negative index sorts above the recipe's layers 0-2.
-            p.layer = -1
-            result.setdefault(g.name, []).append(p)
+        member = star_members[member_idx % len(star_members)]
+        member_idx += 1
+        p = EffectPlacement(
+            effect_name="Pinwheel",
+            xlights_id="eff_PINWHEEL",
+            model_or_group=member,
+            start_ms=start_ms,
+            end_ms=end_ms,
+            parameters=dict(_STAR_BURST_PARAMS),
+            color_palette=list(_STAR_BURST_PALETTE),
+        )
+        # xLights renders the FIRST EffectLayer on top (bug-248); a
+        # negative index sorts above the recipe's layers 0-2.
+        p.layer = -1
+        result.setdefault(member, []).append(p)
 
     return result
