@@ -387,7 +387,8 @@ class TestDownloadPackage:
         import src.review.api.v1.export as export_module
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
-                              genre="pop", occasion="general", include_extra_timing=True):
+                              genre="pop", occasion="general", include_extra_timing=True,
+                              vocal_diarization=False):
             import tempfile as _tempfile
             out_dir = _tempfile.mkdtemp()
             import pathlib as _pathlib
