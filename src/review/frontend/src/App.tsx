@@ -567,6 +567,18 @@ export default function App() {
       .catch(() => {});
   }, [songs, setSongs]);
 
+  // Delete a folder: backend moves its songs to Unfiled, then mirror that
+  // locally so the rail doesn't have to wait on a refetch.
+  const handleRemoveFolder = useCallback((folderId: string) => {
+    fetch(`/api/v1/folders/${folderId}`, { method: 'DELETE' })
+      .then((r) => {
+        if (!r.ok) return;
+        setFolders(folders.filter((f) => (f.folder_id ?? (f as any).id) !== folderId));
+        setSongs(songs.map((s) => (s.folder_id === folderId ? { ...s, folder_id: 'unfiled' } : s)));
+      })
+      .catch(() => {});
+  }, [folders, setFolders, songs, setSongs]);
+
   const handlePurgeCache = useCallback((songId: string) => {
     fetch(`/api/v1/songs/${songId}/purge`, {
       method: 'POST',
@@ -705,6 +717,7 @@ export default function App() {
         onSongMoved={handleSongMoved}
         onRemoveSong={handleRemoveSong}
         onCreateFolder={handleCreateFolder}
+        onRemoveFolder={handleRemoveFolder}
       >
         {renderScreen()}
       </Chrome>

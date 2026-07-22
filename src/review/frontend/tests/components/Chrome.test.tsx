@@ -201,4 +201,34 @@ describe('Chrome LibraryRail (T097)', () => {
     expect(onCreateFolder).not.toHaveBeenCalled();
     expect(screen.getByTestId('new-folder-button')).toBeTruthy();
   });
+
+  it('does not show a delete control on any folder without an onRemoveFolder handler', () => {
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS}>
+        <div />
+      </Chrome>,
+    );
+    expect(screen.queryByTestId('remove-folder-xmas')).toBeNull();
+  });
+
+  it('shows a delete control on a regular folder and calls onRemoveFolder on click', () => {
+    const onRemoveFolder = vi.fn();
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS} onRemoveFolder={onRemoveFolder}>
+        <div />
+      </Chrome>,
+    );
+    fireEvent.click(screen.getByTestId('remove-folder-xmas'));
+    expect(onRemoveFolder).toHaveBeenCalledWith('xmas');
+  });
+
+  it('never shows a delete control on the reserved Unfiled folder', () => {
+    const onRemoveFolder = vi.fn();
+    render(
+      <Chrome activeScreen="library" songs={SONGS} folders={FOLDERS} onRemoveFolder={onRemoveFolder}>
+        <div />
+      </Chrome>,
+    );
+    expect(screen.queryByTestId('remove-folder-unfiled')).toBeNull();
+  });
 });

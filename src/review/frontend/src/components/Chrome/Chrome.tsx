@@ -49,9 +49,10 @@ interface Props {
   onSongMoved?: (songId: string, targetFolderId: string) => void;
   onRemoveSong?: (song: Song) => void;
   onCreateFolder?: (name: string) => Promise<string | null>;
+  onRemoveFolder?: (folderId: string) => void;
 }
 
-export function Chrome({ activeScreen, onNavigate, children, songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong, onCreateFolder }: Props) {
+export function Chrome({ activeScreen, onNavigate, children, songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong, onCreateFolder, onRemoveFolder }: Props) {
   const showRail = songs && folders && songs.length > 0;
   const [railCollapsed, setRailCollapsed] = React.useState<boolean>(() => {
     try { return localStorage.getItem('xonset.railCollapsed') === '1'; }
@@ -154,6 +155,7 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
               onSongMoved={onSongMoved}
               onRemoveSong={onRemoveSong}
               onCreateFolder={onCreateFolder}
+              onRemoveFolder={onRemoveFolder}
             />
           </div>
         )}
@@ -174,9 +176,10 @@ interface RailProps {
   onSongMoved?: (songId: string, targetFolderId: string) => void;
   onRemoveSong?: (song: Song) => void;
   onCreateFolder?: (name: string) => Promise<string | null>;
+  onRemoveFolder?: (folderId: string) => void;
 }
 
-function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong, onCreateFolder }: RailProps) {
+function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, onRemoveSong, onCreateFolder, onRemoveFolder }: RailProps) {
   const [collapsedFolders, setCollapsedFolders] = React.useState<Set<string>>(
     () => new Set(folders.filter((f) => f.collapsed).map((f) => (f as any).folder_id ?? (f as any).id)),
   );
@@ -270,28 +273,49 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
             style={{ background: isDragTarget ? 'rgba(74,222,128,0.05)' : undefined }}
           >
             {/* Folder header */}
-            <button
-              onClick={() => toggleFolder(folderId)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-text-muted, #888)',
-                fontWeight: 600,
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                padding: '6px 12px',
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
-              {folder.name}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <button
+                onClick={() => toggleFolder(folderId)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted, #888)',
+                  fontWeight: 600,
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  padding: '6px 12px',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
+                {folder.name}
+              </button>
+              {onRemoveFolder && folderId !== 'unfiled' && (
+                <button
+                  data-testid={`remove-folder-${folderId}`}
+                  onClick={(e) => { e.stopPropagation(); onRemoveFolder(folderId); }}
+                  title="Delete folder"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted, #888)',
+                    fontSize: 12,
+                    padding: '0 12px 0 4px',
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
 
             {!isCollapsed && folderSongs.map((song) => (
               <RailSongItem
