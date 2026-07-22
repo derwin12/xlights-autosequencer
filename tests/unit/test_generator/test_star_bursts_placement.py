@@ -1,5 +1,6 @@
 """Tests for effect_placer._place_star_bursts (rare Pinwheel accent on
-Star-family groups at each hierarchy.riff_bursts mark)."""
+individual star models, rotating through the star family's members, at each
+hierarchy.riff_bursts mark)."""
 from __future__ import annotations
 
 from src.analyzer.result import HierarchyResult, TimingMark
@@ -40,25 +41,35 @@ class TestPlaceStarBursts:
         )
         assert result == {}
 
-    def test_places_pinwheel_on_star_group(self):
+    def test_places_pinwheel_on_one_individual_star_member(self):
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000]), vocal_words=None,
         )
-        assert set(result) == {"06_PROP_Star"}
-        p = result["06_PROP_Star"][0]
+        assert set(result) == {"Star 1"}
+        p = result["Star 1"][0]
         assert p.effect_name == "Pinwheel"
-        assert p.model_or_group == "06_PROP_Star"
+        assert p.model_or_group == "Star 1"
         assert p.start_ms == 33_000
         assert p.end_ms == 33_000 + _STAR_BURST_DURATION_MS
         assert p.color_palette == ["#FF0000", "#FFFF00", "#FF8000"]
         assert p.parameters["E_SLIDER_Pinwheel_Arms"] == "3"
         assert "T_CHECKBOX_Canvas" not in p.parameters
 
+    def test_successive_marks_rotate_across_members(self):
+        result = _place_star_bursts(
+            groups=[_star_group()], hierarchy=_hierarchy([10_000, 33_000, 60_000]),
+            vocal_words=None,
+        )
+        assert set(result) == {"Star 1", "Star 2"}
+        assert result["Star 1"][0].start_ms == 10_000
+        assert result["Star 2"][0].start_ms == 33_000
+        assert result["Star 1"][1].start_ms == 60_000
+
     def test_renders_above_recipe_layers(self):
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000]), vocal_words=None,
         )
-        assert all(p.layer < 0 for p in result["06_PROP_Star"])
+        assert all(p.layer < 0 for p in result["Star 1"])
 
     def test_vocal_word_near_mark_excludes_it(self):
         vocal_words = [{"start_ms": 32_900, "end_ms": 33_100}]
@@ -82,13 +93,16 @@ class TestPlaceStarBursts:
             groups=[_star_group()], hierarchy=_hierarchy([33_000, 190_000]),
             vocal_words=None, fade_exclusion_start_ms=180_000,
         )
-        marks = sorted(p.start_ms for p in result["06_PROP_Star"])
+        marks = sorted(p.start_ms for p in result["Star 1"])
         assert marks == [33_000]
 
-    def test_multiple_star_groups_all_get_the_burst(self):
+    def test_multiple_star_groups_share_the_rotation(self):
         other_star = PowerGroup(name="06_PROP_Star_Alt", tier=6, members=["Star 3"])
         result = _place_star_bursts(
-            groups=[_star_group(), other_star], hierarchy=_hierarchy([33_000]),
+            groups=[_star_group(), other_star], hierarchy=_hierarchy([10_000, 33_000, 60_000]),
             vocal_words=None,
         )
-        assert set(result) == {"06_PROP_Star", "06_PROP_Star_Alt"}
+        assert set(result) == {"Star 1", "Star 2", "Star 3"}
+        assert result["Star 1"][0].start_ms == 10_000
+        assert result["Star 2"][0].start_ms == 33_000
+        assert result["Star 3"][0].start_ms == 60_000

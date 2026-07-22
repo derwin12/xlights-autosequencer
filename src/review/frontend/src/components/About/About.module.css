@@ -100,6 +100,24 @@
   margin-top: 8px;
 }
 
+.credit {
+  font-size: 11px;
+  color: var(--color-text-muted, #888);
+  margin-bottom: 16px;
+}
+
+.creditLink {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--color-accent, #4ade80);
+  font-size: inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

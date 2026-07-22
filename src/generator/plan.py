@@ -17,6 +17,8 @@ from src.generator.effect_placer import (
     _place_drum_accents,
     _place_impact_accent,
     _place_crash_accents,
+    _place_floodlight_hihat_accents,
+    _place_floodlight_pulses,
     _place_lyric_text,
     _place_picture_effects,
     _place_singing_faces,
@@ -461,6 +463,37 @@ def build_plan(
         )
         for gname, placements in _place_star_bursts(
             groups, hierarchy, config.vocal_words,
+            fade_exclusion_start_ms=fade_exclusion_start_ms,
+        ).items():
+            crash_effects.setdefault(gname, []).extend(placements)
+
+    # 5d-4. Kick pulses: short white "On" punch on individual floodlights at
+    # each rare kick-roll flourish (hierarchy.kick_pulses,
+    # kick_pulses.detect_kick_pulses -- grouped from the already-classified
+    # kick_hits track). Floodlights have no buffer resolution for a
+    # burst-style effect, so this mirrors the star riff-burst rotation
+    # (bug-514) with a plain On pulse instead of Pinwheel. Gated on
+    # config.floodlight_pulses.
+    if config.floodlight_pulses and hierarchy.kick_pulses:
+        fade_exclusion_start_ms = max(
+            0, min(_audible_end_ms(assignments, hierarchy), hierarchy.duration_ms - _FADE_MIN_MS)
+        )
+        for gname, placements in _place_floodlight_pulses(
+            groups, hierarchy, config.vocal_words,
+            fade_exclusion_start_ms=fade_exclusion_start_ms,
+        ).items():
+            crash_effects.setdefault(gname, []).extend(placements)
+
+    # 5d-5. Hihat accents: very short white "On" tick on individual
+    # floodlights at every classified hihat hit (hierarchy.hihat_hits) --
+    # direct wiring, no rarity filtering, unlike the kick-roll pulse above.
+    # Gated on config.floodlight_hihat_accents.
+    if config.floodlight_hihat_accents and hierarchy.hihat_hits:
+        fade_exclusion_start_ms = max(
+            0, min(_audible_end_ms(assignments, hierarchy), hierarchy.duration_ms - _FADE_MIN_MS)
+        )
+        for gname, placements in _place_floodlight_hihat_accents(
+            groups, hierarchy,
             fade_exclusion_start_ms=fade_exclusion_start_ms,
         ).items():
             crash_effects.setdefault(gname, []).extend(placements)

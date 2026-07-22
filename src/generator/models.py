@@ -277,9 +277,32 @@ class GenerationConfig:
     # moments natively and 5/5 spot-checked follow-ups confirmed, and
     # targeting Stars instead of Moving Head avoids the warmup collision
     # entirely — see CLAUDE.md -> "Riff/Fill Detector for Moving Head
-    # Accent". Default False pending real-world listening on a generated
-    # sequence before enabling broadly.
-    riff_bursts: bool = False
+    # Accent". Was False pending real-world listening; enabled 2026-07-22
+    # after switching placement to rotate through individual star members
+    # (bug-514) instead of flashing the whole family at once, and verifying
+    # against a real generated sequence.
+    riff_bursts: bool = True
+    # Short "On" pulse on one individual floodlight at each rare kick-roll
+    # flourish (hierarchy.kick_pulses, kick_pulses.detect_kick_pulses —
+    # grouped from the already-classified kick_hits track). Rotates through
+    # every floodlight (or other single-pixel prop with no buffer
+    # resolution for a burst-style effect) the same way riff_bursts rotates
+    # through star-family members (bug-514). Was False pending real-world
+    # listening; enabled 2026-07-22 after verifying against real audio
+    # (Chattahoochee) — found 0 marks on that song (no kick rolls in a
+    # standard country kit, same "rare by design" behavior as
+    # crash_accents), and synthetic-burst unit tests confirm the detector
+    # fires correctly when the underlying kick-roll signal exists.
+    floodlight_pulses: bool = True
+    # Short "On" tick on one individual floodlight at every classified hihat
+    # hit (hierarchy.hihat_hits), rotating through every floodlight the same
+    # way floodlight_pulses/riff_bursts do. Unlike floodlight_pulses (a rare
+    # kick-roll flourish), this wires the raw hihat track directly -- no
+    # burst filtering -- since hihat_hits is already a validated per-
+    # instrument classification, not an experimental detector. Default False
+    # pending real-world listening on a generated sequence before enabling
+    # broadly — same rollout discipline as riff_bursts/floodlight_pulses.
+    floodlight_hihat_accents: bool = False
     # Nominal fields (spec 047) — stored but not read in Phase 3. Phase 4
     # (spec 048 follow-up) will wire them into build_plan/theme_selector so
     # the Brief tab can drop its client-side MOOD_DEFAULTS ruleset.

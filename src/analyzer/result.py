@@ -579,6 +579,12 @@ class HierarchyResult:
     # Distinct from crash_accents (isolated treble transient) and
     # energy_impacts (section-level energy jump).
     riff_bursts: list[TimingMark] = field(default_factory=list)
+    # Rare kick-drum-flourish moments: runs of >=3 kick hits (from
+    # kick_hits below) with consecutive gaps <=0.2s — see
+    # src/analyzer/kick_pulses.py. Same rare-fill formula as riff_bursts,
+    # applied to kicks instead of snare, for floodlight-style single-pixel
+    # props where a burst effect has no buffer resolution to render on.
+    kick_pulses: list[TimingMark] = field(default_factory=list)
     # Per-instrument drum onsets, split from the classified "drums" track
     # (src/analyzer/drum_classifier.py) so each instrument has its own
     # visible .xtiming layer instead of being bundled unlabeled inside
@@ -670,6 +676,7 @@ class HierarchyResult:
             "crash_accents": [self._mark_to_dict(m) for m in self.crash_accents],
             "ending_punches": [self._mark_to_dict(m) for m in self.ending_punches],
             "riff_bursts": [self._mark_to_dict(m) for m in self.riff_bursts],
+            "kick_pulses": [self._mark_to_dict(m) for m in self.kick_pulses],
             "kick_hits": [self._mark_to_dict(m) for m in self.kick_hits],
             "snare_hits": [self._mark_to_dict(m) for m in self.snare_hits],
             "hihat_hits": [self._mark_to_dict(m) for m in self.hihat_hits],
@@ -743,6 +750,11 @@ class HierarchyResult:
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
                        label=m.get("label"), duration_ms=m.get("duration_ms"))
             for m in d.get("riff_bursts", [])
+        ]
+        obj.kick_pulses = [
+            TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),
+                       label=m.get("label"), duration_ms=m.get("duration_ms"))
+            for m in d.get("kick_pulses", [])
         ]
         obj.kick_hits = [
             TimingMark(time_ms=m["time_ms"], confidence=m.get("confidence"),

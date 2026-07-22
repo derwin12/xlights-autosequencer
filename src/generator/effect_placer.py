@@ -162,6 +162,19 @@ _CORPUS_MASK_PRIMARIES: tuple[str, ...] = (
 
 _MIN_MASK_HUE_SEPARATION_DEG = 25.0
 
+# Bar-to-bar rotation needs at least this many distinct entries to read as
+# movement rather than a frozen color.
+_MIN_MASK_ROTATION_CANDIDATES = 3
+
+# (saturation, value) pairs used to synthesize extra rotation entries from a
+# theme's own accepted hue(s) when the palette has real color but not enough
+# distinct hues (see the "in-hue variants" branch below). Deliberately
+# distinct from the (0.75, 0.95) floor used when vivifying the original
+# palette color, so a variant never lands on the exact same RGB.
+_MASK_HUE_VARIANT_SV: tuple[tuple[float, float], ...] = (
+    (0.55, 1.0), (1.0, 0.6), (0.85, 0.8),
+)
+
 
 def _hue_distance_deg(a: float, b: float) -> float:
     d = abs(a - b) % 360.0
@@ -180,8 +193,7 @@ def _vivid_mask_color(
     section so different prop families carry different colors in the same
     section (the corpus runs blue/cyan/red/yellow masks simultaneously) —
     without spreading, every family inherits the same shared anchor color and
-    the whole yard converges on one hue. Thin palettes (fewer than 3
-    saturated colors) are extended with the corpus primaries.
+    the whole yard converges on one hue.
 
     Candidates within ``_MIN_MASK_HUE_SEPARATION_DEG`` of an already-picked
     hue are dropped rather than kept as a "different" candidate: a palette
@@ -189,6 +201,19 @@ def _vivid_mask_color(
     produce multiple candidate strings that were technically distinct RGB
     values but visually the same color, so bar-to-bar color_cycle_bars
     rotation looked frozen even though the index was changing every bar.
+
+    Bug-419: that hue-separation dedup left most builtin themes with only
+    1-2 distinct-hue accent candidates (many themes' accent_palette is one
+    hue at two lightness levels, by design), which used to trip a "< 3
+    candidates" fallback that padded the rotation out with
+    ``_CORPUS_MASK_PRIMARIES`` — an unrelated rainbow (blue/cyan/magenta/
+    yellow) that overrides the theme's own deliberate accent choice (e.g. a
+    red/green Christmas theme's mask flashing blue). The corpus primaries
+    are now reserved for the case the palette has genuinely NO usable
+    saturated color at all (all white/gray); when the theme has 1-2 real
+    hues, rotation variety comes from lightness/saturation variants of those
+    SAME hues instead, so the mask never drifts outside the theme's own
+    color identity.
     """
     import colorsys
     import zlib
@@ -213,11 +238,34 @@ def _vivid_mask_color(
             r, g, b = colorsys.hsv_to_rgb(h, max(s, 0.75), max(v, 0.95))
             vivid = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
             add_candidate(vivid, h * 360.0)
-    if len(candidates) < 3:
+
+    if not candidates:
+        # No usable saturated color anywhere in the palette (e.g. an
+        # all-white/gray theme) -- there's no theme hue to vary, so borrow
+        # the corpus's validated primary rotation rather than freezing on
+        # white.
         for c in _CORPUS_MASK_PRIMARIES:
             pr, pg, pb = (int(c[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
             ph, _, _ = colorsys.rgb_to_hsv(pr, pg, pb)
             add_candidate(c, ph * 360.0)
+    elif len(candidates) < _MIN_MASK_ROTATION_CANDIDATES:
+        # The palette DOES carry real color, just not enough distinct hues
+        # for bar-to-bar movement -- stay in-hue rather than importing an
+        # off-brand primary.
+        own_hues = list(candidate_hues)
+        variant_idx = 0
+        while (
+            len(candidates) < _MIN_MASK_ROTATION_CANDIDATES
+            and variant_idx < len(own_hues) * len(_MASK_HUE_VARIANT_SV)
+        ):
+            hue = own_hues[variant_idx % len(own_hues)]
+            sat, val = _MASK_HUE_VARIANT_SV[variant_idx // len(own_hues)]
+            r, g, b = colorsys.hsv_to_rgb(hue / 360.0, sat, val)
+            variant = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
+            if variant not in candidates:
+                candidates.append(variant)
+            variant_idx += 1
+
     spread = zlib.crc32(group_name.encode("utf-8")) if group_name else 0
     return candidates[(variation_seed + spread + offset) % len(candidates)]
 
@@ -3986,8 +4034,10 @@ def _place_star_bursts(
     vocal_words: Optional[list[dict]],
     fade_exclusion_start_ms: Optional[int] = None,
 ) -> dict[str, list[EffectPlacement]]:
-    """Place a short Pinwheel burst on Star-family groups at each rare
-    riff/fill mark from ``hierarchy.riff_bursts``.
+    """Place a short Pinwheel burst on one individual star model at each rare
+    riff/fill mark from ``hierarchy.riff_bursts``, rotating through every
+    member of every star-family group so accents land on a single prop at a
+    time instead of the whole family flashing in unison.
 
     Song-scoped like ``_place_crash_accents``, not routed through the
     per-section pipeline. Layered above the star group's regular recipe
@@ -4005,6 +4055,15 @@ def _place_star_bursts(
     if not star_groups:
         return result
 
+    # Target individual star models rather than the whole family group: firing
+    # the same burst on every member at once reads as one blob, not four
+    # distinct props. Rotate through members so each riff-burst mark accents
+    # a single star, and repeated marks spread the accent across all of them
+    # over the course of a song (2026-07-22 user request).
+    star_members = [
+        member for g in star_groups for member in (g.members or [g.name])
+    ]
+
     word_spans = [
         (int(w["start_ms"]), int(w["end_ms"]))
         for w in (vocal_words or [])
@@ -4017,6 +4076,7 @@ def _place_star_bursts(
             for start, end in word_spans
         )
 
+    member_idx = 0
     for mark in hierarchy.riff_bursts:
         if _near_vocal(mark.time_ms):
             continue
@@ -4026,19 +4086,176 @@ def _place_star_bursts(
         end_ms = min(mark.time_ms + _STAR_BURST_DURATION_MS, hierarchy.duration_ms)
         if end_ms <= start_ms:
             continue
-        for g in star_groups:
-            p = EffectPlacement(
-                effect_name="Pinwheel",
-                xlights_id="eff_PINWHEEL",
-                model_or_group=g.name,
-                start_ms=start_ms,
-                end_ms=end_ms,
-                parameters=dict(_STAR_BURST_PARAMS),
-                color_palette=list(_STAR_BURST_PALETTE),
-            )
-            # xLights renders the FIRST EffectLayer on top (bug-248); a
-            # negative index sorts above the recipe's layers 0-2.
-            p.layer = -1
-            result.setdefault(g.name, []).append(p)
+        member = star_members[member_idx % len(star_members)]
+        member_idx += 1
+        p = EffectPlacement(
+            effect_name="Pinwheel",
+            xlights_id="eff_PINWHEEL",
+            model_or_group=member,
+            start_ms=start_ms,
+            end_ms=end_ms,
+            parameters=dict(_STAR_BURST_PARAMS),
+            color_palette=list(_STAR_BURST_PALETTE),
+        )
+        # xLights renders the FIRST EffectLayer on top (bug-248); a
+        # negative index sorts above the recipe's layers 0-2.
+        p.layer = -1
+        result.setdefault(member, []).append(p)
+
+    return result
+
+
+# Kick-pulse accent on individual floodlights (or any other single-pixel
+# prop group with no buffer resolution for a burst-style effect), user
+# request 2026-07-22. Floodlights (NodesPerString=1) can't render Shockwave/
+# Pinwheel meaningfully -- any effect on a 1-pixel model degrades to a plain
+# time-varying color/brightness, so a quick "On" punch (fast fade in/out) is
+# the effect that actually reads correctly on them, per CLAUDE.md's Prop
+# Effect Suitability note ("mini props: On/Off, Strobe, Twinkle").
+_FLOODLIGHT_PULSE_DURATION_MS = 350
+_FLOODLIGHT_PULSE_FADE_IN_MS = 40
+_FLOODLIGHT_PULSE_FADE_OUT_MS = 120
+_FLOODLIGHT_PULSE_VOCAL_EXCLUSION_MS = 500
+
+
+def _place_floodlight_pulses(
+    groups: list[PowerGroup],
+    hierarchy: HierarchyResult,
+    vocal_words: Optional[list[dict]],
+    fade_exclusion_start_ms: Optional[int] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a short white "On" pulse on one individual floodlight at each
+    rare kick-roll mark from ``hierarchy.kick_pulses``, rotating through
+    every floodlight-family member so accents land on a single prop at a
+    time -- same rotation strategy as ``_place_star_bursts`` (bug-514), just
+    matched by name token instead of a corpus_recipes family since
+    floodlights don't carry one.
+
+    Song-scoped like ``_place_star_bursts``/``_place_crash_accents``, not
+    routed through the per-section pipeline.
+    """
+    result: dict[str, list[EffectPlacement]] = {}
+    if not hierarchy.kick_pulses:
+        return result
+
+    floodlight_groups = [g for g in groups if "floodlight" in g.name.lower()]
+    if not floodlight_groups:
+        return result
+
+    floodlight_members = [
+        member for g in floodlight_groups for member in (g.members or [g.name])
+    ]
+
+    word_spans = [
+        (int(w["start_ms"]), int(w["end_ms"]))
+        for w in (vocal_words or [])
+        if int(w["end_ms"]) > int(w["start_ms"])
+    ]
+
+    def _near_vocal(time_ms: int) -> bool:
+        return any(
+            start - _FLOODLIGHT_PULSE_VOCAL_EXCLUSION_MS <= time_ms <= end + _FLOODLIGHT_PULSE_VOCAL_EXCLUSION_MS
+            for start, end in word_spans
+        )
+
+    member_idx = 0
+    for mark in hierarchy.kick_pulses:
+        if _near_vocal(mark.time_ms):
+            continue
+        if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
+            continue
+        start_ms = mark.time_ms
+        end_ms = min(mark.time_ms + _FLOODLIGHT_PULSE_DURATION_MS, hierarchy.duration_ms)
+        if end_ms <= start_ms:
+            continue
+        member = floodlight_members[member_idx % len(floodlight_members)]
+        member_idx += 1
+        p = EffectPlacement(
+            effect_name="On",
+            xlights_id="eff_ON",
+            model_or_group=member,
+            start_ms=start_ms,
+            end_ms=end_ms,
+            parameters={},
+            color_palette=["#FFFFFF"],
+            fade_in_ms=_FLOODLIGHT_PULSE_FADE_IN_MS,
+            fade_out_ms=_FLOODLIGHT_PULSE_FADE_OUT_MS,
+        )
+        # xLights renders the FIRST EffectLayer on top (bug-248); a
+        # negative index sorts above the recipe's layers 0-2.
+        p.layer = -1
+        result.setdefault(member, []).append(p)
+
+    return result
+
+
+# Hihat-driven individual floodlight accent, user request 2026-07-22. Unlike
+# _place_floodlight_pulses (a rare kick-roll flourish, deliberately filtered
+# down to occasional moments), this wires hierarchy.hihat_hits directly --
+# every classified hihat onset rotates to the next floodlight in turn, no
+# burst/rarity filtering. hihat_hits is already a validated per-instrument
+# classification (drum_classifier.py), not a fresh detector, and its density
+# varies naturally by song (sparse on some tracks, closer to continuous
+# 8th-note chase on others) rather than needing to be forced rare. No vocal
+# exclusion: this is a background rhythmic texture riding under the whole
+# song, not a single discrete accent competing with a lyric moment the way
+# crash/riff/kick accents are.
+_FLOODLIGHT_HIHAT_DURATION_MS = 120
+_FLOODLIGHT_HIHAT_FADE_IN_MS = 15
+_FLOODLIGHT_HIHAT_FADE_OUT_MS = 40
+
+
+def _place_floodlight_hihat_accents(
+    groups: list[PowerGroup],
+    hierarchy: HierarchyResult,
+    fade_exclusion_start_ms: Optional[int] = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a very short white "On" tick on one individual floodlight at
+    each classified hihat hit (``hierarchy.hihat_hits``), rotating through
+    every floodlight-family member -- same rotation strategy as
+    ``_place_floodlight_pulses``/``_place_star_bursts`` (bug-514), just
+    driven directly by the raw hihat track instead of a derived rare-burst
+    detector.
+
+    Song-scoped like its siblings, not routed through the per-section
+    pipeline.
+    """
+    result: dict[str, list[EffectPlacement]] = {}
+    if not hierarchy.hihat_hits:
+        return result
+
+    floodlight_groups = [g for g in groups if "floodlight" in g.name.lower()]
+    if not floodlight_groups:
+        return result
+
+    floodlight_members = [
+        member for g in floodlight_groups for member in (g.members or [g.name])
+    ]
+
+    member_idx = 0
+    for mark in hierarchy.hihat_hits:
+        if fade_exclusion_start_ms is not None and mark.time_ms >= fade_exclusion_start_ms:
+            continue
+        start_ms = mark.time_ms
+        end_ms = min(mark.time_ms + _FLOODLIGHT_HIHAT_DURATION_MS, hierarchy.duration_ms)
+        if end_ms <= start_ms:
+            continue
+        member = floodlight_members[member_idx % len(floodlight_members)]
+        member_idx += 1
+        p = EffectPlacement(
+            effect_name="On",
+            xlights_id="eff_ON",
+            model_or_group=member,
+            start_ms=start_ms,
+            end_ms=end_ms,
+            parameters={},
+            color_palette=["#FFFFFF"],
+            fade_in_ms=_FLOODLIGHT_HIHAT_FADE_IN_MS,
+            fade_out_ms=_FLOODLIGHT_HIHAT_FADE_OUT_MS,
+        )
+        # xLights renders the FIRST EffectLayer on top (bug-248); a
+        # negative index sorts above the recipe's layers 0-2.
+        p.layer = -1
+        result.setdefault(member, []).append(p)
 
     return result

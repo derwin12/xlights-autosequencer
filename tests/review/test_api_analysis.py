@@ -82,6 +82,43 @@ class TestGetAnalysis:
         resp = client.get("/api/v1/songs/deadbeef00000000/analysis")
         assert resp.status_code == 404
 
+    def test_rebuild_from_cache_carries_words_and_image_topics(self, client):
+        """After the in-memory run state is lost (e.g. a dev-server
+        restart), GET /analysis falls back to _rebuild_analysis_from_cache.
+        That rebuild must still surface words/phonemes/image_suggestions/
+        image_topics from the persisted session — a prior bug omitted all
+        four from the rebuilt response, so the Pictures screen's Suggested
+        Topics list silently went blank after any restart even though the
+        underlying data was still on disk."""
+        import src.review.api.v1.analysis as analysis_module
+        from src.review.storage.assignments import save_full_session
+
+        song_id = _import_wav(client)
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        _wait_analyzed(client, song_id)
+
+        seeded_topics = [{"word": "SEEDED", "start_ms": 0, "end_ms": 100}]
+        session = client.get(f"/api/v1/songs/{song_id}/analysis")  # warm session read
+        from src.review.storage.assignments import load_session
+        existing = load_session(song_id) or {}
+        save_full_session(song_id, {
+            **existing,
+            "image_topics": seeded_topics,
+            "image_suggestions": [],
+        })
+
+        # Simulate a server restart: drop the in-memory run state so the
+        # next GET must go through _rebuild_analysis_from_cache.
+        with analysis_module._runs_lock:
+            analysis_module._runs.pop(song_id, None)
+
+        resp = client.get(f"/api/v1/songs/{song_id}/analysis")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["image_topics"] == seeded_topics
+        assert "words" in data
+        assert "image_suggestions" in data
+
 
 class TestAnalyzeSSE:
     def test_sse_endpoint_returns_event_stream(self, client):
@@ -244,6 +281,29 @@ class TestAnalyzeCommit:
         # Either already_committed or run_not_found (after first commit clears it)
         assert resp.status_code in (404, 409)
 
+    def test_commit_persists_image_topics_and_suggestions(self, client):
+        """commit_analyze must carry image_suggestions/image_topics into the
+        persisted session — a prior bug omitted both fields from the
+        save_full_session() call, silently wiping any suggestions computed
+        during the original analyze pass every time a forced re-analysis
+        was committed (e.g. after a hierarchy schema bump invalidates the
+        cache)."""
+        from src.review.storage.assignments import load_session
+
+        song_id = self._analyzed_song_id(client)
+        run_data = client.post(
+            f"/api/v1/songs/{song_id}/analyze", json={"force": True}
+        ).get_json()
+        run_id = run_data["run_id"]
+        _wait_analyzed(client, song_id)
+        client.post(
+            f"/api/v1/songs/{song_id}/analyze/commit",
+            json={"run_id": run_id, "assignment_mapping": []},
+        )
+        session = load_session(song_id)
+        assert "image_topics" in session
+        assert "image_suggestions" in session
+
 
 class TestCheckLyrics:
     """Standalone /lyrics/check lookup — no audio pipeline involved."""
@@ -258,7 +318,7 @@ class TestCheckLyrics:
 
         monkeypatch.setattr(
             sl, "check_synced_lyrics_with_text",
-            lambda title, artist: (
+            lambda title, artist, duration_ms=None: (
                 {"found": True, "reason": None, "line_count": 12, "preview": ["a", "b", "c"]},
                 "[00:01.00]a\n[00:02.00]b\n",
             ),
@@ -274,7 +334,7 @@ class TestCheckLyrics:
 
         monkeypatch.setattr(
             sl, "check_synced_lyrics_with_text",
-            lambda title, artist: (
+            lambda title, artist, duration_ms=None: (
                 {"found": False, "reason": "no_match", "line_count": 0, "preview": []},
                 None,
             ),
@@ -296,7 +356,7 @@ class TestCheckLyrics:
         import src.analyzer.synced_lyrics as sl
         monkeypatch.setattr(
             sl, "check_synced_lyrics_with_text",
-            lambda title, artist: (
+            lambda title, artist, duration_ms=None: (
                 {"found": True, "reason": None, "line_count": 2, "preview": ["a", "b"]},
                 "[00:01.00]a\n[00:02.00]b\n",
             ),

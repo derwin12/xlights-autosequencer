@@ -88,7 +88,7 @@ class TestHierarchyResultSchema:
         expected_keys = {
             "schema_version", "source_file", "source_hash", "duration_ms", "estimated_bpm",
             "energy_impacts", "energy_drops", "gaps", "crash_accents",
-            "ending_punches", "riff_bursts", "kick_hits", "snare_hits", "hihat_hits",
+            "ending_punches", "riff_bursts", "kick_pulses", "kick_hits", "snare_hits", "hihat_hits",
             "sections",
             "bars", "beats", "half_bars", "eighth_notes", "events", "solos",
             "energy_curves", "spectral_flux",
