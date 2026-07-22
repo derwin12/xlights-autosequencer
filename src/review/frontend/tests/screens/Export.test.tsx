@@ -25,6 +25,14 @@ describe('Export screen', () => {
     expect(screen.getByTestId('layout-required')).toBeTruthy();
   });
 
+  it('links to the Layout tab when no layout is active', () => {
+    const onNavigateToLayout = vi.fn();
+    render(<Export song={song} layoutId={null} onNavigateToLayout={onNavigateToLayout} />);
+    const btn = screen.getByRole('button', { name: /go to layout/i });
+    btn.click();
+    expect(onNavigateToLayout).toHaveBeenCalled();
+  });
+
   it('shows layout-required block when layout has no xml_path', () => {
     render(<Export song={song} layoutId="layout_abc123" layoutXmlPath={null} />);
     expect(screen.getByTestId('layout-required')).toBeTruthy();
@@ -34,6 +42,20 @@ describe('Export screen', () => {
     render(<Export song={song} layoutId="layout_abc123" layoutXmlPath="/tmp/layout_abc123.xml" />);
     expect(screen.queryByTestId('layout-required')).toBeNull();
     expect(screen.getByTestId('export-form')).toBeTruthy();
+  });
+
+  it('manage-layout link on the export form navigates to the Layout tab', () => {
+    const onNavigateToLayout = vi.fn();
+    render(
+      <Export
+        song={song}
+        layoutId="layout_abc123"
+        layoutXmlPath="/tmp/layout_abc123.xml"
+        onNavigateToLayout={onNavigateToLayout}
+      />,
+    );
+    screen.getByTestId('manage-layout-link').click();
+    expect(onNavigateToLayout).toHaveBeenCalled();
   });
 
   it('render button triggers export API', async () => {

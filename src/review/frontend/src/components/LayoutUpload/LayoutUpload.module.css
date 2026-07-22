@@ -1,0 +1,85 @@
+.root {
+  padding: 20px;
+  background: var(--color-surface-2, #1e1e24);
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #333);
+}
+
+.compact {
+  margin-top: 8px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--color-text, #f5f5f0);
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--color-text-muted, #888);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fileLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #888);
+}
+
+.optional {
+  color: var(--ink3, #555);
+}
+
+.error {
+  font-size: 13px;
+  color: var(--err, #d43a2f);
+  margin: 0 0 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.uploadBtn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent, #4ade80);
+  color: #0a0a0a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.uploadBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.removeBtn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #333);
+  background: transparent;
+  color: var(--color-text-muted, #888);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.removeBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

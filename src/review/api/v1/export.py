@@ -1,9 +1,9 @@
-"""Export endpoints — T055.
+"""Export endpoints - T055.
 
-POST /api/v1/songs/<song_id>/export                  — start export
-GET  /api/v1/songs/<song_id>/export/status           — SSE progress
-GET  /api/v1/songs/<song_id>/export/download-package — zip: .xsq + committed layout files
-GET  /api/v1/songs/<song_id>/export/mapping          — prop-theme mapping table
+POST /api/v1/songs/<song_id>/export                  - start export
+GET  /api/v1/songs/<song_id>/export/status           - SSE progress
+GET  /api/v1/songs/<song_id>/export/download-package - zip: .xsq + grouped layout files
+GET  /api/v1/songs/<song_id>/export/mapping          - prop-theme mapping table
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from typing import Any
 from flask import Response, jsonify, request, send_file, stream_with_context
 
 from . import api_v1
-from .layout import get_committed_layout
-from src.paths import get_committed_networks_xml_path
+from .layout import get_active_layout
+from src.paths import get_committed_networks_xml_path, get_uploaded_networks_xml_path
 from src.review.storage.library import load_library
 from src.review.storage.assignments import load_session
 
@@ -30,7 +30,7 @@ from src.review.storage.assignments import load_session
 _exports: dict[str, "_ExportState"] = {}
 _exports_lock = threading.Lock()
 # Also track latest export per song_id
-_song_exports: dict[str, str] = {}  # song_id → export_id
+_song_exports: dict[str, str] = {}  # song_id -> export_id
 
 
 class _ExportState:
@@ -70,12 +70,13 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
         audio_path = source_paths[0] if source_paths else ""
         layout_xml_path = layout.get("xml_path")
         if not layout_xml_path:
-            # Do NOT fall through to generator_runner's global-settings fallback —
+            # Do NOT fall through to generator_runner's global-settings fallback -
             # that resolves whatever xLights layout happens to be configured
             # machine-wide, which silently generates against the wrong layout
-            # instead of the repo-committed one (see bug-172 follow-up).
+            # instead of the active one (see bug-172 follow-up).
             raise GeneratorError(
-                "layout/xlights_rgbeffects.xml is missing from the repo checkout."
+                "No active layout - upload an xlights_rgbeffects.xml via the Export "
+                "screen, or add one at layout/xlights_rgbeffects.xml in the repo checkout."
             )
 
         # Honor the user's per-section theme picks from the Theme screen
@@ -201,11 +202,12 @@ def start_export(song_id: str):
         return jsonify({"error": {"code": "song_not_found",
                                    "message": "Song not found"}}), 404
 
-    # Layout is a fixed file committed to the repo (layout/xlights_rgbeffects.xml)
-    layout = get_committed_layout()
+    # The active layout: an uploaded override if present, else the
+    # repo-committed layout/xlights_rgbeffects.xml (see api/v1/layout.py).
+    layout = get_active_layout()
     if layout is None:
         return jsonify({"error": {"code": "layout_missing",
-                                   "message": "layout/xlights_rgbeffects.xml is missing from the repo"}}), 409
+                                   "message": "No active layout - upload one on the Export screen."}}), 409
 
     # Check theming complete
     if song.get("status") not in ("themed",):
@@ -302,6 +304,40 @@ def export_status(song_id: str):
     )
 
 
+def _grouped_layout_copy(source_path: Path, dest_path: Path) -> int:
+    """Write a copy of source_path with auto Power Groups injected as real
+    <modelGroup> elements, and return how many groups were injected.
+
+    The generator places effects against synthetic group names (e.g.
+    "06_PROP_Arch", "08_HERO_X") that only mean something in xLights once
+    they exist as actual model groups - otherwise those effects have
+    nothing to attach to and silently do not render on import. This
+    mirrors the same parse -> classify -> generate_groups -> inject_groups
+    -> write pipeline as the "xlight-analyze group-layout" CLI command
+    (src/cli_old.py), just run against a scratch copy so the source file
+    on disk (repo-committed or uploaded) is never mutated by an export.
+
+    Returns 0 (and leaves dest_path unwritten) if grouping fails for any
+    reason - a failed injection must not block the export itself, since
+    the ungrouped layout is still importable, just short the auto-groups.
+    """
+    try:
+        from src.grouper.classifier import classify_props, normalize_coords
+        from src.grouper.grouper import generate_groups
+        from src.grouper.layout import parse_layout
+        from src.grouper.writer import inject_groups, write_layout
+
+        layout_obj = parse_layout(source_path)
+        normalize_coords(layout_obj.props)
+        classify_props(layout_obj.props)
+        groups = generate_groups(layout_obj.props)
+        inject_groups(layout_obj.raw_tree, groups)
+        write_layout(layout_obj, dest_path)
+        return len(groups)
+    except Exception:
+        return 0
+
+
 @api_v1.route("/songs/<song_id>/export/download-package", methods=["GET"])
 def download_export_package(song_id: str):
     with _exports_lock:
@@ -317,25 +353,40 @@ def download_export_package(song_id: str):
         return jsonify({"error": {"code": "file_missing",
                                    "message": "Exported file is no longer available"}}), 404
 
-    layout = get_committed_layout()
+    layout = get_active_layout()
     if layout is None:
         return jsonify({"error": {"code": "layout_missing",
-                                   "message": "layout/xlights_rgbeffects.xml is missing from the repo"}}), 409
+                                   "message": "No active layout - upload one on the Export screen."}}), 409
 
     rgbeffects_path = Path(layout["xml_path"])
-    networks_path = get_committed_networks_xml_path()
+    networks_path = get_uploaded_networks_xml_path()
+    if not networks_path.exists():
+        networks_path = get_committed_networks_xml_path()
 
     # .xsqz is xLights' own recognized extension for a zipped sequence
-    # package (.xsq + supporting layout files) — same zip container, just
+    # package (.xsq + supporting layout files) - same zip container, just
     # the extension xLights knows to unpack on import.
     package_path = xsq_path.with_suffix(".xsqz")
+
+    # Bundle a grouped copy of the layout, not the raw source file: the
+    # .xsq's effects target synthetic Power Groups (see _grouped_layout_copy
+    # docstring) that do not exist as <modelGroup> elements until injected.
+    # Shipping the ungrouped file left every group-targeted effect with
+    # nothing to attach to on import - this is what makes the package
+    # self-consistent.
+    grouped_path = Path(tempfile.mkdtemp(prefix="xonset_export_pkg_")) / rgbeffects_path.name
+    groups_added = _grouped_layout_copy(rgbeffects_path, grouped_path)
+    layout_to_bundle = grouped_path if groups_added > 0 else rgbeffects_path
+
     with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write(xsq_path, arcname=xsq_path.name)
-        zf.write(rgbeffects_path, arcname=rgbeffects_path.name)
+        zf.write(layout_to_bundle, arcname=rgbeffects_path.name)
         if networks_path.exists():
             zf.write(networks_path, arcname=networks_path.name)
 
-    return send_file(package_path, as_attachment=True, download_name=package_path.name)
+    response = send_file(package_path, as_attachment=True, download_name=package_path.name)
+    response.headers["X-Groups-Injected"] = str(groups_added)
+    return response
 
 
 @api_v1.route("/songs/<song_id>/export/mapping", methods=["GET"])
@@ -346,10 +397,10 @@ def export_mapping(song_id: str):
         return jsonify({"error": {"code": "song_not_found",
                                    "message": "Song not found"}}), 404
 
-    layout = get_committed_layout()
+    layout = get_active_layout()
     if layout is None:
         return jsonify({"error": {"code": "layout_missing",
-                                   "message": "layout/xlights_rgbeffects.xml is missing from the repo"}}), 409
+                                   "message": "No active layout - upload one on the Export screen."}}), 409
 
     session = load_session(song_id)
     if session is None:

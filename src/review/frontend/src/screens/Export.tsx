@@ -13,6 +13,8 @@ interface ExportProps {
   layoutId: string | null;
   layoutXmlPath?: string | null;
   onExportComplete?: (outputPath: string) => void;
+  /** Jump to the Layout tab (step 1) to upload/replace the active layout. */
+  onNavigateToLayout?: () => void;
 }
 
 // Known render stages, in pipeline order (src/review/api/v1/export.py).
@@ -32,7 +34,7 @@ interface RenderLogLine {
   kind: 'info' | 'ok' | 'err' | 'progress';
 }
 
-export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: ExportProps) {
+export function Export({ song, layoutId, layoutXmlPath, onExportComplete, onNavigateToLayout }: ExportProps) {
   const [exporting, setExporting] = useState(false);
   const [outputPath, setOutputPath] = useState<string | null>(null);
   // Onsets (per-stem) + Chords timing tracks are display-only in the .xsq;
@@ -72,6 +74,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
     display_name?: string;
     props?: unknown[];
     imported_at?: string;
+    is_uploaded?: boolean;
   } | null>(null);
 
   const isThemed = song.status === 'themed';
@@ -229,12 +232,15 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
   if (!hasLayout) {
     return (
       <div data-testid="layout-required" className={styles.block}>
-        <h3>Layout Missing</h3>
+        <h3>No Layout Yet</h3>
         <p>
-          <code>layout/xlights_rgbeffects.xml</code> is missing from this
-          checkout. Add it to the repo's <code>layout/</code> directory and
-          restart the server.
+          Set up your layout on the <strong>Layout</strong> tab (step 1)
+          before exporting — every song's effects are placed against
+          whichever <code>xlights_rgbeffects.xml</code> is active there.
         </p>
+        <button className={styles.renderBtn} onClick={onNavigateToLayout}>
+          Go to Layout
+        </button>
       </div>
     );
   }
@@ -261,6 +267,15 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
           {layoutInfo?.imported_at
             ? ` · as of ${new Date(layoutInfo.imported_at).toLocaleDateString()}`
             : ''}
+          {layoutInfo?.is_uploaded ? ' · custom upload' : ' · repo default'}
+          {' · '}
+          <button
+            className={styles.layoutLink}
+            onClick={onNavigateToLayout}
+            data-testid="manage-layout-link"
+          >
+            Manage Layout →
+          </button>
         </p>
       </div>
 
@@ -448,6 +463,12 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
                   >
                     Download Package
                   </a>
+                  <p className={styles.groupsNote}>
+                    Includes an updated <code>xlights_rgbeffects.xml</code> with
+                    the model groups this sequence's effects need — replace
+                    your show's copy with it (back up first) before opening the
+                    sequence, or its group-targeted effects won't render.
+                  </p>
                 </>
               )}
             </div>

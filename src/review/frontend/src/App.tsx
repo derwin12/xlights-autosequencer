@@ -17,6 +17,7 @@ import { Theme } from 'src/screens/Theme';
 import { Pictures } from 'src/screens/Pictures';
 import { Export } from 'src/screens/Export';
 import { Library } from 'src/screens/Library';
+import { LayoutScreen } from 'src/screens/Layout';
 import { debounce } from 'src/hooks/usePersist';
 
 // ── shared types ─────────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ interface AppData {
   layoutXmlPath: string | null;
 }
 
-const SCREENS: Screen[] = ['library', 'drop', 'analyze', 'timeline', 'theme', 'pictures', 'export'];
+const SCREENS: Screen[] = ['layout', 'library', 'drop', 'analyze', 'timeline', 'theme', 'pictures', 'export'];
 
 // ── cache purge dialog ────────────────────────────────────────────────────────
 
@@ -593,6 +594,19 @@ export default function App() {
     const { song, themes, analysis, assignments, layoutId, layoutXmlPath } = data;
 
     switch (screen) {
+      case 'layout':
+        return (
+          <LayoutScreen
+            onLayoutChange={(layout) => {
+              setData((d) => ({
+                ...d,
+                layoutId: layout?.layout_id ?? null,
+                layoutXmlPath: layout?.xml_path ?? null,
+              }));
+            }}
+          />
+        );
+
       case 'library':
         return (
           <Library
@@ -694,6 +708,7 @@ export default function App() {
             onExportComplete={(outputPath) => {
               void outputPath;
             }}
+            onNavigateToLayout={() => setScreen('layout')}
           />
         );
 

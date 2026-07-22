@@ -378,6 +378,82 @@ class TestDownloadPackage:
         assert any(n.endswith(".xsq") for n in names)
         assert "xlights_rgbeffects.xml" in names
 
+    def test_download_package_injects_power_groups(self, client, monkeypatch, tmp_path):
+        """The bundled xlights_rgbeffects.xml must have real <modelGroup>
+        elements for the synthetic tiers (06_PROP_*, 08_HERO_*, ...) that
+        the generator targets - otherwise those effects have nothing to
+        attach to when the package is imported into xLights. Regression
+        test for the export shipping a raw, ungrouped layout copy."""
+        import src.review.api.v1.export as export_module
+
+        def _fake_run_export(state, song, session, layout, destination_name, fmt,
+                              genre="pop", occasion="general", include_extra_timing=True,
+                              vocal_diarization=False):
+            import tempfile as _tempfile
+            out_dir = _tempfile.mkdtemp()
+            import pathlib as _pathlib
+            output_path = _pathlib.Path(out_dir) / (destination_name or "output.xsq")
+            output_path.write_bytes(b"<xsequence></xsequence>")
+            with state.lock:
+                state.output_path = str(output_path)
+                state.status = "done"
+
+        monkeypatch.setattr(export_module, "_run_export", _fake_run_export)
+
+        wav_path = tmp_path / "test.wav"
+        wav_bytes = _make_wav_bytes()
+        wav_path.write_bytes(wav_bytes)
+
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav_bytes), "test.wav"), "source_path": str(wav_path)},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        for _ in range(20):
+            time.sleep(0.1)
+            lib_data = client.get("/api/v1/library").get_json()
+            song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
+            if song and song.get("status") == "analyzed":
+                break
+
+        _theme_song(client, song_id)
+        resp = client.post(f"/api/v1/songs/{song_id}/export", json={"format": "xsq"})
+        assert resp.status_code == 202
+
+        resp = None
+        for _ in range(20):
+            time.sleep(0.1)
+            resp = client.get(f"/api/v1/songs/{song_id}/export/download-package")
+            if resp.status_code == 200:
+                break
+        assert resp is not None and resp.status_code == 200
+
+        import io as _io
+        import xml.etree.ElementTree as ET
+        import zipfile
+
+        zf = zipfile.ZipFile(_io.BytesIO(resp.data))
+        bundled_xml = zf.read("xlights_rgbeffects.xml")
+        root = ET.fromstring(bundled_xml)
+
+        groups_container = root.find("modelGroups")
+        group_elems = (
+            groups_container.findall("modelGroup")
+            if groups_container is not None
+            else root.findall("ModelGroup")
+        )
+        auto_group_names = {
+            g.get("name", "") for g in group_elems
+            if g.get("name", "").split("_")[0].isdigit()
+        }
+        assert len(auto_group_names) > 0, (
+            "expected auto-generated Power Groups (e.g. 06_PROP_*) injected "
+            "into the bundled layout, found none"
+        )
+        assert resp.headers.get("X-Groups-Injected") not in (None, "0")
+
     def test_download_package_not_ready_returns_404(self, client):
         resp = client.get("/api/v1/songs/nosuchsong/export/download-package")
         assert resp.status_code == 404

@@ -225,3 +225,31 @@ class PathContext:
     def _current_show_dir(self) -> str | None:
         """Show directory path valid in the current environment."""
         return self._resolved_show_dir
+
+
+def get_uploaded_layout_dir() -> Path:
+    """Directory where a user-uploaded layout override is stored, if any.
+
+    Honors XLIGHT_STATE_HOME for test isolation, same convention as
+    src/settings.py's _settings_path() and src/review/storage/paths.py.
+    Checked fresh on every call (not cached) so a test that sets
+    XLIGHT_STATE_HOME via monkeypatch is isolated.
+
+    Distinct from the repo-committed layout/ directory — this lives outside
+    the git checkout (~/.xlight/) so an upload survives ``git pull`` and
+    doesn't require write access to the repo checkout.
+    """
+    override = os.environ.get("XLIGHT_STATE_HOME")
+    if override:
+        return Path(override) / "layout"
+    return Path.home() / ".xlight" / "layout"
+
+
+def get_uploaded_layout_xml_path() -> Path:
+    """Path where an uploaded xlights_rgbeffects.xml override is stored."""
+    return get_uploaded_layout_dir() / "xlights_rgbeffects.xml"
+
+
+def get_uploaded_networks_xml_path() -> Path:
+    """Path where an uploaded xlights_networks.xml override is stored."""
+    return get_uploaded_layout_dir() / "xlights_networks.xml"
