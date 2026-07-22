@@ -108,3 +108,6 @@ docs/arch_sequencing_corpus/_generated/
 
 # Sequencing-technique corpora mined from reference packages — local only
 docs/*_sequencing_corpus/
+
+# Downloaded pretrained model weights (speaker embedding, etc.) — large, local only
+pretrained_models/
