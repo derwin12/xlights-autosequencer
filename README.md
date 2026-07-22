@@ -12,7 +12,7 @@
 
 ## What It Does
 
-1. **Audio Analysis** — Analyzes MP3 files using 17 algorithms across 6 hierarchy levels to extract beats, onsets, chords, sections, energy curves, and stem separation (drums/bass/vocals/guitar/piano/other)
+1. **Audio Analysis** — Analyzes MP3 files using 17 algorithms across 7 hierarchy levels (L0-L6) to extract beats, onsets, chords, sections, energy curves, and stem separation (drums/bass/vocals/guitar/piano/other)
 2. **Layout Grouping** — Reads your `xlights_rgbeffects.xml` and auto-generates 8-tier Power Groups (spatial, rhythmic, prop type, compound, heroes)
 3. **Effect Library** — 40 xLights effects cataloged with parameters, prop suitability ratings, and analysis-to-parameter mappings
 4. **Variant Library** — 212+ pre-tuned effect variants with contextual tags (energy, tier, section role, genre) for quick effect selection
