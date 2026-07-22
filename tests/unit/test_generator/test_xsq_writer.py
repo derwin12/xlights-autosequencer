@@ -1822,3 +1822,51 @@ class TestIncludeExtraTiming:
         assert "Bars" in timing_names
         assert "Chords" not in timing_names
         assert not any(n.startswith("Onsets") for n in timing_names)
+
+
+def _attr(l, s, e, singers, backing=False):
+    return {"label": l, "start_ms": s, "end_ms": e, "singers": singers, "backing": backing}
+
+
+def _timing_track_names(xsq_path) -> list[str]:
+    root = ET.parse(xsq_path).getroot()
+    return [el.get("name") for el in root.iter("Element") if el.get("type") == "timing"]
+
+
+class TestAttributedLyricTracks:
+    """Annotated-lyric attribution emits named singer tracks + Backing,
+    superseding the binary lead/backup split."""
+
+    def test_named_and_backing_tracks(self, tmp_path: Path) -> None:
+        out = tmp_path / "seq.xsq"
+        words = [_attr("A", 0, 400, ["Blake"]), _attr("B", 500, 900, ["Gwen"]),
+                 _attr("C", 1000, 1400, ["Blake", "Gwen"]), _attr("OOH", 1500, 1900, [], True)]
+        phon = [_attr("AI", 0, 400, ["Blake"]), _attr("O", 500, 900, ["Gwen"]),
+                _attr("E", 1000, 1400, ["Blake", "Gwen"]), _attr("U", 1500, 1900, [], True)]
+        write_xsq(_make_plan(), out, words=words, phonemes=phon, vocal_diarization=True)
+        names = _timing_track_names(out)
+        assert "Lyrics" in names
+        assert "Lyrics - Blake" in names and "Lyrics - Gwen" in names
+        assert "Lyrics - Backing" in names
+        assert "Lyrics - Backup" not in names  # attribution supersedes binary split
+
+    def test_shared_word_on_both_tracks(self, tmp_path: Path) -> None:
+        out = tmp_path / "seq.xsq"
+        words = [_attr("A", 0, 400, ["Blake"]), _attr("C", 1000, 1400, ["Blake", "Gwen"])]
+        phon = [_attr("AI", 0, 400, ["Blake"]), _attr("E", 1000, 1400, ["Blake", "Gwen"])]
+        write_xsq(_make_plan(), out, words=words, phonemes=phon, vocal_diarization=True)
+        root = ET.parse(out).getroot()
+        def wl(name):
+            el = next(e for e in root.find("ElementEffects")
+                      if e.get("type") == "timing" and e.get("name") == name)
+            return {x.get("label") for x in el.findall("EffectLayer")[1].findall("Effect")}
+        assert "C" in wl("Lyrics - Blake") and "C" in wl("Lyrics - Gwen")
+
+    def test_no_attribution_leaves_binary_path(self, tmp_path: Path) -> None:
+        # Words without `singers` -> their 2-way speaker path is untouched.
+        out = tmp_path / "seq.xsq"
+        words = [{"label": "A", "start_ms": 0, "end_ms": 400, "speaker": 0}]
+        phon = [{"label": "AI", "start_ms": 0, "end_ms": 400}]
+        write_xsq(_make_plan(), out, words=words, phonemes=phon, vocal_diarization=True)
+        names = _timing_track_names(out)
+        assert not any(n.startswith("Lyrics - ") and n != "Lyrics - Backup" for n in names)
