@@ -531,6 +531,27 @@ export default function App() {
       .catch(() => {});
   }, [upsertSong]);
 
+  // Create a new library folder. Returns an error message string on
+  // failure (e.g. duplicate name) so the rail can show it inline, or null
+  // on success.
+  const handleCreateFolder = useCallback(async (name: string): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/v1/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        return body?.error?.message ?? 'Failed to create folder';
+      }
+      setFolders([...folders, body]);
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Failed to create folder';
+    }
+  }, [folders, setFolders]);
+
   // T099: remove from library → cache purge dialog
   const handleRemoveSong = useCallback((song: Song) => {
     fetch(`/api/v1/songs/${song.song_id}`, { method: 'DELETE' })
@@ -683,6 +704,7 @@ export default function App() {
         onSelectSong={handleSelectSong}
         onSongMoved={handleSongMoved}
         onRemoveSong={handleRemoveSong}
+        onCreateFolder={handleCreateFolder}
       >
         {renderScreen()}
       </Chrome>
