@@ -988,19 +988,26 @@ def place_moving_head_moves(
             # Bar-level 4-heads/2-heads alternation for a long held static
             # pose (user request 2026-07-22). A different variation_seed
             # offset than lit_pair's own so the two don't always pick the
-            # same pair when both could apply in principle.
+            # same pair when both could apply in principle. Originally a
+            # single fixed pair reused for every toggled-down bar -- user
+            # request 2026-07-23: "boring... they should change up the
+            # pairings on each beat or bar" -- now a SEED that the per-bar
+            # loop advances through _HEAD_PAIRS once per toggle-down
+            # occurrence, so consecutive half-lit bars show (1,2), then
+            # (3,4), then (1,4), then (2,3), instead of the same pair
+            # every time.
             #
             # GROUP moves never apply lit_pair at all (a group move writes
             # one identical pose into every head slot, ignoring lit_pair --
             # see the per-head branch below, which is the only branch that
-            # reads lit_pair). So gating group_toggle_pair on lit_pair is
+            # reads lit_pair). So gating group_toggle_seed on lit_pair is
             # None was wrong: it silently disabled the group toggle for
             # every section that wasn't at full energy, i.e. most sections
             # (bug found 2026-07-22: user's real export showed the group's
             # fan_pan_static at 19.7s on a 53-energy chorus never toggling,
             # since lit_pair was set -- non-None -- for that section).
-            group_toggle_pair = (
-                _choose_lit_pair(section_index, assignment.variation_seed + 1)
+            group_toggle_seed = (
+                assignment.variation_seed + section_index + 1
                 if len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
                 else None
             )
@@ -1008,8 +1015,8 @@ def place_moving_head_moves(
             # below), so a section already reduced by the energy-based
             # lit_pair shouldn't ALSO toggle on top of that -- keep the
             # mutual-exclusivity for this branch only.
-            head_toggle_pair = (
-                _choose_lit_pair(section_index, assignment.variation_seed + 1)
+            head_toggle_seed = (
+                assignment.variation_seed + section_index + 1
                 if lit_pair is None and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
                 else None
             )
@@ -1074,7 +1081,7 @@ def place_moving_head_moves(
 
                     bar_bounds = (
                         _bar_boundaries_in_range(bars, start_ms, seg_end_ms)
-                        if (move_name in _STATIC_HELD_GROUP_MOVES and group_toggle_pair is not None
+                        if (move_name in _STATIC_HELD_GROUP_MOVES and group_toggle_seed is not None
                             and bars is not None and bars.marks)
                         else [start_ms, seg_end_ms]
                     )
@@ -1092,7 +1099,10 @@ def place_moving_head_moves(
                         # _build_group_toggle_move_parameters).
                         all_heads = tuple(range(1, head_count + 1))
                         for bar_idx in range(len(bar_bounds) - 1):
-                            lit_heads = all_heads if bar_idx % 2 == 0 else group_toggle_pair
+                            lit_heads = (
+                                all_heads if bar_idx % 2 == 0
+                                else _HEAD_PAIRS[(group_toggle_seed + bar_idx // 2) % len(_HEAD_PAIRS)]
+                            )
                             bar_params = _build_group_toggle_move_parameters(
                                 head_count, pose, jitter_pan, jitter_tilt, lit_heads,
                             )
@@ -1125,7 +1135,7 @@ def place_moving_head_moves(
 
                         bar_bounds = (
                             _bar_boundaries_in_range(bars, start_ms, seg_end_ms)
-                            if (move_name in _STATIC_HELD_MOVES and head_toggle_pair is not None
+                            if (move_name in _STATIC_HELD_MOVES and head_toggle_seed is not None
                                 and bars is not None and bars.marks)
                             else [start_ms, seg_end_ms]
                         )
@@ -1140,17 +1150,23 @@ def place_moving_head_moves(
                         else:
                             # Bar-level 4-heads/2-heads alternation: bar 0
                             # is the full pose (all 4 lit), odd bars reduce
-                            # to toggle_pair, even bars (after the first)
-                            # return to full -- purely a Dimmer toggle, the
-                            # pose/position never changes (user request
-                            # 2026-07-22, confirmed against two real
+                            # to a lit pair that advances through
+                            # _HEAD_PAIRS each toggle-down occurrence (user
+                            # request 2026-07-23: cycle the pairing, not
+                            # repeat the same one), even bars (after the
+                            # first) return to full -- purely a Dimmer
+                            # toggle, the pose/position never changes (user
+                            # request 2026-07-22, confirmed against two real
                             # reference-sequence samples that a flat
                             # Dimmer curve per head, not a fancy multi-point
                             # one, is the correct native technique).
                             for bar_idx in range(len(bar_bounds) - 1):
                                 bar_pose = (
                                     pose if bar_idx % 2 == 0
-                                    else _reduce_to_lit_pair(pose, head_index, head_toggle_pair)
+                                    else _reduce_to_lit_pair(
+                                        pose, head_index,
+                                        _HEAD_PAIRS[(head_toggle_seed + bar_idx // 2) % len(_HEAD_PAIRS)],
+                                    )
                                 )
                                 bar_params = _build_per_head_move_parameters(
                                     bar_pose, jitter_pan, jitter_tilt, head_index,

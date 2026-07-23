@@ -148,11 +148,16 @@ class TestPlaceMovingHeadMoves:
         # the whole move. Bar 0 (first bar) is always full; bars after
         # that alternate. Purely a Dimmer toggle -- Pan/Tilt/PanOffset
         # never change (same held pose throughout).
+        # Follow-up user request (2026-07-23): a single fixed toggle pair
+        # repeated every half-lit bar was ALSO boring -- the pairing now
+        # advances through _HEAD_PAIRS ((1,2),(3,4),(1,4),(2,3)) once per
+        # toggle-down occurrence instead of repeating the same pair.
         # role="chorus" + energy=40 -> qualifies via role, dynamic=False
         # (40 < _STRONG_ENERGY_GATE) -> static pool. variation_seed=1,
         # section_index=0 -> static pool index 1 ("l_r_static", per_head).
-        # toggle_pair = _choose_lit_pair(0, variation_seed+1=2) = (1, 4) --
-        # MH1/MH4 stay lit every bar, MH2/MH3 toggle off on odd bars.
+        # head_toggle_seed = variation_seed+section_index+1 = 2.
+        # bar1 (occurrence 0): _HEAD_PAIRS[(2+0)%4] = _HEAD_PAIRS[2] = (1, 4).
+        # bar3 (occurrence 1): _HEAD_PAIRS[(2+1)%4] = _HEAD_PAIRS[3] = (2, 3).
         layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
         assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=1)]
         bars = _bars(2_000, 5)  # bar marks at 0, 2000, 4000, 6000, 8000
@@ -171,10 +176,10 @@ class TestPlaceMovingHeadMoves:
                 for p in placements
             ]
 
-        assert dimmer_states("MH1", 1) == ["full", "full", "full", "full"]
-        assert dimmer_states("MH4", 4) == ["full", "full", "full", "full"]
-        assert dimmer_states("MH2", 2) == ["full", "off", "full", "off"]
-        assert dimmer_states("MH3", 3) == ["full", "off", "full", "off"]
+        assert dimmer_states("MH1", 1) == ["full", "full", "full", "off"]
+        assert dimmer_states("MH4", 4) == ["full", "full", "full", "off"]
+        assert dimmer_states("MH2", 2) == ["full", "off", "full", "full"]
+        assert dimmer_states("MH3", 3) == ["full", "off", "full", "full"]
 
         # Position never changes across bars for the toggling heads --
         # only Dimmer varies.
@@ -207,9 +212,14 @@ class TestPlaceMovingHeadMoves:
         # settings are combined into ONE "MH GRP" effect per bar, with
         # different Dimmer values per head slot (confirmed against two
         # real reference-sequence samples pasted directly by the user).
+        # Follow-up user request (2026-07-23): the pairing now advances
+        # through _HEAD_PAIRS once per toggle-down occurrence instead of
+        # repeating the same pair every time (see the per-head test above).
         # variation_seed=0, static_occurrence=0 -> static pool index 0
-        # ("fan_pan_static", group). toggle_pair =
-        # _choose_lit_pair(0, variation_seed+1=1) = (3, 4).
+        # ("fan_pan_static", group). group_toggle_seed =
+        # variation_seed+section_index+1 = 1.
+        # bar1 (occurrence 0): _HEAD_PAIRS[(1+0)%4] = _HEAD_PAIRS[1] = (3, 4).
+        # bar3 (occurrence 1): _HEAD_PAIRS[(1+1)%4] = _HEAD_PAIRS[2] = (1, 4).
         layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
         assignments = [_assignment("chorus", 0, 8_000, 40, variation_seed=0)]
         bars = _bars(2_000, 5)  # bar marks at 0, 2000, 4000, 6000, 8000
@@ -233,9 +243,9 @@ class TestPlaceMovingHeadMoves:
             return per_head
 
         states = dimmer_states_by_head()
-        assert states[3] == ["full", "full", "full", "full"]
+        assert states[3] == ["full", "full", "full", "off"]
         assert states[4] == ["full", "full", "full", "full"]
-        assert states[1] == ["full", "off", "full", "off"]
+        assert states[1] == ["full", "off", "full", "full"]
         assert states[2] == ["full", "off", "full", "off"]
 
     def test_group_toggle_still_applies_when_lit_pair_is_active_elsewhere(self):
