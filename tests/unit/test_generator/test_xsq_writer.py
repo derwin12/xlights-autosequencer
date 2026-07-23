@@ -14,7 +14,7 @@ from src.generator.models import (
     SequencePlan,
     SongProfile,
 )
-from src.generator.xsq_writer import _collect_timing_tracks, write_xsq
+from src.generator.xsq_writer import _collect_timing_tracks, _serialize_effect_params, write_xsq
 from src.themes.models import EffectLayer, Theme
 
 
@@ -801,6 +801,47 @@ class TestPinwheel3DChoiceCasing:
         assert by_name["Pinwheel_3D"].default == "None"
         assert "None" in by_name["Pinwheel_3D"].choices
         assert "none" not in by_name["Pinwheel_3D"].choices
+
+
+class TestCombinedFadeNeverExceedsDuration:
+    """fade_in_ms + fade_out_ms must never reach, let alone exceed, a
+    placement's own duration (user request, 2026-07-23) — _serialize_
+    effect_params (bug-207, 2026-07-15) caps each independently to 25% of
+    duration, so combined they can reach at most 50%, regardless of which
+    upstream fade producer (compute_scaled_fades, apply_crossfades,
+    apply_fadeout, or a raw caller-supplied value) set them."""
+
+    def _placement(self, duration_ms: int, fade_in_ms: int, fade_out_ms: int) -> EffectPlacement:
+        return EffectPlacement(
+            effect_name="Fire", xlights_id="Fire", model_or_group="Model1",
+            start_ms=0, end_ms=duration_ms,
+            fade_in_ms=fade_in_ms, fade_out_ms=fade_out_ms,
+        )
+
+    def _fade_ms(self, serialized: str, key: str) -> float:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return float(part.split("=", 1)[1]) * 1000
+        return 0.0
+
+    def test_oversized_fades_are_capped_so_sum_stays_under_duration(self):
+        # Both fades requested at the FULL duration -- clearly excessive
+        # input, must not survive serialization uncapped.
+        p = self._placement(duration_ms=2000, fade_in_ms=2000, fade_out_ms=2000)
+        params = _serialize_effect_params(p)
+        fade_in = self._fade_ms(params, "T_TEXTCTRL_Fadein")
+        fade_out = self._fade_ms(params, "T_TEXTCTRL_Fadeout")
+        assert fade_in + fade_out < p.end_ms - p.start_ms
+
+    def test_realistic_end_of_song_fadeout_still_bounded_on_a_short_placement(self):
+        # apply_fadeout can request a multi-second fade sized to the fade
+        # region, not the placement -- a short final placement must not
+        # inherit an oversized fade_out that swallows it whole.
+        p = self._placement(duration_ms=800, fade_in_ms=100, fade_out_ms=20000)
+        params = _serialize_effect_params(p)
+        fade_in = self._fade_ms(params, "T_TEXTCTRL_Fadein")
+        fade_out = self._fade_ms(params, "T_TEXTCTRL_Fadeout")
+        assert fade_in + fade_out < p.end_ms - p.start_ms
 
 
 class TestVideoEffectPortability:

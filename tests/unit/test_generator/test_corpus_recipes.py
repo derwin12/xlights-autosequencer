@@ -1487,11 +1487,25 @@ class TestOffBackdrop:
         assert offs[0].layer == 1
 
     def test_megatree_recipe_has_no_off_backdrop(self) -> None:
-        # Off backdrop is not part of the mined megatree idiom.
+        # Off backdrop is not part of the mined megatree idiom -- except
+        # specifically for the Twinkle rotation slot, see below.
         result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                         library_names=_LIBRARY_WITH_OFF)
         offs = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "Off"]
         assert offs == []
+
+    def test_megatree_twinkle_slot_adds_off_backdrop(self) -> None:
+        # User request, 2026-07-23: the On-mask-over-Twinkle combination
+        # read poorly around 1:05s in a real generated .xsq without
+        # something solid behind Twinkle's sparse "off" pixels.
+        full_lib = _LIBRARY_WITH_OFF + ("Twinkle",)
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=full_lib, corpus_occurrence={"megatree": 4})
+        placements = result["06_PROP_Mega_Tree"]
+        assert any(p.effect_name == "Twinkle" for p in placements)
+        offs = [p for p in placements if p.effect_name == "Off"]
+        assert offs
+        assert all(p.color_palette == ["#000000"] for p in offs)
 
     def test_minitree_recipe_adds_off_backdrop(self) -> None:
         # User request 2026-07-22: match horizontal/vertical/spiraltree —

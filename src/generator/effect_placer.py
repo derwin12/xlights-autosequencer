@@ -2715,7 +2715,7 @@ def _place_corpus_recipe(
     # beneath the bursts keeps the group black between bursts instead of
     # picking up whole-house bleed (the reference packages tile qualifying
     # sections with 12-15s Off blocks on the group's second layer).
-    if recipe.off_backdrop:
+    if recipe.off_backdrop or effect_name in recipe.off_backdrop_for_effects:
         off_def = effect_library.effects.get("Off")
         if off_def is not None:
             backdrop = _make_placement(

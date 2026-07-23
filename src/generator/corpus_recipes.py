@@ -131,6 +131,13 @@ class PropFamilyRecipe:
     # bleed. Mined: snowflake Off placements are 43/58 on layer index 1;
     # arch 69/75 on layer index 1-2, spans of 12-15s tiling the sections.
     off_backdrop: bool = False
+    # Same black Off backdrop as off_backdrop, but scoped to specific
+    # motion_rotation effect names rather than the whole recipe (user
+    # request, 2026-07-23: mega tree's Twinkle rotation slot with the
+    # On-mask layer on top read poorly — Twinkle's sparse "off" pixels
+    # showed whatever was behind them instead of pure black between
+    # sparkles). Empty -> no scoped backdrop (every other family/effect).
+    off_backdrop_for_effects: tuple[str, ...] = ()
     # Optional third layer: a slower sustained motion effect rendered beneath
     # the per-beat primary (matrix idiom — the reference packages run the
     # matrices 2-3 motion layers deep under the On color layer, e.g.
@@ -1004,6 +1011,14 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         mirror_overlay_effect_name="Spirals",
         mirror_overlay_rotation=_SPIRALS_MIRROR_MEGATREE_ROTATION,
         mirror_overlay_frequency=3,
+        # Twinkle-specific black backdrop (user request, 2026-07-23): the
+        # On-mask-over-Twinkle combination read poorly around 1:05s in a
+        # real generated .xsq without something solid behind Twinkle's
+        # sparse pixels. Deliberately scoped to Twinkle only — the mined
+        # idiom otherwise has no Off backdrop for megatree (55/7.7k
+        # placements), and Shockwave/Spirals/Color Wash/Wave are all
+        # solid/vivid enough on their own not to need one.
+        off_backdrop_for_effects=("Twinkle",),
     ),
     # Candy canes — mined from the same 12 packages (docs/cane_sequencing_
     # corpus/, 3.0k placements on 13-16 cane elements per layout).
