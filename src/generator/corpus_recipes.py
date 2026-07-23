@@ -1017,14 +1017,14 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         mirror_overlay_effect_name="Spirals",
         mirror_overlay_rotation=_SPIRALS_MIRROR_MEGATREE_ROTATION,
         mirror_overlay_frequency=3,
-        # Twinkle-specific black backdrop (user request, 2026-07-23): the
-        # On-mask-over-Twinkle combination read poorly around 1:05s in a
-        # real generated .xsq without something solid behind Twinkle's
-        # sparse pixels. Deliberately scoped to Twinkle only — the mined
-        # idiom otherwise has no Off backdrop for megatree (55/7.7k
-        # placements), and Shockwave/Spirals/Color Wash/Wave are all
-        # solid/vivid enough on their own not to need one.
-        off_backdrop_for_effects=("Twinkle",),
+        # Black backdrop for the On-mask-over-Twinkle/-Color Wash
+        # combinations (user request, 2026-07-23: read poorly at ~1:05s
+        # and again at ~2:13s in real generated .xsq files without
+        # something solid behind them). Deliberately scoped to just these
+        # two — the mined idiom otherwise has no Off backdrop for megatree
+        # (55/7.7k placements), and Shockwave/Spirals/Wave are solid/vivid
+        # enough on their own not to need one.
+        off_backdrop_for_effects=("Twinkle", "Color Wash"),
     ),
     # Candy canes — mined from the same 12 packages (docs/cane_sequencing_
     # corpus/, 3.0k placements on 13-16 cane elements per layout).

@@ -1531,6 +1531,18 @@ class TestOffBackdrop:
         assert offs
         assert all(p.color_palette == ["#000000"] for p in offs)
 
+    def test_megatree_color_wash_slot_adds_off_backdrop(self) -> None:
+        # Same fix, second real case (user request, 2026-07-23): the
+        # On-mask-over-Color Wash combination read poorly around 2:13s.
+        full_lib = _LIBRARY_WITH_OFF + ("Color Wash",)
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=full_lib, corpus_occurrence={"megatree": 2})
+        placements = result["06_PROP_Mega_Tree"]
+        assert any(p.effect_name == "Color Wash" for p in placements)
+        offs = [p for p in placements if p.effect_name == "Off"]
+        assert offs
+        assert all(p.color_palette == ["#000000"] for p in offs)
+
     def test_minitree_recipe_adds_off_backdrop(self) -> None:
         # User request 2026-07-22: match horizontal/vertical/spiraltree —
         # an Off backdrop beneath the On-mask + motion stack instead of
