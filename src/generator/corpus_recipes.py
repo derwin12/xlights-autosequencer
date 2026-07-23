@@ -656,6 +656,48 @@ _SPIRALS_MEGATREE: tuple[tuple[str, str], ...] = (
 )
 
 
+# Mega Tree Wave preset — mined 2026-07-23 from a second vendor's directly-
+# sequenced Mega Tree model (13 sequences, this element sequenced with real
+# content in all 13 — unlike the matrix model in the same sample, which was
+# never directly sequenced). Wave appeared in a full-buffer Mirror variant
+# (2/9 Wave placements, chosen over a more elaborate 3-layer SubBuffer-band
+# variant seen in the same sample as too composition-specific to encode as
+# one rotation preset): mirrored sine wave, Left to Right, thin band
+# (Thickness 20), full height, ~5 waves, moderate speed.
+_WAVE_MEGATREE: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Mirror_Wave", "1"),
+    ("E_CHOICE_Fill_Colors", "Palette"),
+    ("E_CHOICE_Wave_Direction", "Left to Right"),
+    ("E_CHOICE_Wave_Type", "Sine"),
+    ("E_SLIDER_Thickness_Percentage", "20"),
+    ("E_SLIDER_Wave_Height", "100"),
+    ("E_SLIDER_Wave_YOffset", "0"),
+    ("E_TEXTCTRL_Number_Waves", "5.00"),
+    ("E_TEXTCTRL_Wave_Speed", "12.37"),
+    ("T_CHOICE_LayerMethod", "Layered"),
+)
+
+
+# Mega Tree Twinkle preset — mined from the same sample (6 Twinkle
+# placements total, each with a distinct full parameter combo — genuinely
+# too sparse for a confident "dominant preset" claim, unlike every other
+# preset in this file). Kept only the fields every sample agreed on
+# (ReRandom off, Strobe off) and picked one representative full mined combo
+# (New Render Method, moderate count/steps, a snappy fade) for everything
+# else, rather than inventing new values — flagged here as the one preset
+# in this file resting on a real but thin sample.
+_TWINKLE_MEGATREE: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Twinkle_ReRandom", "0"),
+    ("E_CHECKBOX_Twinkle_Strobe", "0"),
+    ("E_CHOICE_Twinkle_Style", "New Render Method"),
+    ("E_SLIDER_Twinkle_Count", "25"),
+    ("E_SLIDER_Twinkle_Steps", "70"),
+    ("T_CHOICE_LayerMethod", "Layered"),
+    ("T_TEXTCTRL_Fadein", "0.3"),
+    ("T_TEXTCTRL_Fadeout", "0.5"),
+)
+
+
 CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     PropFamilyRecipe(
         family="snowflake",
@@ -728,6 +770,18 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     # 2026-07-15: e.g. Darlene Love ~1950-1975ms blocks against a ~487ms
     # beat = 4 beats/bar; Bad Habits ~3800ms blocks against ~475ms beat =
     # 8 beats/2 bars) -- see color_cycle_bars/color_cycle_beats_alt below.
+    # motion_rotation added 2026-07-23: a second vendor's 13-sequence sample
+    # directly sequenced this model (unlike its matrix model in the same
+    # sample, never directly sequenced) and, duration-weighted, showed
+    # Shockwave/Spirals as minor looks (3.1%/8.6% of lit time) versus this
+    # sample's own Color Wash (17.9%)/Wave (13.9%)/Twinkle (6.1%) —
+    # disagreeing with the original 12-song corpus's finding that Shockwave
+    # (36%) and Spirals (18%) dominate. Per explicit user direction, trusted
+    # the older, larger corpus for the dominant effect rather than this
+    # newer, unevenly-covered sample (2 of 13 songs had no real content on
+    # this element at all) — kept Shockwave/Spirals as the first two
+    # rotation slots, added Color Wash/Wave/Twinkle as new variety rather
+    # than replacing them.
     PropFamilyRecipe(
         family="megatree",
         match_tokens=("megatree", "mega_tree", "mega tree"),
@@ -735,6 +789,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_effect_name="Spirals",
         parameter_overrides=_SHOCKWAVE_BURST,
         alt_parameter_overrides=_SPIRALS_MEGATREE,
+        motion_rotation=(
+            ("Shockwave", _SHOCKWAVE_BURST),
+            ("Spirals", _SPIRALS_MEGATREE),
+            ("Color Wash", _COLOR_WASH_MATRIX),
+            ("Wave", _WAVE_MEGATREE),
+            ("Twinkle", _TWINKLE_MEGATREE),
+        ),
         color_over_mask=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,

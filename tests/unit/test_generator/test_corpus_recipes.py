@@ -422,6 +422,46 @@ class TestCorpusRecipePlacement:
             assert "E_SLIDER_Shockwave_End_Radius" not in p.parameters
 
 
+class TestMegatreeMotionRotation:
+    # Color Wash/Wave/Twinkle added 2026-07-23 as rotation variety alongside
+    # the original mined Shockwave/Spirals pair (see the recipe's docstring
+    # in corpus_recipes.py for why Shockwave/Spirals stayed first).
+    _FULL_LIBRARY = _DEFAULT_LIBRARY_NAMES + ("On", "Wave", "Twinkle")
+
+    def test_motion_rotation_walks_every_slot_via_occurrence(self) -> None:
+        from src.generator.corpus_recipes import CORPUS_RECIPES
+        recipe = next(r for r in CORPUS_RECIPES if r.family == "megatree")
+        pool = recipe.motion_rotation
+        assert len(pool) == 5
+        expected_names = ["Shockwave", "Spirals", "Color Wash", "Wave", "Twinkle"]
+        for occ, expected in enumerate(expected_names):
+            result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                            library_names=self._FULL_LIBRARY,
+                            corpus_occurrence={"megatree": occ})
+            placements = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name != "On"]
+            assert placements, f"occurrence {occ} placed no motion effects"
+            assert {p.effect_name for p in placements} == {expected}
+
+    def test_color_wash_slot_carries_layered_preset(self) -> None:
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=self._FULL_LIBRARY,
+                        corpus_occurrence={"megatree": 2})
+        washes = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "Color Wash"]
+        assert washes
+        params = dict(washes[0].parameters)
+        assert params["T_CHOICE_LayerMethod"] == "Layered"
+        assert params["E_CHECKBOX_ColorWash_HFade"] == "1"
+
+    def test_wave_slot_missing_from_catalog_falls_back_to_primary(self) -> None:
+        # "Wave" is deliberately absent from the library here.
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=_DEFAULT_LIBRARY_NAMES,
+                        corpus_occurrence={"megatree": 3})
+        placements = result["06_PROP_Mega_Tree"]
+        assert placements
+        assert all(p.effect_name == "Shockwave" for p in placements)
+
+
 # ── megatree color-over-mask composition ─────────────────────────────────────
 
 
