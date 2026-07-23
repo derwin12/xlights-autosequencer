@@ -463,6 +463,30 @@ class TestMegatreeMotionRotation:
         assert params["T_CHOICE_LayerMethod"] == "Layered"
         assert params["E_CHECKBOX_ColorWash_HFade"] == "1"
 
+    def test_twinkle_slot_fade_sum_never_exceeds_block_duration(self) -> None:
+        # Real bug (2026-07-23): the mined Twinkle preset baked in a fixed
+        # Fadein=0.3/Fadeout=0.5 (0.8s combined) that bypassed the
+        # duration-aware fade cap entirely, exceeding a real ~0.47s
+        # per-beat block's own length. Beats spaced ~475ms apart, matching
+        # the real generated file that surfaced the bug.
+        beats = list(range(0, 8000, 475))
+        result = _place(_make_section(label="chorus", start_ms=0, end_ms=8000), _MEGATREE_GROUP,
+                        hierarchy=_make_hierarchy(beats, duration_ms=8000),
+                        library_names=self._FULL_LIBRARY, corpus_occurrence={"megatree": 4})
+        twinkles = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "Twinkle"]
+        assert twinkles
+        for p in twinkles:
+            duration = p.end_ms - p.start_ms
+            assert p.fade_in_ms + p.fade_out_ms <= duration * 0.8, (
+                f"fade sum {p.fade_in_ms + p.fade_out_ms}ms exceeds 80% of "
+                f"{duration}ms block"
+            )
+            # No raw baked-in fade params survive in the effect's own
+            # parameters -- only the placement-level fade fields, which
+            # _serialize_effect_params caps at write time.
+            assert "T_TEXTCTRL_Fadein" not in p.parameters
+            assert "T_TEXTCTRL_Fadeout" not in p.parameters
+
     def test_wave_slot_missing_from_catalog_falls_back_to_primary(self) -> None:
         # "Wave" is deliberately absent from the library here.
         result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,

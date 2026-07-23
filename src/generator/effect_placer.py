@@ -2501,6 +2501,16 @@ def _place_corpus_recipe(
                 direction_cycle=direction_cycle, preserve_directions=True,
             )
             p.layer = primary_layer_idx
+            # Duration-scaled fades (returns 0,0 for sub-500ms bursts, so
+            # Shockwave/Pinwheel-style crisp accents are unaffected) —
+            # never a raw baked-in absolute value, which bypasses
+            # _serialize_effect_params' duration-aware cap entirely and
+            # can exceed the placement's own length on a short beat-block
+            # (user report, 2026-07-23: Twinkle's mined Fadein=0.3/
+            # Fadeout=0.5 totaled 0.8s on a 0.47s block).
+            fade_in, fade_out = compute_scaled_fades(end - start)
+            p.fade_in_ms = fade_in
+            p.fade_out_ms = fade_out
             placements.append(p)
     if not placements:
         return None

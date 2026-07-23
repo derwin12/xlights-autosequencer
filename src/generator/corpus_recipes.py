@@ -791,9 +791,17 @@ _WAVE_MEGATREE: tuple[tuple[str, str], ...] = (
 # too sparse for a confident "dominant preset" claim, unlike every other
 # preset in this file). Kept only the fields every sample agreed on
 # (ReRandom off, Strobe off) and picked one representative full mined combo
-# (New Render Method, moderate count/steps, a snappy fade) for everything
-# else, rather than inventing new values — flagged here as the one preset
-# in this file resting on a real but thin sample.
+# (New Render Method, moderate count/steps) for everything else, rather
+# than inventing new values — flagged here as the one preset in this file
+# resting on a real but thin sample. The mined sample's own Fadein=0.3/
+# Fadeout=0.5 were dropped (2026-07-23, user report): those were fixed
+# absolute seconds sized for whatever duration the one mined sample
+# happened to have, but our own per-beat Twinkle placements can be much
+# shorter (~0.47s here) -- 0.3+0.5=0.8s on a 0.47s block is longer than
+# the block itself. Baked-in T_TEXTCTRL_Fadein/Fadeout values also bypass
+# _serialize_effect_params' duration-aware cap entirely, since that only
+# caps placement.fade_in_ms/fade_out_ms, not raw params. Duration-scaled
+# fades are computed per-placement in _place_corpus_recipe instead.
 _TWINKLE_MEGATREE: tuple[tuple[str, str], ...] = (
     ("E_CHECKBOX_Twinkle_ReRandom", "0"),
     ("E_CHECKBOX_Twinkle_Strobe", "0"),
@@ -801,8 +809,6 @@ _TWINKLE_MEGATREE: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Twinkle_Count", "25"),
     ("E_SLIDER_Twinkle_Steps", "70"),
     ("T_CHOICE_LayerMethod", "Layered"),
-    ("T_TEXTCTRL_Fadein", "0.3"),
-    ("T_TEXTCTRL_Fadeout", "0.5"),
 )
 
 
