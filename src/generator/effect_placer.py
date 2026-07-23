@@ -2583,16 +2583,32 @@ def _place_corpus_recipe(
         else:
             secondary_params = dict(recipe.secondary_parameter_overrides)
         bottom_layer_idx = mask_layer_idx + 1
-        for j in range(0, len(marks), stride):
-            start = marks[j].time_ms
-            end = (
-                marks[j + stride].time_ms
-                if j + stride < len(marks)
-                else section.end_ms
+        secondary_starts = list(range(0, len(marks), stride))
+        secondary_windows = [
+            (
+                marks[j].time_ms,
+                section.end_ms if bi == len(secondary_starts) - 1 else marks[j + stride].time_ms,
             )
+            for bi, j in enumerate(secondary_starts)
+        ]
+        # A trailing block can still be short even after extending it to
+        # section.end_ms, whenever the section's last beats are sparse
+        # relative to the stride (same bug as the mega tree mirror-overlay,
+        # user report 2026-07-23: matrix at ~39.75s — a short trailing
+        # block inherited the same Rotation/Movement values as its
+        # full-length neighbor, so it visibly spun faster over the shorter
+        # span). Merge it into the previous block instead of leaving it as
+        # its own runt — never shorten a block, only ever lengthen one.
+        secondary_nominal_ms = stride * median_interval
+        if len(secondary_windows) >= 2:
+            last_start, last_end = secondary_windows[-1]
+            if last_end - last_start < secondary_nominal_ms * 0.5:
+                prev_start, _ = secondary_windows[-2]
+                secondary_windows[-2] = (prev_start, last_end)
+                secondary_windows.pop()
+        for secondary_instance_index, (start, end) in enumerate(secondary_windows):
             if end <= start:
                 continue
-            secondary_instance_index = j // stride
             bar_params = secondary_params
             if (
                 recipe.secondary_effect_name in _FLIP_TRANSFORM_EFFECTS
@@ -2606,6 +2622,9 @@ def _place_corpus_recipe(
                 "bar", instance_index=secondary_instance_index, preserve_directions=True,
             )
             p.layer = bottom_layer_idx
+            fade_in, fade_out = compute_scaled_fades(end - start)
+            p.fade_in_ms = fade_in
+            p.fade_out_ms = fade_out
             placements.append(p)
 
     # Simultaneous twin-layer overlay (mega tree, 2026-07-23): two placements
@@ -2614,15 +2633,34 @@ def _place_corpus_recipe(
     # Pictures content (which self-adjusts to always render on top — see
     # _place_picture_effects). Rotates through mirror_overlay_rotation's
     # mined pairs per qualifying occurrence, same counter as motion_rotation.
-    if recipe.mirror_overlay_effect_name is not None and recipe.mirror_overlay_rotation:
+    overlay_occurrence = occurrence_index if occurrence_index is not None else (variation_seed // 2)
+    if (
+        recipe.mirror_overlay_effect_name is not None
+        and recipe.mirror_overlay_rotation
+        and overlay_occurrence % recipe.mirror_overlay_frequency == 0
+    ):
         overlay_def = effect_library.effects.get(recipe.mirror_overlay_effect_name)
         if overlay_def is not None:
-            if occurrence_index is not None:
-                overlay_idx = occurrence_index % len(recipe.mirror_overlay_rotation)
-            else:
-                overlay_idx = (variation_seed // 2) % len(recipe.mirror_overlay_rotation)
+            # Divide by frequency before indexing into the pool so
+            # consecutive FIRINGS walk through the mined variants in order
+            # (0,1,2,0,1,...) instead of aliasing on the same slot every
+            # time frequency and pool size share a factor.
+            overlay_idx = (
+                (overlay_occurrence // recipe.mirror_overlay_frequency)
+                % len(recipe.mirror_overlay_rotation)
+            )
             overlay_params_a, overlay_params_b = recipe.mirror_overlay_rotation[overlay_idx]
-            overlay_palette = list(theme_palette) if theme_palette else list(recipe.palette)
+            # A vivid accent color, deliberately offset from the On-mask
+            # layer's own bar-by-bar pick (user request, 2026-07-23: the
+            # overlay was just reusing the raw accent palette list, which
+            # could coincide with whatever color the mask is currently
+            # showing). +1 keeps it on the same theme accent family while
+            # avoiding the mask's own starting candidate.
+            overlay_palette = (
+                [_vivid_mask_color(theme_palette, variation_seed, group.name, offset=overlay_idx + 1)]
+                if theme_palette
+                else list(recipe.palette)
+            )
             overlay_stride = max(1, recipe.mirror_overlay_beats_per_placement)
             block_starts = list(range(0, len(marks), overlay_stride))
             overlay_windows = [

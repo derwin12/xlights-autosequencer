@@ -221,6 +221,15 @@ class PropFamilyRecipe:
         tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]], ...
     ] = ()
     mirror_overlay_beats_per_placement: int = 4
+    # Fires once every N qualifying occurrences (1 = every time). Measured
+    # against the reference corpus (2026-07-23): only 3 of 12 songs use
+    # this idiom at all, and even among those usage varies from 1% to 79%
+    # of the song's duration -- our first cut fired unconditionally on
+    # every occurrence and landed at 80% song coverage, matching the most
+    # extreme outlier rather than the more typical 14-22%. 3 (fire on
+    # ~1-in-3 occurrences) brings megatree in line with that typical range
+    # instead of the outlier.
+    mirror_overlay_frequency: int = 1
 
 
 # Mined presets — near-unanimous across all 12 reference packages:
@@ -986,9 +995,15 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         # reviewing a real generated .xsq: "quite a bit of simple effects
         # on the mega tree... add a new layer above it... spirals can look
         # really nice"). Rotates through 3 real mined pairing styles — see
-        # _SPIRALS_MIRROR_MEGATREE_ROTATION's docstring.
+        # _SPIRALS_MIRROR_MEGATREE_ROTATION's docstring. frequency=3: an
+        # unconditional every-occurrence fire measured at 80% of song
+        # duration in a real generated file, matching only the most
+        # extreme reference song (Darlene Love, 79%) rather than the more
+        # typical 14-22% (Wizzard, I Knew It I Knew You) — see
+        # mirror_overlay_frequency's docstring.
         mirror_overlay_effect_name="Spirals",
         mirror_overlay_rotation=_SPIRALS_MIRROR_MEGATREE_ROTATION,
+        mirror_overlay_frequency=3,
     ),
     # Candy canes — mined from the same 12 packages (docs/cane_sequencing_
     # corpus/, 3.0k placements on 13-16 cane elements per layout).

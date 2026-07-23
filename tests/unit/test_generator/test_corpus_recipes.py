@@ -477,13 +477,20 @@ class TestMegatreeMirrorOverlay:
     # Twin-Spirals overlay added 2026-07-23 — see corpus_recipes.py's
     # _SPIRALS_MIRROR_MEGATREE_ROTATION docstring for the 3 mined variants.
 
-    def test_overlay_fires_on_every_occurrence_regardless_of_primary_effect(self) -> None:
-        for occ in range(5):
+    def test_overlay_fires_once_every_three_occurrences(self) -> None:
+        # frequency=3 (2026-07-23): an unconditional every-occurrence fire
+        # measured at 80% of song duration in a real generated file,
+        # matching only the most extreme reference song (79%) rather than
+        # the more typical 14-22%.
+        for occ in range(9):
             result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                             corpus_occurrence={"megatree": occ})
             overlay = [p for p in result["06_PROP_Mega_Tree"]
                       if p.effect_name == "Spirals" and p.layer < 0]
-            assert overlay, f"occurrence {occ} got no mirror-overlay placements"
+            if occ % 3 == 0:
+                assert overlay, f"occurrence {occ} should fire but got no overlay"
+            else:
+                assert not overlay, f"occurrence {occ} should not fire but got overlay"
 
     def test_overlay_uses_two_distinct_negative_layers(self) -> None:
         result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
@@ -493,9 +500,9 @@ class TestMegatreeMirrorOverlay:
         assert {p.layer for p in overlay} == {-2, -3}
 
     def test_overlay_rotates_through_the_three_mined_variants(self) -> None:
-        # occurrence 0 -> variant1 (mirror-flip): identical params, one
-        # Flip Horizontal; occurrence 1 -> variant2 (Wizzard): different
-        # rotation/thickness between the two layers.
+        # Firing occurrences are 0, 3, 6, ... (frequency=3) -> variant
+        # index = (occurrence // 3) % 3, so occurrence 0 -> variant1
+        # (mirror-flip) and occurrence 3 -> variant2 (Wizzard).
         result0 = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                          corpus_occurrence={"megatree": 0})
         overlay0 = [p for p in result0["06_PROP_Mega_Tree"]
@@ -504,7 +511,7 @@ class TestMegatreeMirrorOverlay:
         assert rotations0 == {"5"}
 
         result1 = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
-                         corpus_occurrence={"megatree": 1})
+                         corpus_occurrence={"megatree": 3})
         overlay1 = [p for p in result1["06_PROP_Mega_Tree"]
                    if p.effect_name == "Spirals" and p.layer < 0]
         rotations1 = {dict(p.parameters)["E_SLIDER_Spirals_Rotation"] for p in overlay1}
@@ -547,6 +554,22 @@ class TestMegatreeMirrorOverlay:
         assert overlay
         assert all(p.fade_in_ms > 0 for p in overlay)
         assert all(p.fade_out_ms > 0 for p in overlay)
+
+    def test_overlay_color_is_a_deliberate_accent_distinct_from_the_mask(self) -> None:
+        # User request, 2026-07-23: the overlay previously reused the raw
+        # accent palette list, which could coincide with whatever color
+        # the On-mask layer is currently showing.
+        full_lib = _LIBRARY_WITH_ON
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=full_lib, corpus_occurrence={"megatree": 0})
+        overlay = [p for p in result["06_PROP_Mega_Tree"]
+                  if p.effect_name == "Spirals" and p.layer < 0]
+        mask = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "On"]
+        assert overlay and mask
+        # A single deliberate color per placement, not the raw multi-color
+        # accent list.
+        assert all(len(p.color_palette) == 1 for p in overlay)
+        assert {p.color_palette[0] for p in overlay} != {m.color_palette[0] for m in mask}
 
 
 # ── megatree color-over-mask composition ─────────────────────────────────────
