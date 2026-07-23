@@ -42,6 +42,7 @@ def run(
     vocal_diarization: bool = False,
     story_path: Optional[Path | str] = None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
+    variation_seed: Optional[int] = None,
 ) -> bytes:
     """Run the generator deterministically and return .xsq bytes.
 
@@ -85,6 +86,13 @@ def run(
                     re-derived from raw, unclassified detector boundaries
                     (GenerationConfig.story_path) — keeps generation
                     consistent with what was reviewed on the Theme screen.
+        variation_seed: Optional override for the per-song deterministic
+                    seed (normally ``_derive_seed(audio_hash)``) that drives
+                    every rotation-pool/jitter choice the generator makes.
+                    Pass a different integer to get a different-looking
+                    generation of the same song ("reroll"); omit to keep
+                    today's default of always reproducing the same output
+                    for the same song.
 
     Returns:
         Raw .xsq XML bytes.
@@ -112,8 +120,9 @@ def run(
     if not layout_path.exists():
         raise GeneratorError(f"layout_path does not exist: {layout_path}")
 
-    # Seed all RNG sources deterministically from the audio hash
-    seed = _derive_seed(audio_hash)
+    # Seed all RNG sources deterministically from the audio hash, unless the
+    # caller supplied an explicit reroll seed.
+    seed = variation_seed if variation_seed is not None else _derive_seed(audio_hash)
     random.seed(seed)
     np.random.seed(seed % (2**32))
 

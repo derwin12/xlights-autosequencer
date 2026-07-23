@@ -337,3 +337,43 @@ def test_deterministic_run_same_bytes():
         "Two runs with the same audio_hash produced different .xsq bytes. "
         "Seed or non-deterministic state leak detected."
     )
+
+
+def test_variation_seed_override_reproduces_deterministically():
+    """An explicit variation_seed must reproduce the same output on repeat,
+    independent of the audio_hash-derived default (the "reroll" feature)."""
+    from src.evaluation.generator_runner import run
+
+    first = run(
+        song_id="test-song", audio_path=_FIXTURE_WAV, audio_hash=_FAKE_HASH,
+        layout_path=_FIXTURE_LAYOUT, variation_seed=123,
+    )
+    second = run(
+        song_id="test-song", audio_path=_FIXTURE_WAV, audio_hash=_FAKE_HASH,
+        layout_path=_FIXTURE_LAYOUT, variation_seed=123,
+    )
+    assert first == second
+
+
+def test_variation_seed_override_reaches_generation_config(monkeypatch, tmp_path):
+    """run() must pass an explicit variation_seed through to _run_pipeline's
+    seed param instead of always deriving it from audio_hash."""
+    from types import SimpleNamespace
+    import src.evaluation.generator_runner as gr
+
+    captured: dict = {}
+
+    def fake_run_pipeline(audio_path, layout_path, seed, **kwargs):
+        captured["seed"] = seed
+        return b"<xsequence/>"
+
+    monkeypatch.setattr(gr, "_run_pipeline", fake_run_pipeline)
+
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"x")
+    layout = tmp_path / "l.xml"
+    layout.write_bytes(b"<x/>")
+
+    gr.run(song_id="s", audio_path=audio, audio_hash=_FAKE_HASH,
+           layout_path=layout, variation_seed=999)
+    assert captured["seed"] == 999

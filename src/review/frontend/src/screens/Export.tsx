@@ -38,6 +38,10 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
   // Onsets (per-stem) + Chords timing tracks are display-only in the .xsq;
   // unchecking omits them for a leaner timing panel in xLights.
   const [includeExtraTiming, setIncludeExtraTiming] = useState(false);
+  // Empty string = use the song's default (deterministic, reproducible)
+  // seed; a filled-in value pins a specific variation or a rerolled one.
+  const [variationSeed, setVariationSeed] = useState('');
+  const [usedSeed, setUsedSeed] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Render-progress panels (stage list + stream log), populated from the
   // export SSE. stageOrder holds known stages plus any new ones the backend
@@ -123,7 +127,11 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
       const res = await fetch(`/api/v1/songs/${song.song_id}/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format: 'xsq', include_extra_timing: includeExtraTiming }),
+        body: JSON.stringify({
+          format: 'xsq',
+          include_extra_timing: includeExtraTiming,
+          ...(variationSeed !== '' ? { variation_seed: Number(variationSeed) } : {}),
+        }),
       });
       const body = await res.json();
       if (!res.ok) {
@@ -131,6 +139,10 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
         setExporting(false);
         stopElapsedTimer();
         return;
+      }
+      if (typeof body.variation_seed === 'number') {
+        setUsedSeed(body.variation_seed);
+        setVariationSeed(String(body.variation_seed));
       }
       // Stream stage progress
       const es = new EventSource(`/api/v1/songs/${song.song_id}/export/status`);
@@ -279,6 +291,42 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
         />
         Include Onsets/Chords timing tracks
       </label>
+
+      <div
+        data-testid="variation-seed-controls"
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}
+      >
+        <label
+          htmlFor="variation-seed-input"
+          style={{ fontSize: 13, color: 'var(--color-text-muted, #888)' }}
+        >
+          Variation seed
+        </label>
+        <input
+          id="variation-seed-input"
+          data-testid="variation-seed-input"
+          type="number"
+          placeholder="default"
+          value={variationSeed}
+          onChange={(e) => setVariationSeed(e.target.value)}
+          disabled={exporting}
+          style={{ width: 110 }}
+        />
+        <button
+          type="button"
+          data-testid="reroll-seed-button"
+          onClick={() => setVariationSeed(String(Math.floor(Math.random() * 2_147_483_647)))}
+          disabled={exporting}
+          title="Pick a new random seed — a fresh Generate will vary rotation/jitter choices while keeping the same song and theming"
+        >
+          🎲 Reroll
+        </button>
+        {usedSeed != null && (
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted, #888)' }}>
+            last used: {usedSeed}
+          </span>
+        )}
+      </div>
 
       <button
         className={styles.renderBtn}

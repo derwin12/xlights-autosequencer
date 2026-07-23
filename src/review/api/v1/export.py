@@ -40,6 +40,7 @@ class _ExportState:
         self.status = "running"
         self.events: list[dict] = []
         self.output_path: str | None = None
+        self.variation_seed: int | None = None
         self.lock = threading.Lock()
 
     def push(self, event: dict) -> None:
@@ -55,11 +56,38 @@ def _export_id() -> str:
     return "exp_" + "".join(random.choices(string.ascii_letters + string.digits, k=5))
 
 
+class InvalidVariationSeed(ValueError):
+    """Raised by _resolve_variation_seed on a malformed explicit seed."""
+
+
+def _resolve_variation_seed(body: dict) -> int | None:
+    """Resolve the export's variation_seed from the POST body.
+
+    ``reroll: true`` picks a fresh random seed (the "Reroll" action) and
+    takes priority over an explicit ``variation_seed``. Otherwise an
+    explicit ``variation_seed`` is used as-is. Returns None when neither is
+    given, which leaves generator_runner.run() to derive its usual
+    deterministic per-song default from the audio hash — today's unchanged
+    behavior for callers that never pass either field.
+    """
+    if body.get("reroll"):
+        return random.randint(0, 2**31 - 1)
+
+    raw = body.get("variation_seed")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        raise InvalidVariationSeed(f"Invalid variation_seed: {raw!r}") from None
+
+
 def _run_export(state: "_ExportState", song: dict, session: dict,
                 layout: dict, destination_name: str, fmt: str,
                 genre: str = "pop", occasion: str = "general",
                 include_extra_timing: bool = True,
-                vocal_diarization: bool = False) -> None:
+                vocal_diarization: bool = False,
+                variation_seed: int | None = None) -> None:
     """Run the export in a background thread."""
     try:
         state.push({"stage": "building_plan", "progress": 0.1})
@@ -166,6 +194,7 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             vocal_diarization=vocal_diarization,
             story_path=story_path,
             progress_cb=_placement_progress,
+            variation_seed=variation_seed,
         )
 
         state.push({"stage": "writing_xsq", "progress": 0.9})
@@ -182,6 +211,7 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             "stage": "done",
             "output_path": output_path,
             "bytes": len(xsq_bytes),
+            "variation_seed": state.variation_seed,
         })
     except GeneratorError as exc:
         with state.lock:
@@ -252,8 +282,22 @@ def start_export(song_id: str):
     genre = prefs.get("genre") or "pop"
     occasion = prefs.get("occasion") or "general"
 
+    try:
+        variation_seed = _resolve_variation_seed(body)
+    except InvalidVariationSeed as exc:
+        return jsonify({"error": {"code": "invalid_variation_seed", "message": str(exc)}}), 400
+
+    if variation_seed is None:
+        # No explicit/reroll seed -- report the same deterministic default
+        # generator_runner.run() will derive from the song hash, so the
+        # response always carries a concrete number the caller can pin
+        # later via variation_seed instead of just "reroll" again.
+        from src.evaluation.generator_runner import _derive_seed
+        variation_seed = _derive_seed(song_id)
+
     exp_id = _export_id()
     state = _ExportState(exp_id)
+    state.variation_seed = variation_seed
 
     with _exports_lock:
         _exports[exp_id] = state
@@ -262,12 +306,16 @@ def start_export(song_id: str):
     t = threading.Thread(
         target=_run_export,
         args=(state, song, session, layout, destination_name, fmt, genre, occasion,
-              include_extra_timing, vocal_diarization),
+              include_extra_timing, vocal_diarization, variation_seed),
         daemon=True,
     )
     t.start()
 
-    return jsonify({"export_id": exp_id, "started_at": state.started_at}), 202
+    return jsonify({
+        "export_id": exp_id,
+        "started_at": state.started_at,
+        "variation_seed": variation_seed,
+    }), 202
 
 
 @api_v1.route("/songs/<song_id>/export/status", methods=["GET"])

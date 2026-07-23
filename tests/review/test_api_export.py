@@ -109,7 +109,7 @@ class TestExportStart:
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
                               genre="pop", occasion="general", include_extra_timing=True,
-                              vocal_diarization=False):
+                              vocal_diarization=False, variation_seed=None):
             captured["destination_name"] = destination_name
             with state.lock:
                 state.status = "done"
@@ -140,6 +140,127 @@ class TestExportStart:
                 break
             time.sleep(0.1)
         assert captured["destination_name"] == "test_AI.xsq"
+
+    def test_response_includes_a_concrete_variation_seed_by_default(self, client, tmp_path):
+        """Even with no reroll/explicit seed, the response reports the actual
+        seed number the generator will use (derived from the song hash) so a
+        caller can pin it later via variation_seed instead of just rerolling
+        blindly."""
+        wav_path = tmp_path / "test.wav"
+        wav_bytes = _make_wav_bytes()
+        wav_path.write_bytes(wav_bytes)
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav_bytes), "test.wav"), "source_path": str(wav_path)},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        for _ in range(20):
+            time.sleep(0.1)
+            lib_data = client.get("/api/v1/library").get_json()
+            song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
+            if song and song.get("status") == "analyzed":
+                break
+        _theme_song(client, song_id)
+
+        resp = client.post(f"/api/v1/songs/{song_id}/export", json={"format": "xsq"})
+        assert resp.status_code == 202
+        data = resp.get_json()
+        assert isinstance(data["variation_seed"], int)
+
+        from src.evaluation.generator_runner import _derive_seed
+        assert data["variation_seed"] == _derive_seed(song_id)
+
+    def test_explicit_variation_seed_is_forwarded_to_run_export(self, client, tmp_path, monkeypatch):
+        import src.review.api.v1.export as export_module
+
+        captured: dict = {}
+
+        def _fake_run_export(state, song, session, layout, destination_name, fmt,
+                              genre="pop", occasion="general", include_extra_timing=True,
+                              vocal_diarization=False, variation_seed=None):
+            captured["variation_seed"] = variation_seed
+            with state.lock:
+                state.status = "done"
+
+        monkeypatch.setattr(export_module, "_run_export", _fake_run_export)
+
+        wav_path = tmp_path / "test.wav"
+        wav_bytes = _make_wav_bytes()
+        wav_path.write_bytes(wav_bytes)
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav_bytes), "test.wav"), "source_path": str(wav_path)},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        for _ in range(20):
+            time.sleep(0.1)
+            lib_data = client.get("/api/v1/library").get_json()
+            song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
+            if song and song.get("status") == "analyzed":
+                break
+        _theme_song(client, song_id)
+
+        resp = client.post(f"/api/v1/songs/{song_id}/export", json={"format": "xsq", "variation_seed": 4242})
+        assert resp.status_code == 202
+        assert resp.get_json()["variation_seed"] == 4242
+        for _ in range(20):
+            if "variation_seed" in captured:
+                break
+            time.sleep(0.1)
+        assert captured["variation_seed"] == 4242
+
+    def test_reroll_ignores_explicit_seed_and_returns_a_random_one(self, client, tmp_path, monkeypatch):
+        import src.review.api.v1.export as export_module
+
+        monkeypatch.setattr(export_module.random, "randint", lambda a, b: 777)
+        monkeypatch.setattr(export_module, "_run_export", lambda *a, **k: None)
+
+        wav_path = tmp_path / "test.wav"
+        wav_bytes = _make_wav_bytes()
+        wav_path.write_bytes(wav_bytes)
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav_bytes), "test.wav"), "source_path": str(wav_path)},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        for _ in range(20):
+            time.sleep(0.1)
+            lib_data = client.get("/api/v1/library").get_json()
+            song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
+            if song and song.get("status") == "analyzed":
+                break
+        _theme_song(client, song_id)
+
+        resp = client.post(f"/api/v1/songs/{song_id}/export",
+                           json={"format": "xsq", "reroll": True, "variation_seed": 1})
+        assert resp.status_code == 202
+        assert resp.get_json()["variation_seed"] == 777
+
+    def test_400_on_non_integer_variation_seed(self, client, tmp_path):
+        wav_path = tmp_path / "test.wav"
+        wav_bytes = _make_wav_bytes()
+        wav_path.write_bytes(wav_bytes)
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav_bytes), "test.wav"), "source_path": str(wav_path)},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+        client.post(f"/api/v1/songs/{song_id}/analyze")
+        for _ in range(20):
+            time.sleep(0.1)
+            lib_data = client.get("/api/v1/library").get_json()
+            song = next((s for s in lib_data["songs"] if s["song_id"] == song_id), None)
+            if song and song.get("status") == "analyzed":
+                break
+        _theme_song(client, song_id)
+
+        resp = client.post(f"/api/v1/songs/{song_id}/export",
+                           json={"format": "xsq", "variation_seed": "not-a-number"})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "invalid_variation_seed"
 
     def test_export_missing_sections_in_409(self, client):
         """incomplete_theming error must include missing_sections in details."""
@@ -328,7 +449,7 @@ class TestDownloadPackage:
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
                               genre="pop", occasion="general", include_extra_timing=True,
-                              vocal_diarization=False):
+                              vocal_diarization=False, variation_seed=None):
             out_dir = tmp_path / "export_out"
             out_dir.mkdir(exist_ok=True)
             output_path = out_dir / (destination_name or "output.xsq")
@@ -503,3 +624,23 @@ class TestExportOverrides:
         assert bytes_a != bytes_b, (
             "Export with brightness=0.1 should produce different bytes than default brightness=1.0"
         )
+
+
+class TestResolveVariationSeed:
+    def test_defaults_to_none_when_absent(self):
+        from src.review.api.v1.export import _resolve_variation_seed
+        assert _resolve_variation_seed({}) is None
+
+    def test_explicit_seed_is_used(self):
+        from src.review.api.v1.export import _resolve_variation_seed
+        assert _resolve_variation_seed({"variation_seed": 5}) == 5
+
+    def test_reroll_ignores_explicit_seed(self, monkeypatch):
+        import src.review.api.v1.export as export_module
+        monkeypatch.setattr(export_module.random, "randint", lambda a, b: 123)
+        assert export_module._resolve_variation_seed({"reroll": True, "variation_seed": 5}) == 123
+
+    def test_non_integer_raises(self):
+        from src.review.api.v1.export import _resolve_variation_seed, InvalidVariationSeed
+        with pytest.raises(InvalidVariationSeed):
+            _resolve_variation_seed({"variation_seed": "abc"})
