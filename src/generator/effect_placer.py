@@ -2608,6 +2608,47 @@ def _place_corpus_recipe(
             p.layer = bottom_layer_idx
             placements.append(p)
 
+    # Simultaneous twin-layer overlay (mega tree, 2026-07-23): two placements
+    # of the same effect at once on separate layers, above the mask/motion
+    # layer (mask_layer_idx / primary_layer_idx, both >= 0) and below any
+    # Pictures content (which self-adjusts to always render on top — see
+    # _place_picture_effects). Rotates through mirror_overlay_rotation's
+    # mined pairs per qualifying occurrence, same counter as motion_rotation.
+    if recipe.mirror_overlay_effect_name is not None and recipe.mirror_overlay_rotation:
+        overlay_def = effect_library.effects.get(recipe.mirror_overlay_effect_name)
+        if overlay_def is not None:
+            if occurrence_index is not None:
+                overlay_idx = occurrence_index % len(recipe.mirror_overlay_rotation)
+            else:
+                overlay_idx = (variation_seed // 2) % len(recipe.mirror_overlay_rotation)
+            overlay_params_a, overlay_params_b = recipe.mirror_overlay_rotation[overlay_idx]
+            overlay_palette = list(theme_palette) if theme_palette else list(recipe.palette)
+            overlay_stride = max(1, recipe.mirror_overlay_beats_per_placement)
+            for j in range(0, len(marks), overlay_stride):
+                start = marks[j].time_ms
+                end = (
+                    marks[j + overlay_stride].time_ms
+                    if j + overlay_stride < len(marks)
+                    else section.end_ms
+                )
+                if end <= start:
+                    continue
+                overlay_instance_index = j // overlay_stride
+                pa = _make_placement(
+                    overlay_def, group.name, start, end,
+                    dict(overlay_params_a), overlay_palette, layer.blend_mode,
+                    "bar", instance_index=overlay_instance_index, preserve_directions=True,
+                )
+                pa.layer = -2
+                pb = _make_placement(
+                    overlay_def, group.name, start, end,
+                    dict(overlay_params_b), overlay_palette, layer.blend_mode,
+                    "bar", instance_index=overlay_instance_index, preserve_directions=True,
+                )
+                pb.layer = -3
+                placements.append(pa)
+                placements.append(pb)
+
     # Corpus idiom for snowflakes/arches: a section-spanning Off on the layer
     # beneath the bursts keeps the group black between bursts instead of
     # picking up whole-house bleed (the reference packages tile qualifying

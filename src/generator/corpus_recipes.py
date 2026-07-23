@@ -208,6 +208,19 @@ class PropFamilyRecipe:
     # minitree -- the other color_over_mask families (matrix, megatree, star,
     # megatopper, icicle) weren't part of the request and are left alone.
     mask_sparkles: bool = False
+    # Simultaneous twin-layer overlay (mega tree, 2026-07-23): the reference
+    # corpus runs TWO Spirals placements at once on separate layers, above
+    # the mask/motion layer and below any Pictures content, in 3 different
+    # songs — each authored the pair differently (mirror-flip, reveal-blend,
+    # grow/static), not one consistent formula. mirror_overlay_rotation
+    # holds each variant as a (layer_a_params, layer_b_params) pair, cycled
+    # per qualifying occurrence like motion_rotation/secondary_rotation.
+    # None/empty -> no overlay (every other family).
+    mirror_overlay_effect_name: str | None = None
+    mirror_overlay_rotation: tuple[
+        tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]], ...
+    ] = ()
+    mirror_overlay_beats_per_placement: int = 4
 
 
 # Mined presets — near-unanimous across all 12 reference packages:
@@ -777,6 +790,97 @@ _TWINKLE_MEGATREE: tuple[tuple[str, str], ...] = (
 )
 
 
+# Mega Tree twin-Spirals overlay — mined 2026-07-23 directly from 3 of the
+# original 12 reference packages (real raw .xsq, not a JSON summary):
+# simultaneous Spirals on two separate layers, above the mask/motion layer
+# and below any Pictures content. Each song authors the pair differently,
+# so this is a 3-entry rotation pool of complete mined pairs rather than one
+# averaged preset (never re-mix individual fields across variants).
+
+# Variant 1 (Darlene Love - All Alone on Christmas): a true mirror twin —
+# identical Rotation/Thickness/Movement on both layers, one plain, one
+# Flip Horizontal.
+_SPIRALS_MIRROR_MEGATREE_1A: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Flip Horizontal"),
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "5"),
+    ("E_SLIDER_Spirals_Thickness", "15"),
+    ("E_TEXTCTRL_Spirals_Movement", "4"),
+)
+_SPIRALS_MIRROR_MEGATREE_1B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "5"),
+    ("E_SLIDER_Spirals_Thickness", "15"),
+    ("E_TEXTCTRL_Spirals_Movement", "4"),
+)
+
+# Variant 2 (Wizzard - I Wish It Could Be Christmas Everyday): the two
+# layers use DIFFERENT rotation/thickness/movement (not a mirror), one
+# Flip Vertical with a "1 reveals 2" blend, the other plain.
+_SPIRALS_MIRROR_MEGATREE_2A: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Flip Vertical"),
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "-32"),
+    ("E_SLIDER_Spirals_Thickness", "33"),
+    ("E_TEXTCTRL_Spirals_Movement", "-2"),
+    ("T_CHOICE_LayerMethod", "1 reveals 2"),
+)
+_SPIRALS_MIRROR_MEGATREE_2B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "30"),
+    ("E_SLIDER_Spirals_Thickness", "35"),
+    ("E_TEXTCTRL_Spirals_Movement", "1"),
+)
+
+# Variant 3 (I Knew It, I Knew You): identical rotation/thickness/movement
+# on both layers, no transform at all — the pair distinction is Grow
+# (static vs. growing).
+_SPIRALS_MIRROR_MEGATREE_3A: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "1"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "80"),
+    ("E_SLIDER_Spirals_Thickness", "0"),
+    ("E_TEXTCTRL_Spirals_Movement", "1"),
+)
+_SPIRALS_MIRROR_MEGATREE_3B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "1"),
+    ("E_CHECKBOX_Spirals_Grow", "1"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "80"),
+    ("E_SLIDER_Spirals_Thickness", "0"),
+    ("E_TEXTCTRL_Spirals_Movement", "1"),
+)
+
+_SPIRALS_MIRROR_MEGATREE_ROTATION: tuple[
+    tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]], ...
+] = (
+    (_SPIRALS_MIRROR_MEGATREE_1A, _SPIRALS_MIRROR_MEGATREE_1B),
+    (_SPIRALS_MIRROR_MEGATREE_2A, _SPIRALS_MIRROR_MEGATREE_2B),
+    (_SPIRALS_MIRROR_MEGATREE_3A, _SPIRALS_MIRROR_MEGATREE_3B),
+)
+
+
 CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     PropFamilyRecipe(
         family="snowflake",
@@ -878,6 +982,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         color_over_mask=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,
+        # Twin-Spirals overlay added 2026-07-23 (user request, after
+        # reviewing a real generated .xsq: "quite a bit of simple effects
+        # on the mega tree... add a new layer above it... spirals can look
+        # really nice"). Rotates through 3 real mined pairing styles — see
+        # _SPIRALS_MIRROR_MEGATREE_ROTATION's docstring.
+        mirror_overlay_effect_name="Spirals",
+        mirror_overlay_rotation=_SPIRALS_MIRROR_MEGATREE_ROTATION,
     ),
     # Candy canes — mined from the same 12 packages (docs/cane_sequencing_
     # corpus/, 3.0k placements on 13-16 cane elements per layout).

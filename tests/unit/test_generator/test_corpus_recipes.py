@@ -405,9 +405,11 @@ class TestCorpusRecipePlacement:
 
     def test_megatree_without_on_falls_back_to_single_layer(self) -> None:
         # The default test library has no "On" definition, so the
-        # color-over-mask composition degrades to the flat form.
+        # color-over-mask composition degrades to the flat form. The
+        # mirror-overlay Spirals (negative layers, added 2026-07-23) is a
+        # separate concern — filter to the primary/mask placements only.
         result = _place(_make_section(label="chorus"), _MEGATREE_GROUP)
-        placements = result["06_PROP_Mega_Tree"]
+        placements = [p for p in result["06_PROP_Mega_Tree"] if p.layer >= 0]
         assert len(placements) == len(_BEATS)
         assert all(p.effect_name == "Shockwave" for p in placements)
         assert all(p.color_palette == ["#FFFFFF"] for p in placements)
@@ -440,7 +442,14 @@ class TestMegatreeMotionRotation:
             result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                             library_names=self._FULL_LIBRARY,
                             corpus_occurrence={"megatree": occ})
-            placements = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name != "On"]
+            # Exclude the mirror-overlay Spirals (negative layers, added
+            # 2026-07-23) — it fires on every occurrence regardless of
+            # which primary motion effect is selected, so it isn't part of
+            # what this test is walking through.
+            placements = [
+                p for p in result["06_PROP_Mega_Tree"]
+                if p.effect_name != "On" and p.layer >= 0
+            ]
             assert placements, f"occurrence {occ} placed no motion effects"
             assert {p.effect_name for p in placements} == {expected}
 
@@ -459,9 +468,57 @@ class TestMegatreeMotionRotation:
         result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                         library_names=_DEFAULT_LIBRARY_NAMES,
                         corpus_occurrence={"megatree": 3})
-        placements = result["06_PROP_Mega_Tree"]
+        placements = [p for p in result["06_PROP_Mega_Tree"] if p.layer >= 0]
         assert placements
         assert all(p.effect_name == "Shockwave" for p in placements)
+
+
+class TestMegatreeMirrorOverlay:
+    # Twin-Spirals overlay added 2026-07-23 — see corpus_recipes.py's
+    # _SPIRALS_MIRROR_MEGATREE_ROTATION docstring for the 3 mined variants.
+
+    def test_overlay_fires_on_every_occurrence_regardless_of_primary_effect(self) -> None:
+        for occ in range(5):
+            result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                            corpus_occurrence={"megatree": occ})
+            overlay = [p for p in result["06_PROP_Mega_Tree"]
+                      if p.effect_name == "Spirals" and p.layer < 0]
+            assert overlay, f"occurrence {occ} got no mirror-overlay placements"
+
+    def test_overlay_uses_two_distinct_negative_layers(self) -> None:
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        corpus_occurrence={"megatree": 0})
+        overlay = [p for p in result["06_PROP_Mega_Tree"]
+                  if p.effect_name == "Spirals" and p.layer < 0]
+        assert {p.layer for p in overlay} == {-2, -3}
+
+    def test_overlay_rotates_through_the_three_mined_variants(self) -> None:
+        # occurrence 0 -> variant1 (mirror-flip): identical params, one
+        # Flip Horizontal; occurrence 1 -> variant2 (Wizzard): different
+        # rotation/thickness between the two layers.
+        result0 = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                         corpus_occurrence={"megatree": 0})
+        overlay0 = [p for p in result0["06_PROP_Mega_Tree"]
+                   if p.effect_name == "Spirals" and p.layer < 0]
+        rotations0 = {dict(p.parameters)["E_SLIDER_Spirals_Rotation"] for p in overlay0}
+        assert rotations0 == {"5"}
+
+        result1 = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                         corpus_occurrence={"megatree": 1})
+        overlay1 = [p for p in result1["06_PROP_Mega_Tree"]
+                   if p.effect_name == "Spirals" and p.layer < 0]
+        rotations1 = {dict(p.parameters)["E_SLIDER_Spirals_Rotation"] for p in overlay1}
+        assert rotations1 == {"-32", "30"}
+
+    def test_overlay_missing_from_catalog_is_silently_skipped(self) -> None:
+        # "Spirals" absent from the library -- the overlay must not break
+        # the primary placement or raise.
+        library = tuple(n for n in _DEFAULT_LIBRARY_NAMES if n != "Spirals")
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=library, corpus_occurrence={"megatree": 0})
+        placements = result["06_PROP_Mega_Tree"]
+        assert placements
+        assert not any(p.layer < 0 for p in placements)
 
 
 # ── megatree color-over-mask composition ─────────────────────────────────────
@@ -510,7 +567,9 @@ class TestMegatreeColorOverMask:
                         variation_seed=3, library_names=_LIBRARY_WITH_ON)
         placements = result["06_PROP_Mega_Tree"]
         assert [p.effect_name for p in placements].count("On") == 2
-        masks = [p for p in placements if p.effect_name == "Spirals"]
+        # The mirror-overlay (negative layers, added 2026-07-23) also uses
+        # Spirals — filter to the primary mask placement specifically.
+        masks = [p for p in placements if p.effect_name == "Spirals" and p.layer >= 0]
         assert masks
         assert all(p.layer == 1 for p in masks)
 
@@ -1312,7 +1371,9 @@ class TestHeroRecipePlacement:
     def test_hero_megatree_chorus_gets_white_shockwave_per_beat(self) -> None:
         result = _place(_make_section(label="chorus"), _HERO_MEGATREE_GROUP,
                         active_tiers=frozenset({8}))
-        placements = result["08_HERO_Mega_Tree"]
+        # The mirror-overlay Spirals (negative layers, added 2026-07-23)
+        # is a separate concern from the primary per-beat Shockwave.
+        placements = [p for p in result["08_HERO_Mega_Tree"] if p.layer >= 0]
         assert len(placements) == len(_BEATS)
         assert all(p.effect_name == "Shockwave" for p in placements)
         assert all(p.color_palette == ["#FFFFFF"] for p in placements)
