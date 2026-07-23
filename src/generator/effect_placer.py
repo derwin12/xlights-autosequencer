@@ -10,6 +10,7 @@ from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import EffectLibrary
 from src.generator.corpus_recipes import (
     _LIGHTNING_FLICKER,
+    _SHAPE_MATRIX_STAR,
     PropFamilyRecipe,
     recipe_for_group,
     section_qualifies,
@@ -1004,6 +1005,7 @@ def place_effects(
                             effect_library, assignment.variation_seed,
                             theme_palette=tier_palette,
                             occurrence_index=assignment.corpus_occurrence.get(recipe.family),
+                            theme_occasion=theme.occasion,
                         )
                         if recipe_placements:
                             corpus_recipe_done.add(group.name)
@@ -1139,6 +1141,7 @@ def place_effects(
                                 effect_library, assignment.variation_seed,
                                 theme_palette=tier_palette,
                                 occurrence_index=assignment.corpus_occurrence.get(recipe.family),
+                                theme_occasion=theme.occasion,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1218,6 +1221,7 @@ def place_effects(
                                 effect_library, assignment.variation_seed,
                                 theme_palette=tier_palette,
                                 occurrence_index=assignment.corpus_occurrence.get(recipe.family),
+                                theme_occasion=theme.occasion,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1348,6 +1352,7 @@ def place_effects(
                         effect_library, assignment.variation_seed,
                         theme_palette=tier_palette,
                         occurrence_index=assignment.corpus_occurrence.get(recipe.family),
+                        theme_occasion=theme.occasion,
                     )
                     if recipe_placements:
                         corpus_recipe_done.add(group.name)
@@ -2181,6 +2186,7 @@ def _place_corpus_recipe(
     variation_seed: int,
     theme_palette: list[str] | None = None,
     occurrence_index: int | None = None,
+    theme_occasion: str | None = None,
 ) -> list[EffectPlacement] | None:
     """Place a corpus-mined prop-family idiom: solid-palette segments spanning
     consecutive beats, back-to-back across the section (the mined shows place
@@ -2223,6 +2229,17 @@ def _place_corpus_recipe(
         if effect_library.effects.get(rotated_name) is not None:
             effect_name = rotated_name
             rotation_params = rotated_params
+            # Snowflake is a christmas-specific shape (mined 2026-07-23 from
+            # a vendor's matrix idiom); swap to the season-neutral Star
+            # variant for halloween/general themes so it never renders a
+            # snowflake outside a christmas-occasion sequence.
+            if (
+                effect_name == "Shape"
+                and theme_occasion is not None
+                and theme_occasion != "christmas"
+                and dict(rotation_params).get("E_CHOICE_Shape_ObjectToDraw") == "Snowflake"
+            ):
+                rotation_params = _SHAPE_MATRIX_STAR
     elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
         effect_name = recipe.alt_effect_name
     effect_def = effect_library.effects.get(effect_name)

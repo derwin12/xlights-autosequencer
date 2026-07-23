@@ -457,6 +457,67 @@ _SPIRALS_MATRIX_MULTI: tuple[tuple[str, str], ...] = (
 )
 
 
+# Matrix Color Wash preset — mined 2026-07-23 from a second vendor's
+# "HOUSE MATRICES"-named group (180 placements across 13 real sequences):
+# H+V fade both on, Layered blend (24/32 Color Wash placements, 75%).
+_COLOR_WASH_MATRIX: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_ColorWash_HFade", "1"),
+    ("E_CHECKBOX_ColorWash_VFade", "1"),
+    ("T_CHOICE_LayerMethod", "Layered"),
+)
+
+
+# Matrix Shape preset, Snowflake variant — mined from the same second-vendor
+# sample (21 Shape placements): FadeAway/HoldColour/RandomInitial/
+# RandomLocation on, UseMusic/RandomMovement off (all unanimous), Snowflake
+# the dominant ObjectToDraw (17/21, 81%), Growth 10 the dominant value
+# (10/21). Season-specific — only selected for christmas-occasion themes
+# (see _place_corpus_recipe's Shape occasion swap); _SHAPE_MATRIX_STAR is
+# the season-neutral alternate for halloween/general themes.
+_SHAPE_MATRIX_SNOWFLAKE: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Shape_FadeAway", "1"),
+    ("E_CHECKBOX_Shape_FireTiming", "0"),
+    ("E_CHECKBOX_Shape_HoldColour", "1"),
+    ("E_CHECKBOX_Shape_RandomInitial", "1"),
+    ("E_CHECKBOX_Shape_RandomLocation", "1"),
+    ("E_CHECKBOX_Shape_UseMusic", "0"),
+    ("E_CHECKBOX_Shapes_RandomMovement", "0"),
+    ("E_CHOICE_Shape_ObjectToDraw", "Snowflake"),
+    ("E_SLIDER_Shape_Growth", "10"),
+    ("E_SLIDER_Shape_Lifetime", "5"),
+    ("E_SLIDER_Shape_Rotation", "0"),
+    ("E_SLIDER_Shape_StartSize", "1"),
+    ("E_SLIDER_Shapes_Direction", "90"),
+    ("E_SLIDER_Shapes_Velocity", "0"),
+    ("E_TEXTCTRL_Shape_Count", "5"),
+)
+
+
+# Matrix Shape preset, Star variant — the same sample's other mined
+# ObjectToDraw (4/21, 19%): same fade/hold/random fields, Star with 8 points
+# and thin outline. Season-neutral, so this is the rotation's default and
+# the occasion-swap target for non-christmas themes.
+_SHAPE_MATRIX_STAR: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Shape_FadeAway", "1"),
+    ("E_CHECKBOX_Shape_FireTiming", "0"),
+    ("E_CHECKBOX_Shape_HoldColour", "1"),
+    ("E_CHECKBOX_Shape_RandomInitial", "1"),
+    ("E_CHECKBOX_Shape_RandomLocation", "1"),
+    ("E_CHECKBOX_Shape_UseMusic", "0"),
+    ("E_CHECKBOX_Shapes_RandomMovement", "0"),
+    ("E_CHOICE_Shape_ObjectToDraw", "Star"),
+    ("E_SLIDER_Shape_Growth", "5"),
+    ("E_SLIDER_Shape_Lifetime", "5"),
+    ("E_SLIDER_Shape_Points", "8"),
+    ("E_SLIDER_Shape_Rotation", "0"),
+    ("E_SLIDER_Shape_StartSize", "1"),
+    ("E_SLIDER_Shape_Thickness", "1"),
+    ("E_SLIDER_Shapes_Direction", "90"),
+    ("E_SLIDER_Shapes_Velocity", "0"),
+    ("E_TEXTCTRL_Shape_Count", "7"),
+)
+
+
 # Mini-tree chase preset — mined from 5.3k SingleStrand placements on
 # mini-tree elements: Right-Left sweep (79%), From Head fade (83%),
 # chase runs across the whole group as one unit (Chase_Group_All=1 at 64%),
@@ -778,14 +839,30 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         # not just preset. Lightning removed — the corpus uses matrix
         # Lightning as a rare accent (2/14 songs), not a section texture;
         # it now rides the crash-accent pass (_place_crash_accents).
+        # Color Wash + Shape added 2026-07-23: a second vendor's 13-sequence,
+        # 180-placement "HOUSE MATRICES" sample (same group-naming
+        # convention we use) showed Color Wash (18%) and Shape (12%) as
+        # substantial, previously-unrepresented looks, while Pinwheel/
+        # Ripple/Lightning — our current top slots after Shockwave — were
+        # entirely absent from that vendor's matrix idiom. Kept our existing
+        # Pinwheel/Ripple slots (validated by the larger 12-song corpus)
+        # rather than discarding them, and added the two new looks rather
+        # than replacing anything, per explicit user direction. Shape
+        # rotates through both mined ObjectToDraw variants
+        # (_SHAPE_MATRIX_SNOWFLAKE/_SHAPE_MATRIX_STAR); _place_corpus_recipe
+        # swaps Snowflake -> Star at render time for non-christmas themes so
+        # a snowflake never appears in a Halloween/general sequence.
         motion_rotation=(
             ("Shockwave", _SHOCKWAVE_BURST),
             ("Pinwheel", _PINWHEEL_MATRIX),
             ("Ripple", _RIPPLE_MATRIX_IMPLODE),
+            ("Color Wash", _COLOR_WASH_MATRIX),
             ("Shockwave", _SHOCKWAVE_MATRIX_FULL),
             ("Pinwheel", _PINWHEEL_MATRIX_8ARM),
+            ("Shape", _SHAPE_MATRIX_SNOWFLAKE),
             ("Ripple", _RIPPLE_MATRIX_EXPLODE),
             ("Shockwave", _SHOCKWAVE_MATRIX_MID),
+            ("Shape", _SHAPE_MATRIX_STAR),
         ),
         secondary_effect_name="Spirals",
         secondary_parameter_overrides=_SPIRALS_MATRIX,

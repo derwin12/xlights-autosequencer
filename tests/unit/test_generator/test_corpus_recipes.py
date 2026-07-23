@@ -787,14 +787,14 @@ class TestMatrixRecipe:
         from src.generator.corpus_recipes import CORPUS_RECIPES
         recipe = next(r for r in CORPUS_RECIPES if r.family == "matrix")
         pool = recipe.motion_rotation
-        libs = _LIBRARY_WITH_ON + ("Pinwheel", "Ripple")
+        libs = _LIBRARY_WITH_ON + ("Pinwheel", "Ripple", "Shape")
         seen: list[tuple[str, str | None]] = []
         for occ in range(len(pool)):
             result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
                             library_names=libs,
                             corpus_occurrence={"matrix": occ})
             motion = [p for p in result["06_PROP_Matrix"]
-                      if p.effect_name in ("Shockwave", "Pinwheel", "Ripple")
+                      if p.effect_name in ("Shockwave", "Pinwheel", "Ripple", "Color Wash", "Shape")
                       and p.layer == 1]
             assert motion, f"occurrence {occ} placed no motion effects"
             names = {p.effect_name for p in motion}
@@ -1603,23 +1603,27 @@ class TestMatrixMotionRotation:
             if p.effect_name not in ("On", "Spirals")
         }
 
-    def test_rotation_walks_the_seven_slot_pool(self) -> None:
-        # Seed fallback path: seed s -> slot (s // 2) % 7. The pool
-        # interleaves Shockwave/Pinwheel/Ripple preset variants; Lightning
-        # was moved to the crash-accent pass (2026-07-18).
+    def test_rotation_walks_the_ten_slot_pool(self) -> None:
+        # Seed fallback path: seed s -> slot (s // 2) % 10. The pool
+        # interleaves Shockwave/Pinwheel/Ripple/Color Wash/Shape preset
+        # variants; Lightning was moved to the crash-accent pass
+        # (2026-07-18); Color Wash + Shape added 2026-07-23.
         assert self._motion_effects(0) == {"Shockwave"}
         assert self._motion_effects(2) == {"Pinwheel"}
         assert self._motion_effects(4) == {"Ripple"}
-        assert self._motion_effects(6) == {"Shockwave"}
-        assert self._motion_effects(8) == {"Pinwheel"}
-        assert self._motion_effects(10) == {"Ripple"}
-        assert self._motion_effects(12) == {"Shockwave"}
-        assert self._motion_effects(14) == {"Shockwave"}  # cycle repeats
+        assert self._motion_effects(6) == {"Color Wash"}
+        assert self._motion_effects(8) == {"Shockwave"}
+        assert self._motion_effects(10) == {"Pinwheel"}
+        assert self._motion_effects(12, library=_LIBRARY_MATRIX + ("Shape",)) == {"Shape"}
+        assert self._motion_effects(14) == {"Ripple"}
+        assert self._motion_effects(16) == {"Shockwave"}
+        assert self._motion_effects(18, library=_LIBRARY_MATRIX + ("Shape",)) == {"Shape"}
+        assert self._motion_effects(20) == {"Shockwave"}  # cycle repeats
 
     def test_shockwave_slots_carry_distinct_mined_presets(self) -> None:
-        # Slots 0/3/6 are all Shockwave but different mined reaches.
+        # Slots 0/4/8 are all Shockwave but different mined reaches.
         radii = []
-        for seed in (0, 6, 12):
+        for seed in (0, 8, 16):
             result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
                             variation_seed=seed, library_names=_LIBRARY_MATRIX)
             bursts = [p for p in result["06_PROP_Matrix"]
@@ -1628,7 +1632,7 @@ class TestMatrixMotionRotation:
             radii.append(dict(bursts[0].parameters)["E_SLIDER_Shockwave_End_Radius"])
         assert radii == ["100", "100", "50"]
         widths = []
-        for seed in (0, 6):
+        for seed in (0, 8):
             result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
                             variation_seed=seed, library_names=_LIBRARY_MATRIX)
             bursts = [p for p in result["06_PROP_Matrix"]
