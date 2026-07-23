@@ -80,6 +80,23 @@ def _make_hierarchy(beat_times: list[int] | None, duration_ms: int = 8000) -> Hi
     )
 
 
+def _make_full_hierarchy(beat_times: list[int] | None) -> HierarchyResult:
+    """Like _make_hierarchy, plus the marks VU Meter's mapped tracks need
+    (kick_hits/riff_bursts/events "bass"+"vocals") so every matrix
+    motion_rotation slot resolves to its intended effect instead of falling
+    back to the primary pair for a missing track."""
+    hierarchy = _make_hierarchy(beat_times)
+    hierarchy.kick_hits = [TimingMark(time_ms=100, confidence=None)]
+    hierarchy.riff_bursts = [TimingMark(time_ms=200, confidence=None)]
+    hierarchy.events = {
+        "bass": TimingTrack(name="bass", algorithm_name="test", element_type="onset",
+                             marks=[TimingMark(time_ms=150, confidence=None)], quality_score=0.9),
+        "vocals": TimingTrack(name="vocals", algorithm_name="test", element_type="onset",
+                               marks=[TimingMark(time_ms=250, confidence=None)], quality_score=0.9),
+    }
+    return hierarchy
+
+
 def _make_assignment(section: SectionEnergy, layers: list[EffectLayer],
                      variation_seed: int = 0,
                      active_tiers: frozenset[int] = frozenset({1, 6}),
@@ -787,14 +804,16 @@ class TestMatrixRecipe:
         from src.generator.corpus_recipes import CORPUS_RECIPES
         recipe = next(r for r in CORPUS_RECIPES if r.family == "matrix")
         pool = recipe.motion_rotation
-        libs = _LIBRARY_WITH_ON + ("Pinwheel", "Ripple", "Shape")
+        libs = _LIBRARY_WITH_ON + ("Pinwheel", "Ripple", "Shape", "VU Meter")
         seen: list[tuple[str, str | None]] = []
         for occ in range(len(pool)):
             result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
                             library_names=libs,
+                            hierarchy=_make_full_hierarchy(_BEATS),
                             corpus_occurrence={"matrix": occ})
             motion = [p for p in result["06_PROP_Matrix"]
-                      if p.effect_name in ("Shockwave", "Pinwheel", "Ripple", "Color Wash", "Shape")
+                      if p.effect_name in
+                      ("Shockwave", "Pinwheel", "Ripple", "Color Wash", "Shape", "VU Meter")
                       and p.layer == 1]
             assert motion, f"occurrence {occ} placed no motion effects"
             names = {p.effect_name for p in motion}
@@ -1595,35 +1614,51 @@ _LIBRARY_MATRIX = ("Color Wash", "Shockwave", "Pinwheel", "Lightning",
 
 
 class TestMatrixMotionRotation:
-    def _motion_effects(self, seed: int, library=_LIBRARY_MATRIX) -> set[str]:
+    def _motion_effects(self, seed: int, library=_LIBRARY_MATRIX, hierarchy=None) -> set[str]:
         result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
-                        variation_seed=seed, library_names=library)
+                        variation_seed=seed, library_names=library, hierarchy=hierarchy)
         return {
             p.effect_name for p in result.get("06_PROP_Matrix", [])
             if p.effect_name not in ("On", "Spirals")
         }
 
-    def test_rotation_walks_the_ten_slot_pool(self) -> None:
-        # Seed fallback path: seed s -> slot (s // 2) % 10. The pool
-        # interleaves Shockwave/Pinwheel/Ripple/Color Wash/Shape preset
-        # variants; Lightning was moved to the crash-accent pass
-        # (2026-07-18); Color Wash + Shape added 2026-07-23.
+    def test_rotation_walks_the_fourteen_slot_pool(self) -> None:
+        # Seed fallback path: seed s -> slot (s // 2) % 14. The pool
+        # interleaves Shockwave/Pinwheel/Ripple/Color Wash/Shape/VU Meter
+        # preset variants; Lightning was moved to the crash-accent pass
+        # (2026-07-18); Color Wash + Shape + VU Meter added 2026-07-23.
+        # VU Meter slots need both the effect in the library AND their
+        # mapped timing track populated on the hierarchy, else they fall
+        # back to the primary Shockwave.
+        full_lib = _LIBRARY_MATRIX + ("Shape", "VU Meter")
+        full_hierarchy = _make_full_hierarchy(_BEATS)
         assert self._motion_effects(0) == {"Shockwave"}
         assert self._motion_effects(2) == {"Pinwheel"}
         assert self._motion_effects(4) == {"Ripple"}
         assert self._motion_effects(6) == {"Color Wash"}
         assert self._motion_effects(8) == {"Shockwave"}
         assert self._motion_effects(10) == {"Pinwheel"}
-        assert self._motion_effects(12, library=_LIBRARY_MATRIX + ("Shape",)) == {"Shape"}
-        assert self._motion_effects(14) == {"Ripple"}
-        assert self._motion_effects(16) == {"Shockwave"}
-        assert self._motion_effects(18, library=_LIBRARY_MATRIX + ("Shape",)) == {"Shape"}
-        assert self._motion_effects(20) == {"Shockwave"}  # cycle repeats
+        assert self._motion_effects(12, library=full_lib) == {"Shape"}
+        assert self._motion_effects(14, library=full_lib, hierarchy=full_hierarchy) == {"VU Meter"}
+        assert self._motion_effects(16) == {"Ripple"}
+        assert self._motion_effects(18) == {"Shockwave"}
+        assert self._motion_effects(20, library=full_lib) == {"Shape"}
+        assert self._motion_effects(22, library=full_lib, hierarchy=full_hierarchy) == {"VU Meter"}
+        assert self._motion_effects(24, library=full_lib, hierarchy=full_hierarchy) == {"VU Meter"}
+        assert self._motion_effects(26, library=full_lib, hierarchy=full_hierarchy) == {"VU Meter"}
+        assert self._motion_effects(28) == {"Shockwave"}  # cycle repeats
+
+    def test_vu_meter_slot_falls_back_without_its_mapped_track(self) -> None:
+        # Slot 7 (occurrence 7, seed 14) is VU Meter mapped to Kick Hits.
+        # Without kick_hits populated on the hierarchy, it must fall back
+        # to the primary Shockwave rather than silently placing nothing.
+        full_lib = _LIBRARY_MATRIX + ("VU Meter",)
+        assert self._motion_effects(14, library=full_lib) == {"Shockwave"}
 
     def test_shockwave_slots_carry_distinct_mined_presets(self) -> None:
-        # Slots 0/4/8 are all Shockwave but different mined reaches.
+        # Slots 0/4/9 are all Shockwave but different mined reaches.
         radii = []
-        for seed in (0, 8, 16):
+        for seed in (0, 8, 18):
             result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
                             variation_seed=seed, library_names=_LIBRARY_MATRIX)
             bursts = [p for p in result["06_PROP_Matrix"]

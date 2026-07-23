@@ -518,6 +518,68 @@ _SHAPE_MATRIX_STAR: tuple[tuple[str, str], ...] = (
 )
 
 
+# Matrix VU Meter presets — mined from the same second-vendor sample (12
+# VU Meter placements). Every mined placement drives the effect off a
+# NAMED TIMING TRACK on the vendor's own show (E_CHOICE_VUMeter_TimingTrack)
+# rather than raw audio amplitude, so these presets are not directly
+# portable: the TimingTrack value below is a deliberate REMAP to one of
+# OUR OWN generated timing tracks (`src/generator/xsq_writer.py::
+# _collect_timing_tracks`), chosen for the closest conceptual match to the
+# mined vendor track name, not the mined value itself. Per explicit user
+# direction (2026-07-23), "Beats" is excluded from this mapping even though
+# it's one of the mined vendor tracks — the beat-driven tiers already carry
+# enough of the song's rhythmic load. `_place_corpus_recipe` skips any of
+# these four slots when the referenced track has no marks for the current
+# song (e.g. an instrumental song with no vocal onsets) and falls back to
+# the primary Shockwave, the same way a missing catalog effect does.
+#
+# "Booms" (Timing Event Pulse Color, Bars 15/6 — dominant 15) -> Kick Hits:
+# low-end percussive hits read as "booms" better than a treble-based
+# detector would.
+_VUMETER_BOOMS: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Regex", "0"),
+    ("E_CHOICE_VUMeter_TimingTrack", "Kick Hits"),
+    ("E_CHOICE_VUMeter_Type", "Timing Event Pulse Color"),
+    ("E_SLIDER_VUMeter_Bars", "15"),
+    ("E_TEXTCTRL_Filter", ""),
+)
+
+# "Bass Waveform" (Timing Event Alternate Timed Sweep, Bars 2) -> Onsets
+# (bass): the literal bass-stem onset track is the closest thing we have to
+# a bass waveform trigger.
+_VUMETER_BASS: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Rotate CC 90"),
+    ("E_CHOICE_VUMeter_TimingTrack", "Onsets (bass)"),
+    ("E_CHOICE_VUMeter_Type", "Timing Event Alternate Timed Sweep"),
+    ("E_FILEPICKERCTRL_SVGFile", ""),
+    ("E_SLIDER_VUMeter_Bars", "2"),
+)
+
+# "Melody" (Timing Event Alternate Timed Sweep, Bars 8) -> Onsets (vocals):
+# the vocal stem's onset track is the closest thing we have to a melody
+# line.
+_VUMETER_MELODY: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Rotate CW 90"),
+    ("E_CHOICE_VUMeter_TimingTrack", "Onsets (vocals)"),
+    ("E_CHOICE_VUMeter_Type", "Timing Event Alternate Timed Sweep"),
+    ("E_FILEPICKERCTRL_SVGFile", ""),
+    ("E_SLIDER_VUMeter_Bars", "8"),
+)
+
+# "Flourishes" (Timing Event Timed Sweep, Bars 43 — the vendor's busiest VU
+# Meter track) -> Riff Bursts: our snare-roll/fill detector (fires roughly
+# once every 12s on a song with frequent fills) is the closest thing we have
+# to an "ornamental flourish" trigger.
+_VUMETER_FLOURISHES: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Rotate CC 90"),
+    ("E_CHECKBOX_Regex", "0"),
+    ("E_CHOICE_VUMeter_TimingTrack", "Riff Bursts"),
+    ("E_CHOICE_VUMeter_Type", "Timing Event Timed Sweep"),
+    ("E_SLIDER_VUMeter_Bars", "43"),
+    ("E_TEXTCTRL_Filter", ""),
+)
+
+
 # Mini-tree chase preset — mined from 5.3k SingleStrand placements on
 # mini-tree elements: Right-Left sweep (79%), From Head fade (83%),
 # chase runs across the whole group as one unit (Chase_Group_All=1 at 64%),
@@ -852,6 +914,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         # (_SHAPE_MATRIX_SNOWFLAKE/_SHAPE_MATRIX_STAR); _place_corpus_recipe
         # swaps Snowflake -> Star at render time for non-christmas themes so
         # a snowflake never appears in a Halloween/general sequence.
+        # VU Meter added 2026-07-23 (same sample, 7%): four slots, each
+        # remapped from a mined vendor timing-track name to one of our own
+        # generated timing tracks (see the _VUMETER_* preset docstrings) —
+        # deliberately excludes "Beats" per user direction. Availability is
+        # checked per-song in _place_corpus_recipe (e.g. an instrumental song
+        # has no "Onsets (vocals)" track), falling back to the primary
+        # Shockwave when the mapped track has no marks.
         motion_rotation=(
             ("Shockwave", _SHOCKWAVE_BURST),
             ("Pinwheel", _PINWHEEL_MATRIX),
@@ -860,9 +929,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
             ("Shockwave", _SHOCKWAVE_MATRIX_FULL),
             ("Pinwheel", _PINWHEEL_MATRIX_8ARM),
             ("Shape", _SHAPE_MATRIX_SNOWFLAKE),
+            ("VU Meter", _VUMETER_BOOMS),
             ("Ripple", _RIPPLE_MATRIX_EXPLODE),
             ("Shockwave", _SHOCKWAVE_MATRIX_MID),
             ("Shape", _SHAPE_MATRIX_STAR),
+            ("VU Meter", _VUMETER_BASS),
+            ("VU Meter", _VUMETER_MELODY),
+            ("VU Meter", _VUMETER_FLOURISHES),
         ),
         secondary_effect_name="Spirals",
         secondary_parameter_overrides=_SPIRALS_MATRIX,

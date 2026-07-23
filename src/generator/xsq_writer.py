@@ -1256,6 +1256,8 @@ def _collect_timing_tracks(
                 tracks["Snare Hits"] = hierarchy.snare_hits
             if hierarchy.hihat_hits:
                 tracks["Hihat Hits"] = hierarchy.hihat_hits
+            if hierarchy.riff_bursts:
+                tracks["Riff Bursts"] = hierarchy.riff_bursts
 
     if lyrics:
         tracks["Lyrics"] = [

@@ -2176,6 +2176,23 @@ def _humanize_group_name(name: str) -> str:
     return label.replace("_", " ").strip()
 
 
+def _vu_meter_track_available(track_name: str | None, hierarchy: HierarchyResult) -> bool:
+    """Whether a VU Meter preset's mapped timing track has marks for this
+    song — mirrors the same tracks `xsq_writer._collect_timing_tracks`
+    exports, since VU Meter references a track by name and a track with no
+    marks is never written to the .xsq at all (e.g. an instrumental song has
+    no "Onsets (vocals)" track)."""
+    if track_name == "Kick Hits":
+        return bool(hierarchy.kick_hits)
+    if track_name == "Riff Bursts":
+        return bool(hierarchy.riff_bursts)
+    if track_name is not None and track_name.startswith("Onsets ("):
+        stem = track_name[len("Onsets ("):-1]
+        track = hierarchy.events.get(stem)
+        return bool(track and track.marks)
+    return False
+
+
 def _place_corpus_recipe(
     group: PowerGroup,
     recipe: PropFamilyRecipe,
@@ -2240,6 +2257,15 @@ def _place_corpus_recipe(
                 and dict(rotation_params).get("E_CHOICE_Shape_ObjectToDraw") == "Snowflake"
             ):
                 rotation_params = _SHAPE_MATRIX_STAR
+            elif effect_name == "VU Meter" and not _vu_meter_track_available(
+                dict(rotation_params).get("E_CHOICE_VUMeter_TimingTrack"), hierarchy
+            ):
+                # The mapped timing track has no marks for this song (e.g.
+                # no vocal onsets on an instrumental) — fall back to the
+                # primary pair, same as a rotation effect missing from the
+                # catalog.
+                effect_name = recipe.effect_name
+                rotation_params = None
     elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
         effect_name = recipe.alt_effect_name
     effect_def = effect_library.effects.get(effect_name)
