@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import random
 import tempfile
 import threading
 import time
@@ -47,6 +48,7 @@ class GenerationJob:
     transition_mode: str
     created_at: float
     brief_snapshot: Optional[dict] = None  # FR-044 — snapshot of the Brief that produced this job
+    variation_seed: int = 0  # reroll support — see _resolve_variation_seed
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +139,34 @@ def _resolve_bool_field(body: dict, on_disk_brief: dict, field_name: str, defaul
             return val
         return str(val).lower() in {"true", "1", "yes"}
     return default
+
+
+class _InvalidVariationSeed(ValueError):
+    """Raised by _resolve_variation_seed on a malformed explicit seed."""
+
+
+def _resolve_variation_seed(body: dict, on_disk_brief: dict) -> int:
+    """Resolve the generation's variation_seed.
+
+    ``body["reroll"]: true`` picks a fresh random seed each call (the "Reroll"
+    action) and takes priority over an explicit ``variation_seed``. Otherwise:
+    POST body -> on-disk Brief -> 0 (today's deterministic default, unchanged
+    for callers that never pass either field). Raises _InvalidVariationSeed on
+    a malformed explicit seed so the route can respond with a 400 the same way
+    the other Brief fields do.
+    """
+    if body.get("reroll"):
+        return random.randint(0, 2**31 - 1)
+
+    raw = body.get("variation_seed")
+    if raw is None:
+        raw = on_disk_brief.get("variation_seed")
+    if raw is None:
+        return 0
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        raise _InvalidVariationSeed(f"Invalid variation_seed: {raw!r}") from None
 
 
 def _resolve_theme_overrides(
@@ -271,6 +301,11 @@ def start_generation(source_hash: str):
 
     theme_overrides = _resolve_theme_overrides(body, on_disk_brief, story_path if story_path.exists() else None)
 
+    try:
+        variation_seed = _resolve_variation_seed(body, on_disk_brief)
+    except _InvalidVariationSeed as exc:
+        return jsonify({"field": "variation_seed", "error": str(exc)}), 400
+
     # Validate resolved values — return 400 with field-level error on failure
     if genre not in _VALID_GENRES:
         return jsonify({"field": "genre", "error": f"Invalid genre: {genre!r}"}), 400
@@ -301,6 +336,7 @@ def start_generation(source_hash: str):
         transition_mode=transition_mode,
         created_at=time.time(),
         brief_snapshot=brief_snapshot,
+        variation_seed=variation_seed,
     )
     _jobs[job_id] = job
 
@@ -329,11 +365,12 @@ def start_generation(source_hash: str):
         mood_intent=mood_intent,
         duration_feel=duration_feel,
         accent_strength=accent_strength,
+        variation_seed=variation_seed,
     )
     t = threading.Thread(target=_run_generation, args=(job, config), daemon=True)
     t.start()
 
-    return jsonify({"job_id": job_id, "status": "pending"}), 202
+    return jsonify({"job_id": job_id, "status": "pending", "variation_seed": variation_seed}), 202
 
 
 @generate_bp.route("/<source_hash>/status", methods=["GET"])
@@ -351,6 +388,7 @@ def job_status(source_hash: str):
         "genre": job.genre,
         "occasion": job.occasion,
         "transition_mode": job.transition_mode,
+        "variation_seed": job.variation_seed,
         "created_at": job.created_at,
         "error": job.error_message,
     })
@@ -390,6 +428,7 @@ def generation_history(source_hash: str):
             "genre": j.genre,
             "occasion": j.occasion,
             "transition_mode": j.transition_mode,
+            "variation_seed": j.variation_seed,
             "created_at": j.created_at,
         }
         if j.status == "complete":

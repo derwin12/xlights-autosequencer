@@ -1855,16 +1855,37 @@ def _load_curves_mode_from_config() -> str:
 @click.option("--curves", "curves_mode", default=None,
               type=click.Choice(sorted(_VALID_CURVES_MODES)),
               help="Value curve generation mode (default: all). Overrides config file.")
+@click.option("--variation-seed", "variation_seed", type=int, default=None,
+              help="Seed shifting rotation-pool/jitter choices (theme alternates, "
+                   "corpus-recipe rotation, Moving Head pairing/jitter). Same song + "
+                   "same seed always reproduces the same output; pass a different "
+                   "integer to get a different variation of the same song.")
+@click.option("--reroll", "reroll", is_flag=True, default=False,
+              help="Pick a random --variation-seed for this run instead of the default "
+                   "(0). The chosen seed is printed so the run can be reproduced later.")
 def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
                  fresh, no_wizard, target_section, theme_overrides_raw,
-                 tiers_raw, story_path, transition_mode, curves_mode):
+                 tiers_raw, story_path, transition_mode, curves_mode,
+                 variation_seed, reroll):
     """Generate an xLights .xsq sequence from an MP3 and layout file."""
+    import random
+
     from src.generator.models import GenerationConfig
     from src.generator.plan import generate_sequence, read_song_metadata
     from src.generator.xsq_writer import fseq_guidance
 
     audio_path = Path(audio_file)
     layout_path = Path(layout_file)
+
+    if reroll:
+        if variation_seed is not None:
+            raise click.BadParameter("--reroll and --variation-seed are mutually exclusive",
+                                      param_hint="--reroll")
+        variation_seed = random.randint(0, 2**31 - 1)
+        click.echo(f"Rerolled variation seed: {variation_seed} "
+                   f"(pass --variation-seed {variation_seed} to reproduce this run)")
+    elif variation_seed is None:
+        variation_seed = 0
 
     # Auto-detect genre from ID3 if not specified
     if genre is None:
@@ -1921,6 +1942,7 @@ def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
         story_path=Path(story_path) if story_path else None,
         transition_mode=transition_mode,
         curves_mode=curves_mode,
+        variation_seed=variation_seed,
     )
 
     tiers_label = ", ".join(sorted(
@@ -1929,7 +1951,8 @@ def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
 
     click.echo(f"\nGenerating sequence for: {audio_path.name}")
     click.echo(f"Layout: {layout_path.name}")
-    click.echo(f"Genre: {genre} | Occasion: {occasion} | Tiers: {tiers_label}")
+    click.echo(f"Genre: {genre} | Occasion: {occasion} | Tiers: {tiers_label} | "
+               f"Variation seed: {variation_seed}")
     click.echo("")
 
     output_path = generate_sequence(config)

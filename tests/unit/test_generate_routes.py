@@ -155,6 +155,74 @@ class TestStartGeneration:
         assert "job_id" in data
         assert data["status"] == "pending"
 
+    def test_defaults_variation_seed_to_zero(self, tmp_path):
+        app = _make_app()
+        entry = _make_entry()
+        analysis_file = tmp_path / "song_hierarchy.json"
+        analysis_file.write_text("{}")
+        entry.analysis_path = str(analysis_file)
+        layout_file = tmp_path / "layout.xml"
+        layout_file.write_text("<xlightsproject/>")
+        with app.test_client() as client:
+            with patch("src.review.generate_routes.Library") as MockLib, \
+                 patch("src.review.generate_routes.get_layout_path", return_value=layout_file), \
+                 patch("src.review.generate_routes._run_generation"):
+                MockLib.return_value.find_by_hash.return_value = entry
+                resp = client.post("/generate/abc123", json={})
+        assert resp.status_code == 202
+        assert resp.get_json()["variation_seed"] == 0
+
+    def test_explicit_variation_seed_is_used(self, tmp_path):
+        app = _make_app()
+        entry = _make_entry()
+        analysis_file = tmp_path / "song_hierarchy.json"
+        analysis_file.write_text("{}")
+        entry.analysis_path = str(analysis_file)
+        layout_file = tmp_path / "layout.xml"
+        layout_file.write_text("<xlightsproject/>")
+        with app.test_client() as client:
+            with patch("src.review.generate_routes.Library") as MockLib, \
+                 patch("src.review.generate_routes.get_layout_path", return_value=layout_file), \
+                 patch("src.review.generate_routes._run_generation"):
+                MockLib.return_value.find_by_hash.return_value = entry
+                resp = client.post("/generate/abc123", json={"variation_seed": 42})
+        assert resp.status_code == 202
+        assert resp.get_json()["variation_seed"] == 42
+
+    def test_reroll_picks_a_random_seed_ignoring_explicit_value(self, tmp_path):
+        app = _make_app()
+        entry = _make_entry()
+        analysis_file = tmp_path / "song_hierarchy.json"
+        analysis_file.write_text("{}")
+        entry.analysis_path = str(analysis_file)
+        layout_file = tmp_path / "layout.xml"
+        layout_file.write_text("<xlightsproject/>")
+        with app.test_client() as client:
+            with patch("src.review.generate_routes.Library") as MockLib, \
+                 patch("src.review.generate_routes.get_layout_path", return_value=layout_file), \
+                 patch("src.review.generate_routes._run_generation"), \
+                 patch("src.review.generate_routes.random.randint", return_value=999):
+                MockLib.return_value.find_by_hash.return_value = entry
+                resp = client.post("/generate/abc123", json={"reroll": True, "variation_seed": 42})
+        assert resp.status_code == 202
+        assert resp.get_json()["variation_seed"] == 999
+
+    def test_400_on_non_integer_variation_seed(self, tmp_path):
+        app = _make_app()
+        entry = _make_entry()
+        analysis_file = tmp_path / "song_hierarchy.json"
+        analysis_file.write_text("{}")
+        entry.analysis_path = str(analysis_file)
+        layout_file = tmp_path / "layout.xml"
+        layout_file.write_text("<xlightsproject/>")
+        with app.test_client() as client:
+            with patch("src.review.generate_routes.Library") as MockLib, \
+                 patch("src.review.generate_routes.get_layout_path", return_value=layout_file):
+                MockLib.return_value.find_by_hash.return_value = entry
+                resp = client.post("/generate/abc123", json={"variation_seed": "not-a-number"})
+        assert resp.status_code == 400
+        assert resp.get_json()["field"] == "variation_seed"
+
 
 # ---------------------------------------------------------------------------
 # T007: GET /generate/<source_hash>/status
@@ -322,6 +390,47 @@ class TestGenerationInputValidation:
                                    json={"genre": "pop", "occasion": "valentines", "transition_mode": "subtle"})
         assert resp.status_code == 400
         assert "error" in resp.get_json()
+
+    def test_variation_seed_passed_through_to_config(self, tmp_path):
+        app, entry, layout_file = self._setup(tmp_path)
+        captured = {}
+        def fake_run(job, config):
+            captured["variation_seed"] = config.variation_seed
+        with app.test_client() as client:
+            with patch("src.review.generate_routes.Library") as MockLib, \
+                 patch("src.review.generate_routes.get_layout_path", return_value=layout_file), \
+                 patch("src.review.generate_routes._run_generation", side_effect=fake_run):
+                MockLib.return_value.find_by_hash.return_value = entry
+                client.post("/generate/abc123", json={"variation_seed": 7})
+        assert captured.get("variation_seed") == 7
+
+
+# ---------------------------------------------------------------------------
+# _resolve_variation_seed unit tests
+# ---------------------------------------------------------------------------
+
+class TestResolveVariationSeed:
+    def test_defaults_to_zero_when_absent(self):
+        from src.review.generate_routes import _resolve_variation_seed
+        assert _resolve_variation_seed({}, {}) == 0
+
+    def test_body_value_wins_over_on_disk_brief(self):
+        from src.review.generate_routes import _resolve_variation_seed
+        assert _resolve_variation_seed({"variation_seed": 5}, {"variation_seed": 9}) == 5
+
+    def test_falls_back_to_on_disk_brief(self):
+        from src.review.generate_routes import _resolve_variation_seed
+        assert _resolve_variation_seed({}, {"variation_seed": 9}) == 9
+
+    def test_reroll_ignores_explicit_seed(self):
+        from src.review.generate_routes import _resolve_variation_seed
+        with patch("src.review.generate_routes.random.randint", return_value=123):
+            assert _resolve_variation_seed({"reroll": True, "variation_seed": 5}, {}) == 123
+
+    def test_non_integer_raises(self):
+        from src.review.generate_routes import _resolve_variation_seed, _InvalidVariationSeed
+        with pytest.raises(_InvalidVariationSeed):
+            _resolve_variation_seed({"variation_seed": "abc"}, {})
 
 
 # ---------------------------------------------------------------------------
