@@ -178,19 +178,19 @@ class TestComputeCrossfadeDuration:
         assert result == 750
 
     def test_subtle_at_150_bpm(self):
-        # 150 BPM → beat = 400ms
+        # 150 BPM → beat = 400ms, snapped to the nearest FADE_UNIT_MS (500)
         result = compute_crossfade_duration(150, "subtle", 10000)
-        assert result == 400
+        assert result == 500
 
     def test_dramatic_at_80_bpm(self):
-        # 80 BPM → bar = 3000ms
+        # 80 BPM → bar = 3000ms, snapped down to the largest FADE_UNIT_MS (2000)
         result = compute_crossfade_duration(80, "dramatic", 20000)
-        assert result == 3000
+        assert result == 2000
 
     def test_dramatic_at_150_bpm(self):
-        # 150 BPM → bar = 1600ms
+        # 150 BPM → bar = 1600ms, snapped to the nearest FADE_UNIT_MS (1500)
         result = compute_crossfade_duration(150, "dramatic", 20000)
-        assert result == 1600
+        assert result == 1500
 
     def test_clamped_to_half_section_subtle(self):
         # Short section: 500ms total → max = 250ms
@@ -206,6 +206,19 @@ class TestComputeCrossfadeDuration:
 
     def test_unknown_mode_returns_zero(self):
         result = compute_crossfade_duration(120, "unknown", 10000)
+        assert result == 0
+
+    def test_tiny_natural_fade_floors_to_two_frames(self):
+        # Extreme BPM -> beat = 30ms, well under a single FADE_UNIT_MS and
+        # under 2 frames (50ms). Section is long enough to afford the
+        # floor, so it wins over the tiny natural value.
+        result = compute_crossfade_duration(2000, "subtle", 10000)
+        assert result == 50
+
+    def test_too_short_for_even_the_frame_floor_returns_zero(self):
+        # max_duration (40ms) can't fit even a 2-frame (50ms) fade -- no
+        # fade beats a sub-frame sliver.
+        result = compute_crossfade_duration(120, "subtle", 80)
         assert result == 0
 
 

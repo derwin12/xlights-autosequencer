@@ -13,6 +13,7 @@ from src.generator.models import (
     EffectPlacement,
     SectionAssignment,
     SectionEnergy,
+    snap_fade_ms,
 )
 from src.grouper.grouper import PowerGroup
 from src.themes.models import EffectLayer, Theme
@@ -452,6 +453,33 @@ class TestColorWashAlwaysGetsMusicSparkles:
                       if p.effect_name == "Spirals"]
         assert placements, "tier-6 Spirals placement expected"
         assert all(p.music_sparkles == 0 for p in placements)
+
+
+class TestSnapFadeMs:
+    """Fade durations snap to a small set of 'basic units' (0.25/0.50/0.75/
+    1.0/1.5/2.0s) instead of an arbitrary continuous value (user request,
+    2026-07-23)."""
+
+    def test_zero_and_negative_left_unchanged(self) -> None:
+        assert snap_fade_ms(0) == 0
+        assert snap_fade_ms(-5) == -5
+
+    def test_below_smallest_unit_left_unchanged(self) -> None:
+        # A short accent effect's tiny proportional fade (e.g. 40-50ms) is
+        # a deliberate near-instant cut, not something to inflate to 250ms.
+        assert snap_fade_ms(50) == 50
+        assert snap_fade_ms(249) == 249
+
+    def test_snaps_to_nearest_unit(self) -> None:
+        assert snap_fade_ms(250) == 250
+        assert snap_fade_ms(400) == 500
+        assert snap_fade_ms(600) == 500
+        assert snap_fade_ms(1600) == 1500
+        assert snap_fade_ms(1800) == 2000
+
+    def test_values_above_largest_unit_clamp_to_it(self) -> None:
+        assert snap_fade_ms(3000) == 2000
+        assert snap_fade_ms(20000) == 2000
 
 
 class TestShapeNeverGetsMusicSparkles:

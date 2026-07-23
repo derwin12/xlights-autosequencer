@@ -16,6 +16,29 @@ MOOD_TIERS = {
 
 FRAME_INTERVAL_MS = 25
 
+# "Basic units" fade durations (user request, 2026-07-23): every fade
+# computation across the generator (per-effect scaling, section-boundary
+# crossfades, end-of-song fadeout) snaps to one of these instead of an
+# arbitrary continuous value, so fade lengths read as a small deliberate
+# set rather than a different decimal on every placement.
+FADE_UNIT_MS: tuple[int, ...] = (250, 500, 750, 1000, 1500, 2000)
+
+
+def snap_fade_ms(fade_ms: int) -> int:
+    """Snap a computed fade duration to the nearest FADE_UNIT_MS value.
+
+    fade_ms <= 0 is returned unchanged — a deliberate "no fade" case
+    (crisp cut). Values below the smallest unit (250ms) are also left
+    unchanged rather than rounded up: a short accent effect's naturally
+    tiny proportional fade (e.g. 40-50ms on a 500ms placement) is a
+    deliberate near-instant cut, not an arbitrary value to snap onto the
+    grid — inflating it to 250ms would eat a large fraction of the
+    effect's own duration.
+    """
+    if fade_ms <= 0 or fade_ms < FADE_UNIT_MS[0]:
+        return fade_ms
+    return min(FADE_UNIT_MS, key=lambda unit: abs(unit - fade_ms))
+
 
 def energy_to_mood(score: int) -> str:
     """Map a 0-100 energy score to a mood tier string."""

@@ -33,6 +33,7 @@ from src.generator.models import (
     WorkingSet,
     WorkingSetEntry,
     frame_align,
+    snap_fade_ms,
 )
 from src.grouper.grouper import PowerGroup
 from src.grouper.layout import prop_type_for_display_as
@@ -596,6 +597,8 @@ def compute_scaled_fades(duration_ms: int) -> tuple[int, int]:
     - duration < 500ms:   0ms fades (crisp cuts)
     - duration 500-4000ms: 8% of duration, clamped to [50, 500]ms
     - duration > 4000ms:  10% of duration, clamped to [200, 2000]ms
+    - Snapped to the nearest FADE_UNIT_MS "basic unit" (0.25/0.50/0.75/
+      1.0/1.5/2.0s) instead of an arbitrary continuous value
     - Combined fades never exceed 40% of duration
     """
     if duration_ms < 500:
@@ -605,6 +608,8 @@ def compute_scaled_fades(duration_ms: int) -> tuple[int, int]:
         fade = max(50, min(500, round(duration_ms * 0.08)))
     else:
         fade = max(200, min(2000, round(duration_ms * 0.10)))
+
+    fade = snap_fade_ms(fade)
 
     # Ensure combined fades <= 40% of duration
     max_each = int(duration_ms * 0.20)  # 20% each = 40% combined

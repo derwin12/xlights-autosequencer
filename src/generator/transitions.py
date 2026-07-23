@@ -5,6 +5,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from src.generator.models import FRAME_INTERVAL_MS, snap_fade_ms
+
 if TYPE_CHECKING:
     from src.generator.models import EffectPlacement, SectionAssignment
 
@@ -12,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 VALID_MODES = ("none", "subtle", "dramatic")
 VALID_FADEOUT_STRATEGIES = ("progressive", "uniform", "none")
+
+# A fade shorter than 2 frames (at 40fps / 25ms per frame) is imperceptible
+# and not worth rendering as anything but a crisp cut (user request,
+# 2026-07-23). Only applied where clamping to half the section length could
+# otherwise squeeze a crossfade down to a sub-frame sliver.
+_MIN_CROSSFADE_MS = FRAME_INTERVAL_MS * 2
 
 # Tier number → fade start offset as fraction of the fade region (progressive mode)
 _PROGRESSIVE_TIER_OFFSETS: dict[int, float] = {
@@ -73,8 +81,14 @@ def compute_crossfade_duration(bpm: float, mode: str, section_duration_ms: int) 
     """Return crossfade duration in milliseconds for the given tempo and mode.
 
     - none: 0ms
-    - subtle: one beat duration (60000 / bpm), clamped to half section length
-    - dramatic: one bar duration (4 beats), clamped to half section length
+    - subtle: one beat duration (60000 / bpm), snapped to the nearest
+      FADE_UNIT_MS "basic unit", clamped to half section length
+    - dramatic: one bar duration (4 beats), same snapping/clamping
+    - Clamping to a very short section can otherwise squeeze the result
+      below 2 frames (imperceptible); when there's room for at least a
+      2-frame fade, the floor wins over an even smaller clamp. When the
+      section is too short even for that, no fade is better than a
+      sub-frame sliver.
     """
     if mode == "none":
         return 0
@@ -88,7 +102,10 @@ def compute_crossfade_duration(bpm: float, mode: str, section_duration_ms: int) 
         return 0
 
     max_duration = section_duration_ms // 2
-    return min(round(raw), max_duration)
+    fade = min(snap_fade_ms(round(raw)), max_duration)
+    if 0 < fade < _MIN_CROSSFADE_MS:
+        fade = _MIN_CROSSFADE_MS if max_duration >= _MIN_CROSSFADE_MS else 0
+    return fade
 
 
 def detect_same_effect_continuation(
@@ -269,7 +286,13 @@ def apply_fadeout(
         tier = _tier_from_group_name(group_name)
         offset = fadeout_plan.tier_offsets.get(tier, 0.0)
 
-        # Fade duration = (1.0 - offset) × total fade region
+        # Fade duration = (1.0 - offset) × total fade region. Deliberately
+        # NOT snapped to FADE_UNIT_MS (unlike compute_scaled_fades/
+        # compute_crossfade_duration) -- this is a multi-second, tier-
+        # staggered end-of-song fadeout meant to scale with the fade
+        # region's real duration (often 10-30s+), not a short per-effect
+        # or crossfade transition; capping it to the 2s basic-unit ceiling
+        # would break the whole progressive-fadeout feature.
         fade_ms = round((1.0 - offset) * total_duration_ms)
         if fade_ms <= 0:
             continue
