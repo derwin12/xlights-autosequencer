@@ -2624,28 +2624,52 @@ def _place_corpus_recipe(
             overlay_params_a, overlay_params_b = recipe.mirror_overlay_rotation[overlay_idx]
             overlay_palette = list(theme_palette) if theme_palette else list(recipe.palette)
             overlay_stride = max(1, recipe.mirror_overlay_beats_per_placement)
-            for j in range(0, len(marks), overlay_stride):
-                start = marks[j].time_ms
-                end = (
-                    marks[j + overlay_stride].time_ms
-                    if j + overlay_stride < len(marks)
-                    else section.end_ms
+            block_starts = list(range(0, len(marks), overlay_stride))
+            overlay_windows = [
+                (
+                    marks[j].time_ms,
+                    section.end_ms if bi == len(block_starts) - 1 else marks[j + overlay_stride].time_ms,
                 )
+                for bi, j in enumerate(block_starts)
+            ]
+            # A trailing block can still be short even after extending it
+            # to section.end_ms, whenever the section's last beats are
+            # sparse relative to the stride (user report, 2026-07-23: a
+            # short trailing block inherited the same Rotation/Movement
+            # values as its full-length neighbor, so the spiral visibly
+            # spun much faster over the shorter span). Merge it into the
+            # previous block instead of leaving it as its own runt --
+            # never shorten a block, only ever lengthen one.
+            nominal_ms = overlay_stride * median_interval
+            if len(overlay_windows) >= 2:
+                last_start, last_end = overlay_windows[-1]
+                if last_end - last_start < nominal_ms * 0.5:
+                    prev_start, _ = overlay_windows[-2]
+                    overlay_windows[-2] = (prev_start, last_end)
+                    overlay_windows.pop()
+            for bi, (start, end) in enumerate(overlay_windows):
                 if end <= start:
                     continue
-                overlay_instance_index = j // overlay_stride
                 pa = _make_placement(
                     overlay_def, group.name, start, end,
                     dict(overlay_params_a), overlay_palette, layer.blend_mode,
-                    "bar", instance_index=overlay_instance_index, preserve_directions=True,
+                    "bar", instance_index=bi, preserve_directions=True,
                 )
                 pa.layer = -2
                 pb = _make_placement(
                     overlay_def, group.name, start, end,
                     dict(overlay_params_b), overlay_palette, layer.blend_mode,
-                    "bar", instance_index=overlay_instance_index, preserve_directions=True,
+                    "bar", instance_index=bi, preserve_directions=True,
                 )
                 pb.layer = -3
+                # Crossfade consecutive blocks instead of a hard cut (user
+                # report, 2026-07-23: the outgoing block should fade out
+                # while the new one fades in, not switch abruptly).
+                fade_in, fade_out = compute_scaled_fades(end - start)
+                pa.fade_in_ms = fade_in
+                pa.fade_out_ms = fade_out
+                pb.fade_in_ms = fade_in
+                pb.fade_out_ms = fade_out
                 placements.append(pa)
                 placements.append(pb)
 

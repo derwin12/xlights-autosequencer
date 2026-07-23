@@ -520,6 +520,34 @@ class TestMegatreeMirrorOverlay:
         assert placements
         assert not any(p.layer < 0 for p in placements)
 
+    def test_overlay_merges_a_short_trailing_block_instead_of_leaving_a_runt(self) -> None:
+        # 10 beats every 500ms (0..4500), section ends at 4600ms. With the
+        # 4-beat stride this used to produce a 3rd block from 4000-4600ms
+        # (600ms) -- much shorter than the two full ~2000ms blocks ahead
+        # of it, but sharing the same Rotation/Movement values, so the
+        # spiral visibly spun much faster over that short span (real user
+        # report, 2026-07-23). It must instead merge into the 2nd block.
+        beats = list(range(0, 5000, 500))  # 0..4500, 10 marks
+        section = _make_section(label="chorus", start_ms=0, end_ms=4600)
+        result = _place(section, _MEGATREE_GROUP,
+                        hierarchy=_make_hierarchy(beats, duration_ms=4600),
+                        corpus_occurrence={"megatree": 0})
+        overlay = [p for p in result["06_PROP_Mega_Tree"]
+                  if p.effect_name == "Spirals" and p.layer == -2]
+        assert len(overlay) == 2
+        durations = sorted(p.end_ms - p.start_ms for p in overlay)
+        assert durations[0] >= 1600, f"a block is much shorter than its neighbor: {durations}"
+        assert max(o.end_ms for o in overlay) == section.end_ms
+
+    def test_overlay_blocks_get_crossfade_in_and_out(self) -> None:
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        corpus_occurrence={"megatree": 0})
+        overlay = [p for p in result["06_PROP_Mega_Tree"]
+                  if p.effect_name == "Spirals" and p.layer < 0]
+        assert overlay
+        assert all(p.fade_in_ms > 0 for p in overlay)
+        assert all(p.fade_out_ms > 0 for p in overlay)
+
 
 # ── megatree color-over-mask composition ─────────────────────────────────────
 
