@@ -11,8 +11,8 @@ from src.generator.moving_head import (
     _CRASH_EFFECT_DURATION_MS,
     _CRASH_LEAD_MS,
     _CRASH_PAN_OFFSET_DEG,
-    _CRASH_TILT_DEG,
     _CRASH_VOCAL_EXCLUSION_MS,
+    _TILT_LIMIT_DEG,
     place_moving_head_crash_accents,
 )
 from src.grouper.layout import parse_layout
@@ -61,10 +61,14 @@ class TestPlaceMovingHeadCrashAccents:
         assert abs(p.end_ms - (50_850 + _CRASH_EFFECT_DURATION_MS)) <= 25
 
     def test_fans_out_pan_and_tilts_up_per_head(self):
+        # _CRASH_TILT_DEG (78.5) exceeds _TILT_LIMIT_DEG (70, added
+        # 2026-07-23 as a hard safety ceiling on every final pan/tilt this
+        # module writes) -- the punch pose clamps down to 70.0 rather than
+        # the raw mined 78.5.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
         settings = _punch(result["MH GRP"]).parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Tilt: 78.5" in settings
+        assert "Tilt: 70.0" in settings
         assert "PanOffset: 10.5" in settings
         assert "Wheel: 0.000000&comma;0.000000&comma;1.000000" in settings
         assert "Shutter: On" in settings
@@ -72,16 +76,18 @@ class TestPlaceMovingHeadCrashAccents:
     def test_shared_sliders_match_the_punch_pose_not_stale_placeholders(self):
         # Regression (2026-07-17/18): the shared E_SLIDER_MHTilt/MHPanOffset
         # were hardcoded to unrelated placeholder values ("300"/"400") that
-        # never matched the punch's real Tilt: 78.5 / PanOffset: 10.5 text.
-        # xLights treats those shared sliders as authoritative on save, so
-        # the mismatch would silently corrupt the pose once the file
-        # round-tripped through xLights (same failure mode confirmed on the
-        # per-head moves via a real before/after diff). Confirmed against
-        # the vendor reference sequence (MH Samples.xsq): these sliders are
-        # degrees*10 integers, not the plain-decimal-degrees format the
-        # per-head text uses (e.g. text "PanOffset: 10.5" pairs with
+        # never matched the punch's real Tilt/PanOffset text. xLights treats
+        # those shared sliders as authoritative on save, so the mismatch
+        # would silently corrupt the pose once the file round-tripped
+        # through xLights (same failure mode confirmed on the per-head
+        # moves via a real before/after diff). Confirmed against the vendor
+        # reference sequence (MH Samples.xsq): these sliders are degrees*10
+        # integers, not the plain-decimal-degrees format the per-head text
+        # uses (e.g. text "PanOffset: 10.5" pairs with
         # E_SLIDER_MHPanOffset=105).
-        expected_tilt = str(round(float(_CRASH_TILT_DEG) * 10))
+        # _CRASH_TILT_DEG (78.5) exceeds _TILT_LIMIT_DEG (70) -- both the
+        # slider and the text clamp to 70.0 consistently (2026-07-23).
+        expected_tilt = str(round(_TILT_LIMIT_DEG * 10))
         expected_pan_offset = str(round(float(_CRASH_PAN_OFFSET_DEG) * 10))
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         result = place_moving_head_crash_accents(layout, _hierarchy([50_850]), vocal_words=None)
@@ -139,7 +145,9 @@ class TestPlaceMovingHeadCrashAccents:
         punch = _punch(placements)
         warmup = _warmup(placements)
         settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Tilt: 78.5" in settings
+        # Warmup shares the punch's pose, which is clamped to _TILT_LIMIT_DEG
+        # (70) -- see the fan-out test above for why it's no longer 78.5.
+        assert "Tilt: 70.0" in settings
         assert "PanOffset: 10.5" in settings
         assert "Dimmer:" not in settings
         assert "Wheel:" not in settings

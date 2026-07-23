@@ -317,10 +317,12 @@ _STATIC_HELD_GROUP_MOVES = frozenset({"fan_pan_static"})
 
 
 def _format_pan(deg: float) -> str:
-    return f"Pan: {deg:.1f}"
+    return f"Pan: {_clamp_pan(deg):.1f}"
 
 
 def _pan_vc_descriptor(start_deg: float, end_deg: float) -> str:
+    start_deg = _clamp_pan(start_deg)
+    end_deg = _clamp_pan(end_deg)
     return (
         "Active=TRUE|Id=ID_VALUECURVE_MHPan|Type=Ramp|"
         f"Min=-1800.00|Max=1800.00|P1={start_deg * 10:.2f}|"
@@ -333,10 +335,13 @@ def _format_pan_vc(start_deg: float, end_deg: float) -> str:
 
 
 def _format_tilt(deg: float) -> str:
-    return f"Tilt: {deg:.1f}"
+    return f"Tilt: {_clamp_tilt(deg):.1f}"
 
 
 def _tilt_vc_descriptor(lo_deg: float, hi_deg: float, lo2_deg: float) -> str:
+    lo_deg = _clamp_tilt(lo_deg)
+    hi_deg = _clamp_tilt(hi_deg)
+    lo2_deg = _clamp_tilt(lo2_deg)
     return (
         "Active=TRUE|Id=ID_VALUECURVE_MHTilt|Type=Ramp Up/Down|"
         f"Min=-1800.00|Max=1800.00|P1={lo_deg * 10:.2f}|"
@@ -417,15 +422,50 @@ def _build_pose_settings(pose: _HeadPose, jitter_pan: float, jitter_tilt: float,
 # identical (user request, 2026-07-17). Widened 2026-07-23 (user report:
 # a real generated Fan Pan-Static placement at ~51.25s barely differed
 # from the mined base pose -- the jitter was being applied correctly, just
-# too subtle to read on real hardware) -- still a small OFFSET around each
-# move's own mined base pose, not a hard clamp on the final angle (the
-# user explicitly chose not to retune mined base poses like
-# fan_pan_static's 78.5 tilt, which exceeded their suggested 70 cap but is
-# confirmed working on real hardware). More steps too (9 instead of 5) for
-# richer variety before the two independent modulo cycles (pan keyed off
-# section_index, tilt off section_index*2) repeat a prior combination.
+# too subtle to read on real hardware): pan +-10 -> +-20, tilt +-5 -> +-10,
+# 5 steps -> 9 steps for richer variety before the two independent modulo
+# cycles (pan keyed off section_index, tilt off section_index*2) repeat a
+# prior combination. This is an OFFSET applied on top of each move's own
+# mined base pose -- _PAN_LIMIT_DEG/_TILT_LIMIT_DEG below is the separate
+# hard ceiling on the final angle after jitter (or any other source, e.g.
+# a mined base value that already exceeds it).
 _PAN_JITTER_DEG = (-20.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0)
 _TILT_JITTER_DEG = (-10.0, -7.0, -4.0, -2.0, 0.0, 2.0, 4.0, 7.0, 10.0)
+
+# Hard safe-range ceiling for every FINAL pan/tilt angle this module ever
+# writes -- mined base poses (e.g. fan_pan_static/crash punch tilt=78.5),
+# jitter, sweep/tilt-oscillation VC endpoints, and every accent pose all
+# clamp through this (user request, 2026-07-23: "the +-90 were the limits
+# not the amount to change" -- a correction after the jitter-widening fix
+# above, which had left the mined base poses unclamped). Applied at the
+# single point every final degree value is formatted, both the per-head
+# text DSL (_format_pan/_format_tilt/_pan_vc_descriptor/
+# _tilt_vc_descriptor) and the shared slider fields (_slider_pan/
+# _slider_tilt below), so no caller can bypass it by going through only
+# one of the two representations.
+_PAN_LIMIT_DEG = 90.0
+_TILT_LIMIT_DEG = 70.0
+
+
+def _clamp_pan(deg: float) -> float:
+    return max(-_PAN_LIMIT_DEG, min(_PAN_LIMIT_DEG, deg))
+
+
+def _clamp_tilt(deg: float) -> float:
+    return max(-_TILT_LIMIT_DEG, min(_TILT_LIMIT_DEG, deg))
+
+
+def _slider_pan(deg: float) -> str:
+    """Clamped ``_deg_to_slider`` for the shared Pan slider -- pairs with
+    ``_format_pan``/``_pan_vc_descriptor`` above, which apply the same
+    clamp to the per-head text DSL representation of the same value."""
+    return _deg_to_slider(_clamp_pan(deg))
+
+
+def _slider_tilt(deg: float) -> str:
+    """Clamped ``_deg_to_slider`` for the shared Tilt slider -- pairs with
+    ``_format_tilt``/``_tilt_vc_descriptor`` above."""
+    return _deg_to_slider(_clamp_tilt(deg))
 
 
 def _jitter(variation_seed: int, section_index: int) -> tuple[float, float]:
@@ -635,8 +675,8 @@ def _build_group_warmup_parameters(
     per_head = {i: settings for i in range(1, head_count + 1)}
     return _build_parameters(
         per_head,
-        slider_pan=_deg_to_slider(_pose_start_pan(pose) + jitter_pan),
-        slider_tilt=_deg_to_slider(_pose_start_tilt(pose) + jitter_tilt),
+        slider_pan=_slider_pan(_pose_start_pan(pose) + jitter_pan),
+        slider_tilt=_slider_tilt(_pose_start_tilt(pose) + jitter_tilt),
         slider_pan_offset=_deg_to_slider(pose.pan_offset),
     )
 
@@ -647,8 +687,8 @@ def _build_per_head_warmup_parameters(
     settings = _build_move_warmup_settings(pose, jitter_pan, jitter_tilt, heads_field=str(head_index))
     return _build_parameters(
         {head_index: settings},
-        slider_pan=_deg_to_slider(_pose_start_pan(pose) + jitter_pan),
-        slider_tilt=_deg_to_slider(_pose_start_tilt(pose) + jitter_tilt),
+        slider_pan=_slider_pan(_pose_start_pan(pose) + jitter_pan),
+        slider_tilt=_slider_tilt(_pose_start_tilt(pose) + jitter_tilt),
     )
 
 
@@ -1210,6 +1250,10 @@ def place_moving_head_moves(
 _CRASH_EFFECT_DURATION_MS = 700
 _CRASH_VOCAL_EXCLUSION_MS = 500
 _CRASH_TILT_DEG = "78.5"
+# The mined pose exceeds the hardware-safety tilt ceiling (_TILT_LIMIT_DEG,
+# 2026-07-23 user correction: "the +- 90 were the limits not the amount to
+# change") -- clamp it once here rather than re-deriving in every builder.
+_CRASH_TILT_DEG_CLAMPED = f"{_clamp_tilt(float(_CRASH_TILT_DEG)):.1f}"
 _CRASH_PAN_OFFSET_DEG = "10.5"
 # The punch starts this long before the crash mark and still ends
 # _CRASH_EFFECT_DURATION_MS after it (user request, 2026-07-16), matching
@@ -1275,7 +1319,7 @@ def _build_crash_head_settings(head_count: int, dimmer_curve: str) -> str:
         f"Dimmer: {dimmer_curve};"
         f"Wheel: {_COLOR_WHITE};"
         "Shutter: On;"
-        f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG};"
+        f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG_CLAMPED};"
         f"PanOffset: {_CRASH_PAN_OFFSET_DEG};TiltOffset: 0.0;"
         "Groupings: 1;Cycles: 1.0;"
         f"Heads: {heads_field}"
@@ -1292,7 +1336,7 @@ def _build_warmup_head_settings(head_count: int) -> str:
     """
     heads_field = _COMMA_ESCAPE.join(str(i) for i in range(1, head_count + 1))
     return (
-        f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG};"
+        f"Pan: 0.0;Tilt: {_CRASH_TILT_DEG_CLAMPED};"
         f"PanOffset: {_CRASH_PAN_OFFSET_DEG};TiltOffset: 0.0;"
         "Groupings: 1;Cycles: 1.0;"
         f"Heads: {heads_field}"
@@ -1590,8 +1634,8 @@ def place_moving_head_keyword_accents(
                     )
                     warmup_params = _build_parameters(
                         {head_index: warmup_settings},
-                        slider_pan=_deg_to_slider(_ACCENT_STATIC_PAN_DEG),
-                        slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
+                        slider_pan=_slider_pan(_ACCENT_STATIC_PAN_DEG),
+                        slider_tilt=_slider_tilt(_ACCENT_STATIC_TILT_DEG),
                     )
                     prior_ends = [p.end_ms for p in head_existing if p.end_ms <= start_ms]
                     # Capped to _PREFERRED_WARMUP_DURATION_MS (3s), NOT the
@@ -1639,7 +1683,7 @@ def place_moving_head_keyword_accents(
                 warmup_pan, warmup_tilt = -_SHAKE_PAN_AMPLITUDE_DEG, _SHAKE_STATIC_TILT_DEG
                 params = _build_parameters(
                     {i: settings for i in range(1, head_count + 1)},
-                    slider_tilt=_deg_to_slider(_SHAKE_STATIC_TILT_DEG),
+                    slider_tilt=_slider_tilt(_SHAKE_STATIC_TILT_DEG),
                 )
                 params["E_VALUECURVE_MHPan"] = _pan_lrl_vc_descriptor(
                     -_SHAKE_PAN_AMPLITUDE_DEG, _SHAKE_PAN_AMPLITUDE_DEG, -_SHAKE_PAN_AMPLITUDE_DEG,
@@ -1649,7 +1693,7 @@ def place_moving_head_keyword_accents(
                 warmup_pan, warmup_tilt = 0.0, _BOUNCE_TILT_LO_DEG
                 params = _build_parameters(
                     {i: settings for i in range(1, head_count + 1)},
-                    slider_pan=_deg_to_slider(0.0),
+                    slider_pan=_slider_pan(0.0),
                 )
                 params["E_VALUECURVE_MHTilt"] = _tilt_vc_descriptor(
                     _BOUNCE_TILT_LO_DEG, _BOUNCE_TILT_HI_DEG, _BOUNCE_TILT_LO_DEG,
@@ -1660,7 +1704,7 @@ def place_moving_head_keyword_accents(
             warmup_settings = _build_static_warmup_settings(head_count, warmup_pan, warmup_tilt)
             warmup_params = _build_parameters(
                 {i: warmup_settings for i in range(1, head_count + 1)},
-                slider_pan=_deg_to_slider(warmup_pan), slider_tilt=_deg_to_slider(warmup_tilt),
+                slider_pan=_slider_pan(warmup_pan), slider_tilt=_slider_tilt(warmup_tilt),
             )
             prior_ends = [p.end_ms for p in channel_existing if p.end_ms <= start_ms]
             # Capped -- see the matching comment in the "spin" branch above.
@@ -1738,8 +1782,8 @@ def place_moving_head_crash_accents(
         warmup_settings = _build_warmup_head_settings(head_count)
         warmup_params = _build_parameters(
             {i: warmup_settings for i in range(1, head_count + 1)},
-            slider_pan=_deg_to_slider(0.0),
-            slider_tilt=_deg_to_slider(float(_CRASH_TILT_DEG)),
+            slider_pan=_slider_pan(0.0),
+            slider_tilt=_slider_tilt(float(_CRASH_TILT_DEG)),
             slider_pan_offset=_deg_to_slider(float(_CRASH_PAN_OFFSET_DEG)),
         )
         # Every existing placement that touches this group's channels --
@@ -1768,8 +1812,8 @@ def place_moving_head_crash_accents(
             crash_settings = _build_crash_head_settings(head_count, dimmer_curve)
             params = _build_parameters(
                 {i: crash_settings for i in range(1, head_count + 1)},
-                slider_pan=_deg_to_slider(0.0),
-                slider_tilt=_deg_to_slider(float(_CRASH_TILT_DEG)),
+                slider_pan=_slider_pan(0.0),
+                slider_tilt=_slider_tilt(float(_CRASH_TILT_DEG)),
                 slider_pan_offset=_deg_to_slider(float(_CRASH_PAN_OFFSET_DEG)),
             )
             # Includes crash marks already placed earlier in this same
@@ -1947,7 +1991,7 @@ def _build_accent_parameters(pan_deg: float, tilt_deg: float, head_index: int,
     settings = _build_accent_head_settings(head_index, pan_deg, tilt_deg, pattern_name)
     params = _build_parameters(
         {head_index: settings},
-        slider_pan=_deg_to_slider(pan_deg), slider_tilt=_deg_to_slider(tilt_deg),
+        slider_pan=_slider_pan(pan_deg), slider_tilt=_slider_tilt(tilt_deg),
     )
     if pattern_name is not None:
         width, height, x_offset, y_offset = _PATTERN_SHAPES[pattern_name]
@@ -2035,8 +2079,8 @@ def _place_random_head_accents(
             )
             warmup_params = _build_parameters(
                 {head_index: warmup_settings},
-                slider_pan=_deg_to_slider(_ACCENT_STATIC_PAN_DEG),
-                slider_tilt=_deg_to_slider(_ACCENT_STATIC_TILT_DEG),
+                slider_pan=_slider_pan(_ACCENT_STATIC_PAN_DEG),
+                slider_tilt=_slider_tilt(_ACCENT_STATIC_TILT_DEG),
             )
             prior_ends = [p.end_ms for p in head_placements if p.end_ms <= start_ms]
             # Capped -- confirmed against a real generated .xsq (2026-07-21)
@@ -2185,15 +2229,15 @@ def place_moving_head_ending_punches(
         settings = _build_ending_punch_head_settings(head_count)
         params = _build_parameters(
             {i: settings for i in range(1, head_count + 1)},
-            slider_pan=_deg_to_slider(0.0),
-            slider_tilt=_deg_to_slider(0.0),
+            slider_pan=_slider_pan(0.0),
+            slider_tilt=_slider_tilt(0.0),
             slider_pan_offset=_deg_to_slider(0.0),
         )
         warmup_settings = _build_ending_warmup_head_settings(head_count)
         warmup_params = _build_parameters(
             {i: warmup_settings for i in range(1, head_count + 1)},
-            slider_pan=_deg_to_slider(0.0),
-            slider_tilt=_deg_to_slider(0.0),
+            slider_pan=_slider_pan(0.0),
+            slider_tilt=_slider_tilt(0.0),
             slider_pan_offset=_deg_to_slider(0.0),
         )
         relevant_keys = (mh_group.name, *mh_group.head_names)
