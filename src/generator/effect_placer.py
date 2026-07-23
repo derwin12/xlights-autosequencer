@@ -12,6 +12,7 @@ from src.generator.corpus_recipes import (
     _LIGHTNING_FLICKER,
     _SHAPE_MATRIX_STAR,
     PropFamilyRecipe,
+    SHAPE_LYRIC_WORD_MAP,
     recipe_for_group,
     section_qualifies,
 )
@@ -804,6 +805,7 @@ def place_effects(
     variant_library=None,
     rotation_plan: RotationPlan | None = None,
     progress_cb: Callable[[str], None] | None = None,
+    vocal_words: list[dict] | None = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place effects from theme layers onto power groups, aligned to timing tracks.
 
@@ -1015,6 +1017,7 @@ def place_effects(
                             theme_palette=tier_palette,
                             occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                             theme_occasion=theme.occasion,
+                            vocal_words=vocal_words,
                         )
                         if recipe_placements:
                             corpus_recipe_done.add(group.name)
@@ -1151,6 +1154,7 @@ def place_effects(
                                 theme_palette=tier_palette,
                                 occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                                 theme_occasion=theme.occasion,
+                                vocal_words=vocal_words,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1231,6 +1235,7 @@ def place_effects(
                                 theme_palette=tier_palette,
                                 occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                                 theme_occasion=theme.occasion,
+                                vocal_words=vocal_words,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1362,6 +1367,7 @@ def place_effects(
                         theme_palette=tier_palette,
                         occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                         theme_occasion=theme.occasion,
+                        vocal_words=vocal_words,
                     )
                     if recipe_placements:
                         corpus_recipe_done.add(group.name)
@@ -2217,6 +2223,30 @@ def _vu_meter_track_available(
     )
 
 
+def _matched_shape_preset_for_lyrics(
+    vocal_words: list[dict] | None, start_ms: int, end_ms: int,
+) -> tuple[tuple[str, str], ...] | None:
+    """Look up SHAPE_LYRIC_WORD_MAP against the lyric words overlapping this
+    section's time range (user request, 2026-07-23: "the lyrics say love
+    and friends and we are showing stars — can we be smarter?"). Returns
+    the first match found (word order in the section), or None so the
+    caller falls back to the existing season-based Snowflake/Star pick."""
+    if not vocal_words:
+        return None
+    for word in vocal_words:
+        word_start = word.get("start_ms")
+        word_end = word.get("end_ms")
+        if word_start is None or word_end is None:
+            continue
+        if not (start_ms <= word_start < end_ms):
+            continue
+        label = str(word.get("label") or word.get("word") or "").strip().lower()
+        preset = SHAPE_LYRIC_WORD_MAP.get(label)
+        if preset is not None:
+            return preset
+    return None
+
+
 def _place_corpus_recipe(
     group: PowerGroup,
     recipe: PropFamilyRecipe,
@@ -2228,6 +2258,7 @@ def _place_corpus_recipe(
     theme_palette: list[str] | None = None,
     occurrence_index: int | None = None,
     theme_occasion: str | None = None,
+    vocal_words: list[dict] | None = None,
 ) -> list[EffectPlacement] | None:
     """Place a corpus-mined prop-family idiom: solid-palette segments spanning
     consecutive beats, back-to-back across the section (the mined shows place
@@ -2270,17 +2301,29 @@ def _place_corpus_recipe(
         if effect_library.effects.get(rotated_name) is not None:
             effect_name = rotated_name
             rotation_params = rotated_params
-            # Snowflake is a christmas-specific shape (mined 2026-07-23 from
-            # a vendor's matrix idiom); swap to the season-neutral Star
-            # variant for halloween/general themes so it never renders a
-            # snowflake outside a christmas-occasion sequence.
-            if (
-                effect_name == "Shape"
-                and theme_occasion is not None
-                and theme_occasion != "christmas"
-                and dict(rotation_params).get("E_CHOICE_Shape_ObjectToDraw") == "Snowflake"
-            ):
-                rotation_params = _SHAPE_MATRIX_STAR
+            if effect_name == "Shape":
+                # A lyric word naming an obvious icon (love -> Heart, snow
+                # -> Snowflake, tree -> Tree) takes precedence over the
+                # season-based pick (user request, 2026-07-23: "the lyrics
+                # say love and friends and we are showing stars — can we
+                # be smarter?"). Falls through to the existing
+                # Snowflake/Star occasion swap when no word matches.
+                lyric_preset = _matched_shape_preset_for_lyrics(
+                    vocal_words, section.start_ms, section.end_ms,
+                )
+                if lyric_preset is not None:
+                    rotation_params = lyric_preset
+                elif (
+                    theme_occasion is not None
+                    and theme_occasion != "christmas"
+                    and dict(rotation_params).get("E_CHOICE_Shape_ObjectToDraw") == "Snowflake"
+                ):
+                    # Snowflake is a christmas-specific shape (mined
+                    # 2026-07-23 from a vendor's matrix idiom); swap to the
+                    # season-neutral Star variant for halloween/general
+                    # themes so it never renders a snowflake outside a
+                    # christmas-occasion sequence.
+                    rotation_params = _SHAPE_MATRIX_STAR
             elif effect_name == "VU Meter" and not _vu_meter_track_available(
                 dict(rotation_params).get("E_CHOICE_VUMeter_TimingTrack"), hierarchy,
                 section.start_ms, section.end_ms,
@@ -2392,15 +2435,17 @@ def _place_corpus_recipe(
     else:
         primary_layer_idx = mask_layer_idx
 
-    if effect_name == "VU Meter":
+    if effect_name in ("VU Meter", "Shape"):
         # One section-spanning placement, not per-beat chunks: the real
-        # vendor sequences run VU Meter as one long block (12-35s spans in
-        # the mined sample) so xLights' own timing-event sweep can pick up
-        # every mark inside it. Per-beat segmentation (like Shockwave)
-        # would chop it into many short windows, most of which contain
-        # zero marks from a sparse track (Kick Hits/Riff Bursts/stem
-        # onsets) and render as a dead, untriggered effect — the exact bug
-        # a user caught in a real generated .xsq (2026-07-23).
+        # vendor sequences run both effects as one long block (VU Meter
+        # 12-35s; Shape spans up to 46-112s in the mined sample), not
+        # per-beat bursts. Per-beat segmentation (like Shockwave) chops VU
+        # Meter into windows with no timing-track marks to trigger it (bug
+        # caught in a real generated .xsq, 2026-07-23) and chops Shape into
+        # rapid back-to-back repeats of the same short icon-pop animation
+        # (same real-file review, same day) -- Shape's own internal
+        # Growth/Lifetime/Count randomization already produces varied
+        # icon timing within one long placement, same as the mined idiom.
         p = _make_placement(
             effect_def, group.name, section.start_ms, section.end_ms,
             params, palette, layer.blend_mode, "section",

@@ -143,7 +143,8 @@ def _place(section: SectionEnergy, group: PowerGroup,
            hierarchy: HierarchyResult | None = None,
            library_names: tuple[str, ...] = _DEFAULT_LIBRARY_NAMES,
            active_tiers: frozenset[int] = frozenset({1, 6}),
-           corpus_occurrence: dict[str, int] | None = None):
+           corpus_occurrence: dict[str, int] | None = None,
+           vocal_words: list[dict] | None = None):
     layers = layers or [EffectLayer(variant="Color Wash")]
     library = _make_library(*library_names)
     variant_library = _make_variant_library(*library_names)
@@ -154,6 +155,7 @@ def _place(section: SectionEnergy, group: PowerGroup,
         assignment, [group], library,
         hierarchy if hierarchy is not None else _make_hierarchy(_BEATS),
         variant_library=variant_library,
+        vocal_words=vocal_words,
     )
 
 
@@ -1722,6 +1724,70 @@ class TestMatrixMotionRotation:
         shapes = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Shape"]
         assert shapes
         assert shapes[0].color_palette != ["#FFFFFF"]
+
+    def test_shape_is_one_section_spanning_placement_not_per_beat(self) -> None:
+        # Real vendor sequences run Shape as one long block (up to 46-112s
+        # in the mined sample), not per-beat chunks (2026-07-23) — per-beat
+        # segmentation produced rapid back-to-back repeats of the same
+        # short icon-pop animation.
+        full_lib = _LIBRARY_WITH_ON + ("Shape",)
+        section = _make_section(label="chorus", start_ms=0, end_ms=8000)
+        result = _place(section, _MATRIX_GROUP,
+                        library_names=full_lib, corpus_occurrence={"matrix": 6})
+        shapes = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Shape"]
+        assert len(shapes) == 1
+        assert shapes[0].start_ms == section.start_ms
+        assert shapes[0].end_ms == section.end_ms
+
+    def test_shape_presets_use_music_triggered_spawning(self) -> None:
+        # UseMusic=1 + Sensitivity=50 (user request, 2026-07-23) so Shape's
+        # icon spawning reacts to the song instead of a fixed internal
+        # Growth/Lifetime timer.
+        full_lib = _LIBRARY_WITH_ON + ("Shape",)
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        library_names=full_lib, corpus_occurrence={"matrix": 6})
+        shapes = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Shape"]
+        assert shapes
+        params = dict(shapes[0].parameters)
+        assert params["E_CHECKBOX_Shape_UseMusic"] == "1"
+        assert params["E_SLIDER_Shape_Sensitivity"] == "50"
+
+    def test_shape_lyric_word_love_overrides_to_heart(self) -> None:
+        # User request, 2026-07-23: "the lyrics say love and friends and
+        # we are showing stars — can we be smarter?" A lyric word naming
+        # an obvious icon takes precedence over the season-based pick.
+        full_lib = _LIBRARY_WITH_ON + ("Shape",)
+        words = [{"label": "love", "start_ms": 100, "end_ms": 300}]
+        result = _place(_make_section(label="chorus", start_ms=0, end_ms=8000), _MATRIX_GROUP,
+                        library_names=full_lib, corpus_occurrence={"matrix": 6},
+                        vocal_words=words)
+        shapes = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Shape"]
+        assert shapes
+        assert dict(shapes[0].parameters)["E_CHOICE_Shape_ObjectToDraw"] == "Heart"
+
+    def test_shape_lyric_word_outside_section_ignored(self) -> None:
+        # A matching word well outside this section's time range must not
+        # affect this section's pick.
+        full_lib = _LIBRARY_WITH_ON + ("Shape",)
+        words = [{"label": "love", "start_ms": 20000, "end_ms": 20300}]
+        result = _place(_make_section(label="chorus", start_ms=0, end_ms=8000), _MATRIX_GROUP,
+                        library_names=full_lib, corpus_occurrence={"matrix": 6},
+                        vocal_words=words)
+        shapes = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Shape"]
+        assert shapes
+        assert dict(shapes[0].parameters)["E_CHOICE_Shape_ObjectToDraw"] == "Star"
+
+    def test_shape_no_lyric_match_falls_back_to_occasion_swap(self) -> None:
+        # "friends" has no obvious icon and isn't in the curated map — the
+        # existing christmas/non-christmas Snowflake->Star swap still runs.
+        full_lib = _LIBRARY_WITH_ON + ("Shape",)
+        words = [{"label": "friends", "start_ms": 100, "end_ms": 300}]
+        result = _place(_make_section(label="chorus", start_ms=0, end_ms=8000), _MATRIX_GROUP,
+                        library_names=full_lib, corpus_occurrence={"matrix": 6},
+                        vocal_words=words)
+        shapes = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Shape"]
+        assert shapes
+        assert dict(shapes[0].parameters)["E_CHOICE_Shape_ObjectToDraw"] == "Star"
 
     def test_vu_meter_renders_beneath_spirals_with_no_on_mask_layer(self) -> None:
         full_lib = _LIBRARY_WITH_ON + ("VU Meter",)

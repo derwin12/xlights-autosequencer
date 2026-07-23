@@ -469,25 +469,30 @@ _COLOR_WASH_MATRIX: tuple[tuple[str, str], ...] = (
 
 # Matrix Shape preset, Snowflake variant — mined from the same second-vendor
 # sample (21 Shape placements): FadeAway/HoldColour/RandomInitial/
-# RandomLocation on, UseMusic/RandomMovement off (all unanimous), Snowflake
-# the dominant ObjectToDraw (17/21, 81%), Growth 10 the dominant value
-# (10/21). Season-specific — only selected for christmas-occasion themes
-# (see _place_corpus_recipe's Shape occasion swap); _SHAPE_MATRIX_STAR is
-# the season-neutral alternate for halloween/general themes. StartSize
-# bumped 1 -> 3 (user request, 2026-07-23: a real generated Shape placement
-# with StartSize=1 looked too small — 3 is the minimum readable size).
+# RandomLocation on, RandomMovement off (all unanimous), Snowflake the
+# dominant ObjectToDraw (17/21, 81%), Growth 10 the dominant value (10/21).
+# Season-specific — only selected for christmas-occasion themes (see
+# _place_corpus_recipe's Shape occasion swap); _SHAPE_MATRIX_STAR is the
+# season-neutral alternate for halloween/general themes. Two deliberate
+# adjustments away from the raw mined value, both user-requested after
+# reviewing a real generated .xsq (2026-07-23): StartSize bumped 1 -> 3
+# (1 looked too small to read), and UseMusic flipped 0 -> 1 with
+# Sensitivity=50 (music-triggered spawning "simplifies the coordination
+# with the song" vs. the mined idiom's fixed Growth/Lifetime timer, and
+# pairs naturally with the single section-spanning placement below).
 _SHAPE_MATRIX_SNOWFLAKE: tuple[tuple[str, str], ...] = (
     ("E_CHECKBOX_Shape_FadeAway", "1"),
     ("E_CHECKBOX_Shape_FireTiming", "0"),
     ("E_CHECKBOX_Shape_HoldColour", "1"),
     ("E_CHECKBOX_Shape_RandomInitial", "1"),
     ("E_CHECKBOX_Shape_RandomLocation", "1"),
-    ("E_CHECKBOX_Shape_UseMusic", "0"),
+    ("E_CHECKBOX_Shape_UseMusic", "1"),
     ("E_CHECKBOX_Shapes_RandomMovement", "0"),
     ("E_CHOICE_Shape_ObjectToDraw", "Snowflake"),
     ("E_SLIDER_Shape_Growth", "10"),
     ("E_SLIDER_Shape_Lifetime", "5"),
     ("E_SLIDER_Shape_Rotation", "0"),
+    ("E_SLIDER_Shape_Sensitivity", "50"),
     ("E_SLIDER_Shape_StartSize", "3"),
     ("E_SLIDER_Shapes_Direction", "90"),
     ("E_SLIDER_Shapes_Velocity", "0"),
@@ -506,19 +511,90 @@ _SHAPE_MATRIX_STAR: tuple[tuple[str, str], ...] = (
     ("E_CHECKBOX_Shape_HoldColour", "1"),
     ("E_CHECKBOX_Shape_RandomInitial", "1"),
     ("E_CHECKBOX_Shape_RandomLocation", "1"),
-    ("E_CHECKBOX_Shape_UseMusic", "0"),
+    ("E_CHECKBOX_Shape_UseMusic", "1"),
     ("E_CHECKBOX_Shapes_RandomMovement", "0"),
     ("E_CHOICE_Shape_ObjectToDraw", "Star"),
     ("E_SLIDER_Shape_Growth", "5"),
     ("E_SLIDER_Shape_Lifetime", "5"),
     ("E_SLIDER_Shape_Points", "8"),
     ("E_SLIDER_Shape_Rotation", "0"),
+    ("E_SLIDER_Shape_Sensitivity", "50"),
     ("E_SLIDER_Shape_StartSize", "3"),
     ("E_SLIDER_Shape_Thickness", "1"),
     ("E_SLIDER_Shapes_Direction", "90"),
     ("E_SLIDER_Shapes_Velocity", "0"),
     ("E_TEXTCTRL_Shape_Count", "7"),
 )
+
+
+# Matrix Shape preset, Heart variant — not mined (no Heart placements in
+# the sample); built on the same base fields as _SHAPE_MATRIX_STAR since
+# those (fade/hold/random/growth/lifetime/count/startsize) are unanimous
+# across every mined Shape sample regardless of object, only the object-
+# specific extras (Star's Points/Thickness) are dropped. Used only when a
+# lyric word matches _SHAPE_LYRIC_WORD_MAP (user request, 2026-07-23: "the
+# lyrics say love and friends and we are showing stars — can we be
+# smarter?") — never picked by the season-based rotation on its own.
+_SHAPE_MATRIX_HEART: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Shape_FadeAway", "1"),
+    ("E_CHECKBOX_Shape_FireTiming", "0"),
+    ("E_CHECKBOX_Shape_HoldColour", "1"),
+    ("E_CHECKBOX_Shape_RandomInitial", "1"),
+    ("E_CHECKBOX_Shape_RandomLocation", "1"),
+    ("E_CHECKBOX_Shape_UseMusic", "1"),
+    ("E_CHECKBOX_Shapes_RandomMovement", "0"),
+    ("E_CHOICE_Shape_ObjectToDraw", "Heart"),
+    ("E_SLIDER_Shape_Growth", "5"),
+    ("E_SLIDER_Shape_Lifetime", "5"),
+    ("E_SLIDER_Shape_Rotation", "0"),
+    ("E_SLIDER_Shape_Sensitivity", "50"),
+    ("E_SLIDER_Shape_StartSize", "3"),
+    ("E_SLIDER_Shapes_Direction", "90"),
+    ("E_SLIDER_Shapes_Velocity", "0"),
+    ("E_TEXTCTRL_Shape_Count", "7"),
+)
+
+
+# Matrix Shape preset, Tree variant — same rationale as Heart above (not
+# mined, built on the shared base fields); used only for a lyric word match.
+_SHAPE_MATRIX_TREE: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Shape_FadeAway", "1"),
+    ("E_CHECKBOX_Shape_FireTiming", "0"),
+    ("E_CHECKBOX_Shape_HoldColour", "1"),
+    ("E_CHECKBOX_Shape_RandomInitial", "1"),
+    ("E_CHECKBOX_Shape_RandomLocation", "1"),
+    ("E_CHECKBOX_Shape_UseMusic", "1"),
+    ("E_CHECKBOX_Shapes_RandomMovement", "0"),
+    ("E_CHOICE_Shape_ObjectToDraw", "Tree"),
+    ("E_SLIDER_Shape_Growth", "5"),
+    ("E_SLIDER_Shape_Lifetime", "5"),
+    ("E_SLIDER_Shape_Rotation", "0"),
+    ("E_SLIDER_Shape_Sensitivity", "50"),
+    ("E_SLIDER_Shape_StartSize", "3"),
+    ("E_SLIDER_Shapes_Direction", "90"),
+    ("E_SLIDER_Shapes_Velocity", "0"),
+    ("E_TEXTCTRL_Shape_Count", "7"),
+)
+
+
+# Small curated lyric-word -> Shape preset map (2026-07-23). Deliberately
+# narrow: only words with an unambiguous, obvious icon match are included
+# rather than guessing at contrived mappings for every possible lyric.
+# Checked against the section's overlapping words in _place_corpus_recipe;
+# takes precedence over the season-based Snowflake/Star swap when a word
+# matches (a lyric explicitly naming snow justifies a snowflake even in a
+# non-christmas-occasion song). Falls back to the season-based pick when
+# no word in the section matches any key here.
+SHAPE_LYRIC_WORD_MAP: dict[str, tuple[tuple[str, str], ...]] = {
+    "love": _SHAPE_MATRIX_HEART,
+    "heart": _SHAPE_MATRIX_HEART,
+    "hearts": _SHAPE_MATRIX_HEART,
+    "snow": _SHAPE_MATRIX_SNOWFLAKE,
+    "snowflake": _SHAPE_MATRIX_SNOWFLAKE,
+    "snowflakes": _SHAPE_MATRIX_SNOWFLAKE,
+    "tree": _SHAPE_MATRIX_TREE,
+    "trees": _SHAPE_MATRIX_TREE,
+}
 
 
 # Matrix VU Meter presets — mined from the same second-vendor sample (12

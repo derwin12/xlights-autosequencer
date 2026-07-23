@@ -301,6 +301,7 @@ def build_plan(
             variant_library=variant_library,
             rotation_plan=rotation_plan,
             progress_cb=section_cb,
+            vocal_words=config.vocal_words,
         )
         assignment.group_effects = group_effects
 
@@ -1058,6 +1059,7 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
             assignment, groups, effect_library, hierarchy,
             variant_library=variant_library,
             rotation_plan=rotation_plan,
+            vocal_words=config.vocal_words,
         )
         assignment.group_effects = group_effects
 

@@ -29,6 +29,12 @@ _EXPECTED_PARAMS = (
     # per-section creative decision — FR-020 forbids decision kwargs that
     # belong on SectionAssignment, which this is not.
     "progress_cb",
+    # vocal_words is whole-song WhisperX word timing (same category as
+    # `hierarchy` above — song-wide analysis data, not a per-section
+    # creative decision computed once and cached on SectionAssignment).
+    # Added 2026-07-23 so _place_corpus_recipe can match a section's
+    # overlapping lyric words against SHAPE_LYRIC_WORD_MAP.
+    "vocal_words",
 )
 
 _FORBIDDEN_PARAMS = frozenset({
