@@ -645,9 +645,14 @@ def write_xsq(
     # split into a second "Lyrics - Backup" 3-layer track instead of one
     # combined track — see _place_singing_faces/_place_lyric_text in
     # effect_placer.py for the matching Faces/Text placement split.
+    # Annotated-lyric attribution (words carry a `singers` list + `backing`)
+    # supersedes the audio-based binary lead/backup split: it drives one
+    # "Lyrics - <name>" track per named singer plus a Backing track below.
+    has_attribution = bool(words) and any(w.get("singers") is not None for w in (words or []))
+
     backup_words: list[dict] = []
     backup_phonemes: list[dict] = []
-    if vocal_diarization and words and phonemes:
+    if vocal_diarization and words and phonemes and not has_attribution:
         phonemes_with_speaker = _attribute_phoneme_speakers(phonemes, words)
         lead_words = [w for w in words if w.get("speaker", 0) == 0]
         backup_words = [w for w in words if w.get("speaker", 0) == 1]
@@ -664,6 +669,18 @@ def write_xsq(
         if backup_words else []
     )
 
+    # Named per-singer tracks from annotated-lyric attribution. A shared/"Both"
+    # word rides on each of its singers' tracks; backing words form a Backing
+    # track. Empty unless words carry attribution (see has_attribution above).
+    attributed_layers: list[tuple[str, list]] = []
+    if has_attribution and phonemes:
+        from src.analyzer.lyric_attribution import group_marks_by_named_singer
+        phon_groups = dict(group_marks_by_named_singer(phonemes))
+        for name, wsub in group_marks_by_named_singer(words):
+            layers = _build_lyric_layers(None, wsub, phon_groups.get(name, []))
+            if layers:
+                attributed_layers.append((f"Lyrics - {name}", layers))
+
     # Add timing track display elements. "Sections" uses the classified
     # section roles (verse/chorus/bridge/...) instead of the raw segmentino/
     # QM-segmenter labels (letters, N#, "qm_boundary") when available (user
@@ -678,6 +695,8 @@ def write_xsq(
         timing_names.append("Lyrics")
     if backup_lyric_layers:
         timing_names.append("Lyrics - Backup")
+    for track_name, _layers in attributed_layers:
+        timing_names.append(track_name)
     for track_name in timing_names:
         elem = ET.SubElement(display_el, "Element")
         elem.set("type", "timing")
@@ -755,6 +774,16 @@ def write_xsq(
         timing_el.set("type", "timing")
         timing_el.set("name", "Lyrics - Backup")
         for layer_marks in backup_lyric_layers:
+            layer_el = ET.SubElement(timing_el, "EffectLayer")
+            _emit_timing_layer(layer_el, layer_marks, offset,
+                               int(plan.song_profile.duration_ms))
+
+    # Named per-singer tracks from annotated-lyric attribution.
+    for track_name, layers in attributed_layers:
+        timing_el = ET.SubElement(effects_el, "Element")
+        timing_el.set("type", "timing")
+        timing_el.set("name", track_name)
+        for layer_marks in layers:
             layer_el = ET.SubElement(timing_el, "EffectLayer")
             _emit_timing_layer(layer_el, layer_marks, offset,
                                int(plan.song_profile.duration_ms))

@@ -367,6 +367,22 @@ def _analyze_stub(state: "_RunState", source_path: str, song_id: str) -> None:
                              "elapsed_ms": int((_time.monotonic() - _t0) * 1000)}})
 
 
+import re as _re
+
+# A part-annotated lyric header carries a singer after a colon, e.g.
+# "[Verse 1: Blake Shelton]" or "[Chorus: Gwen Stefani & Blake Shelton]".
+_SINGER_HEADER_RE = _re.compile(r"^\s*\[[^\]:]+:[^\]]+\]\s*$", _re.MULTILINE)
+
+
+def _has_singer_annotations(text: str | None) -> bool:
+    """True when pasted lyrics contain at least one ``[Section: Singer]`` header.
+
+    Guards attribution so plain (un-annotated) pasted lyrics are never
+    misread as all-backing by the parser.
+    """
+    return bool(text) and bool(_SINGER_HEADER_RE.search(text))
+
+
 def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                             audio_bytes: bytes | None) -> None:
     """Run the full hierarchy analysis pipeline in a background thread.
@@ -684,6 +700,12 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                 words_list, phonemes_list, lyrics_warnings = align_words_and_phonemes(
                     str(src), lyrics_list or None, cached_lyrics_text,
                 )
+                # Part-annotated lyrics ([Verse: Name] + (ad-libs)) give a
+                # deterministic per-singer split that supersedes audio
+                # diarization. Only when real singer headers are present.
+                if words_list and _has_singer_annotations(cached_lyrics_text):
+                    from src.analyzer.lyric_attribution import apply_to_marks
+                    apply_to_marks(words_list, phonemes_list, cached_lyrics_text)
                 state.push({"detector": "phonemes (whisperx)", "library": "story",
                             "status": "done", "confidence": None,
                             "marks": len(phonemes_list), "warnings": lyrics_warnings})

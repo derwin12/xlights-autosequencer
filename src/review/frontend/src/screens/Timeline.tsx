@@ -5,6 +5,7 @@ import { Waveform } from '../components/Waveform/Waveform';
 import { Ruler } from '../components/Ruler/Ruler';
 import { SectionStrip } from '../components/SectionStrip/SectionStrip';
 import { LyricTrack } from '../components/LyricTrack/LyricTrack';
+import { SingerLane, type AttrWord } from '../components/SingerLane/SingerLane';
 import { LightsPreview } from '../components/LightsPreview/LightsPreview';
 import { AlgoTrack } from '../components/AlgoTrack/AlgoTrack';
 import { StemWaveforms } from '../components/StemWaveforms/StemWaveforms';
@@ -45,6 +46,8 @@ interface Analysis {
   key_changes?: number[];
   lyrics?: { t_ms: number; duration_ms: number; text: string }[];
   lyrics_text_found?: boolean;
+  words?: AttrWord[];
+  phonemes?: { label: string; start_ms: number; end_ms: number; singers?: string[]; backing?: boolean }[];
   value_curves?: Record<string, { fps: number; values: number[] }>;
   detectors: { name: string; library: string; status: string; confidence: number | null; error: string | null; marks?: number; kind?: string }[];
   completed_at: string;
@@ -204,6 +207,21 @@ export function Timeline({ song, analysis, assignments, themes, onNavigateTheme 
   const waveformAreaRef = useRef<HTMLDivElement>(null);
 
   const durationMs = song.duration_ms;
+
+  // Per-singer attribution editing (SingerLane). Local copy for instant
+  // relabels; persisted via PUT /words. Resync on song / analysis change.
+  const [attrWords, setAttrWords] = useState<AttrWord[]>(analysis.words ?? []);
+  useEffect(() => {
+    setAttrWords(analysis.words ?? []);
+  }, [analysis.words, song.song_id]);
+  const commitAttrWords = useCallback((next: AttrWord[]) => {
+    setAttrWords(next);
+    fetch(`/api/v1/songs/${song.song_id}/words`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: next }),
+    }).catch(() => { /* keep local edit; re-surfaced on next load if it failed */ });
+  }, [song.song_id]);
 
   // Compute visible window
   const viewDurationMs = durationMs / zoomLevel;
@@ -449,6 +467,19 @@ export function Timeline({ song, analysis, assignments, themes, onNavigateTheme 
               viewEndMs={zoomLevel > 1 ? viewEndMs : undefined}
             />
           </div>
+
+          {attrWords.length > 0 && (
+            <div className={styles.trackAligned}>
+              <div className={styles.trackAlignedLabel}>SINGERS</div>
+              <SingerLane
+                words={attrWords}
+                durationMs={durationMs}
+                viewStartMs={zoomLevel > 1 ? viewStartMs : undefined}
+                viewEndMs={zoomLevel > 1 ? viewEndMs : undefined}
+                onCommit={commitAttrWords}
+              />
+            </div>
+          )}
 
           <div className={styles.previewRow}>
             <LightsPreview
