@@ -154,7 +154,7 @@ class TestPlaceMovingHeadMoves:
         # letting all 4 pulse in sequence as designed. User saw MH1/MH2
         # come out fully dark while MH3/MH4 kept their intended pulse.
         # variation_seed=6, section_index=0 -> static pool index 6
-        # ("stagger_o_i": MID, LATE, MID, MID for heads 1-4).
+        # ("stagger_o_i": outer heads 1,4 = MID, inner heads 2,3 = LATE).
         # _choose_lit_pair(0, 6) = _HEAD_PAIRS[2] = (1, 4) -- so heads 2
         # and 3 are the ones that would have been wrongly flattened.
         from src.generator.moving_head import _DIMMER_LATE_PULSE, _DIMMER_MID_PULSE
@@ -173,7 +173,7 @@ class TestPlaceMovingHeadMoves:
 
         assert f"Dimmer: {_DIMMER_MID_PULSE}" in move_settings("MH1", 1)
         assert f"Dimmer: {_DIMMER_LATE_PULSE}" in move_settings("MH2", 2)
-        assert f"Dimmer: {_DIMMER_MID_PULSE}" in move_settings("MH3", 3)
+        assert f"Dimmer: {_DIMMER_LATE_PULSE}" in move_settings("MH3", 3)
         assert f"Dimmer: {_DIMMER_MID_PULSE}" in move_settings("MH4", 4)
         for head_name, head_index in [("MH1", 1), ("MH2", 2), ("MH3", 3), ("MH4", 4)]:
             assert f"Dimmer: {_DIMMER_OFF}" not in move_settings(head_name, head_index)
@@ -227,6 +227,55 @@ class TestPlaceMovingHeadMoves:
         )
         pan_tilt = {p.parameters[key2].split("Pan:")[1].split(";Tilt")[0] for p in placements2}
         assert len(pan_tilt) == 1  # identical Pan value on every bar
+
+    def test_energy_reduced_lit_pair_rotates_per_bar_instead_of_holding(self):
+        # Bug found from a real generated .xsq (2026-07-23): a qualifying-
+        # but-not-peak section (lit_pair reduces to 2 of 4 heads) held the
+        # SAME reduced pair lit for the entire move -- e.g. MH1/MH2 dark
+        # and MH3/MH4 lit for a full ~8s span with no change-up at all,
+        # unlike the full-intensity case which already alternates per bar.
+        # role="chorus" + energy=40 -> qualifies, not full intensity (a
+        # second, louder section rules out the relative-peak exemption).
+        # variation_seed=1, section_index=0 -> static pool index 1
+        # ("l_r_static", per_head, default full-on dimmer, in
+        # _STATIC_HELD_MOVES). lit_pair(section_index=0, variation_seed=1)
+        # = _HEAD_PAIRS[1] = (3, 4) -- this is now bar 0's pair, and
+        # subsequent bars rotate: _HEAD_PAIRS[(1+0+bar_idx)%4].
+        # bar0 -> (3,4), bar1 -> (1,4), bar2 -> (2,3), bar3 -> (1,2).
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [
+            _assignment("chorus", 0, 8_000, 40, variation_seed=1),
+            _assignment("verse", 20_000, 35_000, 95, variation_seed=1),
+        ]
+        bars = _bars(2_000, 5)  # bar marks at 0, 2000, 4000, 6000, 8000
+        result = place_moving_head_moves(layout, assignments, bars=bars)
+
+        def dimmer_states(head_name, head_index):
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            placements = sorted(
+                (p for p in result[head_name]
+                 if "Shutter: On" in p.parameters[key] and p.start_ms < 8_000),
+                key=lambda p: p.start_ms,
+            )
+            return [
+                "full" if f"Dimmer: {_DIMMER_FULL_ON}" in p.parameters[key]
+                else "off" if f"Dimmer: {_DIMMER_OFF}" in p.parameters[key]
+                else "?"
+                for p in placements
+            ]
+
+        assert dimmer_states("MH1", 1) == ["off", "full", "off", "full"]
+        assert dimmer_states("MH2", 2) == ["off", "off", "full", "full"]
+        assert dimmer_states("MH3", 3) == ["full", "off", "full", "off"]
+        assert dimmer_states("MH4", 4) == ["full", "full", "off", "off"]
+        # Every bar reduces to exactly 2 lit heads -- never all 4 (the
+        # section never cleared full intensity) and never all dark.
+        for bar_idx in range(4):
+            lit_count = sum(
+                1 for h, hi in (("MH1", 1), ("MH2", 2), ("MH3", 3), ("MH4", 4))
+                if dimmer_states(h, hi)[bar_idx] == "full"
+            )
+            assert lit_count == 2
 
     def test_short_static_move_under_one_bar_is_unaffected(self):
         # A move too short to contain more than one bar shouldn't split at

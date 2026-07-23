@@ -272,17 +272,24 @@ MOVE_LIBRARY: dict[str, _Move] = {
     "u_d_tilt": _Move("u_d_tilt", "per_head", tuple(
         _HeadPose(pan=-45.0, tilt_vc=(25.0, 80.0, 25.0)) for _ in range(4)
     )),
+    # Outer heads (1,4) vs inner heads (2,3) -- the same outer/inner split
+    # _HEAD_PAIRS already uses elsewhere -- get complementary MID/LATE
+    # pulses, a clean 2-lit/2-lit split matching what "Outside-to-Inside"/
+    # "Inside-to-Outside" actually names. Previously 3 heads shared one
+    # curve and only 1 head had the other (a mining slip), which read as
+    # "3 heads on, 1 off" instead of a paired stagger (user-reported
+    # 2026-07-23 from a real generated .xsq).
     "stagger_o_i": _Move("stagger_o_i", "per_head", (
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),   # 1: outer
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),  # 2: inner
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),  # 3: inner
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),   # 4: outer
     )),
     "stagger_i_o": _Move("stagger_i_o", "per_head", (
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
-        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),  # 1: outer
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),   # 2: inner
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_MID_PULSE),   # 3: inner
+        _HeadPose(pan=0.0, tilt=45.0, dimmer=_DIMMER_LATE_PULSE),  # 4: outer
     )),
     "fan_pan_static": _Move("fan_pan_static", "group", (
         _HeadPose(pan=0.0, tilt=78.5, pan_offset=10.5),
@@ -1196,7 +1203,8 @@ def place_moving_head_moves(
 
                         bar_bounds = (
                             _bar_boundaries_in_range(bars, start_ms, seg_end_ms)
-                            if (move_name in _STATIC_HELD_MOVES and head_toggle_seed is not None
+                            if (move_name in _STATIC_HELD_MOVES
+                                and (head_toggle_seed is not None or lit_pair is not None)
                                 and bars is not None and bars.marks)
                             else [start_ms, seg_end_ms]
                         )
@@ -1221,14 +1229,31 @@ def place_moving_head_moves(
                             # reference-sequence samples that a flat
                             # Dimmer curve per head, not a fancy multi-point
                             # one, is the correct native technique).
+                            #
+                            # A section already energy-reduced to 2 lit
+                            # heads (lit_pair is not None) never goes back
+                            # to "full" -- instead it ROTATES which pair is
+                            # lit every bar, so a long qualifying-but-not-
+                            # peak section doesn't just hold the same 2
+                            # heads dark for its entire span (user-reported
+                            # 2026-07-23 from a real generated .xsq: MH1/MH2
+                            # held dark and MH3/MH4 held lit for a full ~8s
+                            # move with no change-up at all).
                             for bar_idx in range(len(bar_bounds) - 1):
-                                bar_pose = (
-                                    pose if bar_idx % 2 == 0
-                                    else _reduce_to_lit_pair(
+                                if lit_pair is not None:
+                                    bar_pose = _reduce_to_lit_pair(
                                         pose, head_index,
-                                        _HEAD_PAIRS[(head_toggle_seed + bar_idx // 2) % len(_HEAD_PAIRS)],
+                                        _HEAD_PAIRS[(assignment.variation_seed + section_index + bar_idx)
+                                                    % len(_HEAD_PAIRS)],
                                     )
-                                )
+                                else:
+                                    bar_pose = (
+                                        pose if bar_idx % 2 == 0
+                                        else _reduce_to_lit_pair(
+                                            pose, head_index,
+                                            _HEAD_PAIRS[(head_toggle_seed + bar_idx // 2) % len(_HEAD_PAIRS)],
+                                        )
+                                    )
                                 bar_params = _build_per_head_move_parameters(
                                     bar_pose, jitter_pan, jitter_tilt, head_index,
                                 )
