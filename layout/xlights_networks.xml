@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Networks computer="DESKTOP-NUOMS3F" GlobalFPPProxy="" GlobalForceLocalIP="" AutoUpdateFromBase="0" BaseShowDir="" BaseShowDirRelative="">
+<Networks computer="DESKTOP-NUOMS3F" GlobalFPPProxy="" GlobalForceLocalIP="" AutoUpdateFromBase="0" BaseShowDir="" BaseShowDirRelative="" BaseControllersSyncedTime="">
 	<suppressframes frames="20" />
 	<testpreset name="LOR AND RGB DUMB">
 		<channelr start="1" end="528" />
