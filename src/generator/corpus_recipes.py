@@ -473,7 +473,9 @@ _COLOR_WASH_MATRIX: tuple[tuple[str, str], ...] = (
 # the dominant ObjectToDraw (17/21, 81%), Growth 10 the dominant value
 # (10/21). Season-specific — only selected for christmas-occasion themes
 # (see _place_corpus_recipe's Shape occasion swap); _SHAPE_MATRIX_STAR is
-# the season-neutral alternate for halloween/general themes.
+# the season-neutral alternate for halloween/general themes. StartSize
+# bumped 1 -> 3 (user request, 2026-07-23: a real generated Shape placement
+# with StartSize=1 looked too small — 3 is the minimum readable size).
 _SHAPE_MATRIX_SNOWFLAKE: tuple[tuple[str, str], ...] = (
     ("E_CHECKBOX_Shape_FadeAway", "1"),
     ("E_CHECKBOX_Shape_FireTiming", "0"),
@@ -486,7 +488,7 @@ _SHAPE_MATRIX_SNOWFLAKE: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Shape_Growth", "10"),
     ("E_SLIDER_Shape_Lifetime", "5"),
     ("E_SLIDER_Shape_Rotation", "0"),
-    ("E_SLIDER_Shape_StartSize", "1"),
+    ("E_SLIDER_Shape_StartSize", "3"),
     ("E_SLIDER_Shapes_Direction", "90"),
     ("E_SLIDER_Shapes_Velocity", "0"),
     ("E_TEXTCTRL_Shape_Count", "5"),
@@ -496,7 +498,8 @@ _SHAPE_MATRIX_SNOWFLAKE: tuple[tuple[str, str], ...] = (
 # Matrix Shape preset, Star variant — the same sample's other mined
 # ObjectToDraw (4/21, 19%): same fade/hold/random fields, Star with 8 points
 # and thin outline. Season-neutral, so this is the rotation's default and
-# the occasion-swap target for non-christmas themes.
+# the occasion-swap target for non-christmas themes. StartSize bumped
+# 1 -> 3, same reasoning as the Snowflake variant above.
 _SHAPE_MATRIX_STAR: tuple[tuple[str, str], ...] = (
     ("E_CHECKBOX_Shape_FadeAway", "1"),
     ("E_CHECKBOX_Shape_FireTiming", "0"),
@@ -510,7 +513,7 @@ _SHAPE_MATRIX_STAR: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Shape_Lifetime", "5"),
     ("E_SLIDER_Shape_Points", "8"),
     ("E_SLIDER_Shape_Rotation", "0"),
-    ("E_SLIDER_Shape_StartSize", "1"),
+    ("E_SLIDER_Shape_StartSize", "3"),
     ("E_SLIDER_Shape_Thickness", "1"),
     ("E_SLIDER_Shapes_Direction", "90"),
     ("E_SLIDER_Shapes_Velocity", "0"),

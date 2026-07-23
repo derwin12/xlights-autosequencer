@@ -2185,21 +2185,36 @@ def _humanize_group_name(name: str) -> str:
     return label.replace("_", " ").strip()
 
 
-def _vu_meter_track_available(track_name: str | None, hierarchy: HierarchyResult) -> bool:
-    """Whether a VU Meter preset's mapped timing track has marks for this
-    song — mirrors the same tracks `xsq_writer._collect_timing_tracks`
-    exports, since VU Meter references a track by name and a track with no
-    marks is never written to the .xsq at all (e.g. an instrumental song has
-    no "Onsets (vocals)" track)."""
+def _vu_meter_track_marks(track_name: str | None, hierarchy: HierarchyResult) -> list[TimingMark]:
+    """Marks for a VU Meter preset's mapped timing track — mirrors the same
+    tracks `xsq_writer._collect_timing_tracks` exports, since VU Meter
+    references a track by name and a track with no marks is never written
+    to the .xsq at all (e.g. an instrumental song has no "Onsets (vocals)"
+    track)."""
     if track_name == "Kick Hits":
-        return bool(hierarchy.kick_hits)
+        return hierarchy.kick_hits
     if track_name == "Riff Bursts":
-        return bool(hierarchy.riff_bursts)
+        return hierarchy.riff_bursts
     if track_name is not None and track_name.startswith("Onsets ("):
         stem = track_name[len("Onsets ("):-1]
         track = hierarchy.events.get(stem)
-        return bool(track and track.marks)
-    return False
+        return track.marks if track else []
+    return []
+
+
+def _vu_meter_track_available(
+    track_name: str | None, hierarchy: HierarchyResult, start_ms: int, end_ms: int,
+) -> bool:
+    """Whether a VU Meter preset's mapped timing track has at least one mark
+    WITHIN this specific section's time range — not just somewhere in the
+    song. A track that's non-empty overall but has nothing in this section
+    would place an effect with no timing events to trigger it (user report,
+    2026-07-23: VU Meter on Kick Hits at ~2:02s in a real generated .xsq
+    with zero kick hits during that placement's window)."""
+    return any(
+        start_ms <= m.time_ms < end_ms
+        for m in _vu_meter_track_marks(track_name, hierarchy)
+    )
 
 
 def _place_corpus_recipe(
@@ -2267,12 +2282,14 @@ def _place_corpus_recipe(
             ):
                 rotation_params = _SHAPE_MATRIX_STAR
             elif effect_name == "VU Meter" and not _vu_meter_track_available(
-                dict(rotation_params).get("E_CHOICE_VUMeter_TimingTrack"), hierarchy
+                dict(rotation_params).get("E_CHOICE_VUMeter_TimingTrack"), hierarchy,
+                section.start_ms, section.end_ms,
             ):
-                # The mapped timing track has no marks for this song (e.g.
-                # no vocal onsets on an instrumental) — fall back to the
-                # primary pair, same as a rotation effect missing from the
-                # catalog.
+                # The mapped timing track has no marks for this song, or
+                # none within this specific section (e.g. no vocal onsets
+                # on an instrumental, or a section that just doesn't
+                # contain a kick hit) — fall back to the primary pair, same
+                # as a rotation effect missing from the catalog.
                 effect_name = recipe.effect_name
                 rotation_params = None
     elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
@@ -2375,54 +2392,71 @@ def _place_corpus_recipe(
     else:
         primary_layer_idx = mask_layer_idx
 
-    # Primary-motion segment length in beats: 1 for the burst families,
-    # longer for calmer ones (icicles run 2-beat segments per the corpus).
-    # The alt-style occurrence swaps in a sparser mined stride (cane/
-    # horizontal: whole-song ~4-beat pacing), bundled with the same
-    # direction/size occurrence bit rather than a fourth independent axis.
-    stride = recipe.beats_per_placement
-    if use_alt_style and recipe.beats_per_placement_alt is not None:
-        stride = recipe.beats_per_placement_alt
-    beat_stride = max(1, stride)
-    for i in range(0, len(marks), beat_stride):
-        start = marks[i].time_ms
-        if i + beat_stride < len(marks):
-            end = marks[i + beat_stride].time_ms
-        else:
-            end = min(
-                start + max(beat_stride * median_interval, FRAME_INTERVAL_MS),
-                section.end_ms,
-            )
-        if end <= start:
-            continue
-        direction_cycle = (
-            {"param": recipe.direction_field, "values": list(recipe.direction_ping_pong_values)}
-            if use_ping_pong_direction
-            else None
-        )
-        instance_index = i // beat_stride
-        beat_params = params
-        if (
-            beat_stride == 1
-            and effect_name in _FLIP_TRANSFORM_EFFECTS
-            and instance_index % 2 == 1
-        ):
-            beat_params = dict(params)
-            beat_params["B_CHOICE_BufferTransform"] = "Flip Horizontal"
-        if effect_name == "Lightning":
-            if beat_params is params:
-                beat_params = dict(params)
-            beat_params.update(_randomized_lightning_fields(
-                f"{variation_seed}:lightning:{group.name}:{start}"
-            ))
+    if effect_name == "VU Meter":
+        # One section-spanning placement, not per-beat chunks: the real
+        # vendor sequences run VU Meter as one long block (12-35s spans in
+        # the mined sample) so xLights' own timing-event sweep can pick up
+        # every mark inside it. Per-beat segmentation (like Shockwave)
+        # would chop it into many short windows, most of which contain
+        # zero marks from a sparse track (Kick Hits/Riff Bursts/stem
+        # onsets) and render as a dead, untriggered effect — the exact bug
+        # a user caught in a real generated .xsq (2026-07-23).
         p = _make_placement(
-            effect_def, group.name, start, end,
-            beat_params, palette, layer.blend_mode, "beat",
-            instance_index=instance_index,
-            direction_cycle=direction_cycle, preserve_directions=True,
+            effect_def, group.name, section.start_ms, section.end_ms,
+            params, palette, layer.blend_mode, "section",
         )
         p.layer = primary_layer_idx
         placements.append(p)
+    else:
+        # Primary-motion segment length in beats: 1 for the burst families,
+        # longer for calmer ones (icicles run 2-beat segments per the
+        # corpus). The alt-style occurrence swaps in a sparser mined stride
+        # (cane/horizontal: whole-song ~4-beat pacing), bundled with the
+        # same direction/size occurrence bit rather than a fourth
+        # independent axis.
+        stride = recipe.beats_per_placement
+        if use_alt_style and recipe.beats_per_placement_alt is not None:
+            stride = recipe.beats_per_placement_alt
+        beat_stride = max(1, stride)
+        for i in range(0, len(marks), beat_stride):
+            start = marks[i].time_ms
+            if i + beat_stride < len(marks):
+                end = marks[i + beat_stride].time_ms
+            else:
+                end = min(
+                    start + max(beat_stride * median_interval, FRAME_INTERVAL_MS),
+                    section.end_ms,
+                )
+            if end <= start:
+                continue
+            direction_cycle = (
+                {"param": recipe.direction_field, "values": list(recipe.direction_ping_pong_values)}
+                if use_ping_pong_direction
+                else None
+            )
+            instance_index = i // beat_stride
+            beat_params = params
+            if (
+                beat_stride == 1
+                and effect_name in _FLIP_TRANSFORM_EFFECTS
+                and instance_index % 2 == 1
+            ):
+                beat_params = dict(params)
+                beat_params["B_CHOICE_BufferTransform"] = "Flip Horizontal"
+            if effect_name == "Lightning":
+                if beat_params is params:
+                    beat_params = dict(params)
+                beat_params.update(_randomized_lightning_fields(
+                    f"{variation_seed}:lightning:{group.name}:{start}"
+                ))
+            p = _make_placement(
+                effect_def, group.name, start, end,
+                beat_params, palette, layer.blend_mode, "beat",
+                instance_index=instance_index,
+                direction_cycle=direction_cycle, preserve_directions=True,
+            )
+            p.layer = primary_layer_idx
+            placements.append(p)
     if not placements:
         return None
 

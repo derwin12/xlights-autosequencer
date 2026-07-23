@@ -1736,6 +1736,36 @@ class TestMatrixMotionRotation:
         assert spirals
         assert all(v.layer > s.layer for v in vu for s in spirals)
 
+    def test_vu_meter_is_one_section_spanning_placement_not_per_beat(self) -> None:
+        # Real vendor sequences run VU Meter as one long block, not
+        # per-beat chunks (2026-07-23) -- per-beat segmentation would chop
+        # it into many short windows most of which contain zero marks from
+        # a sparse track like Kick Hits.
+        full_lib = _LIBRARY_WITH_ON + ("VU Meter",)
+        section = _make_section(label="chorus", start_ms=0, end_ms=8000)
+        result = _place(section, _MATRIX_GROUP,
+                        library_names=full_lib, hierarchy=_make_full_hierarchy(_BEATS),
+                        corpus_occurrence={"matrix": 7})
+        vu = [p for p in result["06_PROP_Matrix"] if p.effect_name == "VU Meter"]
+        assert len(vu) == 1
+        assert vu[0].start_ms == section.start_ms
+        assert vu[0].end_ms == section.end_ms
+
+    def test_vu_meter_falls_back_when_mapped_track_has_no_marks_in_this_section(self) -> None:
+        # The track has marks elsewhere in the song but none in THIS
+        # section's window -- placing VU Meter here would be an effect
+        # with nothing to trigger it (user report, 2026-07-23: real
+        # generated .xsq had VU Meter on Kick Hits with zero kick hits
+        # during that placement's actual time window).
+        full_lib = _LIBRARY_MATRIX + ("VU Meter",)
+        hierarchy = _make_full_hierarchy(_BEATS)
+        hierarchy.kick_hits = [TimingMark(time_ms=20000, confidence=None)]
+        result = _place(_make_section(label="chorus", start_ms=0, end_ms=8000), _MATRIX_GROUP,
+                        library_names=full_lib, hierarchy=hierarchy,
+                        variation_seed=14)
+        assert {p.effect_name for p in result["06_PROP_Matrix"]
+                if p.effect_name not in ("On", "Spirals")} == {"Shockwave"}
+
     def test_vu_meter_uses_theme_accent_palette_not_flat_white(self) -> None:
         full_lib = _LIBRARY_WITH_ON + ("VU Meter",)
         result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
