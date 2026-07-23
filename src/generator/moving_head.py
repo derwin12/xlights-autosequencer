@@ -414,10 +414,18 @@ def _build_pose_settings(pose: _HeadPose, jitter_pan: float, jitter_tilt: float,
 
 
 # Deterministic pan/tilt variety so repeated strong sections don't look
-# identical (user request, 2026-07-17) -- small enough to stay within the
-# reference's own observed safe ranges (pan +-45 base, tilt 25-80 base).
-_PAN_JITTER_DEG = (-10.0, -5.0, 0.0, 5.0, 10.0)
-_TILT_JITTER_DEG = (-5.0, -2.0, 0.0, 2.0, 5.0)
+# identical (user request, 2026-07-17). Widened 2026-07-23 (user report:
+# a real generated Fan Pan-Static placement at ~51.25s barely differed
+# from the mined base pose -- the jitter was being applied correctly, just
+# too subtle to read on real hardware) -- still a small OFFSET around each
+# move's own mined base pose, not a hard clamp on the final angle (the
+# user explicitly chose not to retune mined base poses like
+# fan_pan_static's 78.5 tilt, which exceeded their suggested 70 cap but is
+# confirmed working on real hardware). More steps too (9 instead of 5) for
+# richer variety before the two independent modulo cycles (pan keyed off
+# section_index, tilt off section_index*2) repeat a prior combination.
+_PAN_JITTER_DEG = (-20.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0)
+_TILT_JITTER_DEG = (-10.0, -7.0, -4.0, -2.0, 0.0, 2.0, 4.0, 7.0, 10.0)
 
 
 def _jitter(variation_seed: int, section_index: int) -> tuple[float, float]:

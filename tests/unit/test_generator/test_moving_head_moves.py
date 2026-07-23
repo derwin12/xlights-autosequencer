@@ -476,7 +476,10 @@ class TestPlaceMovingHeadMoves:
         # A gap before the section (starts at 10_000, not 0) so the warmup
         # has room to fire -- nothing occupies anything before it, so it
         # gets the full preferred 3s (_PREFERRED_WARMUP_DURATION_MS).
-        # variation_seed=2, section_index=0 -> "r_static" (Pan 45.0, Tilt 60.0).
+        # variation_seed=2, section_index=0 -> "r_static" (Pan 45.0, Tilt
+        # 60.0 base). Jitter widened 2026-07-23 to 9 steps: pan_idx=
+        # (2+0)%9=2 -> _PAN_JITTER_DEG[2]=-10.0; tilt_idx=(2+0*2)%9=2 ->
+        # _TILT_JITTER_DEG[2]=-4.0 -> Pan 35.0, Tilt 56.0.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("chorus", 10_000, 25_000, 40, variation_seed=2)]
         result = place_moving_head_moves(layout, assignments)
@@ -486,23 +489,24 @@ class TestPlaceMovingHeadMoves:
         assert warmup.end_ms == move.start_ms == 10_000
         assert abs((warmup.end_ms - warmup.start_ms) - _PREFERRED_WARMUP_DURATION_MS) <= 25
         settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Pan: 45.0" in settings
-        assert "Tilt: 60.0" in settings
+        assert "Pan: 35.0" in settings
+        assert "Tilt: 56.0" in settings
         assert "Dimmer:" not in settings
         assert "Wheel:" not in settings
         assert "Shutter:" not in settings
 
     def test_warmup_matches_sweep_start_angle_not_end_angle(self):
         # variation_seed=1, dynamic pool -> "l_r_sweep"; head 1's pose sweeps
-        # Pan -45.0 -> 45.0 (jittered -5.0 for this seed/section -> -50.0),
-        # so the warmup should aim at the sweep's start (negative), not its
-        # end (positive, ~40.0).
+        # Pan -45.0 -> 45.0. Jitter widened 2026-07-23 to 9 steps:
+        # pan_idx=(1+0)%9=1 -> _PAN_JITTER_DEG[1]=-15.0 -> start -60.0, so
+        # the warmup should aim at the sweep's start (very negative), not
+        # its end (positive, ~30.0).
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("verse", 10_000, 25_000, _STRONG_ENERGY_GATE, variation_seed=1)]
         result = place_moving_head_moves(layout, assignments)
         warmup = result["MH1"][0]
         settings = warmup.parameters["E_TEXTCTRL_MH1_Settings"]
-        assert "Pan: -50.0" in settings
+        assert "Pan: -60.0" in settings
 
     def test_no_warmup_when_section_starts_at_zero(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
