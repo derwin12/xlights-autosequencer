@@ -463,6 +463,21 @@ class TestMegatreeMotionRotation:
         assert params["T_CHOICE_LayerMethod"] == "Layered"
         assert params["E_CHECKBOX_ColorWash_HFade"] == "1"
 
+    def test_wave_slot_alternates_direction_across_two_blocks_not_per_beat(self) -> None:
+        # User request, 2026-07-23: a repeated Wave at ~2:27s looked wrong
+        # either restarted every beat or frozen at one fixed direction for
+        # the whole section -- two large blocks (Left to Right, then
+        # Right to Left) instead.
+        result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                        library_names=self._FULL_LIBRARY,
+                        corpus_occurrence={"megatree": 3})
+        waves = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "Wave"]
+        assert len(waves) == 2
+        waves.sort(key=lambda p: p.start_ms)
+        directions = [dict(p.parameters)["E_CHOICE_Wave_Direction"] for p in waves]
+        assert directions == ["Left to Right", "Right to Left"]
+        assert waves[0].end_ms == waves[1].start_ms
+
     def test_twinkle_slot_fade_sum_never_exceeds_block_duration(self) -> None:
         # Real bug (2026-07-23): the mined Twinkle preset baked in a fixed
         # Fadein=0.3/Fadeout=0.5 (0.8s combined) that bypassed the

@@ -2435,7 +2435,38 @@ def _place_corpus_recipe(
     else:
         primary_layer_idx = mask_layer_idx
 
-    if effect_name in ("VU Meter", "Shape"):
+    if effect_name == "Wave":
+        # Two blocks (Left to Right, then Right to Left) split at the
+        # section's middle beat mark, not per-beat repeats or one giant
+        # fixed-direction placement (user request, 2026-07-23: a repeated
+        # Wave at ~2:27s looked wrong either way; alternating direction
+        # across two large chunks matches the back-and-forth sweep the
+        # effect is meant to read as, without restarting its own motion
+        # every beat).
+        wave_split_idx = len(marks) // 2
+        wave_split_ms = (
+            marks[wave_split_idx].time_ms
+            if 0 < wave_split_idx < len(marks)
+            else (section.start_ms + section.end_ms) // 2
+        )
+        wave_windows = [(section.start_ms, wave_split_ms), (wave_split_ms, section.end_ms)]
+        wave_directions = ("Left to Right", "Right to Left")
+        for wave_instance_index, (start, end) in enumerate(wave_windows):
+            if end <= start:
+                continue
+            wave_params = dict(params)
+            wave_params["E_CHOICE_Wave_Direction"] = wave_directions[wave_instance_index % 2]
+            p = _make_placement(
+                effect_def, group.name, start, end,
+                wave_params, palette, layer.blend_mode,
+                "bar", instance_index=wave_instance_index, preserve_directions=True,
+            )
+            p.layer = primary_layer_idx
+            fade_in, fade_out = compute_scaled_fades(end - start)
+            p.fade_in_ms = fade_in
+            p.fade_out_ms = fade_out
+            placements.append(p)
+    elif effect_name in ("VU Meter", "Shape"):
         # One section-spanning placement, not per-beat chunks: the real
         # vendor sequences run both effects as one long block (VU Meter
         # 12-35s; Shape spans up to 46-112s in the mined sample), not
