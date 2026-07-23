@@ -1028,9 +1028,22 @@ def place_moving_head_moves(
                 section.energy_score >= _FULL_HEADS_ENERGY_GATE
                 or section.energy_score >= song_peak_energy - _RELATIVE_PEAK_MARGIN
             )
+            # stagger_o_i/stagger_i_o already choreograph which heads are lit
+            # over time via their own per-head Dimmer curve (_DIMMER_MID_PULSE/
+            # _DIMMER_LATE_PULSE) -- every head takes a turn being lit. Energy-
+            # based lit_pair reduction flattens a head's WHOLE pose to
+            # _DIMMER_OFF regardless of its original curve (_reduce_to_lit_pair),
+            # so applying it here permanently darkens 2 of the 4 heads for the
+            # move's entire span instead of letting all 4 pulse in sequence --
+            # user-reported 2026-07-23: MH1/MH2 came out fully dark for a
+            # stagger move while MH3/MH4 kept their intended half-on pulse.
+            # _STATIC_HELD_MOVES already carries this same exclusion for the
+            # bar-toggle mechanism just below; this is the separate lit_pair
+            # reduction and needs it too.
             lit_pair = (
                 _choose_lit_pair(section_index, assignment.variation_seed)
-                if not full_intensity and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
+                if (not full_intensity and len(mh_group.head_names) >= _MIN_HEADS_FOR_LIT_PAIR
+                    and move_name not in ("stagger_o_i", "stagger_i_o"))
                 else None
             )
             # Bar-level 4-heads/2-heads alternation for a long held static

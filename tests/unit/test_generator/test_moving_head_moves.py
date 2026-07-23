@@ -141,6 +141,43 @@ class TestPlaceMovingHeadMoves:
         assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH3", 3)
         assert f"Dimmer: {_DIMMER_FULL_ON}" in move_settings("MH4", 4)
 
+    def test_qualifying_but_not_peak_energy_never_flattens_a_stagger_move(self):
+        # Bug found from a real generated .xsq (2026-07-23): a
+        # qualifying-but-not-peak section (same energy=40 setup as the test
+        # above) landed on a stagger move (stagger_o_i/stagger_i_o), whose
+        # whole premise is that EVERY head takes a turn being lit via its
+        # own Dimmer pulse curve (_DIMMER_MID_PULSE/_DIMMER_LATE_PULSE).
+        # The energy-based lit_pair reduction above doesn't know that --
+        # _reduce_to_lit_pair replaces a whole pose's Dimmer with a flat
+        # _DIMMER_OFF for whichever 2 heads aren't in the lit_pair,
+        # permanently darkening them for the move's entire span instead of
+        # letting all 4 pulse in sequence as designed. User saw MH1/MH2
+        # come out fully dark while MH3/MH4 kept their intended pulse.
+        # variation_seed=6, section_index=0 -> static pool index 6
+        # ("stagger_o_i": MID, LATE, MID, MID for heads 1-4).
+        # _choose_lit_pair(0, 6) = _HEAD_PAIRS[2] = (1, 4) -- so heads 2
+        # and 3 are the ones that would have been wrongly flattened.
+        from src.generator.moving_head import _DIMMER_LATE_PULSE, _DIMMER_MID_PULSE
+
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        assignments = [
+            _assignment("chorus", 0, 15_000, 40, variation_seed=6),
+            _assignment("verse", 20_000, 35_000, 95, variation_seed=6),
+        ]
+        result = place_moving_head_moves(layout, assignments)
+
+        def move_settings(head_name, head_index):
+            key = f"E_TEXTCTRL_MH{head_index}_Settings"
+            moves = [p for p in result[head_name] if "Shutter: On" in p.parameters[key]]
+            return moves[0].parameters[key]
+
+        assert f"Dimmer: {_DIMMER_MID_PULSE}" in move_settings("MH1", 1)
+        assert f"Dimmer: {_DIMMER_LATE_PULSE}" in move_settings("MH2", 2)
+        assert f"Dimmer: {_DIMMER_MID_PULSE}" in move_settings("MH3", 3)
+        assert f"Dimmer: {_DIMMER_MID_PULSE}" in move_settings("MH4", 4)
+        for head_name, head_index in [("MH1", 1), ("MH2", 2), ("MH3", 3), ("MH4", 4)]:
+            assert f"Dimmer: {_DIMMER_OFF}" not in move_settings(head_name, head_index)
+
     def test_static_held_move_alternates_full_and_half_lit_per_bar(self):
         # User request (2026-07-22): a long held static pose (e.g.
         # l_r_static) read as boring -- alternate all-4-heads-lit /
