@@ -339,8 +339,12 @@ _TIER_PALETTE_CAP: dict[int, int] = {
     8: 6,   # HERO — matrices, mega trees (richest palette)
 }
 
-# Effects where MusicSparkles is suppressed (redundant with built-in audio reactivity).
-_AUDIO_REACTIVE_EFFECTS: set[str] = {"VU Meter", "Music"}
+# Effects where MusicSparkles is suppressed: VU Meter/Music are redundant
+# with their own built-in audio reactivity; Shape (added 2026-07-23) never
+# carries sparkles in the real vendor sequences it was mined from — it
+# already supplies its own multi-color palette (see bypass_color_over_mask
+# in _place_corpus_recipe), and sparkles read as visual noise on top of it.
+_AUDIO_REACTIVE_EFFECTS: set[str] = {"VU Meter", "Music", "Shape"}
 
 # Effects that always get MusicSparkles on any tier (user request, 2026-07-18:
 # a Color Wash without music-reactive sparkles reads as a static gradient).
@@ -2268,6 +2272,19 @@ def _place_corpus_recipe(
                 rotation_params = None
     elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
         effect_name = recipe.alt_effect_name
+    # Shape and VU Meter don't fit the color_over_mask idiom the rest of the
+    # matrix rotation shares: checked against the real vendor sequences
+    # (2026-07-23) neither ever appears alongside an On "2 is Unmask" layer
+    # there, and each supplies its OWN multi-color palette directly instead.
+    # Wrapping them in our usual On-unmask coloring wastes that (the On
+    # layer overrides whatever color they'd show), and Shape/VU Meter's
+    # very different visual density (sparse icons vs. a full-buffer flash)
+    # means they don't share the same top/bottom layer slot either: Shape
+    # goes on top of everything (sparse enough not to occlude), VU Meter
+    # goes beneath the sustained Spirals layer (a full-buffer "Pulse Color"
+    # flash on top would blot Spirals out entirely, confirmed against a
+    # real generated .xsq).
+    bypass_color_over_mask = effect_name in ("Shape", "VU Meter")
     effect_def = effect_library.effects.get(effect_name)
     if effect_def is None:
         return None
@@ -2280,7 +2297,15 @@ def _place_corpus_recipe(
 
     median_interval = marks[len(marks) // 2].time_ms - marks[len(marks) // 2 - 1].time_ms
     placements: list[EffectPlacement] = []
-    palette = list(recipe.palette)
+    # Shape/VU Meter supply their own color (see bypass_color_over_mask
+    # above), so they need a real multi-color palette instead of the
+    # recipe's flat white mask color — theme_palette is the tier's actual
+    # accent colors, the closest thing we have to the vendor's own
+    # hardcoded multi-color palettes for these two effects.
+    if bypass_color_over_mask and theme_palette:
+        palette = list(theme_palette)
+    else:
+        palette = list(recipe.palette)
     # Each effect gets its own mined preset; their parameter spaces differ.
     if rotation_params is not None:
         params: dict[str, Any] = dict(rotation_params)
@@ -2328,9 +2353,22 @@ def _place_corpus_recipe(
     # xLights clipboard paste), the On block also gets MusicSparkles at the
     # same deterministic energy-scaled frequency tier-1 BASE already uses.
     on_def = (
-        effect_library.effects.get("On") if recipe.color_over_mask else None
+        effect_library.effects.get("On")
+        if recipe.color_over_mask and not bypass_color_over_mask
+        else None
     )
     mask_layer_idx = 1 if on_def is not None else 0
+    # Shape renders on top of everything (layer numbers below zero always
+    # sort first -> rendered on top, same convention as the crash-accent
+    # Lightning layer); VU Meter renders beneath the sustained secondary
+    # Spirals layer (mask_layer_idx + 1) rather than in the usual primary
+    # slot, matching the real vendor layering (see bypass_color_over_mask).
+    if effect_name == "Shape":
+        primary_layer_idx = -1
+    elif effect_name == "VU Meter":
+        primary_layer_idx = mask_layer_idx + 2
+    else:
+        primary_layer_idx = mask_layer_idx
 
     # Primary-motion segment length in beats: 1 for the burst families,
     # longer for calmer ones (icicles run 2-beat segments per the corpus).
@@ -2378,7 +2416,7 @@ def _place_corpus_recipe(
             instance_index=instance_index,
             direction_cycle=direction_cycle, preserve_directions=True,
         )
-        p.layer = mask_layer_idx
+        p.layer = primary_layer_idx
         placements.append(p)
     if not placements:
         return None

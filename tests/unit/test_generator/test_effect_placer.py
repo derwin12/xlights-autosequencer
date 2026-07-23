@@ -1,6 +1,8 @@
 """Tests for effect placement engine."""
 from __future__ import annotations
 
+import random
+
 import pytest
 
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack, ValueCurve
@@ -450,6 +452,24 @@ class TestColorWashAlwaysGetsMusicSparkles:
                       if p.effect_name == "Spirals"]
         assert placements, "tier-6 Spirals placement expected"
         assert all(p.music_sparkles == 0 for p in placements)
+
+
+class TestShapeNeverGetsMusicSparkles:
+    """Shape supplies its own multi-color palette (bypass_color_over_mask,
+    2026-07-23) and never carries sparkles in the real vendor sequences it
+    was mined from — checked against a real generated .xsq, which showed
+    C_CHECKBOX_MusicSparkles=1 on a Shape placement where the vendor
+    reference has it off. compute_music_sparkles must return 0
+    unconditionally for Shape, same as the existing VU Meter/Music
+    audio-reactive exclusion, regardless of the probabilistic energy roll."""
+
+    def test_compute_music_sparkles_always_zero_for_shape(self) -> None:
+        from src.generator.effect_placer import compute_music_sparkles
+
+        rng = random.Random(1)
+        for energy in (0, 25, 50, 75, 100):
+            for _ in range(20):
+                assert compute_music_sparkles(energy, "Shape", rng) == 0
 
 
 class TestDurationTypeBeat:

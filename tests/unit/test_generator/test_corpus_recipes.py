@@ -851,10 +851,13 @@ class TestMatrixRecipe:
                             library_names=libs,
                             hierarchy=_make_full_hierarchy(_BEATS),
                             corpus_occurrence={"matrix": occ})
+            # Shape/VU Meter deliberately sit on different layers than the
+            # rest of the pool (layer -1 / mask_layer_idx + 2 respectively —
+            # see bypass_color_over_mask in effect_placer.py), so filter by
+            # effect name only, not a fixed layer number.
             motion = [p for p in result["06_PROP_Matrix"]
                       if p.effect_name in
-                      ("Shockwave", "Pinwheel", "Ripple", "Color Wash", "Shape", "VU Meter")
-                      and p.layer == 1]
+                      ("Shockwave", "Pinwheel", "Ripple", "Color Wash", "Shape", "VU Meter")]
             assert motion, f"occurrence {occ} placed no motion effects"
             names = {p.effect_name for p in motion}
             assert len(names) == 1
@@ -1694,6 +1697,53 @@ class TestMatrixMotionRotation:
         # to the primary Shockwave rather than silently placing nothing.
         full_lib = _LIBRARY_MATRIX + ("VU Meter",)
         assert self._motion_effects(14, library=full_lib) == {"Shockwave"}
+
+    def test_shape_renders_above_everything_with_no_on_mask_layer(self) -> None:
+        # Checked against the real vendor sequences (2026-07-23): Shape
+        # never pairs with an On "2 is Unmask" layer there, and needs to sit
+        # above the sustained Spirals layer, not sandwiched between it and
+        # a mask layer.
+        full_lib = _LIBRARY_WITH_ON + ("Shape",)
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        library_names=full_lib, corpus_occurrence={"matrix": 6})
+        placements = result["06_PROP_Matrix"]
+        assert not any(p.effect_name == "On" for p in placements)
+        shapes = [p for p in placements if p.effect_name == "Shape"]
+        assert shapes
+        assert all(p.layer == -1 for p in shapes)
+        spirals = [p for p in placements if p.effect_name == "Spirals"]
+        assert spirals
+        assert all(p.layer > -1 for p in spirals)
+
+    def test_shape_uses_theme_accent_palette_not_flat_white(self) -> None:
+        full_lib = _LIBRARY_WITH_ON + ("Shape",)
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        library_names=full_lib, corpus_occurrence={"matrix": 6})
+        shapes = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Shape"]
+        assert shapes
+        assert shapes[0].color_palette != ["#FFFFFF"]
+
+    def test_vu_meter_renders_beneath_spirals_with_no_on_mask_layer(self) -> None:
+        full_lib = _LIBRARY_WITH_ON + ("VU Meter",)
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        library_names=full_lib, hierarchy=_make_full_hierarchy(_BEATS),
+                        corpus_occurrence={"matrix": 7})
+        placements = result["06_PROP_Matrix"]
+        assert not any(p.effect_name == "On" for p in placements)
+        vu = [p for p in placements if p.effect_name == "VU Meter"]
+        assert vu
+        spirals = [p for p in placements if p.effect_name == "Spirals"]
+        assert spirals
+        assert all(v.layer > s.layer for v in vu for s in spirals)
+
+    def test_vu_meter_uses_theme_accent_palette_not_flat_white(self) -> None:
+        full_lib = _LIBRARY_WITH_ON + ("VU Meter",)
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        library_names=full_lib, hierarchy=_make_full_hierarchy(_BEATS),
+                        corpus_occurrence={"matrix": 7})
+        vu = [p for p in result["06_PROP_Matrix"] if p.effect_name == "VU Meter"]
+        assert vu
+        assert vu[0].color_palette != ["#FFFFFF"]
 
     def test_shockwave_slots_carry_distinct_mined_presets(self) -> None:
         # Slots 0/4/9 are all Shockwave but different mined reaches.

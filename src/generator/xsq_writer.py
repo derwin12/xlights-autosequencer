@@ -671,7 +671,8 @@ def write_xsq(
     section_role_marks = _section_role_marks(plan) if plan.sections else None
     timing_tracks = (_collect_timing_tracks(hierarchy, None if lyric_layers else lyrics,
                                             include_extra_timing=include_extra_timing,
-                                            section_role_marks=section_role_marks)
+                                            section_role_marks=section_role_marks,
+                                            force_include=_referenced_timing_track_names(all_placements))
                      if (hierarchy or lyrics or section_role_marks) else {})
     timing_names = list(timing_tracks)
     if lyric_layers:
@@ -1212,14 +1213,40 @@ def _section_role_marks(plan: SequencePlan) -> list[TimingMark]:
     return marks
 
 
+def _referenced_timing_track_names(
+    all_placements: dict[str, list[EffectPlacement]],
+) -> set[str]:
+    """Timing track names actually depended on by a placed effect's own
+    parameters (e.g. VU Meter's E_CHOICE_VUMeter_TimingTrack) — these must
+    be exported regardless of include_extra_timing, since omitting one
+    doesn't declutter the timeline, it breaks that effect (the referenced
+    track silently doesn't exist)."""
+    names: set[str] = set()
+    for placements in all_placements.values():
+        for p in placements:
+            if p.effect_name == "VU Meter":
+                track = p.parameters.get("E_CHOICE_VUMeter_TimingTrack")
+                if track:
+                    names.add(track)
+    return names
+
+
 def _collect_timing_tracks(
     hierarchy: HierarchyResult | None,
     lyrics: list[dict] | None = None,
     include_extra_timing: bool = True,
     section_role_marks: list[TimingMark] | None = None,
+    force_include: set[str] | None = None,
 ) -> dict[str, list[TimingMark]]:
-    """Collect single-layer timing tracks from hierarchy (+ optional lyric lines)."""
+    """Collect single-layer timing tracks from hierarchy (+ optional lyric lines).
+
+    force_include names tracks that a placed effect actually references by
+    name (see _referenced_timing_track_names) — these are added even when
+    include_extra_timing is False, since they're a real dependency, not
+    just an informational display track.
+    """
     tracks: dict[str, list[TimingMark]] = {}
+    force_include = force_include or set()
 
     if section_role_marks:
         tracks["Sections"] = section_role_marks
@@ -1234,30 +1261,31 @@ def _collect_timing_tracks(
         if "Sections" not in tracks and hierarchy.sections:
             tracks["Sections"] = hierarchy.sections
 
-        if include_extra_timing:
+        if include_extra_timing or "Chords" in force_include:
             if hierarchy.chords and hierarchy.chords.marks:
                 tracks["Chords"] = hierarchy.chords.marks
 
-            # Emit one timing track per stem with onsets.  Stem-aware trigger
-            # placement (drum Shockwaves, vocal accents, bass pulses) routes to
-            # its matching Onsets (<stem>) track, so every stem with marks must
-            # be emitted — not only the first one.
-            for stem_name, track in hierarchy.events.items():
-                if track.marks:
-                    tracks[f"Onsets ({stem_name})"] = track.marks
+        # Emit one timing track per stem with onsets.  Stem-aware trigger
+        # placement (drum Shockwaves, vocal accents, bass pulses) routes to
+        # its matching Onsets (<stem>) track, so every stem with marks must
+        # be emitted — not only the first one.
+        for stem_name, track in hierarchy.events.items():
+            track_name = f"Onsets ({stem_name})"
+            if track.marks and (include_extra_timing or track_name in force_include):
+                tracks[track_name] = track.marks
 
-            # Per-instrument drum hits, split from the classified "drums"
-            # onset track (see src/analyzer/drum_classifier.py) — previously
-            # only visible in the standalone analyzer .xtiming export, never
-            # in the generated .xsq itself.
-            if hierarchy.kick_hits:
-                tracks["Kick Hits"] = hierarchy.kick_hits
-            if hierarchy.snare_hits:
-                tracks["Snare Hits"] = hierarchy.snare_hits
-            if hierarchy.hihat_hits:
-                tracks["Hihat Hits"] = hierarchy.hihat_hits
-            if hierarchy.riff_bursts:
-                tracks["Riff Bursts"] = hierarchy.riff_bursts
+        # Per-instrument drum hits, split from the classified "drums"
+        # onset track (see src/analyzer/drum_classifier.py) — previously
+        # only visible in the standalone analyzer .xtiming export, never
+        # in the generated .xsq itself.
+        if hierarchy.kick_hits and (include_extra_timing or "Kick Hits" in force_include):
+            tracks["Kick Hits"] = hierarchy.kick_hits
+        if hierarchy.snare_hits and (include_extra_timing or "Snare Hits" in force_include):
+            tracks["Snare Hits"] = hierarchy.snare_hits
+        if hierarchy.hihat_hits and (include_extra_timing or "Hihat Hits" in force_include):
+            tracks["Hihat Hits"] = hierarchy.hihat_hits
+        if hierarchy.riff_bursts and (include_extra_timing or "Riff Bursts" in force_include):
+            tracks["Riff Bursts"] = hierarchy.riff_bursts
 
     if lyrics:
         tracks["Lyrics"] = [

@@ -1822,3 +1822,37 @@ class TestIncludeExtraTiming:
         assert "Bars" in timing_names
         assert "Chords" not in timing_names
         assert not any(n.startswith("Onsets") for n in timing_names)
+
+    def test_vu_meter_referenced_track_exported_even_when_extra_timing_disabled(
+        self, tmp_path: Path,
+    ) -> None:
+        # Bug found reviewing a real generated .xsq (2026-07-23): a VU Meter
+        # placement referenced "Kick Hits" as its E_CHOICE_VUMeter_TimingTrack,
+        # but the frontend's default include_extra_timing=False omitted that
+        # track from the file entirely -- a real dependency, not just
+        # decluttering an informational display track. force_include must
+        # keep it even with include_extra_timing=False, while unreferenced
+        # extra tracks (Chords, Onsets) stay omitted as before.
+        hierarchy = self._hierarchy_with_all_tracks()
+        hierarchy.kick_hits = [TimingMark(time_ms=300, confidence=0.9)]
+        plan = _make_plan()
+        plan.sections[0].group_effects["Model1"].append(EffectPlacement(
+            effect_name="VU Meter",
+            xlights_id="E_VU_METER",
+            model_or_group="Model1",
+            start_ms=0,
+            end_ms=1000,
+            parameters={"E_CHOICE_VUMeter_TimingTrack": "Kick Hits"},
+            color_palette=["#FF0000"],
+        ))
+        out = tmp_path / "test.xsq"
+        write_xsq(plan, out, hierarchy=hierarchy, include_extra_timing=False)
+        root = ET.parse(out).getroot()
+        timing_names = [
+            el.get("name")
+            for el in root.find("DisplayElements").findall("Element")
+            if el.get("type") == "timing"
+        ]
+        assert "Kick Hits" in timing_names
+        assert "Chords" not in timing_names
+        assert not any(n.startswith("Onsets") for n in timing_names)
