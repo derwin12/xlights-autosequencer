@@ -434,6 +434,46 @@ class TestThemeOverrideBypassesAnchorPalette:
         )
 
 
+class TestThemeLayerStackingOrder:
+    """A theme's later layer (e.g. an Additive accent stacked over a Normal
+    base wash) must render IN FRONT of an earlier layer on the same group,
+    not behind it.
+
+    xsq_writer serializes <EffectLayer> children in ascending order of
+    EffectPlacement.layer, and xLights renders the FIRST child on top
+    (bug-248) -- so a later theme-layer index needs a LOWER (more negative)
+    placement.layer than an earlier one to actually composite in front.
+    Confirmed wrong on a real generated .xsq (bug-569, 2026-07-24): White
+    Heat's Shockwave (Additive) accent rendered underneath its own Single
+    Strand/Color Wash base.
+    """
+
+    def test_second_theme_layer_gets_a_lower_layer_number_than_the_first(self) -> None:
+        theme = _make_theme(layers=[
+            EffectLayer(variant="Color Wash", blend_mode="Normal"),
+            EffectLayer(variant="Shockwave", blend_mode="Additive"),
+        ])
+        assignment = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme,
+            active_tiers=frozenset({1}),
+        )
+        groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
+        library = _make_library(_make_effect("Color Wash"), _make_effect("Shockwave"))
+        variant_library = _make_variant_library("Color Wash", "Shockwave")
+        hierarchy = _make_hierarchy(duration_ms=10000)
+
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        placements = result.get("01_BASE_All", [])
+        base = next(p for p in placements if p.effect_name == "Color Wash")
+        accent = next(p for p in placements if p.effect_name == "Shockwave")
+        assert accent.layer < base.layer, (
+            f"the later (accent) theme layer must serialize in front of the "
+            f"base -- got base.layer={base.layer}, accent.layer={accent.layer}"
+        )
+
+
 class TestTier1AlwaysGetsMusicSparkles:
     """Tier 1 BASE placements get music_sparkles > 0 even without palette
     restraint, providing the music-reactive overlay that gives the BASE

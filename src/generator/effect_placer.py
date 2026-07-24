@@ -1462,16 +1462,32 @@ def place_effects(
                     # on distinct xLights EffectLayers and blend properly,
                     # rather than collapsing onto layer 0 and rendering with
                     # last-write-wins semantics.
+                    #
+                    # Negated (not layer_idx directly): xsq_writer serializes
+                    # <EffectLayer> children in ascending layer-index order and
+                    # xLights renders the FIRST child on top (bug-248) -- so a
+                    # later theme layer (e.g. an Additive accent like
+                    # "Shockwave Medium Thin" stacked over a Normal base wash)
+                    # needs a LOWER number to actually render in front of the
+                    # base, not a higher one. Confirmed on a real generated
+                    # .xsq (user report, 2026-07-24): White Heat's Shockwave
+                    # accent was rendering underneath its own Single Strand
+                    # base with the un-negated index.
                     for p in placements:
-                        p.layer = layer_idx
+                        p.layer = -layer_idx
                     result.setdefault(group.name, []).extend(placements)
 
             # Tier 1 background accent overlay: when the theme declares a
             # `background_accent_variant` (e.g. "Snowflakes Driving Few" on
-            # Christmas themes), layer it on top of the base effect as a
-            # layer-1 placement.  Produces a breathing backdrop (wash + snow)
-            # instead of a flat colour field.  Opt-in per theme — Halloween
-            # and generic themes leave the field null and get no overlay.
+            # Christmas themes), layer it on top of the base effect(s) above.
+            # Produces a breathing backdrop (wash + snow) instead of a flat
+            # colour field.  Opt-in per theme — Halloween and generic themes
+            # leave the field null and get no overlay.
+            #
+            # Layer number is one below the lowest a primary theme layer can
+            # reach (-(len(layers)-1), from the negation above), guaranteeing
+            # this overlay renders in front of every primary theme layer
+            # regardless of how many the theme declares.
             if (
                 tier == 1
                 and groups_for_tier
@@ -1493,7 +1509,7 @@ def place_effects(
                                 "Normal",
                                 "section",
                             )
-                            accent_p.layer = 1
+                            accent_p.layer = -len(layers)
                             result.setdefault(group.name, []).append(accent_p)
 
     # MusicSparkles: post-process placements when palette restraint is active.

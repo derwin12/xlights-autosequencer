@@ -104,12 +104,13 @@ class EffectPlacement:
     # prior comment ("1=accent overlay"), which had assumed higher numbers
     # sit in front and caused a visible regression (Pictures effect placed
     # "on top" at the highest layer number instead rendered at the bottom
-    # of the stack). Only confirmed against that one group/theme so far --
-    # if another song/prop family's layered overlay (e.g. the tier-1
-    # background_accent_variant placement at layer=1 over a layer=0 base,
-    # effect_placer.py's "Tier 1 background accent overlay" block) turns
-    # out to render in the opposite order, verify against a real .xsq
-    # before trusting either direction as universal.
+    # of the stack). Confirmed a second time on tier-1 BASE (bug-569,
+    # 2026-07-24, real generated .xsq): the theme-layers loop in
+    # effect_placer.py used to stamp `p.layer = layer_idx` directly, so a
+    # theme's Additive accent layer (e.g. White Heat's "Shockwave Medium
+    # Thin" stacked over its "Color Wash Smooth" base) rendered underneath
+    # its own base wash instead of over it. Both confirmed sightings agree:
+    # LOWER numbers render in FRONT, no exceptions found yet.
     layer: int = 0
     # Explicit B_CHOICE_BufferStyle for this placement, taking precedence over
     # the tier-based convention in xsq_writer._buffer_style_for_placement.
