@@ -270,23 +270,24 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
 
       {error && <p className={styles.error}>{error}</p>}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    gap: 8, marginBottom: 12 }}>
-        <label
-          data-testid="include-extra-timing"
-          style={{ display: 'flex', alignItems: 'center', gap: 8,
-                   fontSize: 13, color: 'var(--color-text-muted, #888)', cursor: 'pointer' }}
-        >
-          <input
-            type="checkbox"
-            checked={includeExtraTiming}
-            onChange={(e) => setIncludeExtraTiming(e.target.checked)}
-            disabled={exporting}
-          />
-          Include Onsets/Chords timing tracks
-        </label>
+      <label
+        data-testid="include-extra-timing"
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+                 fontSize: 13, color: 'var(--color-text-muted, #888)', cursor: 'pointer' }}
+      >
+        <input
+          type="checkbox"
+          checked={includeExtraTiming}
+          onChange={(e) => setIncludeExtraTiming(e.target.checked)}
+          disabled={exporting}
+        />
+        Include Onsets/Chords timing tracks
+      </label>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
           type="button"
+          className={styles.renderBtn}
           data-testid="rerandomize-button"
           onClick={() => handleRender(true)}
           disabled={exporting}
@@ -294,9 +295,6 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
         >
           Rerandomize
         </button>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
           className={styles.renderBtn}
           onClick={() => handleRender(false)}
