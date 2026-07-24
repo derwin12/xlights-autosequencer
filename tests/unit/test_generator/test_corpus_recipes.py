@@ -389,15 +389,16 @@ class TestCorpusRecipePlacement:
         assert directions == ["To Middle", "From Middle"] * (len(directions) // 2)
 
     def test_snowflake_singlestrand_render_style_rotates_with_occurrence(self) -> None:
-        # User-supplied render-style suggestions (2026-07-24): every
-        # occurrence of the Single Strand alt should carry one of the four
-        # named buffer styles, and different occurrences should walk through
-        # the pool rather than repeating the same style all song long.
+        # User-supplied render-style suggestions (2026-07-24, "Per Model
+        # Horizontal Per Strand" dropped same day after visual review):
+        # every occurrence of the Single Strand alt should carry one of the
+        # three named buffer styles, and different occurrences should walk
+        # through the pool rather than repeating the same style all song
+        # long.
         allowed = {
             "Per Model Default",
             "Horizontal Per Model",
             "Horizontal Per Model/Strand",
-            "Per Model Horizontal Per Strand",
         }
         first = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP, variation_seed=3)
         placements = first["06_PROP_Snowflake"]

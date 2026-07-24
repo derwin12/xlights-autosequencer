@@ -1184,18 +1184,19 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         # those two render identically for a 1D chase; a user request to
         # try genuinely distinct per-strand styles supersedes reproducing
         # that split as-is). Cycled per qualifying occurrence so repeated
-        # snowflake sections walk through all four looks instead of
+        # snowflake sections walk through all three looks instead of
         # freezing one for the whole song. Also advances every 8 beats
         # (2 bars) WITHIN a single occurrence -- a real generated .xsq
         # (2026-07-24) showed a single 75s section produces one giant
         # occurrence, and the per-beat direction ping-pong alone wasn't
-        # enough variety over that many beats.
+        # enough variety over that many beats. "Per Model Horizontal Per
+        # Strand" was in the original 4-style suggestion but dropped
+        # 2026-07-24 (user: "doesn't look good") after visual review.
         alt_render_style_beats_per_style=8,
         alt_render_style_rotation=(
             "Per Model Default",
             "Horizontal Per Model",
             "Horizontal Per Model/Strand",
-            "Per Model Horizontal Per Strand",
         ),
     ),
     # "star" keeps Arch Star props out — they are a star-family prop that
