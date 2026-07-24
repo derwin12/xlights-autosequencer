@@ -12,6 +12,7 @@ from src.generator.moving_head import (
     _ACCENT_DURATION_MS,
     _MAX_BEAT_BURSTS_PER_SONG,
     _MAX_PATTERN_ACCENTS_PER_SONG,
+    _MIN_WARMUP_DURATION_MS,
     _PREFERRED_WARMUP_DURATION_MS,
     _STRONG_ENERGY_GATE,
     place_moving_head_beat_bursts,
@@ -142,6 +143,42 @@ class TestPlaceMovingHeadBeatBursts:
         )
         assert result == {}
 
+    def test_never_lights_one_or_three_of_four_heads(self):
+        # Regression (user-reported 2026-07-23 from a real generated .xsq):
+        # a Beat Burst lit exactly 3 of 4 heads simultaneously for one
+        # 1.4s burst, leaving the 4th dark for no visible reason.
+        # _BEAT_BURST_HEAD_COUNTS must only ever produce a symmetric 2-or-4
+        # split on a 4-head group, never 1 or 3.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        for seed in range(10):
+            assignments = [_assignment("chorus", 0, 30_000, _STRONG_ENERGY_GATE, variation_seed=seed)]
+            result = place_moving_head_beat_bursts(layout, assignments, _hierarchy(30_000))
+            assert len(result) in (0, 2, 4)
+
+    def test_warmup_shorter_than_minimum_is_skipped_not_shortened(self):
+        # Regression (user-reported 2026-07-23 from a real generated .xsq):
+        # a prior placement ending only 25ms before the accent's beat-locked
+        # start produced a degenerate 25ms warmup instead of either a real
+        # one or none at all -- this warmup calc had no floor at
+        # _MIN_WARMUP_DURATION_MS, unlike every other warmup path in the
+        # module (_resolve_warmup). The accent's own start can't be delayed
+        # (it's anchored to a beat mark), so an unreachable minimum means
+        # skip the warmup outright, not shorten it below the floor.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        assignments = [_assignment("chorus", 4_000, 8_000, _STRONG_ENERGY_GATE, variation_seed=0)]
+        # Section midpoint (6000) is itself a beat mark, so the accent
+        # starts at exactly 6000ms; a prior placement ending 25ms earlier
+        # leaves an unreachable 25ms gap.
+        existing = {"MH1": [_fake_placement("MH1", 0, 5_975)], "MH2": [_fake_placement("MH2", 0, 5_975)]}
+        result = place_moving_head_beat_bursts(
+            layout, assignments, _hierarchy(30_000), existing_placements=existing,
+        )
+        assert result
+        for placements in result.values():
+            # Only the burst itself -- no degenerate short warmup placement.
+            assert len(placements) == 1
+            assert placements[0].end_ms - placements[0].start_ms == _ACCENT_DURATION_MS
+
     def test_skips_when_group_level_placement_occupies_the_channel(self):
         # Regression: a group-targeted move (e.g. one of place_moving_head_moves'
         # "Fan" moves) writes into every head's channel slots, but only ever
@@ -169,8 +206,10 @@ class TestPlaceMovingHeadBeatBursts:
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("chorus", 4_000, 8_000, _STRONG_ENERGY_GATE, variation_seed=0)]
         # Beat marks land on exact 500ms multiples; section midpoint (6000)
-        # is itself a mark, so the accent starts at exactly 6000ms.
-        group_end_ms = 5_800
+        # is itself a mark, so the accent starts at exactly 6000ms. Gap must
+        # clear _MIN_WARMUP_DURATION_MS (750ms) or the warmup is skipped
+        # outright rather than shortened (see the floor added 2026-07-23).
+        group_end_ms = 5_000
         existing = {"MH GRP": [_fake_placement("MH GRP", 0, group_end_ms)]}
         result = place_moving_head_beat_bursts(
             layout, assignments, _hierarchy(30_000), existing_placements=existing,
@@ -224,6 +263,18 @@ class TestPlaceMovingHeadPatternAccents:
             assignments = [_assignment("verse", 0, 30_000, 40, variation_seed=seed)]
             result = place_moving_head_pattern_accents(layout, assignments, _hierarchy(30_000))
             assert len(result) != 3
+
+    def test_never_lights_one_or_three_of_four_heads(self):
+        # Regression (2026-07-23): the same "2 or 4, never 1 or 3" rule
+        # applied to Beat Burst also applies here -- Pattern Circle/Square
+        # is a simultaneous flourish, not a shocking single-flash event, so
+        # solo (1) shouldn't fire either, matching the already-fixed
+        # exclusion of 3.
+        layout = parse_layout(FIXTURES / "moving_head_layout_4heads.xml")
+        for seed in range(10):
+            assignments = [_assignment("verse", 0, 30_000, 40, variation_seed=seed)]
+            result = place_moving_head_pattern_accents(layout, assignments, _hierarchy(30_000))
+            assert len(result) in (0, 2, 4)
 
 
 def _fake_placement(name: str, start_ms: int, end_ms: int) -> EffectPlacement:

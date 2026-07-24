@@ -1691,6 +1691,10 @@ def place_moving_head_keyword_accents(
                         _PREFERRED_WARMUP_DURATION_MS,
                         max(0, start_ms - max(prior_ends, default=0)),
                     )
+                    # Floor at _MIN_WARMUP_DURATION_MS -- see the matching
+                    # fix/comment in _place_random_head_accents.
+                    if warmup_duration_ms < _MIN_WARMUP_DURATION_MS:
+                        warmup_duration_ms = 0
                     if _heads_already_posed(head_existing, start_ms, warmup_params):
                         warmup_duration_ms = 0
                     placements = result.setdefault(head_name, [])
@@ -1750,6 +1754,10 @@ def place_moving_head_keyword_accents(
                 _PREFERRED_WARMUP_DURATION_MS,
                 max(0, start_ms - max(prior_ends, default=0)),
             )
+            # Floor at _MIN_WARMUP_DURATION_MS -- see the matching fix/comment
+            # in _place_random_head_accents.
+            if warmup_duration_ms < _MIN_WARMUP_DURATION_MS:
+                warmup_duration_ms = 0
             if _heads_already_posed(channel_existing, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(mh_group.name, [])
@@ -1954,16 +1962,23 @@ def _build_ending_warmup_head_settings(head_count: int) -> str:
 # Beat-Burst/Circle/Square entry) -- unlike the sustained per-section moves,
 # these read as quick flourishes, not continuous motion.
 #
-# Per user design decision (2026-07-19): Beat Burst fires in the same
-# "strong" sections as the existing gated moves (chosen head count 1-4,
-# matching the demo's own solo-head walkthrough); Pattern Circle/Square fire
-# in the quieter (non-strong) sections instead -- giving those otherwise-dark
-# stretches an occasional light touch -- with head count restricted to 1, 2,
-# or 4 (never 3, per explicit user instruction). Both are sparse: capped to
-# a handful per song (crash_accents/riff_bursts' "rare, not continuous"
-# rarity philosophy), not a per-beat layer. Shape/size (PatternWidth/Height/
-# X-Y Offset) and the burst dimmer curve are mined constants, not varied --
-# only which beat, how many heads, and which heads are chosen at random.
+# Per user design decision (2026-07-19, revised 2026-07-23): Beat Burst
+# fires in the same "strong" sections as the existing gated moves; Pattern
+# Circle/Square fire in the quieter (non-strong) sections instead -- giving
+# those otherwise-dark stretches an occasional light touch. Both restrict
+# head count to 2 or 4 (never 1, never 3): a real generated .xsq showed Beat
+# Burst light exactly 3 of 4 heads simultaneously for one 1.4s burst, which
+# reads as "3 on, 1 broken" rather than an intentional look (user-reported
+# 2026-07-23). Per the user's explicit rule, an uneven/solo head count is
+# only acceptable for genuinely "shocking" single-flash events (e.g.
+# crash_accents) or a sequential one-head-at-a-time chase -- Beat Burst and
+# Pattern accents are neither: they're a single simultaneous flourish, so
+# both are restricted to symmetric 2-or-4 head counts. Both are sparse:
+# capped to a handful per song (crash_accents/riff_bursts' "rare, not
+# continuous" rarity philosophy), not a per-beat layer. Shape/size
+# (PatternWidth/Height/X-Y Offset) and the burst dimmer curve are mined
+# constants, not varied -- only which beat, how many heads, and which heads
+# are chosen at random.
 # ---------------------------------------------------------------------------
 
 _ACCENT_DURATION_MS = 1400
@@ -1977,8 +1992,8 @@ _ACCENT_BURST_DIMMER_VC = _COMMA_ESCAPE.join((
 ))
 _ACCENT_STATIC_PAN_DEG = 45.0
 _ACCENT_STATIC_TILT_DEG = 45.0
-_BEAT_BURST_HEAD_COUNTS = (1, 2, 3, 4)
-_PATTERN_HEAD_COUNTS = (1, 2, 4)
+_BEAT_BURST_HEAD_COUNTS = (2, 4)
+_PATTERN_HEAD_COUNTS = (2, 4)
 _PATTERN_NAMES = ("Circle", "Square")
 # (width, height, x_offset, y_offset) -- mined verbatim, identical across
 # every head count in the demo.
@@ -2133,6 +2148,20 @@ def _place_random_head_accents(
                 _PREFERRED_WARMUP_DURATION_MS,
                 max(0, start_ms - max(prior_ends, default=0)),
             )
+            # Floor at _MIN_WARMUP_DURATION_MS like every other warmup path
+            # in this module (_resolve_warmup) -- this one had no such
+            # floor, so a head whose prior placement happened to end just
+            # under a beat mark (e.g. 25ms before the accent's start) got a
+            # degenerate near-instant "warmup" effect instead of either a
+            # real one or none at all (user-reported 2026-07-23 from a real
+            # generated .xsq: a 25ms warmup at 1:10.425). Unlike
+            # _resolve_warmup, this accent's start_ms is anchored to a beat
+            # mark by design, so delaying it to guarantee the minimum isn't
+            # an option here -- skip the warmup outright instead when the
+            # achievable gap can't reach the floor (the head was posed only
+            # moments before, so no slew is actually needed).
+            if warmup_duration_ms < _MIN_WARMUP_DURATION_MS:
+                warmup_duration_ms = 0
             if _heads_already_posed(head_placements, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(head_name, [])
@@ -2198,7 +2227,7 @@ def place_moving_head_pattern_accents(
 ) -> dict[str, list[EffectPlacement]]:
     """Place a short (``_ACCENT_DURATION_MS``) Pattern Circle/Square accent
     (randomly chosen each time) on a randomly-sized subset of heads
-    (``_PATTERN_HEAD_COUNTS`` -- 1, 2, or 4, never 3) near the midpoint of a
+    (``_PATTERN_HEAD_COUNTS`` -- 2 or 4, never 1 or 3) near the midpoint of a
     handful of quieter, non-"strong" sections (up to
     ``_MAX_PATTERN_ACCENTS_PER_SONG``) -- mined from MH Samples.xsq's
     Pattern Circle/Square demo. See this module's "Random accents" section

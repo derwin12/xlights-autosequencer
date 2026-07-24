@@ -270,28 +270,21 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
 
       {error && <p className={styles.error}>{error}</p>}
 
-      <label
-        data-testid="include-extra-timing"
-        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
-                 fontSize: 13, color: 'var(--color-text-muted, #888)', cursor: 'pointer' }}
-      >
-        <input
-          type="checkbox"
-          checked={includeExtraTiming}
-          onChange={(e) => setIncludeExtraTiming(e.target.checked)}
-          disabled={exporting}
-        />
-        Include Onsets/Chords timing tracks
-      </label>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button
-          className={styles.renderBtn}
-          onClick={() => handleRender(false)}
-          disabled={exporting}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 8, marginBottom: 12 }}>
+        <label
+          data-testid="include-extra-timing"
+          style={{ display: 'flex', alignItems: 'center', gap: 8,
+                   fontSize: 13, color: 'var(--color-text-muted, #888)', cursor: 'pointer' }}
         >
-          {exporting ? 'Generating…' : outputPath ? 'Generate Again' : 'Generate Sequence'}
-        </button>
+          <input
+            type="checkbox"
+            checked={includeExtraTiming}
+            onChange={(e) => setIncludeExtraTiming(e.target.checked)}
+            disabled={exporting}
+          />
+          Include Onsets/Chords timing tracks
+        </label>
         <button
           type="button"
           data-testid="rerandomize-button"
@@ -300,6 +293,16 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
           title="Generate with a fresh random seed — varies rotation/jitter choices while keeping the same song and theming"
         >
           Rerandomize
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button
+          className={styles.renderBtn}
+          onClick={() => handleRender(false)}
+          disabled={exporting}
+        >
+          {exporting ? 'Generating…' : outputPath ? 'Generate Again' : 'Generate Sequence'}
         </button>
       </div>
 

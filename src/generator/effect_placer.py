@@ -899,8 +899,13 @@ def place_effects(
 
     # Backdrop from the palette's saturated colors only (darkened white is
     # just gray), at a lightness that still reads as color from the street.
+    # 0.25 read as a dull, muddy brown rather than a real color (user
+    # feedback 2026-07-23, judged against a rendered swatch comparison at
+    # several candidate values on Tracer Fire's red/orange palette) --
+    # 0.40 keeps the backdrop visibly dimmer than the accent tiers while
+    # still reading as its own color rather than near-black.
     bg_source = _saturated_colors(effective_base) or effective_base
-    bg_palette = _darken_palette_hsl(bg_source, target_lightness=0.25)
+    bg_palette = _darken_palette_hsl(bg_source, target_lightness=0.40)
 
     # Detect drop/impact phase from section label (chorus, drop, bridge, etc.)
     section_label = (section.label or "").lower()
@@ -2429,7 +2434,12 @@ def _place_corpus_recipe(
     # Spirals layer (mask_layer_idx + 1) rather than in the usual primary
     # slot, matching the real vendor layering (see bypass_color_over_mask).
     if effect_name == "Shape":
-        primary_layer_idx = -1
+        # Shape must render on top of the mirror-Spirals overlay too
+        # (-2/-3), not just the ordinary mask/motion layers, whenever a
+        # recipe defines both (matrix, 2026-07-23) -- otherwise the two
+        # collide on whichever occurrence rotates to Shape as the primary
+        # AND crosses the overlay's firing gate in the same call.
+        primary_layer_idx = -4 if recipe.mirror_overlay_effect_name is not None else -1
     elif effect_name == "VU Meter":
         primary_layer_idx = mask_layer_idx + 2
     else:
@@ -2684,12 +2694,23 @@ def _place_corpus_recipe(
         if overlay_def is not None:
             # Divide by frequency before indexing into the pool so
             # consecutive FIRINGS walk through the mined variants in order
-            # (0,1,2,0,1,...) instead of aliasing on the same slot every
-            # time frequency and pool size share a factor.
-            overlay_idx = (
-                (overlay_occurrence // recipe.mirror_overlay_frequency)
-                % len(recipe.mirror_overlay_rotation)
+            # instead of aliasing on the same slot every time frequency and
+            # pool size share a factor. The WALK ORDER itself is shuffled
+            # per song (seeded by variation_seed) rather than always
+            # starting at index 0 (user question 2026-07-23: a song with
+            # few firings -- most songs don't reach 9+ qualifying
+            # occurrences -- would otherwise only ever sample the pool's
+            # first slot or two, e.g. never seeing variants 4/5 no matter
+            # how many times it's regenerated). Still walks sequentially
+            # through that shuffled order once firing starts, so a single
+            # song still never repeats a variant until the whole pool has
+            # been used once.
+            overlay_pool_len = len(recipe.mirror_overlay_rotation)
+            overlay_order = random.Random(f"mirror_overlay:{variation_seed}").sample(
+                range(overlay_pool_len), overlay_pool_len,
             )
+            firing_number = overlay_occurrence // recipe.mirror_overlay_frequency
+            overlay_idx = overlay_order[firing_number % overlay_pool_len]
             overlay_params_a, overlay_params_b = recipe.mirror_overlay_rotation[overlay_idx]
             # A vivid accent color, deliberately offset from the On-mask
             # layer's own bar-by-bar pick (user request, 2026-07-23: the

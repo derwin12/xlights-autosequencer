@@ -486,6 +486,149 @@ _SPIRALS_MATRIX_MULTI: tuple[tuple[str, str], ...] = (
 )
 
 
+# Matrix twin-Spirals overlay — mined 2026-07-23 (user question: "are there
+# opportunities to add the dual spirals to the matrix?"): a genuine
+# simultaneous two-separate-layer Spirals overlay on matrix elements, same
+# mechanism as the mega tree's mirror_overlay_rotation but a DIFFERENT
+# dominant technique -- 2338 real top-2-layer overlapping instances across
+# 122 of 397 songs (a broader corpus scan than the mega tree's, since this
+# was checked directly rather than through the generic miner). Matrix mostly
+# mirrors via a B_CHOICE_BufferTransform flip on one/both layers with the
+# SAME rotation value (56% of instances), not negated rotation like mega
+# tree's dominant contra-spin (only ~26% here) -- never re-mix sliders
+# across variants; this is a rotation pool of complete mined pairs.
+
+# Variant 1 (347 instances, the single most common shape): identical
+# rotation/thickness, no buffer transform at all -- the mirror comes from
+# opposite-sign Movement (the two spirals crawl in opposite directions).
+_SPIRALS_MIRROR_MATRIX_1A: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "20"),
+    ("E_SLIDER_Spirals_Thickness", "50"),
+    ("E_TEXTCTRL_Spirals_Movement", "1.0"),
+)
+_SPIRALS_MIRROR_MATRIX_1B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "20"),
+    ("E_SLIDER_Spirals_Thickness", "50"),
+    ("E_TEXTCTRL_Spirals_Movement", "-1.0"),
+)
+
+# Variant 2 (97 instances): identical rotation/movement, mirrored via
+# opposite buffer flips (Flip Horizontal vs Flip Vertical) instead of any
+# slider difference at all.
+_SPIRALS_MIRROR_MATRIX_2A: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Flip Horizontal"),
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "-64"),
+    ("E_SLIDER_Spirals_Thickness", "0"),
+    ("E_TEXTCTRL_Spirals_Movement", "3"),
+)
+_SPIRALS_MIRROR_MATRIX_2B: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Flip Vertical"),
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "-64"),
+    ("E_SLIDER_Spirals_Thickness", "0"),
+    ("E_TEXTCTRL_Spirals_Movement", "3"),
+)
+
+# Variant 3 (81 instances): identical rotation/movement/thickness, mirrored
+# via a single flip on one layer only (the other plain).
+_SPIRALS_MIRROR_MATRIX_3A: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "10"),
+    ("E_SLIDER_Spirals_Thickness", "50"),
+    ("E_TEXTCTRL_Spirals_Movement", "13"),
+)
+_SPIRALS_MIRROR_MATRIX_3B: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferTransform", "Flip Horizontal"),
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "10"),
+    ("E_SLIDER_Spirals_Thickness", "50"),
+    ("E_TEXTCTRL_Spirals_Movement", "13"),
+)
+
+# Variant 4 (78 instances): a true contra-rotating mirror, matched
+# magnitude opposite sign, wide multi-arm spiral.
+_SPIRALS_MIRROR_MATRIX_4A: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "5"),
+    ("E_SLIDER_Spirals_Rotation", "-164"),
+    ("E_SLIDER_Spirals_Thickness", "30"),
+    ("E_TEXTCTRL_Spirals_Movement", "-1"),
+)
+_SPIRALS_MIRROR_MATRIX_4B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "5"),
+    ("E_SLIDER_Spirals_Rotation", "164"),
+    ("E_SLIDER_Spirals_Thickness", "30"),
+    ("E_TEXTCTRL_Spirals_Movement", "1"),
+)
+
+# Variant 5 (35 instances): a true contra-rotating mirror, thin multi-arm
+# spiral (distinct look from variant 4's wide arms).
+_SPIRALS_MIRROR_MATRIX_5A: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "5"),
+    ("E_SLIDER_Spirals_Rotation", "20"),
+    ("E_SLIDER_Spirals_Thickness", "6"),
+    ("E_TEXTCTRL_Spirals_Movement", "1.0"),
+)
+_SPIRALS_MIRROR_MATRIX_5B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "5"),
+    ("E_SLIDER_Spirals_Rotation", "-20"),
+    ("E_SLIDER_Spirals_Thickness", "6"),
+    ("E_TEXTCTRL_Spirals_Movement", "-1.0"),
+)
+
+_SPIRALS_MIRROR_MATRIX_ROTATION: tuple[
+    tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]], ...
+] = (
+    (_SPIRALS_MIRROR_MATRIX_1A, _SPIRALS_MIRROR_MATRIX_1B),
+    (_SPIRALS_MIRROR_MATRIX_2A, _SPIRALS_MIRROR_MATRIX_2B),
+    (_SPIRALS_MIRROR_MATRIX_3A, _SPIRALS_MIRROR_MATRIX_3B),
+    (_SPIRALS_MIRROR_MATRIX_4A, _SPIRALS_MIRROR_MATRIX_4B),
+    (_SPIRALS_MIRROR_MATRIX_5A, _SPIRALS_MIRROR_MATRIX_5B),
+)
+
+
 # Matrix Color Wash preset — mined 2026-07-23 from a second vendor's
 # "HOUSE MATRICES"-named group (180 placements across 13 real sequences):
 # H+V fade both on, Layered blend (24/32 Color Wash placements, 75%).
@@ -816,8 +959,22 @@ _TWINKLE_MEGATREE: tuple[tuple[str, str], ...] = (
 # original 12 reference packages (real raw .xsq, not a JSON summary):
 # simultaneous Spirals on two separate layers, above the mask/motion layer
 # and below any Pictures content. Each song authors the pair differently,
-# so this is a 3-entry rotation pool of complete mined pairs rather than one
+# so this is a rotation pool of complete mined pairs rather than one
 # averaged preset (never re-mix individual fields across variants).
+#
+# Widened 2026-07-23 after a much larger pass (70 genuine top-2-layer
+# overlapping-Spirals instances across ~20 songs, vs. the original 3):
+# CONTRA-rotating pairs (opposite sign on E_SLIDER_Spirals_Rotation) are the
+# dominant real idiom -- 62% of instances with a nonzero rotation on both
+# layers -- not the identical-rotation "true mirror" that variants 1 and 3
+# below happened to sample. Count matched between layers 99% of the time,
+# thickness matched 88% of the time; a B_CHOICE_BufferTransform flip/rotate
+# on one layer appeared in a third of instances (an alternate way to
+# achieve a mirrored look without an opposite rotation value -- variant 1
+# below does exactly this). Variants 4 and 5 add two more contra-rotating
+# pairs so the pool's mix (3 of 5 contra) better reflects that majority,
+# without discarding the two same-direction variants that are also real,
+# just less common, mined idioms.
 
 # Variant 1 (Darlene Love - All Alone on Christmas): a true mirror twin —
 # identical Rotation/Thickness/Movement on both layers, one plain, one
@@ -894,12 +1051,66 @@ _SPIRALS_MIRROR_MEGATREE_3B: tuple[tuple[str, str], ...] = (
     ("E_TEXTCTRL_Spirals_Movement", "1"),
 )
 
+# Variant 4: matched count/thickness, mirrored-magnitude opposite-sign
+# rotation AND opposite-sign movement (a true contra-rotating spin, not
+# just an opposite rotation value) -- one layer blended "Average" with the
+# layer beneath it.
+_SPIRALS_MIRROR_MEGATREE_4A: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "15"),
+    ("E_SLIDER_Spirals_Thickness", "15"),
+    ("E_TEXTCTRL_Spirals_Movement", "4.9"),
+    ("T_CHOICE_LayerMethod", "Average"),
+)
+_SPIRALS_MIRROR_MEGATREE_4B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "0"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "1"),
+    ("E_SLIDER_Spirals_Rotation", "-15"),
+    ("E_SLIDER_Spirals_Thickness", "15"),
+    ("E_TEXTCTRL_Spirals_Movement", "-4.9"),
+)
+
+# Variant 5: contra-rotating with DIFFERENT thickness (thin fast spiral on
+# top, thick slower one beneath) and different movement character (static
+# vs. an oscillating value-curve "breathing" motion) -- a richer pairing
+# than a plain mirror.
+_SPIRALS_MIRROR_MEGATREE_5A: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "2"),
+    ("E_SLIDER_Spirals_Rotation", "66"),
+    ("E_SLIDER_Spirals_Thickness", "22"),
+    ("E_TEXTCTRL_Spirals_Movement", "-6"),
+)
+_SPIRALS_MIRROR_MEGATREE_5B: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Spirals_3D", "1"),
+    ("E_CHECKBOX_Spirals_Blend", "0"),
+    ("E_CHECKBOX_Spirals_Grow", "0"),
+    ("E_CHECKBOX_Spirals_Shrink", "0"),
+    ("E_SLIDER_Spirals_Count", "2"),
+    ("E_SLIDER_Spirals_Rotation", "-66"),
+    ("E_SLIDER_Spirals_Thickness", "50"),
+    ("E_TEXTCTRL_Spirals_Movement", "0.5"),
+    ("T_CHOICE_LayerMethod", "Layered"),
+)
+
 _SPIRALS_MIRROR_MEGATREE_ROTATION: tuple[
     tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]], ...
 ] = (
     (_SPIRALS_MIRROR_MEGATREE_1A, _SPIRALS_MIRROR_MEGATREE_1B),
     (_SPIRALS_MIRROR_MEGATREE_2A, _SPIRALS_MIRROR_MEGATREE_2B),
     (_SPIRALS_MIRROR_MEGATREE_3A, _SPIRALS_MIRROR_MEGATREE_3B),
+    (_SPIRALS_MIRROR_MEGATREE_4A, _SPIRALS_MIRROR_MEGATREE_4B),
+    (_SPIRALS_MIRROR_MEGATREE_5A, _SPIRALS_MIRROR_MEGATREE_5B),
 )
 
 
@@ -1233,6 +1444,15 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
             _SPIRALS_MATRIX_REVERSE,
             _SPIRALS_MATRIX_MULTI,
         ),
+        # Twin-Spirals overlay added 2026-07-23 (user question: "are there
+        # opportunities to add the dual spirals to the matrix?") -- see
+        # _SPIRALS_MIRROR_MATRIX_ROTATION's docstring for the 5 mined
+        # variants. frequency=3 reused from the mega tree's own tuning
+        # pending a real generated .xsq to validate matrix's own ideal
+        # firing rate -- revisit if it reads as too frequent/sparse.
+        mirror_overlay_effect_name="Spirals",
+        mirror_overlay_rotation=_SPIRALS_MIRROR_MATRIX_ROTATION,
+        mirror_overlay_frequency=3,
         color_over_mask=True,
     ),
     # Spiral trees — a distinct physical shape (tight vertical wrap) from an

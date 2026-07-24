@@ -538,23 +538,44 @@ class TestMegatreeMirrorOverlay:
                   if p.effect_name == "Spirals" and p.layer < 0]
         assert {p.layer for p in overlay} == {-2, -3}
 
-    def test_overlay_rotates_through_the_three_mined_variants(self) -> None:
-        # Firing occurrences are 0, 3, 6, ... (frequency=3) -> variant
-        # index = (occurrence // 3) % 3, so occurrence 0 -> variant1
-        # (mirror-flip) and occurrence 3 -> variant2 (Wizzard).
+    def test_overlay_rotates_through_the_five_mined_variants(self) -> None:
+        # Firing occurrences are 0, 3, 6, ... (frequency=3) -> firing number
+        # = occurrence // 3, which indexes into a per-seed SHUFFLED walk
+        # order (added 2026-07-23 so a song with few firings doesn't always
+        # sample the same early pool slots -- see effect_placer.py's
+        # mirror_overlay_rotation comment). For variation_seed=0 (the
+        # default _place uses) the shuffled order is [4, 3, 1, 2, 0], so
+        # firing 0 (occurrence 0) lands on variant 5 and firing 1
+        # (occurrence 3) lands on variant 4.
         result0 = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                          corpus_occurrence={"megatree": 0})
         overlay0 = [p for p in result0["06_PROP_Mega_Tree"]
                    if p.effect_name == "Spirals" and p.layer < 0]
         rotations0 = {dict(p.parameters)["E_SLIDER_Spirals_Rotation"] for p in overlay0}
-        assert rotations0 == {"5"}
+        assert rotations0 == {"66", "-66"}
 
         result1 = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
                          corpus_occurrence={"megatree": 3})
         overlay1 = [p for p in result1["06_PROP_Mega_Tree"]
                    if p.effect_name == "Spirals" and p.layer < 0]
         rotations1 = {dict(p.parameters)["E_SLIDER_Spirals_Rotation"] for p in overlay1}
-        assert rotations1 == {"-32", "30"}
+        assert rotations1 == {"15", "-15"}
+
+    def test_overlay_start_variant_differs_by_song_seed(self) -> None:
+        # The walk order is shuffled per variation_seed (2026-07-23, user
+        # question: "why wouldn't we just use any variant any time?") so a
+        # song with only 1-2 firings still has a chance at any pool slot,
+        # not just always variant 1 first. Confirm different seeds actually
+        # produce different first-firing variants, not a no-op shuffle.
+        seen_rotations = set()
+        for seed in range(6):
+            result = _place(_make_section(label="chorus"), _MEGATREE_GROUP,
+                            variation_seed=seed, corpus_occurrence={"megatree": 0})
+            overlay = [p for p in result["06_PROP_Mega_Tree"]
+                      if p.effect_name == "Spirals" and p.layer < 0]
+            rotations = tuple(sorted(dict(p.parameters)["E_SLIDER_Spirals_Rotation"] for p in overlay))
+            seen_rotations.add(rotations)
+        assert len(seen_rotations) > 1, "every seed landed on the same first variant"
 
     def test_overlay_missing_from_catalog_is_silently_skipped(self) -> None:
         # "Spirals" absent from the library -- the overlay must not break
@@ -947,7 +968,10 @@ class TestMatrixRecipe:
         placements = result["06_PROP_Matrix"]
         ons = [p for p in placements if p.effect_name == "On"]
         bursts = [p for p in placements if p.effect_name == "Shockwave"]
-        spins = [p for p in placements if p.effect_name == "Spirals"]
+        # layer >= 0 excludes the mirror-Spirals overlay (added 2026-07-23,
+        # negative layers -2/-3) -- this test is about the single sustained
+        # SECONDARY Spirals layer, a separate mechanism.
+        spins = [p for p in placements if p.effect_name == "Spirals" and p.layer >= 0]
         assert len(ons) == 1 and ons[0].layer == 0
         assert ons[0].parameters["T_CHOICE_LayerMethod"] == "2 is Unmask"
         assert len(bursts) == len(_BEATS)
@@ -970,7 +994,10 @@ class TestMatrixRecipe:
         # repetitive -- every other one flips.
         section = _make_section(label="chorus")
         result = _place(section, _MATRIX_GROUP, library_names=_LIBRARY_WITH_ON)
-        spins = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Spirals"]
+        # layer >= 0 excludes the mirror-Spirals overlay (added 2026-07-23,
+        # negative layers -2/-3) -- this test is about the single sustained
+        # SECONDARY Spirals layer, a separate mechanism.
+        spins = [p for p in result["06_PROP_Matrix"] if p.effect_name == "Spirals" and p.layer >= 0]
         assert len(spins) == 2
         assert "B_CHOICE_BufferTransform" not in spins[0].parameters
         assert spins[1].parameters["B_CHOICE_BufferTransform"] == "Flip Horizontal"
@@ -1045,6 +1072,45 @@ class TestMatrixRecipe:
                         library_names=_LIBRARY_WITH_ON)
         placements = result["06_PROP_Candy_Cane"]
         assert all(p.layer <= 1 for p in placements)
+
+
+class TestMatrixMirrorOverlay:
+    # Twin-Spirals overlay added 2026-07-23 — see corpus_recipes.py's
+    # _SPIRALS_MIRROR_MATRIX_ROTATION docstring for the 5 mined variants.
+    # Same mechanism as the mega tree's (TestMegatreeMirrorOverlay above),
+    # just a separate rotation pool of matrix-specific mined pairs.
+
+    def test_overlay_fires_once_every_three_occurrences(self) -> None:
+        for occ in range(9):
+            result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                            corpus_occurrence={"matrix": occ})
+            overlay = [p for p in result["06_PROP_Matrix"]
+                      if p.effect_name == "Spirals" and p.layer < 0]
+            if occ % 3 == 0:
+                assert overlay, f"occurrence {occ} should fire but got no overlay"
+            else:
+                assert not overlay, f"occurrence {occ} should not fire but got overlay"
+
+    def test_overlay_uses_two_distinct_negative_layers(self) -> None:
+        result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                        corpus_occurrence={"matrix": 0})
+        overlay = [p for p in result["06_PROP_Matrix"]
+                  if p.effect_name == "Spirals" and p.layer < 0]
+        assert {p.layer for p in overlay} == {-2, -3}
+
+    def test_overlay_start_variant_differs_by_song_seed(self) -> None:
+        # Shuffled per variation_seed (same mechanism as mega tree's) so a
+        # matrix-heavy song with few firings still has a shot at any of the
+        # 5 variants, not always variant 1 first.
+        seen = set()
+        for seed in range(6):
+            result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
+                            variation_seed=seed, corpus_occurrence={"matrix": 0})
+            overlay = [p for p in result["06_PROP_Matrix"]
+                      if p.effect_name == "Spirals" and p.layer < 0]
+            key = tuple(sorted(dict(p.parameters).get("E_SLIDER_Spirals_Rotation") for p in overlay))
+            seen.add(key)
+        assert len(seen) > 1, "every seed landed on the same first variant"
 
 
 # ── mini-tree recipe ─────────────────────────────────────────────────────────
@@ -1881,7 +1947,10 @@ class TestMatrixMotionRotation:
         # Checked against the real vendor sequences (2026-07-23): Shape
         # never pairs with an On "2 is Unmask" layer there, and needs to sit
         # above the sustained Spirals layer, not sandwiched between it and
-        # a mask layer.
+        # a mask layer. Shape's own layer moved from -1 to -4 the same day
+        # (mirror-Spirals overlay added for matrix, using -2/-3) so Shape
+        # still renders above that overlay too when both coincide on the
+        # same occurrence, rather than hardcoding -1.
         full_lib = _LIBRARY_WITH_ON + ("Shape",)
         result = _place(_make_section(label="chorus"), _MATRIX_GROUP,
                         library_names=full_lib, corpus_occurrence={"matrix": 6})
@@ -1889,10 +1958,11 @@ class TestMatrixMotionRotation:
         assert not any(p.effect_name == "On" for p in placements)
         shapes = [p for p in placements if p.effect_name == "Shape"]
         assert shapes
-        assert all(p.layer == -1 for p in shapes)
         spirals = [p for p in placements if p.effect_name == "Spirals"]
         assert spirals
-        assert all(p.layer > -1 for p in spirals)
+        assert all(s.layer < p.layer for s in shapes for p in spirals), (
+            "Shape must render above every Spirals layer, including the mirror overlay"
+        )
 
     def test_shape_uses_theme_accent_palette_not_flat_white(self) -> None:
         full_lib = _LIBRARY_WITH_ON + ("Shape",)
