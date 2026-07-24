@@ -177,6 +177,12 @@ class SectionAssignment:
     # background wash tiers (1-2) feel like a consistent song identity rather than
     # resetting at every section boundary.  Empty list → fall back to theme.palette.
     anchor_palette: list[str] = field(default_factory=list)
+    # True when the user explicitly pinned this section's theme via
+    # GenerationConfig.theme_overrides. An explicit choice should show its own
+    # theme's colors on this section, so the placer skips the anchor palette
+    # (which would otherwise dilute a short section's colors into the song-wide
+    # blend) and uses theme.palette/theme.accent_palette directly instead.
+    theme_overridden: bool = False
     # Fraction of groups within each active tier to populate (0.0-1.0).
     # Low-energy sections use fewer groups so most props stay dark, matching pro
     # sequences where only key focal elements are lit in quiet passages.

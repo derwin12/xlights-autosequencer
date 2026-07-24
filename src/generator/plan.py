@@ -223,6 +223,7 @@ def build_plan(
                 )
                 if theme is not None:
                     assignments[idx].theme = theme
+                    assignments[idx].theme_overridden = True
 
     # 3a. Derive song-level anchor palette and stamp it onto every assignment.
     # This ensures the background wash tiers (1-2) use a consistent set of 4

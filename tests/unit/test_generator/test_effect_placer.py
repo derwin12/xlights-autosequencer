@@ -373,6 +373,67 @@ class TestTier1AlwaysSectionSpanning:
         )
 
 
+class TestThemeOverrideBypassesAnchorPalette:
+    """A section whose theme was explicitly pinned (theme_overridden=True) uses
+    its own theme.palette on tier 1/2, not the song-wide anchor_palette.
+
+    Without this, an explicit per-section theme choice (e.g. via
+    --theme-override or the review UI's Theme tab) silently only changed the
+    section's effect TYPE -- the anchor palette (a duration-weighted blend
+    across the whole song) still controlled its background-wash COLOR, so a
+    short overridden section's own theme colors never appeared at all.
+    """
+
+    def _place(self, theme_overridden: bool) -> list:
+        anchor = ["#111111", "#222222"]
+        own_palette = ["#ff00ff", "#ffffff"]
+        assignment = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=_make_theme(layers=[EffectLayer(variant="Color Wash")],
+                               palette=own_palette),
+            active_tiers=frozenset({1}),
+            anchor_palette=anchor,
+            theme_overridden=theme_overridden,
+        )
+        groups = [PowerGroup(name="01_BASE_All", tier=1, members=["Model_A"])]
+        library = _make_library(_make_effect("Color Wash"))
+        variant_library = _make_variant_library("Color Wash")
+        hierarchy = _make_hierarchy(duration_ms=10000)
+
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        return result.get("01_BASE_All", [])
+
+    def test_overridden_section_uses_own_theme_palette(self) -> None:
+        import colorsys
+        placements = self._place(theme_overridden=True)
+        assert placements
+        colors = {c.lower() for p in placements for c in p.color_palette}
+        assert "#111111" not in colors and "#222222" not in colors, (
+            f"overridden section must not use the song-wide anchor palette; got {colors}"
+        )
+        # own_palette's saturated color is magenta (#ff00ff, hue ~300deg); the
+        # placer may re-vivify/darken it, so check hue rather than exact hex.
+        magenta_hues = []
+        for c in colors:
+            r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
+            h, s, v = colorsys.rgb_to_hsv(r, g, b)
+            if s > 0.3:
+                magenta_hues.append(h * 360.0)
+        assert any(250 <= h <= 330 for h in magenta_hues), (
+            f"overridden section must derive its color from its own theme "
+            f"palette (magenta); got hues {magenta_hues} from colors {colors}"
+        )
+
+    def test_auto_selected_section_uses_anchor_palette(self) -> None:
+        placements = self._place(theme_overridden=False)
+        assert placements
+        colors = {c.lower() for p in placements for c in p.color_palette}
+        assert "#111111" in colors or "#222222" in colors, (
+            f"auto-selected section must still use the song-wide anchor; got {colors}"
+        )
+
+
 class TestTier1AlwaysGetsMusicSparkles:
     """Tier 1 BASE placements get music_sparkles > 0 even without palette
     restraint, providing the music-reactive overlay that gives the BASE

@@ -169,13 +169,25 @@ _MIN_MASK_HUE_SEPARATION_DEG = 25.0
 # movement rather than a frozen color.
 _MIN_MASK_ROTATION_CANDIDATES = 3
 
-# (saturation, value) pairs used to synthesize extra rotation entries from a
-# theme's own accepted hue(s) when the palette has real color but not enough
-# distinct hues (see the "in-hue variants" branch below). Deliberately
-# distinct from the (0.75, 0.95) floor used when vivifying the original
-# palette color, so a variant never lands on the exact same RGB.
-_MASK_HUE_VARIANT_SV: tuple[tuple[float, float], ...] = (
-    (0.55, 1.0), (1.0, 0.6), (0.85, 0.8),
+# (hue shift, saturation, value) triples used to synthesize extra rotation
+# entries from a theme's own accepted hue(s) when the palette has real color
+# but not enough distinct hues (see the "in-hue variants" branch below).
+# Deliberately distinct from the (0.75, 0.95) floor used when vivifying the
+# original palette color, so a variant never lands on the exact same RGB.
+#
+# The hue shift (added 2026-07-24, user request: a mega tree's dual-spiral
+# mirror-overlay accent was indistinguishable from its own On-mask -- both
+# were drawing from this same padded candidate list, and on a single-hue
+# theme every entry only varied lightness/saturation of one hue, which
+# barely reads through xLights' Unmask blend since Unmask carries over the
+# mask layer's hue/saturation but not its own brightness) gives adjacent
+# candidates a real, visible hue difference instead of just a shade
+# difference. Capped at 20 degrees -- under bug-419's
+# _MIN_MASK_HUE_SEPARATION_DEG (25) guardrail test, so padded variants still
+# read as "within the theme's own hue family" rather than drifting onto an
+# unrelated off-theme color.
+_MASK_HUE_VARIANTS: tuple[tuple[float, float, float], ...] = (
+    (0.0, 0.55, 1.0), (20.0, 1.0, 0.6), (-20.0, 0.85, 0.8),
 )
 
 
@@ -231,6 +243,7 @@ def _vivid_mask_color(
             candidates.append(vivid)
             candidate_hues.append(hue_deg)
 
+    near_white_color: str | None = None
     for color in palette or []:
         c = color.lstrip("#")
         if len(c) != 6:
@@ -241,6 +254,23 @@ def _vivid_mask_color(
             r, g, b = colorsys.hsv_to_rgb(h, max(s, 0.75), max(v, 0.95))
             vivid = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
             add_candidate(vivid, h * 360.0)
+        elif s < 0.15 and v >= 0.85 and near_white_color is None:
+            near_white_color = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
+
+    # A near-white color explicitly present in the theme's own palette (e.g.
+    # "White Heat"'s accent_palette=[white, magenta] -- a deliberate
+    # white-flash-over-color-wash design, not an accident) is a real accent
+    # choice, not the degenerate "no saturated color anywhere" case handled
+    # below. It's only added once a real saturated candidate already exists,
+    # so an all-white/gray palette (no hue at all) still falls through to the
+    # corpus-primaries fallback instead of freezing on white. White carries
+    # no hue to collide with, so it skips add_candidate's hue-separation
+    # dedup entirely (bug-565: the previous unconditional s >= 0.25 filter
+    # discarded this white candidate outright, so these themes' mask/overlay
+    # rotation only ever showed synthesized shades of the one saturated
+    # color and never the designed white flash).
+    if candidates and near_white_color is not None:
+        candidates.append(near_white_color)
 
     if not candidates:
         # No usable saturated color anywhere in the palette (e.g. an
@@ -259,10 +289,11 @@ def _vivid_mask_color(
         variant_idx = 0
         while (
             len(candidates) < _MIN_MASK_ROTATION_CANDIDATES
-            and variant_idx < len(own_hues) * len(_MASK_HUE_VARIANT_SV)
+            and variant_idx < len(own_hues) * len(_MASK_HUE_VARIANTS)
         ):
-            hue = own_hues[variant_idx % len(own_hues)]
-            sat, val = _MASK_HUE_VARIANT_SV[variant_idx // len(own_hues)]
+            base_hue = own_hues[variant_idx % len(own_hues)]
+            hue_shift, sat, val = _MASK_HUE_VARIANTS[variant_idx // len(own_hues)]
+            hue = (base_hue + hue_shift) % 360.0
             r, g, b = colorsys.hsv_to_rgb(hue / 360.0, sat, val)
             variant = f"#{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
             if variant not in candidates:
@@ -884,7 +915,13 @@ def place_effects(
     # has a consistent color identity rather than swapping palettes at each
     # section boundary.  Visual variety between sections comes from effect TYPE,
     # not color changes — matching how pro sequences work.
-    if assignment.anchor_palette:
+    #
+    # A section whose theme was explicitly pinned by the user (not
+    # auto-selected) is exempt: the anchor is a duration-weighted blend across
+    # the whole song, so a short explicitly-themed section (e.g. a 16s intro)
+    # would otherwise never show its own theme's colors at all — the pin would
+    # change the effect TYPE but not the color, silently defeating the choice.
+    if assignment.anchor_palette and not assignment.theme_overridden:
         effective_base = assignment.anchor_palette
     else:
         effective_base = theme.palette
