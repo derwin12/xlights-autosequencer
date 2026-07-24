@@ -202,7 +202,12 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_CHOICE_Fill_Colors": "None",
         "E_CHOICE_Wave_Direction": "Right to Left",
         "E_CHOICE_Wave_Type": "Sine",
-        "E_SLIDER_Number_Waves": "180",
+        # Was "E_SLIDER_Number_Waves" -- not a real xLights key (confirmed
+        # against a real xLights clipboard paste, 2026-07-23); the actual
+        # parameter is a textctrl, not a slider, so this default silently
+        # never applied and Wave always rendered at xLights' own UI
+        # default instead.
+        "E_TEXTCTRL_Number_Waves": "1.00",
         "E_SLIDER_Thickness_Percentage": "25",
         "E_SLIDER_Wave_Height": "50",
         "E_TEXTCTRL_Wave_Speed": "10.0",
@@ -823,6 +828,24 @@ def _serialize_effect_params(
             defaults[key] = "1" if val else "0"
         else:
             defaults[key] = str(val)
+
+    # Wave floor (user request, 2026-07-23): Number_Waves=0 or a very thin
+    # Thickness_Percentage both render as barely-visible/invisible on real
+    # hardware. Enforced here -- the single point every Wave placement's
+    # final parameters are assembled, mirroring the B_CHOICE_BufferStyle/
+    # fade-cap precedent below -- so it guards every producer (mined
+    # presets, defaults, future callers), not just the ones known today.
+    if placement.effect_name == "Wave":
+        try:
+            if float(defaults.get("E_TEXTCTRL_Number_Waves", 1.0)) < 1.0:
+                defaults["E_TEXTCTRL_Number_Waves"] = "1.00"
+        except ValueError:
+            pass
+        try:
+            if float(defaults.get("E_SLIDER_Thickness_Percentage", 10)) < 10:
+                defaults["E_SLIDER_Thickness_Percentage"] = "10"
+        except ValueError:
+            pass
 
     if buffer_style is not None:
         defaults["B_CHOICE_BufferStyle"] = buffer_style

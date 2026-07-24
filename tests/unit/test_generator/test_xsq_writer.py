@@ -844,6 +844,63 @@ class TestCombinedFadeNeverExceedsDuration:
         assert fade_in + fade_out < p.end_ms - p.start_ms
 
 
+class TestWaveMinimums:
+    """Number_Waves and Thickness_Percentage below a visible floor render as
+    barely-visible/invisible on real hardware (user request, 2026-07-23).
+    Enforced in _serialize_effect_params so it guards every producer, not
+    just the mined presets that happen to already comply."""
+
+    def _placement(self, **params) -> EffectPlacement:
+        return EffectPlacement(
+            effect_name="Wave", xlights_id="eff_WAVE", model_or_group="Model1",
+            start_ms=0, end_ms=2000, parameters=params,
+        )
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def test_number_waves_below_one_is_raised_to_one(self):
+        p = self._placement(E_TEXTCTRL_Number_Waves="0.00")
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_TEXTCTRL_Number_Waves") == "1.00"
+
+    def test_number_waves_at_or_above_one_is_untouched(self):
+        p = self._placement(E_TEXTCTRL_Number_Waves="5.00")
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_TEXTCTRL_Number_Waves") == "5.00"
+
+    def test_thickness_below_ten_is_raised_to_ten(self):
+        p = self._placement(E_SLIDER_Thickness_Percentage="3")
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Thickness_Percentage") == "10"
+
+    def test_thickness_at_or_above_ten_is_untouched(self):
+        p = self._placement(E_SLIDER_Thickness_Percentage="20")
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Thickness_Percentage") == "20"
+
+    def test_default_wave_placement_already_complies(self):
+        # No explicit override -- must fall back to a compliant default,
+        # not the stale "E_SLIDER_Number_Waves" key that never matched a
+        # real xLights parameter (bug found 2026-07-23).
+        p = self._placement()
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_TEXTCTRL_Number_Waves") == "1.00"
+        assert float(self._param(params, "E_SLIDER_Thickness_Percentage")) >= 10
+
+    def test_floor_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Fire", xlights_id="Fire", model_or_group="Model1",
+            start_ms=0, end_ms=2000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_TEXTCTRL_Number_Waves" not in params
+        assert "E_SLIDER_Thickness_Percentage" not in params
+
+
 class TestVideoEffectPortability:
     """Video effect filenames must be host/devcontainer-portable, like mediaFile."""
 
