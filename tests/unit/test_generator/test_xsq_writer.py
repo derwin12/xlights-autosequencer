@@ -901,6 +901,66 @@ class TestWaveMinimums:
         assert "E_SLIDER_Thickness_Percentage" not in params
 
 
+class TestPinwheelNeverFlat:
+    """A flat Pinwheel (E_CHOICE_Pinwheel_3D="None") reads as dull on real
+    hardware (user request, 2026-07-23) -- every Pinwheel placement must
+    pick one of the 3 non-flat options instead, whether a producer bakes
+    in "None" explicitly or omits the key entirely (both fall back to
+    xLights' own flat default)."""
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def test_explicit_none_is_replaced(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="Star 1",
+            start_ms=1000, end_ms=2000, parameters={"E_CHOICE_Pinwheel_3D": "None"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHOICE_Pinwheel_3D") in ("3D", "3D Inverted", "Sweep")
+
+    def test_missing_key_gets_a_default_too(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=5000, end_ms=6000,
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHOICE_Pinwheel_3D") in ("3D", "3D Inverted", "Sweep")
+
+    def test_explicit_non_flat_choice_is_left_alone(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=5000, end_ms=6000, parameters={"E_CHOICE_Pinwheel_3D": "3D Inverted"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHOICE_Pinwheel_3D") == "3D Inverted"
+
+    def test_choice_is_deterministic_across_runs(self):
+        p1 = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="Star 2",
+            start_ms=3000, end_ms=4000,
+        )
+        p2 = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="Star 2",
+            start_ms=3000, end_ms=4000,
+        )
+        assert (
+            self._param(_serialize_effect_params(p1), "E_CHOICE_Pinwheel_3D")
+            == self._param(_serialize_effect_params(p2), "E_CHOICE_Pinwheel_3D")
+        )
+
+    def test_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Fire", xlights_id="Fire", model_or_group="Model1",
+            start_ms=0, end_ms=2000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_CHOICE_Pinwheel_3D" not in params
+
+
 class TestVideoEffectPortability:
     """Video effect filenames must be host/devcontainer-portable, like mediaFile."""
 

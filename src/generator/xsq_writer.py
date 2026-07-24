@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import xml.etree.ElementTree as ET
+import zlib
 from pathlib import Path
 
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
@@ -808,6 +809,13 @@ def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
     return ",".join(parts)
 
 
+# A flat/plain Pinwheel (E_CHOICE_Pinwheel_3D="None") reads as dull on real
+# hardware (user request, 2026-07-23) -- every Pinwheel placement must pick
+# one of these instead. Order matters only in that it's the rotation table
+# _serialize_effect_params indexes into.
+_PINWHEEL_3D_OPTIONS = ("3D", "3D Inverted", "Sweep")
+
+
 def _serialize_effect_params(
     placement: EffectPlacement, buffer_style: str | None = None,
 ) -> str:
@@ -846,6 +854,22 @@ def _serialize_effect_params(
                 defaults["E_SLIDER_Thickness_Percentage"] = "10"
         except ValueError:
             pass
+
+    # Never render a flat/plain Pinwheel (user request, 2026-07-23): a
+    # handful of producers (the whole-house composite pool, the generic
+    # prop rotation pool, the star-burst preset) either omit
+    # E_CHOICE_Pinwheel_3D entirely or bake in "None", both of which fall
+    # back to xLights' own flat default. Enforced here so it guards every
+    # producer, not just the ones known today. The choice among the 3
+    # non-flat options is deterministic per placement (same model+time
+    # always picks the same one) rather than random, so re-running the
+    # same generation reproduces identical output.
+    if placement.effect_name == "Pinwheel" and defaults.get("E_CHOICE_Pinwheel_3D", "None") == "None":
+        # zlib.crc32, not Python's hash() -- string hashing is randomized
+        # per-process (PYTHONHASHSEED), which would make the same
+        # generation pick a different option on every run.
+        style_seed = zlib.crc32(f"{placement.model_or_group}:{placement.start_ms}".encode("utf-8"))
+        defaults["E_CHOICE_Pinwheel_3D"] = _PINWHEEL_3D_OPTIONS[style_seed % len(_PINWHEEL_3D_OPTIONS)]
 
     if buffer_style is not None:
         defaults["B_CHOICE_BufferStyle"] = buffer_style
