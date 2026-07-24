@@ -111,6 +111,11 @@ class EffectPlacement:
     # out to render in the opposite order, verify against a real .xsq
     # before trusting either direction as universal.
     layer: int = 0
+    # Explicit B_CHOICE_BufferStyle for this placement, taking precedence over
+    # the tier-based convention in xsq_writer._buffer_style_for_placement.
+    # None -> tier convention applies unchanged (every placement except the
+    # snowflake Single Strand render-style rotation, as of 2026-07-24).
+    buffer_style_override: str | None = None
 
     def __post_init__(self) -> None:
         self.start_ms = frame_align(self.start_ms)

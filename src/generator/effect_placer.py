@@ -2408,6 +2408,32 @@ def _place_corpus_recipe(
         and recipe.direction_field is not None
         and len(recipe.direction_ping_pong_values) == 2
     )
+    # Same ping-pong idiom as above, but for the ALT effect's own preset
+    # (see PropFamilyRecipe.alt_direction_field docstring) -- families whose
+    # mined direction rotation lives on alt_effect_name rather than
+    # effect_name (snowflake: Shockwave primary, Single Strand alt). Gated
+    # explicitly on effect_name == "Single Strand", not just "whichever
+    # effect happens to be recipe.alt_effect_name" -- these two fields exist
+    # specifically for Single Strand's own Chase_Type1/BufferStyle idiom and
+    # must never fire for a different alt effect (Spirals, Lightning,
+    # Pinwheel, Shockwave) that some other family's alt_effect_name names.
+    use_alt_ping_pong_direction = (
+        effect_name == "Single Strand"
+        and effect_name == recipe.alt_effect_name
+        and recipe.alt_direction_field is not None
+        and len(recipe.alt_direction_ping_pong_values) == 2
+    )
+    # Base index into the render-style pool for this occurrence -- advanced
+    # further per beat-block below (alt_render_style_beats_per_style) so a
+    # single long-running occurrence doesn't freeze on one style for its
+    # entire span (see PropFamilyRecipe.alt_render_style_beats_per_style
+    # docstring: a real 75s occurrence showed one style + per-beat direction
+    # ping-pong alone still reads as monotonous).
+    render_style_base_idx: int | None = None
+    if effect_name == "Single Strand" and effect_name == recipe.alt_effect_name and recipe.alt_render_style_rotation:
+        render_style_base_idx = (
+            occurrence_index if occurrence_index is not None else (variation_seed // 2)
+        )
     if (
         effect_name == recipe.effect_name
         and recipe.size_field is not None
@@ -2518,6 +2544,8 @@ def _place_corpus_recipe(
             direction_cycle = (
                 {"param": recipe.direction_field, "values": list(recipe.direction_ping_pong_values)}
                 if use_ping_pong_direction
+                else {"param": recipe.alt_direction_field, "values": list(recipe.alt_direction_ping_pong_values)}
+                if use_alt_ping_pong_direction
                 else None
             )
             instance_index = i // beat_stride
@@ -2542,6 +2570,18 @@ def _place_corpus_recipe(
                 direction_cycle=direction_cycle, preserve_directions=True,
             )
             p.layer = primary_layer_idx
+            if render_style_base_idx is not None:
+                # instance_index counts beat-blocks from the start of THIS
+                # occurrence (resets to 0 per call), so beats_per_style=0
+                # (block always 0) reproduces the old one-style-per-
+                # occurrence behavior exactly.
+                block = (
+                    instance_index // recipe.alt_render_style_beats_per_style
+                    if recipe.alt_render_style_beats_per_style > 0
+                    else 0
+                )
+                style_idx = (render_style_base_idx + block) % len(recipe.alt_render_style_rotation)
+                p.buffer_style_override = recipe.alt_render_style_rotation[style_idx]
             # Duration-scaled fades (returns 0,0 for sub-500ms bursts, so
             # Shockwave/Pinwheel-style crisp accents are unaffected) —
             # never a raw baked-in absolute value, which bypasses

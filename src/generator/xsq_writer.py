@@ -537,7 +537,12 @@ def write_xsq(
     # future tier convention change ever puts BEAT groups on "Default".
     _ALWAYS_PREVIEW_GROUPS = {"04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4"}
 
-    def _buffer_style_for_placement(group_name: str, effect_name: str) -> str | None:
+    def _buffer_style_for_placement(group_name: str, effect_name: str, override: str | None) -> str | None:
+        # A placement-level override (e.g. the snowflake Single Strand
+        # render-style rotation) takes precedence over tier convention --
+        # it names an explicit mined/requested style, not a fallback default.
+        if override is not None:
+            return override
         if group_name in ("01_BASE_All", "01_BASE_All_FADES") and effect_name in _ALL_GROUP_PER_MODEL_EFFECTS:
             base = "Per Model Default"
         else:
@@ -564,7 +569,7 @@ def write_xsq(
 
     for group_name, placements in all_placements.items():
         for p in placements:
-            buffer_style = _buffer_style_for_placement(group_name, p.effect_name)
+            buffer_style = _buffer_style_for_placement(group_name, p.effect_name, p.buffer_style_override)
             pal_idx = _ensure_palette(p.color_palette, palette_index, palette_list, p.music_sparkles)
             eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list, buffer_style)
             placement_cache[id(p)] = (eff_idx, pal_idx)

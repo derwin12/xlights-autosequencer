@@ -376,8 +376,55 @@ class TestCorpusRecipePlacement:
         for p in placements:
             assert p.effect_name == "Single Strand"
             assert "E_SLIDER_Shockwave_End_Radius" not in p.parameters
-            assert p.parameters["E_CHOICE_Chase_Type1"] == "To Middle"
+            assert p.parameters["E_CHOICE_Chase_Type1"] in ("To Middle", "From Middle")
             assert p.parameters["E_CHOICE_SingleStrand_FX"] == "Fireworks 1D"
+
+    def test_snowflake_singlestrand_ping_pongs_chase_direction_per_beat(self) -> None:
+        # Mined split (2026-07-24 re-mine, 1333 genuine snowflake SingleStrand
+        # placements): "To Middle" 56%, "From Middle" 43% -- ping-pong per
+        # beat rather than freezing "To Middle" for the whole song.
+        result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP, variation_seed=3)
+        placements = result["06_PROP_Snowflake"]
+        directions = [p.parameters["E_CHOICE_Chase_Type1"] for p in placements]
+        assert directions == ["To Middle", "From Middle"] * (len(directions) // 2)
+
+    def test_snowflake_singlestrand_render_style_rotates_with_occurrence(self) -> None:
+        # User-supplied render-style suggestions (2026-07-24): every
+        # occurrence of the Single Strand alt should carry one of the four
+        # named buffer styles, and different occurrences should walk through
+        # the pool rather than repeating the same style all song long.
+        allowed = {
+            "Per Model Default",
+            "Horizontal Per Model",
+            "Horizontal Per Model/Strand",
+            "Per Model Horizontal Per Strand",
+        }
+        first = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP, variation_seed=3)
+        placements = first["06_PROP_Snowflake"]
+        assert placements
+        styles = {p.buffer_style_override for p in placements}
+        assert styles <= allowed
+
+    def test_snowflake_singlestrand_render_style_advances_within_long_occurrence(self) -> None:
+        # User report (2026-07-24, real generated .xsq): a song whose own
+        # section structure produced one continuous 75s+ Single Strand
+        # occurrence rendered the entire span in one style -- the per-beat
+        # direction ping-pong alone wasn't enough variety over that many
+        # beats. alt_render_style_beats_per_style=8 must advance the style
+        # every 8 beats WITHIN a single occurrence, not just once per
+        # occurrence.
+        beats = list(range(0, 20 * 500, 500))  # 20 beats, one long section
+        hierarchy = _make_hierarchy(beats, duration_ms=beats[-1] + 500)
+        section = _make_section(label="chorus", start_ms=0, end_ms=beats[-1] + 500)
+        result = _place(section, _SNOWFLAKE_GROUP, variation_seed=3, hierarchy=hierarchy)
+        placements = sorted(result["06_PROP_Snowflake"], key=lambda p: p.start_ms)
+        assert placements
+        styles = [p.buffer_style_override for p in placements]
+        # Beats 0-7 -> block 0, beats 8-15 -> block 1, beats 16-19 -> block 2:
+        # three distinct styles across one continuous occurrence.
+        assert len(set(styles)) >= 3
+        assert styles[0] == styles[7]
+        assert styles[0] != styles[8]
 
     def test_adjacent_seed_keeps_primary_effect(self) -> None:
         result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP, variation_seed=1)

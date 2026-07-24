@@ -113,6 +113,44 @@ class PropFamilyRecipe:
     direction_field: str | None = None
     direction_ping_pong_values: tuple[str, str] = ()
     direction_alt_value: str | None = None
+    # Same per-occurrence ping-pong idiom as direction_field, but scoped
+    # explicitly to the Single Strand effect's own Chase_Type1 preset --
+    # needed when a family's alt_effect_name IS "Single Strand" (snowflake:
+    # primary is Shockwave, the mined Chase_Type1 rotation is on the Single
+    # Strand alt). direction_field/direction_ping_pong_values can't be
+    # reused for this because their "use_alt_style" gate is tied to
+    # effect_name == recipe.effect_name (see effect_placer._place_corpus_
+    # recipe). effect_placer additionally gates this on
+    # effect_name == "Single Strand" literally, not just
+    # effect_name == recipe.alt_effect_name -- these two fields exist for
+    # Single Strand's own idiom specifically and must never fire for a
+    # different alt effect (Spirals, Lightning, Pinwheel, Shockwave) that
+    # some other family's alt_effect_name happens to name. Empty
+    # alt_direction_field -> no rotation.
+    alt_direction_field: str | None = None
+    alt_direction_ping_pong_values: tuple[str, str] = ()
+    # Per-occurrence B_CHOICE_BufferStyle rotation, cycled occurrence % len
+    # like secondary_rotation/motion_rotation. User-supplied render-style
+    # suggestions (2026-07-24, not corpus-mined) for the Single Strand
+    # effect specifically -- a linear chase across a multi-strand model
+    # reads differently under "Per Model Default" (each model's strands
+    # treated as one buffer) vs the "Horizontal..." per-strand variants
+    # (chase travels strand-by-strand). Only ever applied when
+    # effect_name == "Single Strand" (see effect_placer._place_corpus_
+    # recipe) -- never leaks onto a different alt effect. Empty -> tier
+    # convention applies unchanged (see xsq_writer._buffer_style_for_
+    # placement).
+    alt_render_style_rotation: tuple[str, ...] = ()
+    # How many beats one render style holds before advancing to the next
+    # pool slot, WITHIN a single occurrence -- not just once per occurrence.
+    # User report (2026-07-24, real generated .xsq): a song whose own
+    # section structure produces one very long (75s+) continuous Single
+    # Strand occurrence rendered the entire span in one style, reading as
+    # monotonous despite the per-beat direction ping-pong (direction alone
+    # isn't enough variety over that many beats). 0 -> one style for the
+    # whole occurrence (prior behavior, still the default for any recipe
+    # that doesn't opt in).
+    alt_render_style_beats_per_style: int = 0
     # Chase-size (Color_Mix1 -- percentage of lit pixels in the chase band)
     # rotation for the PRIMARY effect, paired with the same occurrence-style
     # parity bit as direction_field: about half the mined corpus songs hold
@@ -1130,6 +1168,35 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         # heavily used values (1463 and 411 mined placements respectively).
         size_field="E_SLIDER_Shockwave_End_Radius",
         size_values=("100", "50"),
+        # Chase direction rotation for the Single Strand alt, re-mined
+        # 2026-07-24 against the same 12 packages restricted to genuine
+        # snowflake elements (1333 placements): "To Middle" converging chase
+        # is the majority (56%) but "From Middle" is a real, substantial
+        # secondary idiom (43%), not noise -- ping-pong the two per beat
+        # rather than fixing "To Middle" for the whole song, matching how
+        # arch/cane/horizontal/vertical already rotate their own dominant
+        # chase directions.
+        alt_direction_field="E_CHOICE_Chase_Type1",
+        alt_direction_ping_pong_values=("To Middle", "From Middle"),
+        # Render-style rotation for the Single Strand alt (user-supplied
+        # 2026-07-24, not corpus-mined -- the corpus itself splits ~65/35
+        # between "Per Model Default" and "Per Model Per Preview", but
+        # those two render identically for a 1D chase; a user request to
+        # try genuinely distinct per-strand styles supersedes reproducing
+        # that split as-is). Cycled per qualifying occurrence so repeated
+        # snowflake sections walk through all four looks instead of
+        # freezing one for the whole song. Also advances every 8 beats
+        # (2 bars) WITHIN a single occurrence -- a real generated .xsq
+        # (2026-07-24) showed a single 75s section produces one giant
+        # occurrence, and the per-beat direction ping-pong alone wasn't
+        # enough variety over that many beats.
+        alt_render_style_beats_per_style=8,
+        alt_render_style_rotation=(
+            "Per Model Default",
+            "Horizontal Per Model",
+            "Horizontal Per Model/Strand",
+            "Per Model Horizontal Per Strand",
+        ),
     ),
     # "star" keeps Arch Star props out — they are a star-family prop that
     # happens to sit on an arch, and the star recipe (later in this tuple)
