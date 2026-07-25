@@ -1,8 +1,8 @@
 # PyInstaller spec for the XLight backend sidecar.
 #
-# Builds a macOS onedir executable consumed by Tauri as an externalBin
-# sidecar. The executable must be renamed to `backend-<arch>-apple-darwin`
-# by `packaging/scripts/build-backend.sh` before Tauri will accept it.
+# Builds a Windows onedir executable consumed by Tauri as an externalBin
+# sidecar. The executable must be renamed to `backend-x86_64-pc-windows-msvc`
+# by `packaging/scripts/build-backend.ps1` before Tauri will accept it.
 #
 # Targets one arch at a time (pass --target-arch to pyinstaller CLI).
 
@@ -31,15 +31,16 @@ for pkg in ["madmom", "librosa", "soundfile", "demucs"]:
     binaries += b
     hiddenimports += h
 
-# Torch is CPU-only for this build. `collect_all("torch")` pulls a large
-# tree; we accept that cost to avoid hunting dynamic imports.
-try:
-    d, b, h = collect_all("torch")
-    datas += d
-    binaries += b
-    hiddenimports += [m for m in h if "cuda" not in m.lower()]
-except Exception:
-    pass
+# Torch is deliberately NOT collected here via collect_all("torch") --
+# collect_all() internally calls copy_metadata() too, which bundles torch's
+# dist-info directory whole (including its deeply-nested third-party license
+# text, which exceeds Windows' MAX_PATH). PyInstaller auto-applies the custom
+# hook-torch.py in packaging/pyinstaller/hooks/ whenever torch appears in the
+# module graph (e.g. via demucs above), which already collects everything
+# collect_all("torch") would -- submodules, dynamic libs, data files -- while
+# filtering that metadata tree down to individual files and excluding the
+# offending subtree. Calling collect_all("torch") here duplicated that same
+# unfiltered whole-directory copy back in, undoing the hook's fix.
 
 # ── Application data — builtin JSON catalogs ────────────────────────────
 datas += [
@@ -93,7 +94,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="backend",  # renamed to backend-<arch>-apple-darwin by build script
+    name="backend",  # renamed to backend-x86_64-pc-windows-msvc by build script
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

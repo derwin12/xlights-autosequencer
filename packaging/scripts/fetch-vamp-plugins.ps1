@@ -1,8 +1,8 @@
 # Obtain and lay out Vamp plugin .dll files for Windows x86_64.
 #
-# Mirrors fetch-vamp-plugins.sh's macOS .dylib bootstrap: most Vamp plugin
-# packs don't ship stable download URLs, so this verifies each expected
-# .dll is present and prints instructions for any that are missing.
+# Most Vamp plugin packs don't ship stable download URLs, so this verifies
+# each expected .dll is present and prints instructions for any that are
+# missing.
 #
 # Usage: .\packaging\scripts\fetch-vamp-plugins.ps1
 
@@ -12,8 +12,7 @@ New-Item -ItemType Directory -Force -Path $Out | Out-Null
 
 # Expected plugin packs. ".dll" is the canonical Windows Vamp plugin
 # extension. Names match what Python code requests via vamp.load_plugin()
-# (see src/analyzer/algorithms/vamp_*.py) — same plugin set as macOS, just
-# a different binary format per pack's own Windows release.
+# (see src/analyzer/algorithms/vamp_*.py).
 $Expected = @(
     @{ Name = "qm-vamp-plugins.dll";      Url = "https://code.soundsoftware.ac.uk/projects/qm-vamp-plugins/" },
     @{ Name = "beatroot-vamp.dll";        Url = "https://code.soundsoftware.ac.uk/projects/beatroot-vamp" },

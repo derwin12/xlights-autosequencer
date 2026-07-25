@@ -4,12 +4,11 @@
 #
 # Produces: packaging\tauri\src-tauri\binaries\backend-x86_64-pc-windows-msvc\
 #   (Tauri's resources mechanism expects this exact directory name — see
-#   tauri.conf.json > bundle.resources — with the exe inside renamed to
-#   match, mirroring build-backend.sh's macOS layout.)
+#   tauri.conf.json > bundle.resources — with the exe inside renamed to match.)
 #
 # Windows only ships one practical arch target (x86_64) for now — no ARM64
 # Vamp plugin builds are known to exist, so this script doesn't take an
-# arch argument the way build-backend.sh does.
+# arch argument.
 
 $ErrorActionPreference = "Stop"
 

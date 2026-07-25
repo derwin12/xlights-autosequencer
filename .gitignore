@@ -116,3 +116,9 @@ pretrained_models/
 packaging/tauri/node_modules/
 packaging/tauri/src-tauri/target/
 packaging/tauri/src-tauri/gen/
+
+# PyInstaller backend sidecar build — venv, work dir, and compiled output
+# (regenerated locally by packaging/scripts/build-backend.ps1)
+.build-venv-*/
+.build-pyinstaller/
+packaging/tauri/src-tauri/binaries/
