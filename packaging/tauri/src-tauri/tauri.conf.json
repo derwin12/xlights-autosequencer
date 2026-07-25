@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "XLight",
+  "productName": "xLightsAI",
   "version": "0.1.0",
   "identifier": "com.xlight.autosequencer",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "XLight",
+        "title": "xLightsAI",
         "width": 1280,
         "height": 800,
         "minWidth": 960,
@@ -44,7 +44,8 @@
       "digestAlgorithm": null,
       "timestampUrl": null,
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "template": "nsis/installer.nsi"
       }
     }
   },

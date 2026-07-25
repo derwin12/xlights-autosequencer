@@ -16,6 +16,10 @@ pnpm install --frozen-lockfile
 
 Write-Host "-> Building app for target $Triple"
 cargo tauri build --target $Triple
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "error: cargo tauri build exited with code $LASTEXITCODE"
+    exit $LASTEXITCODE
+}
 
 $BundleRoot = "src-tauri\target\$Triple\release\bundle"
 $ExePath = Join-Path $BundleRoot "nsis" | Get-ChildItem -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1

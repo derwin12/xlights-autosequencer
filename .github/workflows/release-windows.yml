@@ -1,0 +1,109 @@
+name: Build & Release Windows Installer
+
+# Builds the unsigned xLightsAI Windows installer (see packaging/README.md).
+#
+# Known gap, matching current local-build state: Vamp plugin .dll files
+# (packaging/pyinstaller/plugins/vamp/x86_64-windows/) are not fetched here
+# -- most Vamp plugin packs have no stable, scriptable download URL (see
+# packaging/scripts/fetch-vamp-plugins.ps1), so this workflow ships the same
+# plugin-less bundle a fresh local checkout would produce. madmom/vamp Python
+# packages are best-effort too (build-backend.ps1 already tolerates either
+# failing to install). Cold builds compile the full Rust/tauri-cli/webview
+# dependency tree with no warm cache on a brand-new runner, so first-run
+# duration will be materially longer than the cache hits shown here.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+jobs:
+  build-windows-installer:
+    name: Build Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Cargo registry + build output
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packaging/tauri/src-tauri
+
+      - name: Cache cargo-tauri CLI
+        id: cargo-tauri-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-tauri.exe
+          key: cargo-tauri-cli-2.x-${{ runner.os }}
+
+      - name: Install cargo-tauri CLI
+        if: steps.cargo-tauri-cache.outputs.cache-hit != 'true'
+        run: cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: packaging/tauri/pnpm-lock.yaml
+
+      - name: Set up Python 3.11
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Verify/stage Vamp plugin resource directory
+        # No .dll files are fetched (see workflow header) -- this only
+        # ensures the resource path tauri.conf.json references actually
+        # exists, since git does not track empty directories.
+        run: .\packaging\scripts\fetch-vamp-plugins.ps1
+        continue-on-error: true
+
+      - name: Build backend sidecar (PyInstaller)
+        env:
+          PY311: ${{ steps.setup-python.outputs.python-path }}
+        run: .\packaging\scripts\build-backend.ps1
+
+      - name: Build Tauri app (NSIS installer)
+        run: .\packaging\scripts\build-app.ps1
+
+      - name: Locate installer
+        id: installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path "packaging\tauri\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis" -Filter "*-setup.exe" | Select-Object -First 1
+          if (-not $installer) {
+            Write-Error "error: no installer found under bundle\nsis\"
+            exit 1
+          }
+          echo "path=$($installer.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xLightsAI-windows-installer
+          path: ${{ steps.installer.outputs.path }}
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.installer.outputs.path }}
+          generate_release_notes: true
+          body: |
+            Unsigned build -- Windows SmartScreen will show an "unknown
+            publisher" warning until an EV code-signing certificate is
+            configured. See packaging/README.md for details.
