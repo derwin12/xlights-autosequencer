@@ -20,6 +20,25 @@ _VAMP_PYTHON = (
 )
 
 
+def patch_madmom_compat() -> None:
+    """Restore compatibility shims madmom 0.16.1 needs on modern Python/numpy.
+
+    Idempotent -- safe to call more than once, and safe to call even if
+    madmom itself is never actually installed (only touches numpy/collections
+    module attributes, not madmom).
+    """
+    import numpy as _np
+    _np.float = _np.float64   # type: ignore[attr-defined]
+    _np.int = _np.int64       # type: ignore[attr-defined]
+    _np.bool = _np.bool_      # type: ignore[attr-defined]
+    _np.complex = _np.complex128  # type: ignore[attr-defined]
+    # madmom's processors.py does `from collections import MutableSequence`,
+    # removed from collections (moved to collections.abc) in Python 3.10.
+    import collections, collections.abc
+    if not hasattr(collections, "MutableSequence"):
+        collections.MutableSequence = collections.abc.MutableSequence
+
+
 def _probe_venv_vamp() -> dict[str, bool]:
     """Ask .venv-vamp whether vamp/madmom/demucs are importable there."""
     if not _VAMP_PYTHON.exists():
@@ -117,17 +136,7 @@ def detect_capabilities() -> dict[str, bool]:
     caps["vamp"] = vamp_pkg and has_plugins
 
     try:
-        # madmom 0.16.1 needs deprecated numpy aliases restored before import
-        import numpy as _np
-        _np.float = _np.float64   # type: ignore[attr-defined]
-        _np.int = _np.int64       # type: ignore[attr-defined]
-        _np.bool = _np.bool_      # type: ignore[attr-defined]
-        _np.complex = _np.complex128  # type: ignore[attr-defined]
-        # madmom's processors.py does `from collections import MutableSequence`,
-        # removed from collections (moved to collections.abc) in Python 3.10.
-        import collections, collections.abc
-        if not hasattr(collections, "MutableSequence"):
-            collections.MutableSequence = collections.abc.MutableSequence
+        patch_madmom_compat()
         import madmom  # noqa: F401
         caps["madmom"] = True
     except (ImportError, AttributeError):

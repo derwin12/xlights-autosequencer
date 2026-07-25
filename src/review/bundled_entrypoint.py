@@ -72,6 +72,9 @@ def _self_test() -> int:
         except Exception as exc:  # pragma: no cover - diagnostic only
             failed.append((name, repr(exc)))
 
+    from src.analyzer.capabilities import patch_madmom_compat
+    patch_madmom_compat()
+
     optional_missing: list[tuple[str, str]] = []
     for name in optional_modules:
         try:
@@ -94,7 +97,25 @@ def _self_test() -> int:
     return 0
 
 
+def _force_utf8_streams() -> None:
+    """Reconfigure stdout/stderr to UTF-8 regardless of the OS locale.
+
+    PYTHONIOENCODING=utf-8 (set by the Rust launcher when spawning this
+    sidecar) does not reliably apply to a PyInstaller-frozen executable's
+    piped stdout/stderr -- confirmed live: the analyzer's checkmark/x-mark
+    capability status line (src/analyzer/orchestrator.py) still crashed
+    with UnicodeEncodeError under the Windows cp1252 codec even with that
+    env var set. Reconfigure directly in-process instead, which is not
+    subject to whatever bootloader-level stream setup ignores the env var.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def main() -> int:
+    _force_utf8_streams()
+
     parser = argparse.ArgumentParser(prog="xlight-backend")
     parser.add_argument(
         "--self-test",

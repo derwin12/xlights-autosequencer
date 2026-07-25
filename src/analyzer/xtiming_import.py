@@ -57,8 +57,8 @@ def _parse_marks(layer: ET.Element) -> list[dict]:
     return marks
 
 
-def parse_xtiming_lyrics(xml_bytes: bytes) -> tuple[list[dict], list[dict]]:
-    """Return ``(words, phonemes)`` mark dicts from a .xtiming file's Lyrics track.
+def parse_xtiming_lyrics(xml_bytes: bytes) -> tuple[list[dict], list[dict], list[dict]]:
+    """Return ``(words, phonemes, lines)`` mark dicts from a .xtiming file's Lyrics track.
 
     The Lyrics track is identified structurally (>=2 EffectLayers), not by
     name — see the module docstring. A ``<timing name="lyrics">`` (or
@@ -109,7 +109,12 @@ def parse_xtiming_lyrics(xml_bytes: bytes) -> tuple[list[dict], list[dict]]:
     if not phonemes:
         phonemes = _derive_phonemes_from_words(words)
 
-    return words, phonemes
+    # Layer 0 ("phrases") holds full lyric lines -- same data the Timeline's
+    # LyricTrack shows from synced-lyrics fetches, just sourced from the
+    # user's own already-correct xLights timing instead.
+    lines = _parse_marks(layers[0])
+
+    return words, phonemes, lines
 
 
 def _derive_phonemes_from_words(words: list[dict]) -> list[dict]:

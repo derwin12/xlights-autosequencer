@@ -1,6 +1,49 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './Export.module.css';
 
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
+}
+
+/**
+ * A plain <a href download> silently does nothing in the packaged app: the
+ * webview's own origin (tauri://localhost) makes the fetch cross-origin, and
+ * browsers ignore the `download` attribute for cross-origin URLs regardless
+ * (they navigate instead of downloading). Fetch the bytes ourselves (already
+ * origin-correct via the global fetch patch in backendPort.ts) and hand them
+ * to Tauri's native save dialog + a dedicated write_file_bytes command. Dev
+ * mode keeps the original same-origin <a download> behavior.
+ */
+function filenameFromContentDisposition(header: string | null, fallback: string): string {
+  const match = header?.match(/filename="?([^";]+)"?/);
+  return match ? match[1] : fallback;
+}
+
+async function downloadPackage(url: string, fallbackName: string): Promise<void> {
+  if (!isTauri()) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fallbackName;
+    a.click();
+    return;
+  }
+
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`download failed: HTTP ${resp.status}`);
+  const suggestedName = filenameFromContentDisposition(resp.headers.get('Content-Disposition'), fallbackName);
+  const bytes = Array.from(new Uint8Array(await resp.arrayBuffer()));
+
+  const [{ save }, { invoke }] = await Promise.all([
+    import('@tauri-apps/plugin-dialog'),
+    import('@tauri-apps/api/core'),
+  ]);
+
+  const destPath = await save({ defaultPath: suggestedName });
+  if (!destPath) return; // user cancelled
+
+  await invoke('write_file_bytes', { path: destPath, data: bytes });
+}
+
 interface Song {
   song_id: string;
   title: string;
@@ -457,13 +500,18 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
               {outputPath && (
                 <>
                   <div className={styles.resultFile}>{outputPath.split('/').pop()}</div>
-                  <a
+                  <button
+                    type="button"
                     className={styles.inspectorDownload}
-                    href={`/api/v1/songs/${song.song_id}/export/download-package`}
-                    download
+                    onClick={() => {
+                      const url = `/api/v1/songs/${song.song_id}/export/download-package`;
+                      void downloadPackage(url, `${song.title}.zip`).catch((err) => {
+                        console.error('download-package failed', err);
+                      });
+                    }}
                   >
                     Download Package
-                  </a>
+                  </button>
                 </>
               )}
             </div>

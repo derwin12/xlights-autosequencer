@@ -485,9 +485,10 @@ class TestUploadXTiming:
         assert data["preview"] == ["HELLO", "WORLD"]
 
         with analysis_module._xtiming_override_cache_lock:
-            words, phonemes = analysis_module._xtiming_override_cache[song_id]
+            words, phonemes, lines = analysis_module._xtiming_override_cache[song_id]
         assert [w["label"] for w in words] == ["HELLO", "WORLD"]
         assert len(phonemes) == 4
+        assert lines == [{"label": "hello world", "start_ms": 0, "end_ms": 1000}]
 
     def test_invalid_xtiming_returns_400(self, client):
         song_id = _import_wav(client)

@@ -22,6 +22,7 @@ PathContext.in_container, .to_relative(), .to_absolute(), .suggest_path()
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 
@@ -137,6 +138,16 @@ def resolve_show_path(stored: str) -> Path:
 
 
 def _repo_root() -> Path:
+    """Return the repo checkout root in dev, or the frozen bundle root when
+    packaged. `Path(__file__).resolve().parent.parent` only resolves
+    correctly against a real source checkout -- inside a PyInstaller onedir
+    bundle, `__file__` points into the extracted `_internal/` tree, not a
+    `layout/` sibling, so the fixed layout XML files (never uploaded by
+    users, always shipped with the app) would be silently missing there
+    unless we check `sys._MEIPASS` first."""
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass is not None:
+        return Path(meipass)
     return Path(__file__).resolve().parent.parent
 
 

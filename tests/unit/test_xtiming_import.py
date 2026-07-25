@@ -87,13 +87,14 @@ class TestParseXTimingLyrics:
     def test_three_layer_track_not_named_lyrics(self):
         # Real-world case: XTimingWriter names the track after the sanitized
         # source filename, not "Lyrics" -- must still be found and parsed.
-        words, phonemes = parse_xtiming_lyrics(_xtiming(_THREE_LAYER_UNNAMED))
+        words, phonemes, lines = parse_xtiming_lyrics(_xtiming(_THREE_LAYER_UNNAMED))
         assert [w["label"] for w in words] == ["HELLO", "WORLD"]
         assert words[0] == {"label": "HELLO", "start_ms": 0, "end_ms": 500}
         assert [p["label"] for p in phonemes] == ["E", "L", "WQ", "etc"]
+        assert lines == [{"label": "full phrase", "start_ms": 0, "end_ms": 2000}]
 
     def test_two_layer_track_derives_phonemes_from_words(self):
-        words, phonemes = parse_xtiming_lyrics(_xtiming(_TWO_LAYER_NO_PHONEMES))
+        words, phonemes, _ = parse_xtiming_lyrics(_xtiming(_TWO_LAYER_NO_PHONEMES))
         assert [w["label"] for w in words] == ["HELLO", "WORLD"]
         assert len(phonemes) > 0
         assert phonemes[0]["start_ms"] == 0
@@ -113,7 +114,7 @@ class TestParseXTimingLyrics:
     def test_float_timestamps_rounded_to_int_ms(self):
         # Real user file used float starttime/endtime values
         # (e.g. "163266.6666666667") -- confirmed 2026-07-21.
-        words, _ = parse_xtiming_lyrics(_xtiming(_FLOAT_TIMESTAMPS))
+        words, _, _ = parse_xtiming_lyrics(_xtiming(_FLOAT_TIMESTAMPS))
         assert words[0]["start_ms"] == 20390
         assert words[0]["end_ms"] == round(20530.5)  # Python 3 banker's rounding
 
@@ -131,5 +132,5 @@ class TestParseXTimingLyrics:
             .replace("HELLO", "FOO").replace("WORLD", "BAR")
         )
         data = _xtiming(other_track, _TWO_LAYER_NO_PHONEMES)
-        words, _ = parse_xtiming_lyrics(data)
+        words, _, _ = parse_xtiming_lyrics(data)
         assert [w["label"] for w in words] == ["HELLO", "WORLD"]

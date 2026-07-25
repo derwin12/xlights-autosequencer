@@ -36,11 +36,11 @@ _runs_lock = threading.Lock()
 _lyrics_cache: dict[tuple[str, str], str] = {}
 _lyrics_cache_lock = threading.Lock()
 
-# Caches an uploaded .xtiming file's already-correct word/phoneme marks by
-# song_id — when present, the analyze pass skips WhisperX transcription/
+# Caches an uploaded .xtiming file's already-correct word/phoneme/line marks
+# by song_id — when present, the analyze pass skips WhisperX transcription/
 # alignment entirely for that song, sidestepping the all-or-nothing
 # lyrics-mismatch fallback (see PhonemeAnalyzer._align_with_lyrics).
-_xtiming_override_cache: dict[str, tuple[list[dict], list[dict]]] = {}
+_xtiming_override_cache: dict[str, tuple[list[dict], list[dict], list[dict]]] = {}
 _xtiming_override_cache_lock = threading.Lock()
 
 
@@ -672,7 +672,16 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         with _xtiming_override_cache_lock:
             xtiming_override = _xtiming_override_cache.get(song_id)
         if xtiming_override is not None:
-            words_list, phonemes_list = xtiming_override
+            words_list, phonemes_list, xtiming_lines = xtiming_override
+            # The uploaded file's own phrase layer is already-correct synced
+            # lyric lines -- use it for the Timeline's LyricTrack too, same
+            # as the WhisperX/syncedlyrics path below would otherwise supply.
+            if xtiming_lines:
+                lyrics_list = [
+                    {"t_ms": m["start_ms"], "duration_ms": m["end_ms"] - m["start_ms"], "text": m["label"]}
+                    for m in xtiming_lines
+                ]
+                lyrics_text_found = True
             state.push({"detector": "phonemes (xtiming override)", "library": "story",
                         "status": "done", "confidence": 1.0,
                         "marks": len(phonemes_list)})
@@ -962,12 +971,12 @@ def upload_xtiming(song_id: str):
 
     from src.analyzer.xtiming_import import XTimingImportError, parse_xtiming_lyrics
     try:
-        words, phonemes = parse_xtiming_lyrics(uploaded.read())
+        words, phonemes, lines = parse_xtiming_lyrics(uploaded.read())
     except XTimingImportError as exc:
         return jsonify({"error": {"code": "invalid_xtiming", "message": str(exc)}}), 400
 
     with _xtiming_override_cache_lock:
-        _xtiming_override_cache[song_id] = (words, phonemes)
+        _xtiming_override_cache[song_id] = (words, phonemes, lines)
 
     return jsonify({
         "found": True,

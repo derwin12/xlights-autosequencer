@@ -59,6 +59,17 @@ fn get_backend_port(state: State<'_, BackendState>) -> Option<u16> {
     state.port.lock().ok().and_then(|g| *g)
 }
 
+/// Write bytes to an absolute path chosen via the dialog plugin's save().
+/// Exists because there is no fs plugin/capability wired up (see
+/// capabilities/main.json) -- the frontend fetches file bytes itself
+/// (already origin-correct via backendPort.ts) and hands them to this
+/// command purely for the disk write, keeping filesystem write access
+/// scoped to this one explicit command rather than a blanket fs capability.
+#[tauri::command]
+fn write_file_bytes(path: String, data: Vec<u8>) -> Result<(), String> {
+    std::fs::write(&path, data).map_err(|e| format!("failed to write {path}: {e}"))
+}
+
 /// Resolve the backend binary path. Tauri copies the PyInstaller onedir
 /// into the resource dir (under `backend/`) per `tauri.conf.json >
 /// bundle.resources` — in dev that's `target/debug/backend/`, in release
@@ -117,6 +128,12 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
     let mut child = Command::new(&backend_path)
         .env("XLIGHT_PACKAGED", "1")
         .env("PYTHONUNBUFFERED", "1")
+        // Python defaults piped (non-console) stdout/stderr to the Windows
+        // ANSI codepage (cp1252) rather than UTF-8, so any print() containing
+        // a Unicode character (e.g. the analyzer's checkmark/x-mark
+        // capability status lines) crashes with UnicodeEncodeError. Force
+        // UTF-8 regardless of the console's codepage.
+        .env("PYTHONIOENCODING", "utf-8")
         .env("VAMP_PATH", vamp_path.to_string_lossy().to_string())
         .env("TORCH_HOME", torch_home.to_string_lossy().to_string())
         // Cap torch/openmp thread count so we don't spike CPU at startup.
@@ -271,7 +288,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(BackendState::new())
-        .invoke_handler(tauri::generate_handler![get_backend_port])
+        .invoke_handler(tauri::generate_handler![get_backend_port, write_file_bytes])
         .setup(|app| {
             if let Err(err) = spawn_backend(&app.handle()) {
                 eprintln!("spawn_backend failed: {err}");

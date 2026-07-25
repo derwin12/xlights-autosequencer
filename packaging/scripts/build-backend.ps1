@@ -37,8 +37,13 @@ Write-Host "-> Preparing venv at $VenvDir"
 $VenvPython = "$VenvDir\Scripts\python.exe"
 
 Write-Host "-> Installing backend dependencies"
-& $VenvPython -m pip install --upgrade pip wheel setuptools
-& $VenvPython -m pip install -e ".[stems]"
+& $VenvPython -m pip install --upgrade pip wheel
+# setuptools>=81 removed the bundled pkg_resources compatibility shim;
+# madmom's __init__.py does a hard `import pkg_resources`, so the latest
+# setuptools silently breaks it (ModuleNotFoundError at madmom import time,
+# not at pip-install time). Pin below that removal.
+& $VenvPython -m pip install "setuptools<81"
+& $VenvPython -m pip install -e ".[stems,lyrics]"
 & $VenvPython -m pip install "pyinstaller>=6,<7"
 
 # madmom builds Cython extensions at install time; pre-install build deps

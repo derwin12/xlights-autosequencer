@@ -46,6 +46,12 @@ for pkg in ["madmom", "librosa", "soundfile", "demucs"]:
 datas += [
     (str(REPO_ROOT / "src/effects/builtin_effects.json"), "src/effects"),
     (str(REPO_ROOT / "src/themes/builtin_themes.json"), "src/themes"),
+    # The one, fixed layout — never uploaded/replaced per-user (see
+    # src/paths.py::get_committed_layout_xml_path/get_committed_networks_xml_path).
+    # Destination "layout" matches _repo_root()'s sys._MEIPASS resolution
+    # when frozen.
+    (str(REPO_ROOT / "layout/xlights_rgbeffects.xml"), "layout"),
+    (str(REPO_ROOT / "layout/xlights_networks.xml"), "layout"),
 ]
 # Variant builtins folder (feature 033)
 variants_root = REPO_ROOT / "src/variants/builtins"

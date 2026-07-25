@@ -423,3 +423,33 @@ class TestStemManifestRelativePath:
 
         cache = StemCache(song_file, cache_root=stems_dir)
         assert cache.is_valid()  # old manifest still valid
+
+
+class TestCommittedLayoutPathFrozenBundle:
+    """bug-586: get_committed_layout_xml_path/get_committed_networks_xml_path
+    must resolve against the PyInstaller frozen bundle root (sys._MEIPASS),
+    not __file__'s location -- the latter points into the extracted
+    _internal/ tree in a packaged build, not a layout/ sibling."""
+
+    def test_dev_mode_resolves_against_repo_root(self):
+        import src.paths as paths_module
+
+        assert not hasattr(paths_module.sys, "_MEIPASS")
+        path = paths_module.get_committed_layout_xml_path()
+        assert path == Path(paths_module.__file__).resolve().parent.parent / "layout" / "xlights_rgbeffects.xml"
+
+    def test_frozen_mode_resolves_against_meipass(self, tmp_path):
+        import sys
+
+        import src.paths as paths_module
+
+        fake_bundle_root = tmp_path / "bundle"
+        sys._MEIPASS = str(fake_bundle_root)
+        try:
+            path = paths_module.get_committed_layout_xml_path()
+            assert path == fake_bundle_root / "layout" / "xlights_rgbeffects.xml"
+
+            networks_path = paths_module.get_committed_networks_xml_path()
+            assert networks_path == fake_bundle_root / "layout" / "xlights_networks.xml"
+        finally:
+            del sys._MEIPASS
