@@ -48,7 +48,17 @@ if TYPE_CHECKING:
 # 2.6.0 (2026-07-22): kick_pulses added (kick_pulses.detect_kick_pulses,
 # grouped from kick_hits) — same bug-265 reasoning: bump so pre-feature
 # caches re-analyze instead of silently skipping the new floodlight accent.
-SCHEMA_VERSION = "2.6.0"
+# 2.7.0 (2026-07-25): packaged desktop app bug — stems.py/runner.py
+# unconditionally routed demucs/madmom to a .venv-vamp sidecar subprocess
+# that doesn't exist in the packaged app, so every packaged-app analysis
+# silently produced zero stems/beats/bars (algorithms_run: [], story
+# builder collapsing to one flat section) despite capabilities.py
+# correctly reporting demucs/madmom as available. Fixed to try in-process
+# first. Field shapes are unchanged but values for affected users are
+# all-empty/wrong under the old bug — same bug-265 reasoning: bump so
+# those broken caches re-analyze instead of fresh=False silently
+# re-serving them forever.
+SCHEMA_VERSION = "2.7.0"
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────

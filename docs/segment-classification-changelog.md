@@ -435,3 +435,44 @@ this layer.
 **No change to section detection, merging, or role classification** —
 purely a display-layer flag riding the same `chorus_body` value Fix 2
 already computes; nothing about what qualifies as a chorus match changed.
+
+---
+
+## 2026-07-25 — Packaged desktop app: demucs/madmom sidecar bug collapsed every song to one flat section
+
+**Files:** `src/analyzer/stems.py`, `src/analyzer/runner.py`, `src/analyzer/orchestrator.py`
+
+**Problem:** In the packaged Tauri desktop app, `StemSeparator._run_demucs` and
+`AnalysisRunner.run` both unconditionally shelled out to a `.venv-vamp` sidecar
+virtualenv (the devcontainer dev-mode layout) to run demucs/madmom, even though
+the packaged app bundles demucs/madmom/torch directly into the single PyInstaller
+executable and they import fine in-process there. Since `.venv-vamp` doesn't
+exist in the packaged app, stem separation failed immediately and every
+madmom-based algorithm (beats, downbeats) silently produced zero marks —
+`capabilities.py`'s detection correctly reported demucs/madmom as available, but
+the actual execution paths never checked that before dispatching to the sidecar.
+Result: `algorithms_run: []`, no beat/bar tracks, no sections — the story builder
+had nothing to segment on and collapsed every song into one flat "intro" section
+spanning the whole track (user report: "no sections detected at all").
+
+**Fix:** Both now try an in-process import first (`import demucs, torch` /
+`import madmom` + `patch_madmom_compat()`), only falling back to the
+`.venv-vamp` subprocess when the import genuinely fails (the dev-mode
+main-venv case). Verified against a real song: demucs produces real non-zero
+stems (previously all zeros) and madmom produces 432 beat marks / 108 downbeat
+marks (previously zero) — `run_orchestrator(fresh=True)` then produces real
+sections instead of one flat "intro".
+
+**Cache invalidation gotcha (bug-265 lesson repeated):** a normal "Reanalyze"
+click passes `fresh=False`, so `run_orchestrator` returns whatever cached
+`_hierarchy.json` matches source_hash+schema_version *without checking its
+content* — any song already analyzed once in the packaged app before this fix
+has a cached `algorithms_run: []` result that silently kept being re-served on
+every subsequent reanalyze, making the fix look like it hadn't worked at all
+until `SCHEMA_VERSION` was bumped (2.6.0 → 2.7.0) to invalidate those stale
+caches.
+
+**No change to section detection, merging, or role classification logic
+itself** — this entry qualifies for the log because the orchestrator change
+affects whether any beat/bar/section data reaches the story builder at all,
+not because the classification rules changed.
