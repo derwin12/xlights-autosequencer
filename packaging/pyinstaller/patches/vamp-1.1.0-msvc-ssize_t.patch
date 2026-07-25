@@ -1,0 +1,17 @@
+--- a/native/PyPluginObject.h	2015-07-08 15:00:37.000000000 -0400
++++ b/native/PyPluginObject.h	2026-07-25 16:40:17.657651800 -0400
+@@ -43,6 +43,14 @@
+
+ #include <string>
+
++// MSVC has no POSIX ssize_t (only the uppercase Windows SSIZE_T from
++// BaseTsd.h); this codebase assumes a POSIX compiler throughout. Alias it
++// to Python's own Py_ssize_t, the same signed-size type CPython itself
++// uses, for every translation unit that includes this header.
++#if defined(_MSC_VER)
++typedef Py_ssize_t ssize_t;
++#endif
++
+ struct PyPluginObject
+ {
+     PyObject_HEAD

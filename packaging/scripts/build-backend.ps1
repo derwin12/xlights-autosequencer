@@ -57,9 +57,32 @@ Write-Host "-> Installing backend dependencies"
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "madmom install failed — beats-only analysis will be unavailable in the bundle"
 }
-& $VenvPython -m pip install "vamp>=1.1"
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning "vamp install failed — vamp plugins will be unavailable in the bundle"
+
+# The `vamp` PyPI package has never been built with MSVC: its native
+# extension uses the POSIX type `ssize_t`, which MSVC doesn't define, so a
+# plain `pip install` fails at compile time with "ssize_t: undeclared
+# identifier" (confirmed 2026-07-25 — see packaging/pyinstaller/patches/).
+# Fetch the sdist, apply the one-header compatibility patch, and build from
+# the patched source. Also needs --no-build-isolation like madmom above,
+# for the same reason (its setup.py imports numpy at build time, which pip's
+# isolated build env doesn't have).
+$VampVersion = "1.1.0"
+$VampWork = "$WorkDir\vamp-src"
+Remove-Item -Recurse -Force $VampWork -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $VampWork | Out-Null
+$VampTarball = "$VampWork\vamp-$VampVersion.tar.gz"
+try {
+    $VampPypiInfo = Invoke-RestMethod -Uri "https://pypi.org/pypi/vamp/$VampVersion/json"
+    $VampSdistUrl = ($VampPypiInfo.urls | Where-Object { $_.packagetype -eq "sdist" }).url
+    Invoke-WebRequest -Uri $VampSdistUrl -OutFile $VampTarball
+    tar -xzf $VampTarball -C $VampWork
+    $VampSrcDir = "$VampWork\vamp-$VampVersion"
+    git -C $VampSrcDir apply "$RepoRoot\packaging\pyinstaller\patches\vamp-1.1.0-msvc-ssize_t.patch"
+    if ($LASTEXITCODE -ne 0) { throw "git apply failed for vamp MSVC patch" }
+    & $VenvPython -m pip install $VampSrcDir --no-build-isolation
+    if ($LASTEXITCODE -ne 0) { throw "pip install of patched vamp failed" }
+} catch {
+    Write-Warning "vamp install failed ($_) — vamp plugins will be unavailable in the bundle"
 }
 
 New-Item -ItemType Directory -Force -Path $DistDir, $WorkDir | Out-Null

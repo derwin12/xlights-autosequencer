@@ -384,8 +384,13 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
         origin = request.headers.get("Origin")
         if origin:
             response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Range"
+        # Content-Disposition isn't one of the handful of response headers
+        # browsers expose to JS by default for cross-origin requests -- must
+        # be explicitly whitelisted, or reading it (e.g. to recover the real
+        # download filename) silently returns null with no error.
+        response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
         return response
 
     @app.before_request

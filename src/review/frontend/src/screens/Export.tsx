@@ -505,13 +505,16 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
                     className={styles.inspectorDownload}
                     onClick={() => {
                       const url = `/api/v1/songs/${song.song_id}/export/download-package`;
-                      void downloadPackage(url, `${song.title}.zip`).catch((err) => {
+                      void downloadPackage(url, `${song.title}.xsqz`).catch((err) => {
                         console.error('download-package failed', err);
                       });
                     }}
                   >
                     Download Package
                   </button>
+                  <div className={styles.downloadNote}>
+                    ⚠ Shaders and images are not included in the package
+                  </div>
                 </>
               )}
             </div>

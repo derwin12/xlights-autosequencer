@@ -418,3 +418,9 @@
 }
 
 .inspectorDownload:hover { opacity: 0.9; }
+
+.downloadNote {
+  font-size: 11px;
+  color: var(--color-warning, #d9a441);
+  margin-top: 8px;
+}
