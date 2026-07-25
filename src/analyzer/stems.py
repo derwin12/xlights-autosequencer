@@ -158,7 +158,74 @@ class StemSeparator:
         return stem_set
 
     def _run_demucs(self, audio_path: Path, source_hash: str) -> StemSet:
-        """Run Demucs in .venv-vamp subprocess and return a StemSet.
+        """Run Demucs and return a StemSet.
+
+        Tries an in-process import first -- this is what the packaged
+        desktop app needs, since demucs/torch are bundled directly into
+        the single PyInstaller executable there (no separate sidecar venv
+        exists to shell out to). Falls back to the .venv-vamp subprocess
+        for the devcontainer dev-mode layout, where demucs/torch live in a
+        separate virtualenv with numpy<2 to avoid ABI conflicts with the
+        main venv. Mirrors the same try-in-process-then-probe-sidecar
+        pattern capabilities.py already uses for capability *detection* --
+        this was the actual separation code path that hadn't been given
+        the same fallback, so it kept going straight to the subprocess
+        even when the packaged app's capability check reported demucs as
+        available (bug found 2026-07-25: story builder collapsed to one
+        flat section because stem separation raised ".venv-vamp not
+        found" and every downstream analyzer skipped as a result).
+        """
+        try:
+            import demucs  # noqa: F401
+            import torch  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            return self._run_demucs_inprocess(audio_path)
+        return self._run_demucs_subprocess(audio_path, source_hash)
+
+    def _run_demucs_inprocess(self, audio_path: Path) -> StemSet:
+        """Run Demucs directly in this process (demucs/torch already importable)."""
+        import librosa
+        import torch
+        from demucs.apply import apply_model
+        from demucs.pretrained import get_model
+
+        wav_np, sr = librosa.load(str(audio_path), sr=None, mono=False, dtype=np.float32)
+        if wav_np.ndim == 1:
+            wav_np = np.stack([wav_np, wav_np])
+
+        print("  → htdemucs_6s (drums, bass, vocals, guitar, piano, other)...", file=sys.stderr)
+        model = get_model("htdemucs_6s")
+        model.eval()
+
+        wav = torch.from_numpy(np.ascontiguousarray(wav_np))
+        if sr != model.samplerate:
+            import torchaudio
+            wav = torchaudio.functional.resample(wav, sr, model.samplerate)
+        if wav.shape[0] == 1:
+            wav = wav.repeat(2, 1)
+        elif wav.shape[0] > 2:
+            wav = wav[:2]
+
+        with torch.no_grad():
+            out = apply_model(model, wav.unsqueeze(0), device="cpu", shifts=0, progress=False)
+        out = out[0]
+
+        arrays: dict[str, np.ndarray] = {}
+        for i, name in enumerate(model.sources):
+            if name in _STEM_NAMES:
+                arrays[name] = out[i].mean(dim=0).numpy().astype(np.float32)
+
+        n_samples = out.shape[-1]
+        for name in _STEM_NAMES:
+            if name not in arrays:
+                arrays[name] = np.zeros(n_samples, dtype=np.float32)
+
+        return StemSet(**arrays, sample_rate=model.samplerate)
+
+    def _run_demucs_subprocess(self, audio_path: Path, source_hash: str) -> StemSet:
+        """Run Demucs in the .venv-vamp sidecar subprocess and return a StemSet.
 
         demucs/torch live in .venv-vamp (not the main venv). We run the
         separation there, write stems to a temp dir, then load them back.

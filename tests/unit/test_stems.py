@@ -72,6 +72,43 @@ class TestStemSeparator:
 
         mock_run.assert_called_once()
 
+    def test_run_demucs_prefers_inprocess_when_importable(self, tmp_path: Path):
+        """bug found 2026-07-25: the packaged app bundles demucs/torch directly
+        into the single executable (no .venv-vamp sidecar exists), so
+        _run_demucs must try an in-process import first instead of always
+        shelling out -- previously it always raised ".venv-vamp not found"
+        in that environment even though capabilities.py's detection
+        correctly reported demucs as available."""
+        pytest.importorskip("demucs")
+        pytest.importorskip("torch")
+        sep = StemSeparator(cache_dir=tmp_path / ".stems")
+        with patch.object(sep, "_run_demucs_inprocess", return_value=_fake_stem_set()) as mock_inprocess, \
+             patch.object(sep, "_run_demucs_subprocess") as mock_subprocess:
+            sep._run_demucs(Path("fake.mp3"), "deadbeef")
+
+        mock_inprocess.assert_called_once()
+        mock_subprocess.assert_not_called()
+
+    def test_run_demucs_falls_back_to_subprocess_when_not_importable(self, tmp_path: Path):
+        """When demucs/torch aren't importable in-process (dev-mode main
+        venv), fall back to the .venv-vamp sidecar subprocess as before."""
+        sep = StemSeparator(cache_dir=tmp_path / ".stems")
+
+        real_import = __import__
+
+        def _blocked_import(name, *args, **kwargs):
+            if name in ("demucs", "torch"):
+                raise ImportError(f"no module named {name}")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_blocked_import), \
+             patch.object(sep, "_run_demucs_inprocess") as mock_inprocess, \
+             patch.object(sep, "_run_demucs_subprocess", return_value=_fake_stem_set()) as mock_subprocess:
+            sep._run_demucs(Path("fake.mp3"), "deadbeef")
+
+        mock_inprocess.assert_not_called()
+        mock_subprocess.assert_called_once()
+
 
 # ── StemCache ─────────────────────────────────────────────────────────────────
 

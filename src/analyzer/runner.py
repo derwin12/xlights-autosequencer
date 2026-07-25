@@ -18,14 +18,48 @@ from src.analyzer.result import AnalysisAlgorithm, AnalysisResult, TimingTrack
 from src.analyzer.scorer import score_track
 from src.analyzer.stems import StemSet
 
-# Libraries whose compiled extensions require numpy<2 and must run in a
-# subprocess using the .venv-vamp virtual environment.
+# Libraries whose compiled extensions require numpy<2 and, in the
+# devcontainer dev-mode layout, only exist in a separate .venv-vamp
+# virtualenv (to avoid ABI conflicts with the main venv's numpy>=2,
+# required by whisperx/pyannote). The packaged desktop app bundles
+# everything into one executable with numpy<2 pinned throughout, so these
+# import directly there -- checked per-run via _importable_inprocess()
+# rather than assumed, so algorithms only fall back to the .venv-vamp
+# subprocess when the library genuinely isn't importable here.
 _SUBPROCESS_LIBS: frozenset[str] = frozenset({"vamp", "madmom"})
 
 # Path to the repo root (src/analyzer/runner.py → ../../)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _VAMP_PYTHON = Path(os.environ["XLIGHT_VENV_VAMP"]) if os.environ.get("XLIGHT_VENV_VAMP") else _REPO_ROOT / ".venv-vamp" / "bin" / "python"
 _VAMP_RUNNER = Path(__file__).with_name("vamp_runner.py")
+
+
+def _importable_inprocess(library: str) -> bool:
+    """Return True if *library* ("vamp" or "madmom") can be imported directly
+    in this process, without needing the .venv-vamp subprocess sidecar.
+
+    bug found 2026-07-25 (packaged app): madmom_beats/madmom_downbeats were
+    unconditionally routed to the .venv-vamp subprocess, which doesn't exist
+    in the packaged app (everything bundles into one executable) -- so every
+    madmom algorithm silently produced zero marks regardless of
+    capabilities.py correctly reporting madmom as available, cascading into
+    "no beats/bars produced" and the story builder collapsing to one flat
+    section. Same fix pattern as stems.py's _run_demucs: try in-process
+    first, only fall back to the sidecar subprocess when the import
+    genuinely fails (the dev-mode main-venv case).
+    """
+    try:
+        if library == "madmom":
+            from src.analyzer.capabilities import patch_madmom_compat
+            patch_madmom_compat()
+            import madmom  # noqa: F401
+        elif library == "vamp":
+            import vamp  # noqa: F401
+        else:
+            return False
+    except ImportError:
+        return False
+    return True
 
 
 def _vamp_venv_available() -> bool:
@@ -75,9 +109,18 @@ class AnalysisRunner:
         used_algorithms: list[AnalysisAlgorithm] = []
         total = len(self._algorithms)
 
-        # Split algorithms into in-process (librosa) and subprocess (vamp/madmom)
-        local_algos = [a for a in self._algorithms if a.library not in _SUBPROCESS_LIBS]
-        sub_algos   = [a for a in self._algorithms if a.library in _SUBPROCESS_LIBS]
+        # Split algorithms into in-process (librosa, plus vamp/madmom when
+        # importable directly here) and subprocess (vamp/madmom that truly
+        # need the .venv-vamp sidecar).
+        _inprocess_libs = {lib for lib in _SUBPROCESS_LIBS if _importable_inprocess(lib)}
+        local_algos = [
+            a for a in self._algorithms
+            if a.library not in _SUBPROCESS_LIBS or a.library in _inprocess_libs
+        ]
+        sub_algos = [
+            a for a in self._algorithms
+            if a.library in _SUBPROCESS_LIBS and a.library not in _inprocess_libs
+        ]
 
         # ── In-process algorithms (librosa) — run in parallel ────────────────
         # Cache resampled stems to avoid redundant librosa.resample calls
