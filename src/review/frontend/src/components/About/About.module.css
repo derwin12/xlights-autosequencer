@@ -40,6 +40,9 @@
 
 .links {
   margin: 14px 0 18px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .linkBtn {

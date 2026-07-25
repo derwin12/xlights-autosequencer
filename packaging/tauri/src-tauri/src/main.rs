@@ -59,6 +59,14 @@ fn get_backend_port(state: State<'_, BackendState>) -> Option<u16> {
     state.port.lock().ok().and_then(|g| *g)
 }
 
+/// Return the directory containing backend.log, so the frontend can open
+/// it in Explorer for support/diagnostics without needing its own copy of
+/// app_support_root()'s path logic.
+#[tauri::command]
+fn get_log_dir() -> Result<String, String> {
+    Ok(app_support_root()?.join("logs").to_string_lossy().to_string())
+}
+
 /// Write bytes to an absolute path chosen via the dialog plugin's save().
 /// Exists because there is no fs plugin/capability wired up (see
 /// capabilities/main.json) -- the frontend fetches file bytes itself
@@ -288,7 +296,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(BackendState::new())
-        .invoke_handler(tauri::generate_handler![get_backend_port, write_file_bytes])
+        .invoke_handler(tauri::generate_handler![get_backend_port, write_file_bytes, get_log_dir])
         .setup(|app| {
             if let Err(err) = spawn_backend(&app.handle()) {
                 eprintln!("spawn_backend failed: {err}");

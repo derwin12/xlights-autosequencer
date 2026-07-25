@@ -14,6 +14,10 @@ import { isBackendStale, isUpdateAvailable } from "../../lib/manifestStaleness";
 const DOWNLOAD_PAGE_URL = "https://github.com/derwin12/xlights-autosequencer/releases";
 const ORIGINAL_IDEA_URL = "https://github.com/bobbyfriday/xlight-autosequencer";
 
+function isTauri(): boolean {
+  return typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
+}
+
 async function openExternal(url: string) {
   try {
     const { open } = await import("@tauri-apps/plugin-shell");
@@ -21,6 +25,18 @@ async function openExternal(url: string) {
   } catch {
     window.open(url, "_blank");
   }
+}
+
+/** Reveal backend.log's folder in Explorer -- packaged app only. Dev mode's
+ * backend prints straight to the terminal that launched it, so there's no
+ * log file to open. */
+async function openLogsFolder(): Promise<void> {
+  const [{ invoke }, { open }] = await Promise.all([
+    import("@tauri-apps/api/core"),
+    import("@tauri-apps/plugin-shell"),
+  ]);
+  const dir = await invoke<string>("get_log_dir");
+  await open(dir);
 }
 
 /** Full 40-char hashes (bundled manifests) are trimmed; short dev hashes
@@ -64,6 +80,14 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
           >
             Check for updates
           </button>
+          {isTauri() && (
+            <button
+              className={styles.linkBtn}
+              onClick={() => void openLogsFolder()}
+            >
+              Open logs folder
+            </button>
+          )}
         </div>
 
         {manifest?.bundled_vamp_plugins && manifest.bundled_vamp_plugins.length > 0 && (
