@@ -390,15 +390,16 @@ class TestCorpusRecipePlacement:
 
     def test_snowflake_singlestrand_render_style_rotates_with_occurrence(self) -> None:
         # User-supplied render-style suggestions (2026-07-24, "Per Model
-        # Horizontal Per Strand" dropped same day after visual review):
+        # Horizontal Per Strand" dropped same day after visual review;
+        # "Horizontal Per Model/Strand" dropped 2026-07-25 in favor of
+        # reusing "Horizontal Per Model" -- down to 2 distinct styles):
         # every occurrence of the Single Strand alt should carry one of the
-        # three named buffer styles, and different occurrences should walk
+        # two named buffer styles, and different occurrences should walk
         # through the pool rather than repeating the same style all song
         # long.
         allowed = {
             "Per Model Default",
             "Horizontal Per Model",
-            "Horizontal Per Model/Strand",
         }
         first = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP, variation_seed=3)
         placements = first["06_PROP_Snowflake"]
@@ -422,10 +423,13 @@ class TestCorpusRecipePlacement:
         assert placements
         styles = [p.buffer_style_override for p in placements]
         # Beats 0-7 -> block 0, beats 8-15 -> block 1, beats 16-19 -> block 2:
-        # three distinct styles across one continuous occurrence.
-        assert len(set(styles)) >= 3
+        # with only 2 styles in the rotation, block 0 and block 2 share a
+        # style (same parity), but each block boundary still flips style.
+        assert len(set(styles)) == 2
         assert styles[0] == styles[7]
         assert styles[0] != styles[8]
+        assert styles[15] != styles[16]
+        assert styles[0] == styles[16]
 
     def test_adjacent_seed_keeps_primary_effect(self) -> None:
         result = _place(_make_section(label="chorus"), _SNOWFLAKE_GROUP, variation_seed=1)
