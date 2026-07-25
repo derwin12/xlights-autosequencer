@@ -82,7 +82,7 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <span className={styles.wordmark}>xOnset</span>
+        <span className={styles.wordmark}>xLightsAI</span>
         <nav role="tablist" className={styles.toolStrip}>
           {TABS.map((tab) => (
             <button

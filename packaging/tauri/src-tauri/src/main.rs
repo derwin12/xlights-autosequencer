@@ -3,10 +3,20 @@
 
 mod handshake;
 
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
+
+/// Prevents Windows from allocating a visible console window for the
+/// backend sidecar. `backend.exe` is a console-subsystem executable
+/// (PyInstaller's `console=True`, so it also works when run directly for
+/// debugging), and spawning a console-subsystem child from a
+/// windows-subsystem GUI parent otherwise pops up a new (blank -- its
+/// stdout/stderr are redirected to our pipes below, not this window's
+/// screen buffer) console regardless of the `Stdio::piped()` redirection.
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -64,6 +74,14 @@ fn backend_binary_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(resource_dir.join("backend").join(&binary_name))
 }
 
+/// Append one line to the shared backend log file, ignoring write errors
+/// (a full disk or locked file shouldn't take down the backend reader).
+fn write_log_line(log: &std::sync::Arc<Mutex<std::fs::File>>, stream: &str, line: &str) {
+    if let Ok(mut file) = log.lock() {
+        let _ = writeln!(file, "[{stream}] {}", line.trim_end());
+    }
+}
+
 /// Spawn the PyInstaller backend and wire up stdout parsing.
 fn spawn_backend(app: &AppHandle) -> Result<(), String> {
     let resource_dir = app
@@ -79,6 +97,23 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
 
     let backend_path = backend_binary_path(app)?;
 
+    // Piped stdout/stderr have no console attached in a release build (the
+    // GUI-subsystem shell has none of its own either), so without this the
+    // backend's own log lines -- including any startup crash -- are
+    // discarded entirely. One shared log file makes both readers' output
+    // inspectable after the fact.
+    let log_path = app_support_root()?.join("logs").join("backend.log");
+    if let Some(parent) = log_path.parent() {
+        std::fs::create_dir_all(parent).ok();
+    }
+    let log_file = std::sync::Arc::new(Mutex::new(
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+            .map_err(|e| format!("failed to open log file ({}): {e}", log_path.display()))?,
+    ));
+
     let mut child = Command::new(&backend_path)
         .env("XLIGHT_PACKAGED", "1")
         .env("PYTHONUNBUFFERED", "1")
@@ -89,6 +124,7 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
         .env("MKL_NUM_THREADS", "4")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map_err(|e| format!("failed to spawn backend ({}): {e}", backend_path.display()))?;
 
@@ -109,6 +145,7 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
     // Stdout reader: parses the port handshake and passes remaining lines
     // through to our log.
     let stdout_handle = app.clone();
+    let stdout_log = log_file.clone();
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         let mut port_announced = false;
@@ -125,15 +162,18 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
                 }
             }
             eprintln!("[backend stdout] {}", line.trim_end());
+            write_log_line(&stdout_log, "stdout", &line);
         }
     });
 
     // Stderr reader: pass-through to our log.
+    let stderr_log = log_file.clone();
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for line in reader.lines() {
             if let Ok(line) = line {
                 eprintln!("[backend stderr] {}", line.trim_end());
+                write_log_line(&stderr_log, "stderr", &line);
             }
         }
     });

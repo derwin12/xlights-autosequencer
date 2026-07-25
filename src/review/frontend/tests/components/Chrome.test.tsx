@@ -5,7 +5,7 @@ import { Chrome } from 'src/components/Chrome/Chrome';
 describe('Chrome', () => {
   it('renders the wordmark', () => {
     render(<Chrome activeScreen="library"><div /></Chrome>);
-    expect(screen.getByText(/xonset/i)).toBeTruthy();
+    expect(screen.getByText(/xlightsai/i)).toBeTruthy();
   });
 
   it('tool strip highlights active tab with accent underline', () => {

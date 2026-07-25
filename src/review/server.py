@@ -371,6 +371,28 @@ def create_app(analysis_path: str | None = None, audio_path: str | None = None,
     app.config["SCAN_DIR"] = scan_dir
     app.config["TESTING"] = testing
 
+    # ── CORS ─────────────────────────────────────────────────────────────────
+    # The packaged desktop app's WebView origin (tauri://localhost) differs
+    # from this server's own http://127.0.0.1:<port> origin, so without CORS
+    # headers the browser blocks cross-origin fetch/EventSource responses
+    # (dev mode is unaffected -- the Vite proxy makes those requests
+    # same-origin). This is a single-user local-only server with no
+    # multi-tenant origin boundary to protect, so reflecting any Origin is
+    # safe.
+    @app.after_request
+    def _add_cors_headers(response):
+        origin = request.headers.get("Origin")
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Range"
+        return response
+
+    @app.before_request
+    def _handle_preflight():
+        if request.method == "OPTIONS":
+            return "", 204
+
     # ── Register /api/v1 Blueprint ───────────────────────────────────────────
     from src.review.api.v1 import api_v1  # noqa: PLC0415
     app.register_blueprint(api_v1, url_prefix="/api/v1")

@@ -47,7 +47,7 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>xLights-Autosequencer</h2>
+        <h2 className={styles.title}>xLightsAI</h2>
         <div className={styles.version}>
           {manifest?.app_version ?? "…"}
           {manifest?.target_arch ? ` · ${manifest.target_arch}` : null}

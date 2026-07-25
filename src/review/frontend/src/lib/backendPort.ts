@@ -33,6 +33,45 @@ function isTauri(): boolean {
 }
 
 /**
+ * Not every call site was migrated to `apiFetch`/`apiEventSource` (see
+ * apiClient.ts) -- several screens still call bare `fetch("/api/...")` /
+ * `new EventSource("/api/...")` directly. Rather than hunting down every
+ * call site (and risking missing new ones later), patch the globals once
+ * the base is known so a relative "/api/..." path transparently resolves
+ * against the backend origin in production too. A no-op in dev, where
+ * base is "".
+ */
+let globalsPatched = false;
+function patchGlobalsForBase(base: string): void {
+  if (
+    globalsPatched ||
+    typeof window === "undefined" ||
+    !base ||
+    typeof window.fetch !== "function" ||
+    typeof window.EventSource !== "function"
+  ) {
+    return;
+  }
+  globalsPatched = true;
+
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    if (typeof input === "string" && input.startsWith("/api/")) {
+      return originalFetch(`${base}${input}`, init);
+    }
+    return originalFetch(input, init);
+  }) as typeof window.fetch;
+
+  const OriginalEventSource = window.EventSource;
+  window.EventSource = class extends OriginalEventSource {
+    constructor(url: string | URL, eventSourceInitDict?: EventSourceInit) {
+      const resolvedUrl = typeof url === "string" && url.startsWith("/api/") ? `${base}${url}` : url;
+      super(resolvedUrl, eventSourceInitDict);
+    }
+  };
+}
+
+/**
  * Resolve (and cache) the base URL to prepend to API paths.
  *
  * Returns `""` in dev mode so relative URLs work through the Vite proxy.
@@ -67,6 +106,7 @@ export async function resolveBackendBase(): Promise<string> {
         settled = true;
         clearTimeout(timer);
         resolvedBase = `http://127.0.0.1:${port}`;
+        patchGlobalsForBase(resolvedBase);
         resolve(resolvedBase);
       };
 
