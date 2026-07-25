@@ -3,6 +3,8 @@
 description: "Task list for Tauri desktop packaging (macOS v1)"
 ---
 
+> **HISTORICAL — macOS scope dropped 2026-07-24.** This spec targeted macOS-only packaging and is kept for historical reference only (research/decisions may still be useful). The project is now Windows-only; see [`packaging/README.md`](../../packaging/README.md) for the current, actively-maintained build handbook.
+
 # Tasks: Tauri Desktop Packaging (macOS v1)
 
 **Input**: Design documents from `/specs/052-tauri-desktop-packaging/`

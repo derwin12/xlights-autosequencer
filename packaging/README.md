@@ -1,43 +1,53 @@
-# XLight packaging — macOS build handbook
+# XLight packaging — Windows build handbook
 
-This directory contains everything required to build, sign, notarize, and ship
-the XLight desktop app on macOS.
+This directory contains everything required to build a basic (unsigned)
+Windows desktop build of XLight. macOS support was explored (see
+`specs/052-tauri-desktop-packaging/`, kept for historical reference) and
+dropped from scope on 2026-07-24 — this is now Windows-only.
 
-> **Start here**: [../specs/052-tauri-desktop-packaging/quickstart.md](../specs/052-tauri-desktop-packaging/quickstart.md)
-> — the full release-engineer walkthrough from prerequisites through notarization.
+This is a **basic, unsigned** build — no EV code-signing certificate yet, so
+Windows SmartScreen will show an "unknown publisher" warning on first run.
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
-| `tauri/` | Tauri 2 native shell (Rust + minimal JS). Wraps the React frontend in a WKWebView window and spawns the Python sidecar. |
+| `tauri/` | Tauri 2 native shell (Rust + minimal JS). Wraps the React frontend in a WebView2 window and spawns the Python sidecar. |
 | `tauri/src-tauri/Cargo.toml` | Rust dependencies. |
-| `tauri/src-tauri/src/main.rs` | Shell entry: spawn sidecar, discover backend port, emit to webview, clean shutdown. |
-| `tauri/src-tauri/tauri.conf.json` | Bundle identity, signing, icons, resources, sidecar binding. |
-| `tauri/src-tauri/entitlements.plist` | Hardened-runtime entitlements (library-validation disabled for Vamp, JIT allowed for torch/numba). |
+| `tauri/src-tauri/src/main.rs` | Shell entry: spawn sidecar, discover backend port, emit to webview, clean shutdown (`taskkill /F`). |
+| `tauri/src-tauri/tauri.conf.json` | Bundle identity, icons, resources, NSIS installer config. |
 | `tauri/src-tauri/capabilities/main.json` | Tauri 2 permission capabilities (shell, dialog, event, narrow fs). |
+| `tauri/src-tauri/icons/icon.ico` | Windows installer/taskbar icon. |
 | `pyinstaller/backend.spec` | PyInstaller onedir spec for the Flask backend. |
 | `pyinstaller/hooks/` | Hidden imports + data collection for madmom, torch, librosa, demucs. |
-| `pyinstaller/plugins/vamp/<arch>/` | Vamp plugin `.dylib` files bundled per architecture. |
-| `scripts/build-backend.sh` | PyInstaller build entry (per arch). |
-| `scripts/sign-backend.sh` | Iterates the onedir and signs every binary. |
-| `scripts/build-app.sh` | Runs `cargo tauri build` and verifies signing. |
-| `scripts/notarize.sh` | Submits the `.dmg` to `notarytool` and staples the ticket. |
-| `scripts/release.sh` | Orchestrates all of the above end-to-end. |
-| `scripts/fetch-vamp-plugins.sh` | Source/copy `.dylib`s for QM, BeatRoot, pYIN, Chordino/NNLS, Silvet. |
+| `pyinstaller/plugins/vamp/x86_64-windows/` | Vamp plugin `.dll` files. |
+| `scripts/build-backend.ps1` | PyInstaller build entry — produces `binaries/backend-x86_64-pc-windows-msvc/`. |
+| `scripts/build-app.ps1` | Runs `cargo tauri build` and locates the NSIS installer. |
+| `scripts/fetch-vamp-plugins.ps1` | Verify/obtain `.dll`s for QM, BeatRoot, pYIN, Chordino/NNLS, Silvet. |
+| `src/packaging/platform_paths.py` | Single source of truth for the `%LOCALAPPDATA%\XLight` Application Support root (Python side; `main.rs` mirrors it for the Rust shell's own `TORCH_HOME` setup). |
 
-## Per-release checklist
+## Building
 
-See [quickstart.md](../specs/052-tauri-desktop-packaging/quickstart.md). In
-brief:
+Requires: Rust + `cargo-tauri`, Node/pnpm, Python 3.11 (`py -3.11` via the
+official python.org installer, not the Microsoft Store version — madmom has
+no 3.12+ wheels), and the NSIS bundler that `cargo tauri build` pulls in
+automatically.
 
-```bash
-export XLIGHT_TARGET_ARCH=aarch64   # or x86_64
-./packaging/scripts/release.sh $XLIGHT_TARGET_ARCH
+```powershell
+.\packaging\scripts\fetch-vamp-plugins.ps1     # verify/obtain Vamp .dll files
+.\packaging\scripts\build-backend.ps1          # PyInstaller onedir -> binaries\backend-x86_64-pc-windows-msvc\
+.\packaging\scripts\build-app.ps1              # cargo tauri build -> NSIS installer
 ```
 
-Produces a signed, notarized, stapled `.dmg` in
-`packaging/tauri/src-tauri/target/$XLIGHT_TARGET_ARCH-apple-darwin/release/bundle/dmg/`.
+Produces an unsigned installer at
+`packaging/tauri/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe`.
+
+**Not yet done**: no signing, and this has not yet been built/run on a real
+Windows machine end-to-end — the Rust/PyInstaller changes are
+source-complete but unverified beyond local Python unit tests (no Rust
+toolchain was available to compile-check `main.rs` in the environment this
+was authored in). Build it once on a real machine and fix whatever the
+compiler/PyInstaller turns up before relying on it.
 
 ## Dev vs packaged mode
 
@@ -55,13 +65,13 @@ Packaged mode sets all three from the Rust launcher. See
 
 | Pack | Version | Upstream | Notes |
 |---|---|---|---|
-| QM Vamp Plugins | TBD | https://code.soundsoftware.ac.uk/projects/qm-vamp-plugins/ | Builds for macOS arm64 + x86_64. |
+| QM Vamp Plugins | TBD | https://code.soundsoftware.ac.uk/projects/qm-vamp-plugins/ | Windows build needed. |
 | BeatRoot | TBD | https://code.soundsoftware.ac.uk/projects/beatroot-vamp | |
 | pYIN | TBD | https://code.soundsoftware.ac.uk/projects/pyin | |
 | NNLS Chroma / Chordino | TBD | https://code.soundsoftware.ac.uk/projects/nnls-chroma | |
 | Silvet | TBD | https://code.soundsoftware.ac.uk/projects/silvet | |
 
-Record the exact version (or git SHA) and SHA256 of each `.dylib` after the
+Record the exact version (or git SHA) and SHA256 of each `.dll` after the
 first successful release.
 
 ## FR-008 scope note
@@ -70,5 +80,5 @@ Partial-write safety for `~/.xlight/library.json` and the analysis cache
 inherits existing dev-mode behavior — not hardened by this feature. If a
 future incident shows corruption on forced shutdown, open a separate spec
 for atomic-write (write-to-temp + `os.replace`). This feature's FR-008
-scope is limited to clean process shutdown (signal handling in the Tauri
-shell).
+scope is limited to clean process shutdown (handled in the Tauri shell via
+the window-destroyed event + `taskkill /F`).

@@ -3,10 +3,12 @@
 In dev and CLI use we keep the current convention: stems live under
 `<source_parent>/<source_stem>/stems/` (or `<source_parent>/stems/` when
 parent directory name already matches the source stem). In packaged mode,
-users drop files from macOS locations where the packaged app may not have
-write permission (Music, Desktop, iCloud Drive). When that happens we fall
-back to `~/Library/Application Support/XLight/stems/<source_stem>/stems/`
-so the cache is still usable and discoverable.
+users drop files from locations where the packaged app may not have write
+permission (macOS Music/Desktop/iCloud Drive; Windows OneDrive-synced or
+Program Files-adjacent folders). When that happens we fall back to the
+platform's Application Support root (see platform_paths.py),
+`<app_support_root>/stems/<source_stem>/stems/`, so the cache is still
+usable and discoverable.
 
 Layout decisions live in `src.analyzer.stems.StemCache.__init__` — this
 helper only decides whether to place the cache source-adjacent or in the
@@ -17,10 +19,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from src.packaging.platform_paths import app_support_root
+
 
 def _user_fallback_root() -> Path:
     """The Application Support fallback root for stems."""
-    return Path.home() / "Library" / "Application Support" / "XLight" / "stems"
+    return app_support_root() / "stems"
 
 
 def _writable(directory: Path) -> bool:

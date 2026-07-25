@@ -1,4 +1,4 @@
-"""T008 — model cache paths under Application Support/XLight/models/."""
+"""T008 — model cache paths under the platform's Application Support root."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,8 +11,9 @@ from src.packaging.models_paths import (
 )
 
 
-def test_torch_home_layout(tmp_path: Path) -> None:
-    with mock.patch("src.packaging.models_paths.Path.home", return_value=tmp_path):
+def test_torch_home_layout_macos(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("src.packaging.platform_paths.sys.platform", "darwin")
+    with mock.patch("src.packaging.platform_paths.Path.home", return_value=tmp_path):
         torch_home = get_torch_home()
 
     assert torch_home == (
@@ -26,8 +27,25 @@ def test_torch_home_layout(tmp_path: Path) -> None:
     assert (torch_home / "hub" / "checkpoints").is_dir()
 
 
+def test_torch_home_layout_windows(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("src.packaging.platform_paths.sys.platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
+
+    torch_home = get_torch_home()
+
+    assert torch_home == (
+        tmp_path
+        / "AppData"
+        / "Local"
+        / "XLight"
+        / "models"
+        / "torch-hub"
+    )
+    assert (torch_home / "hub" / "checkpoints").is_dir()
+
+
 def test_model_cache_root_created(tmp_path: Path) -> None:
-    with mock.patch("src.packaging.models_paths.Path.home", return_value=tmp_path):
+    with mock.patch("src.packaging.platform_paths.Path.home", return_value=tmp_path):
         root = get_model_cache_root()
 
     assert root.is_dir()
@@ -35,7 +53,7 @@ def test_model_cache_root_created(tmp_path: Path) -> None:
 
 
 def test_download_state_path_location(tmp_path: Path) -> None:
-    with mock.patch("src.packaging.models_paths.Path.home", return_value=tmp_path):
+    with mock.patch("src.packaging.platform_paths.Path.home", return_value=tmp_path):
         state = get_download_state_path()
         cache_root = get_model_cache_root()
 

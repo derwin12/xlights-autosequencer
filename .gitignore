@@ -111,3 +111,8 @@ docs/*_sequencing_corpus/
 
 # Downloaded pretrained model weights (speaker embedding, etc.) — large, local only
 pretrained_models/
+
+# Tauri desktop shell — JS deps and Rust build output (regenerated locally)
+packaging/tauri/node_modules/
+packaging/tauri/src-tauri/target/
+packaging/tauri/src-tauri/gen/

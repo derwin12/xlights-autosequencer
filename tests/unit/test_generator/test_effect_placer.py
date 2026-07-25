@@ -169,7 +169,11 @@ def _make_groups() -> list[PowerGroup]:
 
 # ── Import under test ────────────────────────────────────────────────────────
 
-from src.generator.effect_placer import _assign_layers_to_tiers, place_effects
+from src.generator.effect_placer import (
+    _assign_layers_to_tiers,
+    _force_floodlight_spirals_to_default_buffer_style,
+    place_effects,
+)
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -1178,3 +1182,49 @@ class TestEndOfSongFadeOut:
             assert p.fade_out_ms == 0, (
                 f"Non-final section should not get end-of-song fade, got {p.fade_out_ms}"
             )
+
+
+class TestForceFloodlightSpiralsToDefaultBufferStyle:
+    """User request, 2026-07-24: Spirals on floodlight groups must render
+    with B_CHOICE_BufferStyle "Default", not the tier-6 "Per Model Default"
+    convention -- floodlights are single-pixel props, so "Per Model Default"
+    can't show a spiral shape at all (each 1x1 bounding box renders alone).
+    """
+
+    def _placement(self, group_name: str, effect_name: str) -> EffectPlacement:
+        return EffectPlacement(
+            effect_name=effect_name,
+            xlights_id=effect_name,
+            model_or_group=group_name,
+            start_ms=0,
+            end_ms=1000,
+        )
+
+    def test_spirals_on_floodlight_group_gets_default_override(self) -> None:
+        result = {"06_PROP_Floodlight": [self._placement("06_PROP_Floodlight", "Spirals")]}
+        _force_floodlight_spirals_to_default_buffer_style(result)
+        assert result["06_PROP_Floodlight"][0].buffer_style_override == "Default"
+
+    def test_case_insensitive_group_name_match(self) -> None:
+        result = {"06_PROP_FloodLights": [self._placement("06_PROP_FloodLights", "Spirals")]}
+        _force_floodlight_spirals_to_default_buffer_style(result)
+        assert result["06_PROP_FloodLights"][0].buffer_style_override == "Default"
+
+    def test_other_effects_on_floodlight_group_untouched(self) -> None:
+        p = self._placement("06_PROP_Floodlight", "On")
+        result = {"06_PROP_Floodlight": [p]}
+        _force_floodlight_spirals_to_default_buffer_style(result)
+        assert p.buffer_style_override is None
+
+    def test_spirals_on_non_floodlight_group_untouched(self) -> None:
+        p = self._placement("06_PROP_Arch", "Spirals")
+        result = {"06_PROP_Arch": [p]}
+        _force_floodlight_spirals_to_default_buffer_style(result)
+        assert p.buffer_style_override is None
+
+    def test_does_not_clobber_an_existing_override(self) -> None:
+        p = self._placement("06_PROP_Floodlight", "Spirals")
+        p.buffer_style_override = "Per Model Per Preview"
+        result = {"06_PROP_Floodlight": [p]}
+        _force_floodlight_spirals_to_default_buffer_style(result)
+        assert p.buffer_style_override == "Per Model Per Preview"

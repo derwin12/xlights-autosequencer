@@ -1,16 +1,19 @@
 """Paths for downloaded model weights (demucs htdemucs_6s).
 
-Lives under macOS Application Support so the cache survives reinstalls and
-is isolated from the small-JSON config in `~/.xlight/`.
+Lives under the platform's Application Support root (see platform_paths.py)
+so the cache survives reinstalls and is isolated from the small-JSON config
+in `~/.xlight/`.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
+from src.packaging.platform_paths import app_support_root
+
 
 def get_model_cache_root() -> Path:
     """Root directory for all downloaded model assets."""
-    root = Path.home() / "Library" / "Application Support" / "XLight" / "models"
+    root = app_support_root() / "models"
     root.mkdir(parents=True, exist_ok=True)
     return root
 

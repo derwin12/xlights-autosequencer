@@ -1,5 +1,4 @@
-// Prevents additional console window on Windows (no-op on macOS; kept so the
-// shell is portable if Windows is ever added back).
+// Prevents an additional console window on release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod handshake;
@@ -19,7 +18,7 @@ struct BackendState {
     port: Mutex<Option<u16>>,
     // We intentionally do NOT retain a reference to the child process here;
     // the Command handle is consumed by the waiter thread, and shutdown is
-    // performed by sending SIGTERM to the pid recorded at spawn.
+    // performed via `taskkill /F` against the pid recorded at spawn.
     pid: Mutex<Option<u32>>,
 }
 
@@ -53,10 +52,11 @@ fn get_backend_port(state: State<'_, BackendState>) -> Option<u16> {
 /// Resolve the backend binary path. Tauri copies the PyInstaller onedir
 /// into the resource dir (under `backend/`) per `tauri.conf.json >
 /// bundle.resources` — in dev that's `target/debug/backend/`, in release
-/// it's `.app/Contents/Resources/backend/`.
+/// it's `<install-dir>/resources/backend/`. The binary name must match
+/// whatever `build-backend.ps1` renamed the PyInstaller output to.
 fn backend_binary_path(app: &AppHandle) -> Result<PathBuf, String> {
     let arch = std::env::consts::ARCH;
-    let binary_name = format!("backend-{arch}-apple-darwin");
+    let binary_name = format!("backend-{arch}-pc-windows-msvc.exe");
     let resource_dir = app
         .path()
         .resource_dir()
@@ -72,11 +72,7 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
         .map_err(|e| format!("resource_dir: {e}"))?;
 
     let vamp_path = resource_dir.join("vamp");
-    let torch_home = dirs_home()
-        .ok_or_else(|| "no home dir".to_string())?
-        .join("Library")
-        .join("Application Support")
-        .join("XLight")
+    let torch_home = app_support_root()?
         .join("models")
         .join("torch-hub");
     std::fs::create_dir_all(torch_home.join("hub").join("checkpoints")).ok();
@@ -192,24 +188,33 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Return `$HOME` as a `PathBuf`. Kept as a small helper so tests can
-/// mock it without pulling in an external crate.
+/// Return the user's home directory as a `PathBuf`, via `USERPROFILE`
+/// (Windows's actual home-dir env var; `HOME` is not reliably set). Kept as
+/// a small helper so tests can mock it without pulling in an external crate.
 fn dirs_home() -> Option<std::path::PathBuf> {
-    std::env::var_os("HOME").map(std::path::PathBuf::from)
+    std::env::var_os("USERPROFILE").map(std::path::PathBuf::from)
 }
 
-/// Best-effort: send SIGTERM to the backend pid we recorded at spawn.
-/// Uses libc on Unix; on Windows would need TerminateProcess — out of
-/// scope for the macOS v1 ship.
-#[cfg(unix)]
+/// Application Support root, matching
+/// `src/packaging/platform_paths.py::app_support_root()` exactly:
+/// `%LOCALAPPDATA%\XLight` (falling back to `<home>/AppData/Local/XLight`
+/// if the env var is unset).
+fn app_support_root() -> Result<PathBuf, String> {
+    let local = std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .or_else(|| dirs_home().map(|h| h.join("AppData").join("Local")))
+        .ok_or_else(|| "no LOCALAPPDATA or home dir".to_string())?;
+    Ok(local.join("XLight"))
+}
+
+/// Best-effort: terminate the backend pid we recorded at spawn via
+/// `taskkill` (avoids pulling in a Windows-API crate just for
+/// `TerminateProcess`).
 fn terminate_sidecar(pid: u32) {
-    unsafe {
-        libc::kill(pid as libc::pid_t, libc::SIGTERM);
-    }
+    let _ = Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/F"])
+        .status();
 }
-
-#[cfg(not(unix))]
-fn terminate_sidecar(_pid: u32) {}
 
 fn main() {
     tauri::Builder::default()

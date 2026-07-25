@@ -1564,7 +1564,35 @@ def place_effects(
                     # Don't exceed the placement's own duration.
                     p.fade_out_ms = min(fadeout_ms, p.end_ms - p.start_ms)
 
+    _force_floodlight_spirals_to_default_buffer_style(result)
+
     return result
+
+
+def _force_floodlight_spirals_to_default_buffer_style(
+    result: dict[str, list[EffectPlacement]],
+) -> None:
+    """Force Spirals on floodlight groups to B_CHOICE_BufferStyle "Default".
+
+    Floodlight groups have no ``PropFamilyRecipe`` of their own, so Spirals
+    reaches them via the ordinary tier>=4 rotation/working-set/pool paths in
+    ``place_effects``, all of which leave ``buffer_style_override`` unset --
+    ``xsq_writer`` then defaults tier 6 to "Per Model Default" (user request,
+    2026-07-24). That's wrong specifically for Spirals on floodlights: "Per
+    Model Default" renders the spiral independently within each single-pixel
+    floodlight's own (1x1) bounding box, which can't show a spiral shape at
+    all -- it needs "Default" so the whole group's bounding box is treated
+    as one canvas and the spiral actually draws across every floodlight.
+    Every other floodlight effect (the On-based pulse/hihat accents) still
+    wants "Per Model Default" -- this override is Spirals-only. Mutates
+    ``result`` in place.
+    """
+    for group_name, placements in result.items():
+        if "floodlight" not in group_name.lower():
+            continue
+        for p in placements:
+            if p.effect_name == "Spirals" and p.buffer_style_override is None:
+                p.buffer_style_override = "Default"
 
 
 def _select_groups_for_layer(
@@ -3637,9 +3665,33 @@ def _place_whole_house_composite(
     # preserved but a single stack never repeats an effect except in the
     # rare layer_count=6 case (only 5 distinct effects exist to draw from).
     distinct_pool = list(dict.fromkeys(_WHOLE_HOUSE_EFFECT_POOL))
+    effect_names = [distinct_pool[(variation_seed + i) % len(distinct_pool)] for i in range(layer_count)]
+    # Shockwave reads as the "hero" layer of the whole 01_BASE_All group, not
+    # just of this composite's own extra layers (user report, 2026-07-24,
+    # confirmed on two separate real .xsq exports -- ~2:20/2:45 then again at
+    # ~2:15 after the first fix only reordered the composite's own stack).
+    # base_layer..base_layer+layer_count-1 (all positive) sit BEHIND the
+    # theme wash's own layers (0..-(base_layer-1), see the negated-layer_idx
+    # convention above) and behind any background_accent_variant overlay
+    # (-base_layer) -- Shockwave needs to beat all of that, so it gets its
+    # own layer one step more negative than the accent overlay's floor
+    # (-base_layer - 1 - k for the rare case of >1 simultaneous Shockwaves).
+    # Every other composite effect keeps the original positive/behind-the-
+    # wash placement -- only Shockwave is meant to read as the frontmost
+    # accent; Pictures still win over it via the existing_layers min-1
+    # pattern in _place_picture_effects, and the color-over-mask exception
+    # (star/cane PropFamilyRecipes placing an On mask above the motion
+    # effect) is a separate, unrelated code path this doesn't touch.
+    shockwave_indices = [i for i in range(layer_count) if effect_names[i] == "Shockwave"]
+    other_indices = [i for i in range(layer_count) if effect_names[i] != "Shockwave"]
+    layer_by_index: dict[int, int] = {}
+    for k, i in enumerate(shockwave_indices):
+        layer_by_index[i] = -base_layer - 1 - k
+    for k, i in enumerate(other_indices):
+        layer_by_index[i] = base_layer + k
 
     for i in range(layer_count):
-        effect_name = distinct_pool[(variation_seed + i) % len(distinct_pool)]
+        effect_name = effect_names[i]
         if effect_name == "Shockwave":
             local_seed = variation_seed + i
             params = {
@@ -3715,7 +3767,7 @@ def _place_whole_house_composite(
             end_ms=section.end_ms,
             parameters=params,
             color_palette=list(palette),
-            layer=base_layer + i,
+            layer=layer_by_index[i],
         )
         result.setdefault(base_group.name, []).append(placement)
 

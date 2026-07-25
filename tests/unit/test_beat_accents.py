@@ -1065,7 +1065,10 @@ class TestWholeHouseCompositePlacement:
         # (see _assign_layers_to_tiers) -- the composite must not collide,
         # and whole_house_layers=5 is the TOTAL simultaneous-layer target
         # (matching the mined distribution), so only 5-2=3 extra layers are
-        # added on top of the wash's own 2.
+        # added on top of the wash's own 2. Non-Shockwave layers land at
+        # base_layer+k (positive, behind the wash); any Shockwave among them
+        # breaks out to a negative layer ahead of the whole wash instead
+        # (bug-572 follow-up) so its exact value isn't base_layer+k anymore.
         theme = _make_theme()
         theme.layers = [object(), object()]
         assignment = _make_assignment(energy_score=90, whole_house_layers=5, theme=theme)
@@ -1073,8 +1076,12 @@ class TestWholeHouseCompositePlacement:
         result = _place_whole_house_composite(
             groups=[base], assignment=assignment, variant_library=_make_variant_library(),
         )
-        layer_indices = sorted(p.layer for p in result[base.name])
-        assert layer_indices == [2, 3, 4]
+        placements = result[base.name]
+        non_shockwave_layers = sorted(p.layer for p in placements if p.effect_name != "Shockwave")
+        assert non_shockwave_layers == list(range(2, 2 + len(non_shockwave_layers)))
+        for p in placements:
+            if p.effect_name == "Shockwave":
+                assert p.layer < -len(theme.layers)
 
     def test_layer_count_never_exceeds_total_when_wash_already_covers_it(self):
         # A 4-layer theme wash already meets/exceeds a whole_house_layers=3
@@ -1096,6 +1103,49 @@ class TestWholeHouseCompositePlacement:
         )
         for p in result[base.name]:
             assert p.effect_name in _WHOLE_HOUSE_EFFECT_POOL
+
+    def test_shockwave_always_beats_every_other_composite_layer(self):
+        # User report, 2026-07-24 (real generated .xsq, ~2:20/2:45): Shockwave
+        # rendered buried under On/Shader/Pinwheel/Ripple because layer was
+        # assigned by draw order alone, with no regard to which effect landed
+        # there. Lower layer number = frontmost (bug-569) -- Shockwave must be
+        # the minimum layer whenever it's part of the stack, for every seed.
+        base = _make_base_group()
+        for variation_seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=6, variation_seed=variation_seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=_make_variant_library(),
+            )
+            placements = result.get(base.name, [])
+            shockwave_layers = [p.layer for p in placements if p.effect_name == "Shockwave"]
+            other_layers = [p.layer for p in placements if p.effect_name != "Shockwave"]
+            if shockwave_layers and other_layers:
+                assert min(shockwave_layers) < min(other_layers)
+
+    def test_shockwave_beats_the_theme_wash_and_background_accent_too(self):
+        # Same real-file report, seen AGAIN at ~2:15 after the first fix only
+        # reordered the composite's own sub-stack: the composite's positive
+        # base_layer+i layers are, by design, behind the theme wash's own
+        # negated layers (0..-(N-1), see the theme-layers loop) and behind
+        # any background_accent_variant overlay (-N) -- so a Shockwave that
+        # only won within its own stack could still lose to the wash overall.
+        # Shockwave must outrank a 2-layer theme's wash (layers 0 and -1) and
+        # the accent overlay's floor (-2), i.e. land at -3 or lower.
+        theme = _make_theme()
+        theme.layers = [object(), object()]
+        base = _make_base_group()
+        for variation_seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=6, variation_seed=variation_seed, theme=theme,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=_make_variant_library(),
+            )
+            for p in result.get(base.name, []):
+                if p.effect_name == "Shockwave":
+                    assert p.layer < -len(theme.layers)
 
     def test_shader_placements_include_the_ifs_filepicker_param(self):
         # Force an all-Shader pool run isn't practical without monkeypatching

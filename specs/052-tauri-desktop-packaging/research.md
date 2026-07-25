@@ -1,3 +1,5 @@
+> **HISTORICAL — macOS scope dropped 2026-07-24.** This spec targeted macOS-only packaging and is kept for historical reference only (research/decisions may still be useful). The project is now Windows-only; see [`packaging/README.md`](../../packaging/README.md) for the current, actively-maintained build handbook.
+
 # Phase 0 Research: Tauri Desktop Packaging (macOS v1)
 
 **Feature**: 052-tauri-desktop-packaging
