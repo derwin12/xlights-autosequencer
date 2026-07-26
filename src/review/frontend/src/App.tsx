@@ -307,7 +307,6 @@ export default function App() {
 
   const setPreferences = usePreferencesStore((s) => s.setPreferences);
   const lastSongId = usePreferencesStore((s) => s.last_song_id);
-  const lastScreen = usePreferencesStore((s) => s.last_screen);
 
   // cross-screen data lives here — screens receive it as props
   const [data, setData] = React.useState<AppData>({
@@ -351,37 +350,17 @@ export default function App() {
         if (body.songs) setSongs(body.songs);
         if (body.folders) setFolders(body.folders);
 
-        // T100: restore last session after library is loaded
+        // T100: restore last selected song after library is loaded, but always
+        // land on the Library screen at launch — jumping straight to whatever
+        // screen was open last session (e.g. Timeline) reads as "wrong page"
+        // with no context for how you got there.
         const prefs = usePreferencesStore.getState();
         const lastId = prefs.last_song_id;
-        const lastScr = prefs.last_screen as Screen;
         if (lastId && body.songs) {
           const song = body.songs.find((s: Song) => s.song_id === lastId);
           if (song) {
             setData((d) => ({ ...d, song }));
             setSelectedSongId(lastId);
-            if (lastScr && lastScr !== 'library') {
-              setScreen(lastScr);
-            }
-            // Restore analysis + assignments so timeline/theme screens
-            // don't sit on "Loading analysis…" after a page reload. Mirrors
-            // the fetch in handleSelectSong but covers the boot path.
-            if (lastScr === 'timeline' || lastScr === 'theme') {
-              Promise.all([
-                fetch(`/api/v1/songs/${song.song_id}/analysis`),
-                fetch(`/api/v1/songs/${song.song_id}/assignments`),
-              ])
-                .then(async ([aRes, asRes]) => {
-                  const analysisBody = aRes.ok ? await aRes.json() : null;
-                  const assignmentsBody = asRes.ok ? await asRes.json() : null;
-                  setData((d) => ({
-                    ...d,
-                    analysis: analysisBody,
-                    assignments: assignmentsBody?.assignments ?? [],
-                  }));
-                })
-                .catch(() => {});
-            }
           }
         }
       })
