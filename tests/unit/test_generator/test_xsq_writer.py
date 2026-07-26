@@ -2139,6 +2139,11 @@ class TestBlackCherryCosmosHueMatchesThemeColor:
         assert "C_SLIDER_Color_HueAdjust=40" in palettes_text
 
     def test_write_xsq_leaves_other_shaders_unaffected(self, tmp_path: Path) -> None:
+        # Hex 3D Spiral renders achromatic white/gray noise regardless of
+        # hue_adjust (user-confirmed, 2026-07-26) and is deliberately excluded
+        # from _HUE_RESPONSIVE_SHADER_BASELINES -- unlike Plasma Emitter,
+        # Continua Variation, etc. which are legitimately hue-responsive and
+        # now get the slider applied (see _HUE_RESPONSIVE_SHADER_BASELINES).
         plan = _make_plan()
         plan.sections[0].group_effects["Model1"] = [EffectPlacement(
             effect_name="Shader",
@@ -2146,7 +2151,7 @@ class TestBlackCherryCosmosHueMatchesThemeColor:
             model_or_group="Model1",
             start_ms=0,
             end_ms=1000,
-            parameters={"E_0FILEPICKERCTRL_IFS": "Shaders\\Plasma Emitter.fs"},
+            parameters={"E_0FILEPICKERCTRL_IFS": "Shaders\\Hex 3D Spiral.fs"},
             color_palette=["#00FF00"],
         )]
         root = _write_and_parse(plan, tmp_path)

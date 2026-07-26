@@ -24,6 +24,24 @@ class VariantTags:
     section_roles: list[str] = field(default_factory=list)
     scope: str | None = None
     genre_affinity: str = "any"
+    # True for effects/shaders whose own rendered content is achromatic
+    # (white/gray, no real saturation) -- e.g. a GLSL shader with no color
+    # uniform of its own. Neither the theme palette nor C_SLIDER_Color_
+    # HueAdjust can recolor these (a hue rotation of a desaturated pixel is a
+    # no-op); the only way to theme-match them is a colored layer beneath
+    # using a Mask/subtractive blend so the achromatic pattern reads through
+    # the color. See _HUE_RESPONSIVE_SHADER_BASELINES in xsq_writer.py for
+    # the shaders that respond to hue_adjust instead (mutually exclusive with
+    # this flag). User-confirmed via live xLights A/B renders, 2026-07-26.
+    requires_color_mask: bool = False
+    # Base-effect name (e.g. "Single Strand", "Butterfly") that must be
+    # auto-placed on the layer beneath this variant when the generator picks
+    # it -- for Warp-type shaders that distort/tile whatever renders beneath
+    # them rather than carrying their own color. Without a companion base,
+    # these render blank/flat white (user-confirmed, 2026-07-26 -- see
+    # Shader.json's Warp Kaleidoscope Tile/Warp Vincent'sStorm entries). None
+    # for variants that render standalone.
+    companion_base_effect: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict) -> VariantTags:
@@ -35,6 +53,8 @@ class VariantTags:
             section_roles=data.get("section_roles") or [],
             scope=data.get("scope"),
             genre_affinity=data.get("genre_affinity", "any"),
+            requires_color_mask=data.get("requires_color_mask", False),
+            companion_base_effect=data.get("companion_base_effect"),
         )
 
     def get(self, key: str, default=None):
@@ -50,6 +70,8 @@ class VariantTags:
             "section_roles": self.section_roles,
             "scope": self.scope,
             "genre_affinity": self.genre_affinity,
+            "requires_color_mask": self.requires_color_mask,
+            "companion_base_effect": self.companion_base_effect,
         }
 
 

@@ -90,6 +90,7 @@ class TestVariantTags:
         expected_keys = {
             "tier_affinity", "energy_level", "speed_feel",
             "direction", "section_roles", "scope", "genre_affinity",
+            "requires_color_mask", "companion_base_effect",
         }
         assert set(d.keys()) == expected_keys
 

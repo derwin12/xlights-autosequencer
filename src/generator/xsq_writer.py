@@ -571,14 +571,17 @@ def write_xsq(
         for p in placements:
             buffer_style = _buffer_style_for_placement(group_name, p.effect_name, p.buffer_style_override)
             hue_adjust = None
-            if p.effect_name == "Shader" and str(
-                p.parameters.get("E_0FILEPICKERCTRL_IFS", "")
-            ).endswith("Black Cherry Cosmos.fs"):
-                dominant_hue = _dominant_hue_degrees(p.color_palette)
-                if dominant_hue is not None:
-                    hue_adjust = _shader_hue_adjust_for_hue(
-                        dominant_hue, _BLACK_CHERRY_COSMOS_BASELINE_HUE_DEG,
-                    )
+            if p.effect_name == "Shader":
+                ifs = str(p.parameters.get("E_0FILEPICKERCTRL_IFS", ""))
+                baseline_hue = next(
+                    (deg for suffix, deg in _HUE_RESPONSIVE_SHADER_BASELINES.items()
+                     if ifs.endswith(suffix)),
+                    None,
+                )
+                if baseline_hue is not None:
+                    dominant_hue = _dominant_hue_degrees(p.color_palette)
+                    if dominant_hue is not None:
+                        hue_adjust = _shader_hue_adjust_for_hue(dominant_hue, baseline_hue)
             pal_idx = _ensure_palette(p.color_palette, palette_index, palette_list, p.music_sparkles, hue_adjust)
             eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list, buffer_style)
             placement_cache[id(p)] = (eff_idx, pal_idx)
@@ -900,10 +903,51 @@ def _shader_hue_adjust_for_hue(
     return round(raw)
 
 
-# Black Cherry Cosmos's own hardcoded color (no color uniform in its .fs --
-# see _shader_hue_adjust_for_hue) measured via live xLights render_frame
-# captures at C_SLIDER_Color_HueAdjust=0 (user request, 2026-07-26).
-_BLACK_CHERRY_COSMOS_BASELINE_HUE_DEG = 336.0
+# Which Shaders/*.fs files actually respond to C_SLIDER_Color_HueAdjust, and
+# each one's own baseline (unadjusted, hue_adjust=0) dominant hue in degrees --
+# see _shader_hue_adjust_for_hue. Measured via live xLights render_frame /
+# render_clip captures (user request, 2026-07-26): rotating this slider only
+# visibly changes a shader's output when that shader's own rendered content
+# carries real saturation at hue_adjust=0 -- an achromatic (white/gray)
+# shader has no hue for the rotation to move, so it looks unchanged
+# regardless of the slider value. Confirmed responsive: Black Cherry Cosmos
+# (336deg, hardcoded magenta/crimson, no color uniform in its .fs), Plasma
+# Emitter (87deg), Continua Variation (247deg), xLights Audio - fractal audio
+# (229deg), Creation by Silexars (207deg, a low-saturation glow -- the shift
+# is real but subtle), Audio - Audio Surf (245deg), Fly Through (0deg).
+# Confirmed NOT responsive (user-verified, 2026-07-26) and deliberately
+# excluded here: Electrocardiogram.fs, Hex 3D Spiral.fs (both render
+# achromatic white/gray noise regardless of E_CHOICE_SHADERXYZZY_uColMode),
+# Warp Vincent'sStorm.fs (warps/distorts whatever base effect layer is
+# beneath it rather than carrying its own color, so hue_adjust on the warp
+# layer itself has no visible effect -- recolor the base effect underneath
+# instead). String Art.fs is additionally excluded from the variant library
+# entirely (not just this hue table) -- it crashed live xLights twice in a
+# row during testing (both with and without hue_adjust set), so treat it as
+# unstable rather than merely achromatic; do not re-add without confirming
+# the crash is fixed. Warp Kaleidoscope Tile.fs initially failed two live
+# tests (default settings, then a real production CopyFormat string with the
+# required E_SLIDER_SHADERXYZZY_* uniforms and T_CHECKBOX_Canvas=1) -- both
+# rendered nothing. The actual root cause (user-confirmed, 2026-07-26): the
+# base layer underneath had no (or only one) active palette color -- "if no
+# colors are chosen the warp shader renders white," and by extension a
+# single-color palette renders flat/monochrome the same way. It is NOT about
+# the base effect being a smooth wash vs. a textured chase -- Single Strand
+# (2 active colors) and Butterfly (3 active colors) both render correctly
+# underneath it once given a real multi-color palette; Plasma/Butterfly with
+# too few active colors is what actually failed both times. Any base effect
+# works as long as it has >=2 (ideally 3) active palette colors -- see
+# `_ensure_min_palette_colors` used when auto-pairing this shader with a
+# companion base.
+_HUE_RESPONSIVE_SHADER_BASELINES: dict[str, float] = {
+    "Black Cherry Cosmos.fs": 336.0,
+    "Plasma Emitter.fs": 87.0,
+    "Continua Variation.fs": 247.0,
+    "xLights Audio - fractal audio.fs": 229.0,
+    "Creation by Silexars.fs": 207.0,
+    "Audio - Audio Surf.fs": 245.0,
+    "Fly Through.fs": 0.0,
+}
 
 
 def _fire_hue_shift_for_hue(hue_degrees: float) -> int:
@@ -1028,13 +1072,20 @@ def _serialize_effect_params(
             p_min, p_max = 0.0, 100.0
         defaults[f"E_VALUECURVE_{short}"] = _encode_value_curve(short, points, p_min, p_max)
 
-    # Rule (user request, 2026-07-18): never emit T_CHECKBOX_Canvas, on any
-    # effect, regardless of whether a mined vendor .xsqz template includes
-    # it. Enforced here rather than just omitted from
-    # _XLIGHTS_EFFECT_DEFAULTS/moving_head._build_parameters so it can't
-    # come back in via a placement's own parameters, a future template
-    # mining pass, or any other producer.
-    defaults.pop("T_CHECKBOX_Canvas", None)
+    # Rule (user request, 2026-07-18, narrowed 2026-07-26): T_CHECKBOX_Canvas
+    # is stripped from every effect except Warp, Kaleidoscope, and Shader.
+    # The original rule banned it everywhere regardless of what a mined
+    # vendor .xsqz template included; the user later clarified that was too
+    # harsh -- Canvas mode is a real, required setting for these three
+    # effect types specifically (e.g. the Warp Kaleidoscope Tile shader
+    # renders blank without T_CHECKBOX_Canvas=1 -- see
+    # _HUE_RESPONSIVE_SHADER_BASELINES / Shader.json's Warp Kaleidoscope Tile
+    # variant). Still enforced here (not just omitted from
+    # _XLIGHTS_EFFECT_DEFAULTS/moving_head._build_parameters) for every other
+    # effect, so it can't come back in via a placement's own parameters, a
+    # future template-mining pass, or any other producer.
+    if placement.effect_name not in ("Warp", "Kaleidoscope", "Shader"):
+        defaults.pop("T_CHECKBOX_Canvas", None)
 
     parts = [f"{k}={v}" for k, v in sorted(defaults.items())]
     return ",".join(parts)

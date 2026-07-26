@@ -84,7 +84,8 @@
         "direction": null,
         "section_roles": ["verse", "chorus", "build"],
         "scope": "group",
-        "genre_affinity": "any"
+        "genre_affinity": "any",
+        "requires_color_mask": true
       }
     },
     {
@@ -167,6 +168,117 @@
         "section_roles": ["verse", "chorus", "build"],
         "scope": "group",
         "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Fly Through",
+      "base_effect": "Shader",
+      "description": "Fly Through shader -- a fast-moving forward-tunnel pattern. Live-tested (2026-07-26): responds to C_SLIDER_Color_HueAdjust (baseline hardcoded red, ~0deg -- see _HUE_RESPONSIVE_SHADER_BASELINES in xsq_writer.py).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Fly Through.fs",
+        "E_SLIDER_Shader_Speed": 200,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Audio Surf",
+      "base_effect": "Shader",
+      "description": "Audio - Audio Surf shader -- an audio-reactive waveform trace. Live-tested (2026-07-26): responds to C_SLIDER_Color_HueAdjust (baseline blue, ~245deg -- see _HUE_RESPONSIVE_SHADER_BASELINES in xsq_writer.py). Needs real media/audio loaded in the sequence to render meaningfully -- looks flat against silence.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Audio - Audio Surf.fs",
+        "E_SLIDER_Shader_Speed": 200,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Electrocardiogram",
+      "base_effect": "Shader",
+      "description": "Electrocardiogram shader -- a dim EKG-style pulse trace. Live-tested (2026-07-26): renders very dim and achromatic regardless of C_SLIDER_Color_HueAdjust -- needs a colored layer beneath with a Mask blend to theme-match (see tags.requires_color_mask).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Electrocardiogram.fs",
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "mid",
+        "energy_level": "low",
+        "speed_feel": "slow",
+        "direction": null,
+        "section_roles": ["verse", "intro", "outro", "bridge"],
+        "scope": "group",
+        "genre_affinity": "any",
+        "requires_color_mask": true
+      }
+    },
+    {
+      "name": "Shader Warp Kaleidoscope Tile",
+      "base_effect": "Shader",
+      "description": "Warp Kaleidoscope Tile shader -- tiles/mirrors whatever base effect renders beneath it on the layer below, rather than carrying its own color. Two failed live tests rendered nothing; root cause (user-confirmed, 2026-07-26) was too few active palette colors on the base layer, not the base effect's own type -- both Single Strand (2 colors) and Butterfly (3 colors) render correctly underneath it once given a real multi-color palette. Must be layered above (layer 0) any base effect on layer 1 with at least 2 (ideally 3) active palette colors -- a base with 0-1 active colors renders the whole stack flat white. Parameter values below are the verified-working production settings.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Warp Kaleidoscope Tile.fs",
+        "E_SLIDER_SHADERXYZZY_angle": 0,
+        "E_SLIDER_SHADERXYZZY_rotation": 12,
+        "E_SLIDER_SHADERXYZZY_shiftX": 0,
+        "E_SLIDER_SHADERXYZZY_shiftY": 0,
+        "E_SLIDER_SHADERXYZZY_sides": 600,
+        "E_SLIDER_SHADERXYZZY_size": 50,
+        "E_SLIDER_SHADERXYZZY_slide1X": 0,
+        "E_SLIDER_SHADERXYZZY_slide1Y": 0,
+        "E_SLIDER_SHADERXYZZY_slide2X": 0,
+        "E_SLIDER_SHADERXYZZY_slide2Y": 0,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0,
+        "T_CHECKBOX_Canvas": true
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any",
+        "requires_color_mask": true,
+        "companion_base_effect": "Single Strand"
+      }
+    },
+    {
+      "name": "Shader Warp Vincent'sStorm",
+      "base_effect": "Shader",
+      "description": "Warp Vincent'sStorm shader -- distorts/swirls whatever base effect renders beneath it on the layer below, rather than carrying its own color. Live-tested (2026-07-26) over a Butterfly base with 3 active palette colors: renders correctly, the base's own rainbow palette carries through the distortion. hue_adjust on the warp layer itself has no separate effect -- recolor the base layer beneath instead. Must be layered above (layer 0) a base effect on layer 1 with at least 2 (ideally 3) active palette colors -- a base with 0-1 active colors renders the whole stack flat white.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Warp Vincent'sStorm.fs",
+        "E_SLIDER_Shader_Speed": 200,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any",
+        "requires_color_mask": true,
+        "companion_base_effect": "Butterfly"
       }
     }
   ]
