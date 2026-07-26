@@ -14,6 +14,9 @@ Set-Location (Join-Path $RepoRoot "packaging\tauri")
 Write-Host "-> Installing Tauri JS deps (if needed)"
 pnpm install --frozen-lockfile
 
+Write-Host "-> Stamping packaging-manifest.json with build metadata"
+& "$PSScriptRoot\generate-manifest.ps1"
+
 Write-Host "-> Building app for target $Triple"
 cargo tauri build --target $Triple
 if ($LASTEXITCODE -ne 0) {
