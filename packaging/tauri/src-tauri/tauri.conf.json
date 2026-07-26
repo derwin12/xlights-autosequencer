@@ -5,7 +5,7 @@
   "identifier": "com.xlight.autosequencer",
   "build": {
     "beforeDevCommand": "cd ../../src/review/frontend && npm run dev",
-    "beforeBuildCommand": "cd ../../src/review/frontend && npm run build",
+    "beforeBuildCommand": "cd ../../src/review/frontend && npm ci && npm run build",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../../../src/review/frontend/dist"
   },
