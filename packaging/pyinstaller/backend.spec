@@ -9,7 +9,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_all, collect_data_files
+from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
 
 block_cipher = None
 
@@ -71,6 +71,21 @@ hiddenimports += [
     "torch.jit",
     "pkg_resources.py2_warn",
 ]
+
+# src.analyzer.algorithms.registry loads every algorithm module via
+# importlib.import_module(module_path) with module_path as a runtime string
+# from a list, not a literal `import` statement -- invisible to PyInstaller's
+# static bytecode analysis, so none of librosa_beats.py, madmom_beat.py, the
+# vamp_*.py modules, etc. were ever bundled (bug found 2026-07-25: every
+# algorithm silently failed to import in the frozen exe, algo_map ended up
+# empty, and _build_algorithm_list's _add() calls returned False with no
+# warning printed anywhere -- the packaged app produced zero beat/bar/onset
+# tracks for every song regardless of capabilities, and the story builder
+# collapsed every song into one flat "intro" section). collect_submodules
+# walks the real package directory at build time and lists every .py file
+# under it, so future new algorithm files are covered automatically instead
+# of needing a hand-maintained list here.
+hiddenimports += collect_submodules("src.analyzer.algorithms")
 
 
 a = Analysis(

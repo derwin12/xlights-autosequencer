@@ -75,12 +75,44 @@ def _self_test() -> int:
     from src.analyzer.capabilities import patch_madmom_compat
     patch_madmom_compat()
 
+    # src.analyzer.algorithms.registry loads each algorithm module via
+    # importlib.import_module(module_path) with module_path as a runtime
+    # string, invisible to PyInstaller's static bytecode analysis -- bug
+    # found 2026-07-25: every algorithm module (librosa_beats.py,
+    # madmom_beat.py, etc.) silently failed to import in the frozen exe
+    # despite every individual top-level import above succeeding, because
+    # none of them were ever collected into the bundle. This exercises the
+    # actual registry path so a future missing hiddenimport fails the build
+    # instead of only surfacing as "no sections detected" at runtime.
+    from src.analyzer.algorithms.registry import get_algorithm_map
+    librosa_algos = get_algorithm_map(libraries={"librosa"})
+    if not librosa_algos:
+        failed.append((
+            "src.analyzer.algorithms.registry (librosa)",
+            "get_algorithm_map(libraries={'librosa'}) returned empty -- "
+            "algorithm modules are not being bundled; check "
+            "packaging/pyinstaller/backend.spec's collect_submodules call",
+        ))
+
     optional_missing: list[tuple[str, str]] = []
     for name in optional_modules:
         try:
             importlib.import_module(name)
         except Exception as exc:
             optional_missing.append((name, repr(exc)))
+
+    # madmom's own top-level import can succeed while its algorithm module
+    # (madmom_beat.py) is still missing from the bundle -- check the
+    # registry path specifically rather than trusting the bare `import
+    # madmom` check above to stand in for it.
+    if not any(name == "madmom" for name, _ in optional_missing):
+        madmom_algos = get_algorithm_map(libraries={"madmom"})
+        if not madmom_algos:
+            failed.append((
+                "src.analyzer.algorithms.registry (madmom)",
+                "madmom imports fine but get_algorithm_map(libraries={'madmom'}) "
+                "returned empty -- madmom_beat.py is not being bundled",
+            ))
 
     if failed:
         print("SELF-TEST FAILED:", file=sys.stderr)
