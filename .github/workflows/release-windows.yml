@@ -2,15 +2,14 @@ name: Build & Release Windows Installer
 
 # Builds the unsigned xLightsAI Windows installer (see packaging/README.md).
 #
-# Known gap, matching current local-build state: Vamp plugin .dll files
-# (packaging/pyinstaller/plugins/vamp/x86_64-windows/) are not fetched here
-# -- most Vamp plugin packs have no stable, scriptable download URL (see
-# packaging/scripts/fetch-vamp-plugins.ps1), so this workflow ships the same
-# plugin-less bundle a fresh local checkout would produce. madmom/vamp Python
-# packages are best-effort too (build-backend.ps1 already tolerates either
-# failing to install). Cold builds compile the full Rust/tauri-cli/webview
-# dependency tree with no warm cache on a brand-new runner, so first-run
-# duration will be materially longer than the cache hits shown here.
+# Vamp plugin .dll files (packaging/pyinstaller/plugins/vamp/x86_64-windows/)
+# are committed directly into the repo (sourced 2026-07-25 from the official
+# Vamp Plugin Pack), so a plain checkout already has them -- no fetch step
+# does the work. fetch-vamp-plugins.ps1 just verifies they're present.
+# madmom/vamp Python packages are best-effort (build-backend.ps1 already
+# tolerates either failing to install). Cold builds compile the full
+# Rust/tauri-cli/webview dependency tree with no warm cache on a brand-new
+# runner, so first-run duration will be materially longer than cache hits.
 on:
   push:
     tags:
