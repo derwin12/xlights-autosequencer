@@ -16,6 +16,15 @@ on:
       - 'v*'
   workflow_dispatch: {}
 
+# v0.1.0's tag-triggered run (2026-07-26) built the installer successfully
+# but failed at "Create GitHub Release" with "Resource not accessible by
+# integration" -- this repo's default GITHUB_TOKEN permissions don't include
+# contents:write, which softprops/action-gh-release needs to create a
+# release and upload the asset. Declaring it explicitly here fixes that for
+# every future run regardless of the repo-level default.
+permissions:
+  contents: write
+
 jobs:
   build-windows-installer:
     name: Build Windows installer
