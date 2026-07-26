@@ -184,7 +184,61 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
     () => new Set(folders.filter((f) => f.collapsed).map((f) => (f as any).folder_id ?? (f as any).id)),
   );
   const [dragOverFolder, setDragOverFolder] = React.useState<string | null>(null);
-  const dragSongId = React.useRef<string | null>(null);
+  const [draggingSongId, setDraggingSongId] = React.useState<string | null>(null);
+  // Pointer-based drag instead of the HTML5 Drag and Drop API: on Windows,
+  // Tauri's native window-level drag-drop capture (tauri.conf.json's
+  // dragDropEnabled, needed for importing an audio file dropped from
+  // Explorer onto the Drop screen -- see src/lib/nativeDialog.ts's
+  // tauri://drag-drop listener) intercepts ALL drag operations ending in a
+  // drop on the window, including ones that start on an in-page DOM
+  // element -- the browser's own dragstart/dragover/drop events for a song
+  // row never fire at all (bug found 2026-07-25: song-to-folder drag
+  // silently did nothing in the packaged app). Manual pointer tracking
+  // sidesteps the native capture entirely since it's not the OS drag
+  // protocol.
+  const dragStateRef = React.useRef<{ songId: string; startX: number; startY: number; dragging: boolean } | null>(null);
+  const wasDraggedRef = React.useRef(false);
+
+  const handlePointerMove = React.useCallback((e: PointerEvent) => {
+    const state = dragStateRef.current;
+    if (!state) return;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    if (!state.dragging && Math.hypot(dx, dy) > 6) {
+      state.dragging = true;
+      wasDraggedRef.current = true;
+      setDraggingSongId(state.songId);
+    }
+    if (state.dragging) {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const folderEl = el?.closest<HTMLElement>('[data-folder-drop-id]');
+      setDragOverFolder(folderEl?.dataset.folderDropId ?? null);
+    }
+  }, []);
+
+  const handlePointerUp = React.useCallback((e: PointerEvent) => {
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+    const state = dragStateRef.current;
+    if (state?.dragging) {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const folderEl = el?.closest<HTMLElement>('[data-folder-drop-id]');
+      const targetFolderId = folderEl?.dataset.folderDropId;
+      if (targetFolderId && onSongMoved) {
+        onSongMoved(state.songId, targetFolderId);
+      }
+    }
+    dragStateRef.current = null;
+    setDraggingSongId(null);
+    setDragOverFolder(null);
+  }, [handlePointerMove, onSongMoved]);
+
+  const handlePointerDown = React.useCallback((songId: string, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    dragStateRef.current = { songId, startX: e.clientX, startY: e.clientY, dragging: false };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  }, [handlePointerMove, handlePointerUp]);
   const [creatingFolder, setCreatingFolder] = React.useState(false);
   const [newFolderName, setNewFolderName] = React.useState('');
   const [createError, setCreateError] = React.useState<string | null>(null);
@@ -233,19 +287,6 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
     });
   }
 
-  function handleDragStart(songId: string) {
-    dragSongId.current = songId;
-  }
-
-  function handleDrop(targetFolderId: string) {
-    const songId = dragSongId.current;
-    if (songId && onSongMoved) {
-      onSongMoved(songId, targetFolderId);
-    }
-    dragSongId.current = null;
-    setDragOverFolder(null);
-  }
-
   return (
     <aside
       data-testid="library-rail"
@@ -267,9 +308,7 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
         return (
           <div
             key={folderId}
-            onDragOver={(e) => { e.preventDefault(); setDragOverFolder(folderId); }}
-            onDragLeave={() => setDragOverFolder(null)}
-            onDrop={() => handleDrop(folderId)}
+            data-folder-drop-id={folderId}
             style={{ background: isDragTarget ? 'rgba(74,222,128,0.05)' : undefined }}
           >
             {/* Folder header */}
@@ -322,8 +361,12 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
                 key={song.song_id}
                 song={song}
                 isActive={song.song_id === activeSongId}
-                onClick={() => onSelectSong?.(song, targetScreenForStatus(song.status))}
-                onDragStart={() => handleDragStart(song.song_id)}
+                isDragging={draggingSongId === song.song_id}
+                onClick={() => {
+                  if (wasDraggedRef.current) { wasDraggedRef.current = false; return; }
+                  onSelectSong?.(song, targetScreenForStatus(song.status));
+                }}
+                onPointerDown={(e) => handlePointerDown(song.song_id, e)}
                 onRemove={onRemoveSong ? () => onRemoveSong(song) : undefined}
               />
             ))}
@@ -391,12 +434,13 @@ function LibraryRail({ songs, folders, activeSongId, onSelectSong, onSongMoved, 
 interface RailSongItemProps {
   song: Song;
   isActive: boolean;
+  isDragging?: boolean;
   onClick: () => void;
-  onDragStart?: () => void;
+  onPointerDown?: (e: React.PointerEvent) => void;
   onRemove?: () => void;
 }
 
-function RailSongItem({ song, isActive, onClick, onDragStart, onRemove }: RailSongItemProps) {
+function RailSongItem({ song, isActive, isDragging, onClick, onPointerDown, onRemove }: RailSongItemProps) {
   const STATUS_COLORS: Record<string, string> = {
     draft: '#888',
     analyzed: '#4ade80',
@@ -408,15 +452,15 @@ function RailSongItem({ song, isActive, onClick, onDragStart, onRemove }: RailSo
     <div
       data-testid={`rail-song-${song.song_id}`}
       data-active={String(isActive)}
-      draggable={!!onDragStart}
       onClick={onClick}
-      onDragStart={onDragStart}
+      onPointerDown={onPointerDown}
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '6px 12px',
         cursor: 'pointer',
+        opacity: isDragging ? 0.4 : 1,
         background: isActive ? 'var(--color-accent-muted, rgba(74,222,128,0.1))' : 'transparent',
         borderLeft: isActive ? '2px solid var(--color-accent, #4ade80)' : '2px solid transparent',
       }}
