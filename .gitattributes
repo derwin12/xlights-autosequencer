@@ -5,3 +5,12 @@
 # real Windows clone, 2026-07-18 -- "env: bash\r: No such file or
 # directory" on any Linux container/host that tries to run it directly).
 *.sh text eol=lf
+
+# Patch files are byte-exact-sensitive (git apply matches hunks against
+# literal whitespace/line-endings) -- a Windows CI runner's default
+# core.autocrlf=true silently converted this file's LF endings to CRLF on
+# checkout, breaking build-backend.ps1's `git apply` of the vamp MSVC fix
+# with "error: corrupt patch" (2026-07-26, GitHub Actions run 30184963774
+# -- worked fine locally since this dev machine's git config didn't
+# convert it).
+*.patch text eol=lf
