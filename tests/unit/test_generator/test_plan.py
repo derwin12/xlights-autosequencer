@@ -262,6 +262,80 @@ class TestThemeOverrides:
         assert plan.sections[0].theme.name == "Stellar Wind"
 
 
+class TestSectionOverrides:
+    """Coverage for the Theme screen's per-section parameter sliders
+    (brightness/hit_strength/dwell_time/color_shift), wired via
+    GenerationConfig.section_overrides -> SectionAssignment fields.
+    Regression target: these sliders previously saved to the review
+    session but were never read by the generator at all (verified via
+    grep — no caller of assignment["overrides"] outside assignments.py).
+    """
+
+    def test_section_overrides_apply_to_matching_section(self, tmp_path: Path):
+        hierarchy = _make_hierarchy()
+        props = _make_props()
+        groups = _make_groups()
+        effect_lib = load_effect_library()
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
+
+        config = GenerationConfig(
+            audio_path=tmp_path / "test.mp3",
+            layout_path=tmp_path / "layout.xml",
+            genre="pop",
+            occasion="general",
+            section_overrides={
+                0: {"brightness": 1.5, "hit_strength": 1.2, "dwell_time": 1.8, "color_shift": 0.3},
+            },
+        )
+
+        plan = build_plan(config, hierarchy, props, groups, effect_lib, theme_lib)
+
+        assert plan.sections[0].brightness == 1.5
+        assert plan.sections[0].hit_strength == 1.2
+        assert plan.sections[0].dwell_time == 1.8
+        assert plan.sections[0].color_shift == 0.3
+        # Untouched sections keep the defaults matching
+        # src/review/api/v1/assignments.py's _DEFAULT_OVERRIDES.
+        assert plan.sections[1].brightness == 1.0
+        assert plan.sections[1].hit_strength == 0.5
+        assert plan.sections[1].dwell_time == 1.0
+        assert plan.sections[1].color_shift == 0.0
+
+    def test_dwell_time_scales_duration_target(self, tmp_path: Path):
+        hierarchy = _make_hierarchy()
+        props = _make_props()
+        groups = _make_groups()
+        effect_lib = load_effect_library()
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
+
+        baseline_config = GenerationConfig(
+            audio_path=tmp_path / "test.mp3",
+            layout_path=tmp_path / "layout.xml",
+            genre="pop",
+            occasion="general",
+        )
+        baseline_plan = build_plan(baseline_config, hierarchy, props, groups, effect_lib, theme_lib)
+        baseline_target = baseline_plan.sections[0].duration_target
+        assert baseline_target is not None
+
+        scaled_config = GenerationConfig(
+            audio_path=tmp_path / "test.mp3",
+            layout_path=tmp_path / "layout.xml",
+            genre="pop",
+            occasion="general",
+            section_overrides={0: {"dwell_time": 2.0}},
+        )
+        scaled_plan = build_plan(scaled_config, hierarchy, props, groups, effect_lib, theme_lib)
+        scaled_target = scaled_plan.sections[0].duration_target
+        assert scaled_target is not None
+
+        assert scaled_target.target_ms == round(baseline_target.target_ms * 2.0)
+        assert scaled_target.min_ms == round(baseline_target.min_ms * 2.0)
+        assert scaled_target.max_ms == round(baseline_target.max_ms * 2.0)
+
+
 class TestReadSongMetadata:
     """Tests for read_song_metadata."""
 

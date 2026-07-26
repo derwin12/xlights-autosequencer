@@ -193,6 +193,14 @@ class SectionAssignment:
     # Used by `place_effects` to apply an end-of-song fade-out when the final
     # section also has fade-worthy character (low/falling energy or outro role).
     is_final_section: bool = False
+    # Per-section manual overrides from the Theme screen's parameter sliders
+    # (GenerationConfig.section_overrides), applied in build_plan(). Defaults
+    # match src/review/api/v1/assignments.py's _DEFAULT_OVERRIDES so an
+    # unconfirmed/auto section behaves identically to today's output.
+    brightness: float = 1.0       # 0.0-2.0: background/wash palette intensity
+    hit_strength: float = 0.5     # 0.0-2.0: accent/impact placement intensity
+    dwell_time: float = 1.0       # 0.0-2.0: effect segment duration multiplier
+    color_shift: float = 0.0     # 0.0-1.0: hue rotation applied to the section's palette
 
 
 @dataclass
@@ -280,6 +288,12 @@ class GenerationConfig:
     force_reanalyze: bool = False
     target_sections: Optional[list[str]] = None
     theme_overrides: Optional[dict[int, str]] = None
+    # Per-section Theme-screen slider values: {section_index: {"brightness":
+    # 1.0, "hit_strength": 0.5, "dwell_time": 1.0, "color_shift": 0.0}}.
+    # Sourced from the review session's assignment overrides
+    # (src/review/api/v1/assignments.py's _DEFAULT_OVERRIDES); applied onto
+    # SectionAssignment in build_plan().
+    section_overrides: Optional[dict[int, dict]] = None
     tiers: Optional[set[int]] = None
     story_path: Optional[Path] = None   # Optional path to song story JSON
     transition_mode: str = "subtle"     # "none", "subtle", or "dramatic"

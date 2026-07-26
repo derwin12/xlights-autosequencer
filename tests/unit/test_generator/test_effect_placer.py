@@ -438,6 +438,130 @@ class TestThemeOverrideBypassesAnchorPalette:
         )
 
 
+class TestSectionParameterOverrides:
+    """The Theme screen's per-section sliders (brightness/hit_strength/
+    color_shift) must actually change placed colors -- previously they only
+    saved to the review session and were never read by the generator.
+    """
+
+    def _place(self, assignment: SectionAssignment, group_name: str = "01_BASE_All",
+               tier: int = 1) -> list:
+        groups = [PowerGroup(name=group_name, tier=tier, members=["Model_A"])]
+        library = _make_library(_make_effect("Color Wash"))
+        variant_library = _make_variant_library("Color Wash")
+        hierarchy = _make_hierarchy(duration_ms=10000)
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        return result.get(group_name, [])
+
+    def test_default_brightness_matches_pre_feature_output(self) -> None:
+        """brightness=1.0 (the default) must be a no-op vs. an assignment
+        that never even sets the field, so existing shows are unaffected."""
+        theme = _make_theme(layers=[EffectLayer(variant="Color Wash")],
+                             palette=["#ff0000", "#0000ff"])
+        base = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({1}),
+        )
+        explicit = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({1}), brightness=1.0,
+        )
+        base_colors = {c.lower() for p in self._place(base) for c in p.color_palette}
+        explicit_colors = {c.lower() for p in self._place(explicit) for c in p.color_palette}
+        assert base_colors == explicit_colors
+
+    def test_low_brightness_dims_background_wash(self) -> None:
+        import colorsys
+        theme = _make_theme(layers=[EffectLayer(variant="Color Wash")],
+                             palette=["#ff0000", "#0000ff"])
+        bright = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({1}), brightness=1.0,
+        )
+        dim = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({1}), brightness=0.2,
+        )
+
+        def max_v(placements):
+            values = []
+            for p in placements:
+                for c in p.color_palette:
+                    c2 = c.lstrip("#")
+                    r, g, b = (int(c2[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+                    values.append(colorsys.rgb_to_hsv(r, g, b)[2])
+            return max(values) if values else 0.0
+
+        bright_v = max_v(self._place(bright))
+        dim_v = max_v(self._place(dim))
+        assert dim_v < bright_v, f"brightness=0.2 should dim the wash below brightness=1.0 (got {dim_v} vs {bright_v})"
+
+    def test_hit_strength_scales_accent_tier_independent_of_brightness(self) -> None:
+        import colorsys
+        theme = _make_theme(layers=[EffectLayer(variant="Color Wash")],
+                             palette=["#ff0000", "#0000ff"])
+        weak = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({8}), hit_strength=0.2,
+        )
+        strong = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({8}), hit_strength=1.0,
+        )
+
+        def max_v(placements):
+            values = []
+            for p in placements:
+                for c in p.color_palette:
+                    c2 = c.lstrip("#")
+                    r, g, b = (int(c2[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+                    values.append(colorsys.rgb_to_hsv(r, g, b)[2])
+            return max(values) if values else 0.0
+
+        weak_v = max_v(self._place(weak, group_name="08_HERO_All", tier=8))
+        strong_v = max_v(self._place(strong, group_name="08_HERO_All", tier=8))
+        assert strong_v > weak_v, (
+            f"hit_strength=1.0 should be more intense than hit_strength=0.2 "
+            f"(got {strong_v} vs {weak_v})"
+        )
+
+    def test_color_shift_rotates_hue(self) -> None:
+        import colorsys
+        theme = _make_theme(layers=[EffectLayer(variant="Color Wash")],
+                             palette=["#ff0000"])
+        unshifted = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({1}), color_shift=0.0,
+        )
+        shifted = SectionAssignment(
+            section=_make_section(start_ms=0, end_ms=10000),
+            theme=theme, active_tiers=frozenset({1}), color_shift=0.5,
+        )
+
+        def hues(placements):
+            result = []
+            for p in placements:
+                for c in p.color_palette:
+                    c2 = c.lstrip("#")
+                    r, g, b = (int(c2[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+                    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+                    if s > 0.3:
+                        result.append(h)
+            return result
+
+        unshifted_hues = hues(self._place(unshifted))
+        shifted_hues = hues(self._place(shifted))
+        assert unshifted_hues and shifted_hues
+        # red (hue 0.0) shifted by 0.5 (180deg) should land near cyan (hue 0.5)
+        assert any(0.35 <= h <= 0.65 for h in shifted_hues), (
+            f"color_shift=0.5 should rotate red toward cyan; got hues {shifted_hues}"
+        )
+        assert all(h < 0.1 or h > 0.9 for h in unshifted_hues), (
+            f"color_shift=0.0 should leave red's hue unchanged; got hues {unshifted_hues}"
+        )
+
+
 class TestThemeLayerStackingOrder:
     """A theme's later layer (e.g. an Additive accent stacked over a Normal
     base wash) must render IN FRONT of an earlier layer on the same group,

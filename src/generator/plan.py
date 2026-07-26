@@ -46,6 +46,7 @@ from src.generator.transitions import TransitionConfig, apply_transitions
 from src.story.builder import load_song_story
 from src.generator.models import (
     AccentPolicy,
+    DurationTarget,
     EffectPlacement,
     GenerationConfig,
     SectionAssignment,
@@ -224,6 +225,23 @@ def build_plan(
                 if theme is not None:
                     assignments[idx].theme = theme
                     assignments[idx].theme_overridden = True
+
+    # Apply per-section Theme-screen slider overrides (brightness/hit_strength/
+    # dwell_time/color_shift). Read directly onto SectionAssignment fields --
+    # place_effects() consumes them as part of the same read-only recipe as
+    # theme_overrides above.
+    if config.section_overrides:
+        for idx, overrides in config.section_overrides.items():
+            if 0 <= idx < len(assignments) and isinstance(overrides, dict):
+                a = assignments[idx]
+                if "brightness" in overrides:
+                    a.brightness = float(overrides["brightness"])
+                if "hit_strength" in overrides:
+                    a.hit_strength = float(overrides["hit_strength"])
+                if "dwell_time" in overrides:
+                    a.dwell_time = float(overrides["dwell_time"])
+                if "color_shift" in overrides:
+                    a.color_shift = float(overrides["color_shift"])
 
     # 3a. Derive song-level anchor palette and stamp it onto every assignment.
     # This ensures the background wash tiers (1-2) use a consistent set of 4
@@ -788,9 +806,16 @@ def _populate_assignment_decisions(
 
         # Duration target
         if config.duration_scaling:
-            assignment.duration_target = compute_duration_target(
+            target = compute_duration_target(
                 hierarchy.estimated_bpm, section.energy_score,
             )
+            if assignment.dwell_time != 1.0:
+                target = DurationTarget(
+                    min_ms=max(1, round(target.min_ms * assignment.dwell_time)),
+                    target_ms=max(1, round(target.target_ms * assignment.dwell_time)),
+                    max_ms=max(1, round(target.max_ms * assignment.dwell_time)),
+                )
+            assignment.duration_target = target
         else:
             assignment.duration_target = None
 

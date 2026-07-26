@@ -344,6 +344,50 @@ def _dim_palette(palette: list[str], multiplier: float) -> list[str]:
     return result
 
 
+def _scale_palette_brightness(palette: list[str], multiplier: float) -> list[str]:
+    """Scale hex color brightness by multiplier, clamped to the valid 0-255 range.
+
+    Unlike `_dim_palette` (which assumes a <=~1.15 multiplier and never
+    overflows in practice), this is used with the Theme screen's brightness/
+    hit_strength sliders (0.0-2.0), so overflow must be clamped explicitly.
+    """
+    result = []
+    for color in palette:
+        c = color.lstrip("#")
+        if len(c) == 6:
+            r = min(255, max(0, round(int(c[0:2], 16) * multiplier)))
+            g = min(255, max(0, round(int(c[2:4], 16) * multiplier)))
+            b = min(255, max(0, round(int(c[4:6], 16) * multiplier)))
+            result.append(f"#{r:02X}{g:02X}{b:02X}")
+        else:
+            result.append(color)
+    return result
+
+
+def _hue_shift_palette(palette: list[str], shift: float) -> list[str]:
+    """Rotate each hex color's hue by `shift` (0.0-1.0 fraction of the color wheel).
+
+    Saturation and value are preserved -- only the hue rotates, so a warm
+    theme can be nudged toward cooler colors (or vice versa) without losing
+    its brightness/vividness identity.
+    """
+    if not shift:
+        return palette
+    import colorsys
+    result = []
+    for color in palette:
+        c = color.lstrip("#")
+        if len(c) == 6:
+            r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+            h, s, v = colorsys.rgb_to_hsv(r, g, b)
+            h = (h + shift) % 1.0
+            r, g, b = colorsys.hsv_to_rgb(h, s, v)
+            result.append(f"#{round(r * 255):02X}{round(g * 255):02X}{round(b * 255):02X}")
+        else:
+            result.append(color)
+    return result
+
+
 def _lighten_palette(palette: list[str], amount: float) -> list[str]:
     """Lighten hex colors by blending toward white. amount 0.0=no change, 1.0=white."""
     result = []
@@ -934,6 +978,13 @@ def place_effects(
     else:
         accent = _lighten_palette(effective_base, 0.5)
 
+    # Theme-screen "Color Shift" slider: rotate this section's hue away from
+    # the theme's authored colors. Applied before backdrop/accent brightness
+    # scaling so both derive from the shifted hue.
+    if assignment.color_shift:
+        effective_base = _hue_shift_palette(effective_base, assignment.color_shift)
+        accent = _hue_shift_palette(accent, assignment.color_shift)
+
     # Backdrop from the palette's saturated colors only (darkened white is
     # just gray), at a lightness that still reads as color from the street.
     # 0.25 read as a dull, muddy brown rather than a real color (user
@@ -943,6 +994,17 @@ def place_effects(
     # still reading as its own color rather than near-black.
     bg_source = _saturated_colors(effective_base) or effective_base
     bg_palette = _darken_palette_hsl(bg_source, target_lightness=0.40)
+
+    # Theme-screen "Brightness"/"Hit Strength" sliders: scale the background
+    # wash and accent-tier palettes independently. Defaults (1.0/0.5) are a
+    # no-op relative to today's fixed 0.40-lightness backdrop and 0.5-lighten
+    # accent, since 1.0 == identity and accent brightness is already governed
+    # by _lighten_palette above -- hit_strength only kicks in when the user
+    # moves it off its default.
+    if assignment.brightness != 1.0:
+        bg_palette = _scale_palette_brightness(bg_palette, assignment.brightness)
+    if assignment.hit_strength != 0.5:
+        accent = _scale_palette_brightness(accent, assignment.hit_strength / 0.5)
 
     # Detect drop/impact phase from section label (chorus, drop, bridge, etc.)
     section_label = (section.label or "").lower()

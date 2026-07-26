@@ -29,6 +29,7 @@ def run(
     audio_hash: str,
     layout_path: Optional[Path] = None,
     theme_overrides: Optional[dict[int, str]] = None,
+    section_overrides: Optional[dict[int, dict]] = None,
     lyrics: Optional[list[dict]] = None,
     words: Optional[list[dict]] = None,
     phonemes: Optional[list[dict]] = None,
@@ -55,6 +56,9 @@ def run(
         theme_overrides: Optional {section_index: theme_name} map — forces
                          specific sections to a caller-chosen theme instead
                          of the auto-selected one (see GenerationConfig).
+        section_overrides: Optional {section_index: {"brightness", "hit_strength",
+                         "dwell_time", "color_shift"}} map from the Theme screen's
+                         per-section parameter sliders (GenerationConfig.section_overrides).
         lyrics: Optional synced-lyrics lines (``{t_ms, duration_ms, text}``)
                 embedded as a "Lyrics" timing track in the output .xsq.
         words: Optional WhisperX word marks (``{label, start_ms, end_ms}``)
@@ -128,6 +132,7 @@ def run(
 
     try:
         return _run_pipeline(audio_path, layout_path, seed, theme_overrides=theme_overrides,
+                              section_overrides=section_overrides,
                               lyrics=lyrics, words=words, phonemes=phonemes,
                               genre=genre, occasion=occasion, video_path=video_path,
                               ignored_image_words=ignored_image_words,
@@ -147,6 +152,7 @@ def _run_pipeline(
     layout_path: Path,
     seed: int,
     theme_overrides: Optional[dict[int, str]] = None,
+    section_overrides: Optional[dict[int, dict]] = None,
     lyrics: Optional[list[dict]] = None,
     words: Optional[list[dict]] = None,
     phonemes: Optional[list[dict]] = None,
@@ -200,6 +206,7 @@ def _run_pipeline(
             genre=genre,
             occasion=occasion,
             theme_overrides=theme_overrides,
+            section_overrides=section_overrides,
             # Per-song seed so theme lineups and effect alternation choices
             # differ between songs instead of repeating the section-index
             # pattern (identical output across songs otherwise).

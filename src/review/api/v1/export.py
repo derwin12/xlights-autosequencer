@@ -114,6 +114,14 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             if a.get("theme_id") and "section_index" in a
         }
 
+        # Per-section Theme-screen slider values (brightness/hit_strength/
+        # dwell_time/color_shift), saved via PUT .../assignments/<idx>.
+        section_overrides = {
+            a["section_index"]: a["overrides"]
+            for a in session.get("assignments", [])
+            if a.get("overrides") and "section_index" in a
+        }
+
         # The already-classified section roles/energies (verse/chorus/...)
         # from the Theme screen -- written by analysis.py at analyze/commit
         # time as "<audio_stem>_story.json". Without this, build_plan()
@@ -181,6 +189,7 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             audio_hash=song["song_id"],
             layout_path=layout_xml_path,
             theme_overrides=theme_overrides,
+            section_overrides=section_overrides,
             lyrics=lyrics or None,
             words=words or None,
             phonemes=phonemes or None,
