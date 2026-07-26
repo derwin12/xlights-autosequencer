@@ -2,6 +2,7 @@ import React from 'react';
 import type { Screen } from 'src/store/app';
 import type { Song, Folder } from 'src/store/library';
 import { About, shortCommit } from '../About/About';
+import { Help } from '../Help/Help';
 import { useManifestStore } from '../../store/manifest';
 import { isBackendStale, isUpdateAvailable } from '../../lib/manifestStaleness';
 import styles from './Chrome.module.css';
@@ -68,6 +69,7 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
   };
 
   const [aboutOpen, setAboutOpen] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
 
   // Backend code stamp — the Vite build stamp only covers the JS bundle;
   // this shows what commit the server process is actually running.
@@ -99,6 +101,27 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
           ))}
         </nav>
         <button
+          data-testid="help-button"
+          onClick={() => setHelpOpen(true)}
+          title="Help & FAQ"
+          style={{
+            marginLeft: 'auto',
+            background: 'none',
+            border: '1px solid var(--color-border, #444)',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            color: 'var(--color-text-muted, #888)',
+            width: 22,
+            height: 22,
+            fontSize: 12,
+            fontWeight: 700,
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          ?
+        </button>
+        <button
           data-testid="build-stamp"
           onClick={() => setAboutOpen(true)}
           title={
@@ -110,7 +133,6 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
             + (manifest?.backend_started_at ? ` (backend up since ${fmtBuildTime(manifest.backend_started_at)})` : '')
           }
           style={{
-            marginLeft: 'auto',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -128,6 +150,7 @@ export function Chrome({ activeScreen, onNavigate, children, songs, folders, act
         </button>
       </header>
       <About open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <Help open={helpOpen} onClose={() => setHelpOpen(false)} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {showRail && railCollapsed && (
           <div

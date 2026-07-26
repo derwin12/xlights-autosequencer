@@ -13,12 +13,13 @@ import { isBackendStale, isUpdateAvailable } from "../../lib/manifestStaleness";
 
 const DOWNLOAD_PAGE_URL = "https://github.com/derwin12/xlights-autosequencer/releases";
 const ORIGINAL_IDEA_URL = "https://github.com/bobbyfriday/xlight-autosequencer";
+export const FACEBOOK_GROUP_URL = "https://www.facebook.com/groups/xlightsai";
 
-function isTauri(): boolean {
+export function isTauri(): boolean {
   return typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
 }
 
-async function openExternal(url: string) {
+export async function openExternal(url: string) {
   try {
     const { open } = await import("@tauri-apps/plugin-shell");
     await open(url);
@@ -79,6 +80,12 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
             onClick={() => void openExternal(DOWNLOAD_PAGE_URL)}
           >
             Check for updates
+          </button>
+          <button
+            className={styles.linkBtn}
+            onClick={() => void openExternal(FACEBOOK_GROUP_URL)}
+          >
+            Join the Facebook group
           </button>
           {isTauri() && (
             <button
