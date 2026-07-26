@@ -1157,6 +1157,8 @@ class TestWholeHouseCompositePlacement:
             "Shader Plasma Emitter Drift": {"E_0FILEPICKERCTRL_IFS": "Shaders/Plasma Emitter.fs"},
             "Shader Plasma Emitter Surge": {"E_0FILEPICKERCTRL_IFS": "Shaders/Plasma Emitter.fs"},
             "Shader Continua Variation": {"E_0FILEPICKERCTRL_IFS": "Shaders/Continua Variation.fs"},
+            "Shader Hex 3D Spiral": {"E_0FILEPICKERCTRL_IFS": "Shaders/Hex 3D Spiral.fs"},
+            "Shader xLights Fractal Audio": {"E_0FILEPICKERCTRL_IFS": "Shaders/xLights Audio - fractal audio.fs"},
         })
         result = _place_whole_house_composite(
             groups=[base], assignment=assignment, variant_library=variant_library,
@@ -1173,11 +1175,15 @@ class TestWholeHouseCompositePlacement:
         # rendered the same one or two shaders and never Hex 3D Spiral /
         # Creation Silexars / Black Cherry Cosmos / Continua Variation /
         # xLights Fractal Audio (user report, 2026-07-26). Sweep seeds at a
-        # high-energy score and confirm both high-bucket shaders appear.
+        # high-energy score and confirm all 4 high-bucket shaders appear
+        # (Hex 3D Spiral / xLights Fractal Audio added 2026-07-26 after the
+        # user found the original 2-member bucket still repetitive).
         base = _make_base_group()
         variant_library = _make_variant_library({
             "Shader Plasma Emitter Surge": {"E_0FILEPICKERCTRL_IFS": "Shaders/Plasma Emitter.fs"},
             "Shader Continua Variation": {"E_0FILEPICKERCTRL_IFS": "Shaders/Continua Variation.fs"},
+            "Shader Hex 3D Spiral": {"E_0FILEPICKERCTRL_IFS": "Shaders/Hex 3D Spiral.fs"},
+            "Shader xLights Fractal Audio": {"E_0FILEPICKERCTRL_IFS": "Shaders/xLights Audio - fractal audio.fs"},
         })
         seen_ifs: set[str] = set()
         for seed in range(12):
@@ -1191,7 +1197,10 @@ class TestWholeHouseCompositePlacement:
             for p in result[base.name]:
                 if p.effect_name == "Shader":
                     seen_ifs.add(p.parameters.get("E_0FILEPICKERCTRL_IFS"))
-        assert seen_ifs == {"Shaders/Plasma Emitter.fs", "Shaders/Continua Variation.fs"}
+        assert seen_ifs == {
+            "Shaders/Plasma Emitter.fs", "Shaders/Continua Variation.fs",
+            "Shaders/Hex 3D Spiral.fs", "Shaders/xLights Audio - fractal audio.fs",
+        }
 
     def test_shader_choice_stays_within_the_low_energy_bucket(self):
         base = _make_base_group()

@@ -599,12 +599,26 @@ _WHOLE_HOUSE_RIPPLE_SCALE = (80, 100, 120, 150)
 # never picked Hex 3D Spiral / Creation Silexars / Black Cherry Cosmos /
 # Continua Variation / xLights Fractal Audio at all (user report,
 # 2026-07-26: a real generated sequence used only Plasma Emitter).
+#
+# The high bucket only had 2 members (Surge/Continua) -- a real high-energy
+# song's whole-house layers still repeated across only those two (user
+# report, 2026-07-26: "rerandomize and got 2 variations and 1 plasma").
+# Hex 3D Spiral and xLights Fractal Audio are added here too: both are
+# already hero-tier/matrix-oriented and read as energetic (continuous
+# rotation; audio-reactive), even though their canonical Shader.json tag is
+# energy_level=medium -- these whole-house buckets are a separate, hand-
+# curated pool from that tag (used only for tier-5-8 scoring elsewhere), so
+# a variant can appear in more than one bucket here without touching its
+# real tag.
 _WHOLE_HOUSE_SHADER_LOW = ("Shader Plasma Emitter Calm", "Shader Creation Silexars")
 _WHOLE_HOUSE_SHADER_MEDIUM = (
     "Shader Plasma Emitter Drift", "Shader Hex 3D Spiral",
     "Shader Black Cherry Cosmos", "Shader xLights Fractal Audio",
 )
-_WHOLE_HOUSE_SHADER_HIGH = ("Shader Plasma Emitter Surge", "Shader Continua Variation")
+_WHOLE_HOUSE_SHADER_HIGH = (
+    "Shader Plasma Emitter Surge", "Shader Continua Variation",
+    "Shader Hex 3D Spiral", "Shader xLights Fractal Audio",
+)
 
 
 def _apply_palette_target(palette: list[str], target: int) -> list[str]:
