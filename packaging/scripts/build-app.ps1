@@ -28,18 +28,21 @@ $BundleRoot = "src-tauri\target\$Triple\release\bundle"
 
 # cargo tauri build's own "Finished 1 bundle at: ..." message has been
 # observed to print successfully while this immediate Get-ChildItem check
-# still comes back empty (2026-07-25, reproduced twice) -- likely a brief
-# antivirus lock or filesystem metadata delay on the freshly-written ~200MB
-# exe right after NSIS closes it. Retry briefly instead of failing outright
-# on what cargo tauri build itself already confirmed succeeded.
+# still comes back empty -- reproduced locally (2026-07-25, brief) and on a
+# GitHub Actions runner (2026-07-26, ~10+ seconds -- CI disk/AV scanning is
+# apparently slower than a local machine, a 10x1s retry window wasn't
+# enough there). Retry for up to a minute instead of failing outright on
+# what cargo tauri build itself already confirmed succeeded.
 $ExePath = $null
-for ($i = 0; $i -lt 10 -and -not $ExePath; $i++) {
-    if ($i -gt 0) { Start-Sleep -Seconds 1 }
+for ($i = 0; $i -lt 30 -and -not $ExePath; $i++) {
+    if ($i -gt 0) { Start-Sleep -Seconds 2 }
     $ExePath = Join-Path $BundleRoot "nsis" | Get-ChildItem -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 }
 
 if (-not $ExePath) {
-    Write-Error "error: NSIS installer not produced under $BundleRoot\nsis\"
+    Write-Error "error: NSIS installer not produced under $BundleRoot\nsis\ after 60s of retrying"
+    Write-Host "-> Diagnostic listing of $BundleRoot (recursive):"
+    Get-ChildItem -Recurse -Path $BundleRoot -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.FullName)" }
     exit 1
 }
 
