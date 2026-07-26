@@ -1,0 +1,203 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/tempogram#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+
+## Properties of this document
+
+<> a vamp:PluginDescription ;
+    foaf:maker         <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic  <http://vamp-plugins.org/rdf/plugins/tempogram> .
+
+
+## Maker of the whole plugin library
+
+:library_maker
+    foaf:name  "Carl Bussey" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/> ;
+    .
+
+
+## Properties of the plugin library, and references to the plugins it contains
+
+plugbase:library a vamp:PluginLibrary ;
+    vamp:identifier        "tempogram" ;
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin  plugbase:tempogram ; 
+    dc:title               "Tempogram" ;
+    dc:description         "A Vamp plugin implementation of the tempogram and cyclic tempogram features described in Grosche, Müller, and Kurth 2010" ;
+    foaf:page              <https://code.soundsoftware.ac.uk/projects/vamp-tempogram> ;
+    doap:download-page     <https://code.soundsoftware.ac.uk/projects/vamp-tempogram/files> ;
+    .
+
+
+## Properties of the Tempogram plugin
+
+plugbase:tempogram a vamp:Plugin ;
+    dc:title              "Tempogram" ;
+    vamp:name             "Tempogram" ;
+    dc:description        """Cyclic Tempogram as described by Peter Grosche and Meinard Müller""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """Copyright 2014 Queen Mary University of London. GPL licence.""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "tempogram" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:FrequencyDomain ;
+
+    vamp:parameter   plugbase:tempogram_param_C ;
+    vamp:parameter   plugbase:tempogram_param_minDB ;
+    vamp:parameter   plugbase:tempogram_param_log2TN ;
+    vamp:parameter   plugbase:tempogram_param_log2HopSize ;
+    vamp:parameter   plugbase:tempogram_param_log2FftLength ;
+    vamp:parameter   plugbase:tempogram_param_minBPM ;
+    vamp:parameter   plugbase:tempogram_param_maxBPM ;
+    vamp:parameter   plugbase:tempogram_param_octDiv ;
+
+    vamp:output      plugbase:tempogram_output_cyclicTempogram ;
+    vamp:output      plugbase:tempogram_output_tempogramDFT ;
+    vamp:output      plugbase:tempogram_output_tempogramACT ;
+    vamp:output      plugbase:tempogram_output_nc ;
+    .
+plugbase:tempogram_param_C a  vamp:Parameter ;
+    vamp:identifier     "C" ;
+    dc:title            "Novelty Curve Spectrogram Compression Constant" ;
+    dc:format           "" ;
+    vamp:min_value       2 ;
+    vamp:max_value       10000 ;
+    vamp:unit           ""  ;
+    vamp:default_value   1000 ;
+    vamp:value_names     ();
+    .
+plugbase:tempogram_param_minDB a  vamp:Parameter ;
+    vamp:identifier     "minDB" ;
+    dc:title            "Novelty Curve Minimum DB" ;
+    dc:format           "" ;
+    vamp:min_value       -100 ;
+    vamp:max_value       -50 ;
+    vamp:unit           ""  ;
+    vamp:default_value   -74 ;
+    vamp:value_names     ();
+    .
+plugbase:tempogram_param_log2TN a  vamp:QuantizedParameter ;
+    vamp:identifier     "log2TN" ;
+    dc:title            "Tempogram Window Length" ;
+    dc:format           "" ;
+    vamp:min_value       7 ;
+    vamp:max_value       12 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   10 ;
+    vamp:value_names     ( "128" "256" "512" "1024" "2048" "4096");
+    .
+plugbase:tempogram_param_log2HopSize a  vamp:QuantizedParameter ;
+    vamp:identifier     "log2HopSize" ;
+    dc:title            "Tempogram Hopsize" ;
+    dc:format           "" ;
+    vamp:min_value       6 ;
+    vamp:max_value       12 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   6 ;
+    vamp:value_names     ( "64" "128" "256" "512" "1024" "2048" "4096");
+    .
+plugbase:tempogram_param_log2FftLength a  vamp:QuantizedParameter ;
+    vamp:identifier     "log2FftLength" ;
+    dc:title            "Tempogram FFT Length" ;
+    dc:format           "" ;
+    vamp:min_value       6 ;
+    vamp:max_value       12 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   -74 ;
+    vamp:value_names     ();
+    .
+plugbase:tempogram_param_minBPM a  vamp:QuantizedParameter ;
+    vamp:identifier     "minBPM" ;
+    dc:title            "(Cyclic) Tempogram Minimum BPM" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2000 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   5  ;
+    vamp:default_value   30 ;
+    vamp:value_names     ();
+    .
+plugbase:tempogram_param_maxBPM a  vamp:QuantizedParameter ;
+    vamp:identifier     "maxBPM" ;
+    dc:title            "(Cyclic) Tempogram Maximum BPM" ;
+    dc:format           "" ;
+    vamp:min_value       30 ;
+    vamp:max_value       2000 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   5  ;
+    vamp:default_value   480 ;
+    vamp:value_names     ();
+    .
+plugbase:tempogram_param_octDiv a  vamp:QuantizedParameter ;
+    vamp:identifier     "octDiv" ;
+    dc:title            "Cyclic Tempogram Octave Divider" ;
+    dc:format           "" ;
+    vamp:min_value       5 ;
+    vamp:max_value       60 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   30 ;
+    vamp:value_names     ();
+    .
+plugbase:tempogram_output_cyclicTempogram a  vamp:DenseOutput ;
+    vamp:identifier       "cyclicTempogram" ;
+    dc:title              "Cyclic Tempogram" ;
+    dc:description        """Cyclic Tempogram"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        30 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:tempogram_output_tempogramDFT a  vamp:DenseOutput ;
+    vamp:identifier       "tempogramDFT" ;
+    dc:title              "Tempogram via DFT" ;
+    dc:description        """Tempogram via DFT"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "BPM" ;
+    vamp:bin_count        1 ;
+    vamp:bin_names        ( "-nan");
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:tempogram_output_tempogramACT a  vamp:DenseOutput ;
+    vamp:identifier       "tempogramACT" ;
+    dc:title              "Tempogram via ACT" ;
+    dc:description        """Tempogram via ACT"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "BPM" ;
+    vamp:bin_count        1 ;
+    vamp:bin_names        ( "inf");
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:tempogram_output_nc a  vamp:DenseOutput ;
+    vamp:identifier       "nc" ;
+    dc:title              "Novelty Curve" ;
+    dc:description        """Novelty Curve"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

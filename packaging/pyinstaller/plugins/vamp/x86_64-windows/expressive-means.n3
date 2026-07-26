@@ -1,0 +1,2011 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/expressive-means#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+
+## Properties of this document
+
+<> a vamp:PluginDescription ;
+    foaf:maker         <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic  <http://vamp-plugins.org/rdf/plugins/expressive-means> .
+
+
+## Maker of the whole plugin library
+
+:library_maker
+    foaf:name "Frithjof Vollmer and Chris Cannam" ;
+    .
+
+
+## Properties of the plugin library, and references to the plugins it contains
+
+plugbase:library a vamp:PluginLibrary ;
+    vamp:identifier        "expressive-means" ;
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin  plugbase:articulation ; 
+    vamp:available_plugin  plugbase:articulation-semantic ; 
+    vamp:available_plugin  plugbase:onsets ; 
+    vamp:available_plugin  plugbase:onsets-semantic ; 
+    vamp:available_plugin  plugbase:pitch-vibrato ; 
+    vamp:available_plugin  plugbase:pitch-vibrato-semantic ; 
+    vamp:available_plugin  plugbase:portamento ; 
+    vamp:available_plugin  plugbase:portamento-semantic ; 
+    dc:title               "Expressive Means" ;
+    dc:description         "Plugins for analysis of articulation, vibrato, and portamento in audio recordings of musical performances, with a primary focus on bowed stringed instruments" ;
+    foaf:page              <https://github.com/cannam/expressive-means> ;
+    doap:download-page     <https://github.com/cannam/expressive-means/releases/>
+    .
+
+
+## Properties of the Expressive Means (advanced): Articulation plugin
+
+plugbase:articulation a vamp:Plugin ;
+    dc:title              "Expressive Means (advanced): Articulation" ;
+    vamp:name             "Expressive Means (advanced): Articulation" ;
+    dc:description        """Identifies types and intensities of articulation in monophonic recordings""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "articulation" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Notes > Expression" ;
+    vamp:parameter   plugbase:articulation_param_normaliseAudio ;
+    vamp:parameter   plugbase:articulation_param_pyin-threshdistr ;
+    vamp:parameter   plugbase:articulation_param_pyin-lowampsuppression ;
+    vamp:parameter   plugbase:articulation_param_spectralFrequencyMin ;
+    vamp:parameter   plugbase:articulation_param_spectralFrequencyMax ;
+    vamp:parameter   plugbase:articulation_param_minimumOnsetInterval ;
+    vamp:parameter   plugbase:articulation_param_pitchAverageWindow ;
+    vamp:parameter   plugbase:articulation_param_onsetSensitivityPitch ;
+    vamp:parameter   plugbase:articulation_param_onsetSensitivityNoise ;
+    vamp:parameter   plugbase:articulation_param_onsetSensitivityLevel ;
+    vamp:parameter   plugbase:articulation_param_onsetSensitivityNoiseTimeWindow ;
+    vamp:parameter   plugbase:articulation_param_onsetSensitivityRawPowerThreshold ;
+    vamp:parameter   plugbase:articulation_param_sustainBeginThreshold ;
+    vamp:parameter   plugbase:articulation_param_noteDurationThreshold ;
+    vamp:parameter   plugbase:articulation_param_spectralDropFloor ;
+    vamp:parameter   plugbase:articulation_param_impulseNoiseRatioPlosive ;
+    vamp:parameter   plugbase:articulation_param_impulseNoiseRatioFricative ;
+    vamp:parameter   plugbase:articulation_param_volumeDevelopmentThreshold ;
+    vamp:parameter   plugbase:articulation_param_reverbDurationFactor ;
+    vamp:parameter   plugbase:articulation_param_overlapCompensationFactor ;
+    vamp:parameter   plugbase:articulation_param_scalingFactor ;
+
+    vamp:output      plugbase:articulation_output_summary ;
+    vamp:output      plugbase:articulation_output_noiseType ;
+    vamp:output      plugbase:articulation_output_volumeDevelopment ;
+    vamp:output      plugbase:articulation_output_articulationType ;
+    vamp:output      plugbase:articulation_output_pitchTrack ;
+    vamp:output      plugbase:articulation_output_articulationIndex ;
+    vamp:output      plugbase:articulation_output_meanNoiseRatio ;
+    vamp:output      plugbase:articulation_output_meanDynamics ;
+    vamp:output      plugbase:articulation_output_meanToneRatio ;
+    .
+plugbase:articulation_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_pyin-threshdistr a  vamp:QuantizedParameter ;
+    vamp:identifier     "pyin-threshdistr" ;
+    dc:title            "pYIN: Yin threshold distribution" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       7 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ( "Uniform" "Beta (mean 0.10)" "Beta (mean 0.15)" "Beta (mean 0.20)" "Beta (mean 0.30)" "Single Value 0.10" "Single Value 0.15" "Single Value 0.20");
+    .
+plugbase:articulation_param_pyin-lowampsuppression a  vamp:Parameter ;
+    vamp:identifier     "pyin-lowampsuppression" ;
+    dc:title            "pYIN: Suppress low amplitude pitch estimates." ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.1 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_spectralFrequencyMin a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMin" ;
+    dc:title            "Spectral detection range minimum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_spectralFrequencyMax a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMax" ;
+    dc:title            "Spectral detection range maximum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   4000 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_minimumOnsetInterval a  vamp:Parameter ;
+    vamp:identifier     "minimumOnsetInterval" ;
+    dc:title            "Minimum onset interval" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_pitchAverageWindow a  vamp:Parameter ;
+    vamp:identifier     "pitchAverageWindow" ;
+    dc:title            "Moving pitch average window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   150 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_onsetSensitivityPitch a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityPitch" ;
+    dc:title            "Onset sensitivity: Pitch" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       250 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   15 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_onsetSensitivityNoise a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoise" ;
+    dc:title            "Onset sensitivity: Noise" ;
+    dc:format           "%" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "%"  ;
+    vamp:default_value   24 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_onsetSensitivityLevel a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityLevel" ;
+    dc:title            "Onset sensitivity: Level" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   8 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_onsetSensitivityNoiseTimeWindow a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoiseTimeWindow" ;
+    dc:title            "Onset sensitivity: Noise time window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       500 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_onsetSensitivityRawPowerThreshold a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityRawPowerThreshold" ;
+    dc:title            "Onset sensitivity: Power rise threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   6 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_sustainBeginThreshold a  vamp:Parameter ;
+    vamp:identifier     "sustainBeginThreshold" ;
+    dc:title            "Sustain phase begin threshold" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   60 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_noteDurationThreshold a  vamp:Parameter ;
+    vamp:identifier     "noteDurationThreshold" ;
+    dc:title            "Offset sensitivity: Power drop threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   12 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_spectralDropFloor a  vamp:Parameter ;
+    vamp:identifier     "spectralDropFloor" ;
+    dc:title            "Offset sensitivity: Spectral drop floor level" ;
+    dc:format           "dB" ;
+    vamp:min_value       -120 ;
+    vamp:max_value       0 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   -70 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_impulseNoiseRatioPlosive a  vamp:Parameter ;
+    vamp:identifier     "impulseNoiseRatioPlosive" ;
+    dc:title            "Impulse noise ratio: Plosive" ;
+    dc:format           "%" ;
+    vamp:min_value       1 ;
+    vamp:max_value       100 ;
+    vamp:unit           "%"  ;
+    vamp:default_value   26 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_impulseNoiseRatioFricative a  vamp:Parameter ;
+    vamp:identifier     "impulseNoiseRatioFricative" ;
+    dc:title            "Impulse noise ratio: Fricative" ;
+    dc:format           "%" ;
+    vamp:min_value       1 ;
+    vamp:max_value       100 ;
+    vamp:unit           "%"  ;
+    vamp:default_value   13 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_volumeDevelopmentThreshold a  vamp:Parameter ;
+    vamp:identifier     "volumeDevelopmentThreshold" ;
+    dc:title            "Volume development threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       10 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_reverbDurationFactor a  vamp:Parameter ;
+    vamp:identifier     "reverbDurationFactor" ;
+    dc:title            "Reverb duration factor" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       5 ;
+    vamp:unit           ""  ;
+    vamp:default_value   1.5 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_overlapCompensationFactor a  vamp:Parameter ;
+    vamp:identifier     "overlapCompensationFactor" ;
+    dc:title            "Overlap compensation factor" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       3 ;
+    vamp:unit           ""  ;
+    vamp:default_value   1.6 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_param_scalingFactor a  vamp:Parameter ;
+    vamp:identifier     "scalingFactor" ;
+    dc:title            "Index scaling factor" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       50 ;
+    vamp:unit           ""  ;
+    vamp:default_value   15.5 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation_output_summary a  vamp:SparseOutput ;
+    vamp:identifier       "summary" ;
+    dc:title              "Summary" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_noiseType a  vamp:SparseOutput ;
+    vamp:identifier       "noiseType" ;
+    dc:title              "Noise Type" ;
+    dc:description        """Coding of transient noise for each onset. Values are 1 = Sonorous, 2 = Fricative, 3 = Plosive, 4 = Affricative"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_volumeDevelopment a  vamp:SparseOutput ;
+    vamp:identifier       "volumeDevelopment" ;
+    dc:title              "Volume Development" ;
+    dc:description        """Coding of volume development during the sustain phase. Time and duration indicate the sustain phase for each note; values are 0 = unclassifiable or other, 1 = Decreasing, 2 = De-and-Increasing, 3 = Constant, 4 = In-and-Decreasing, 5 = Increasing"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_articulationType a  vamp:SparseOutput ;
+    vamp:identifier       "articulationType" ;
+    dc:title              "Articulation Type" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_pitchTrack a  vamp:SparseOutput ;
+    vamp:identifier       "pitchTrack" ;
+    dc:title              "Pitch Track" ;
+    dc:description        """The smoothed pitch track computed by pYIN."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_articulationIndex a  vamp:SparseOutput ;
+    vamp:identifier       "articulationIndex" ;
+    dc:title              "Articulation Index" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_meanNoiseRatio a  vamp:SparseOutput ;
+    vamp:identifier       "meanNoiseRatio" ;
+    dc:title              "Mean Noise Ratio" ;
+    dc:description        """Returns a single label containing the mean noise ratio value across all onsets"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_meanDynamics a  vamp:SparseOutput ;
+    vamp:identifier       "meanDynamics" ;
+    dc:title              "Mean Dynamics" ;
+    dc:description        """Returns two labels containing the mean maximum and minimum dB developments of all sustain phases"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation_output_meanToneRatio a  vamp:SparseOutput ;
+    vamp:identifier       "meanToneRatio" ;
+    dc:title              "Mean Tone Ratio" ;
+    dc:description        """Returns a single label containing the mean noise ratio value across all onsets"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Expressive Means: Articulation plugin
+
+plugbase:articulation-semantic a vamp:Plugin ;
+    dc:title              "Expressive Means: Articulation" ;
+    vamp:name             "Expressive Means: Articulation" ;
+    dc:description        """Identifies types and intensity of articulation in monophonic recordings""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "articulation-semantic" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Notes > Expression" ;
+    vamp:parameter   plugbase:articulation-semantic_param_clef ;
+    vamp:parameter   plugbase:articulation-semantic_param_instrumentType ;
+    vamp:parameter   plugbase:articulation-semantic_param_noteDurations ;
+    vamp:parameter   plugbase:articulation-semantic_param_soundQuality ;
+    vamp:parameter   plugbase:articulation-semantic_param_reverb ;
+    vamp:parameter   plugbase:articulation-semantic_param_overlap ;
+    vamp:parameter   plugbase:articulation-semantic_param_normaliseAudio ;
+
+    vamp:output      plugbase:articulation-semantic_output_summary ;
+    vamp:output      plugbase:articulation-semantic_output_noiseType ;
+    vamp:output      plugbase:articulation-semantic_output_volumeDevelopment ;
+    vamp:output      plugbase:articulation-semantic_output_articulationType ;
+    vamp:output      plugbase:articulation-semantic_output_articulationIndex ;
+    .
+plugbase:articulation-semantic_param_clef a  vamp:QuantizedParameter ;
+    vamp:identifier     "clef" ;
+    dc:title            "Clef" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Treble" "Alto" "Bass");
+    .
+plugbase:articulation-semantic_param_instrumentType a  vamp:QuantizedParameter ;
+    vamp:identifier     "instrumentType" ;
+    dc:title            "Signal type" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       4 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Strings" "Vocal" "Keys / Mallets" "Wind" "Percussion");
+    .
+plugbase:articulation-semantic_param_noteDurations a  vamp:QuantizedParameter ;
+    vamp:identifier     "noteDurations" ;
+    dc:title            "Note durations" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ( "Long (> 300 ms)" "Moderate (150-300 ms)" "Short (< 150 ms)");
+    .
+plugbase:articulation-semantic_param_soundQuality a  vamp:QuantizedParameter ;
+    vamp:identifier     "soundQuality" ;
+    dc:title            "Sound quality" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       6 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation-semantic_param_reverb a  vamp:QuantizedParameter ;
+    vamp:identifier     "reverb" ;
+    dc:title            "Reverb duration" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       3 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ( "Small studio (< 150 ms)" "Large studio (c. 150-600 ms)" "Concert hall (c. 600-1500 ms)" "Church (> 1500 ms)");
+    .
+plugbase:articulation-semantic_param_overlap a  vamp:QuantizedParameter ;
+    vamp:identifier     "overlap" ;
+    dc:title            "Overlap compensation" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation-semantic_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:articulation-semantic_output_summary a  vamp:SparseOutput ;
+    vamp:identifier       "summary" ;
+    dc:title              "Summary" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation-semantic_output_noiseType a  vamp:SparseOutput ;
+    vamp:identifier       "noiseType" ;
+    dc:title              "Noise Type" ;
+    dc:description        """Coding of transient noise for each onset. Values are 1 = Sonorous, 2 = Fricative, 3 = Plosive, 4 = Affricative"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation-semantic_output_volumeDevelopment a  vamp:SparseOutput ;
+    vamp:identifier       "volumeDevelopment" ;
+    dc:title              "Volume Development" ;
+    dc:description        """Coding of volume development during the sustain phase. Time and duration indicate the sustain phase for each note; values are 0 = unclassifiable or other, 1 = Decreasing, 2 = De-and-Increasing, 3 = Constant, 4 = In-and-Decreasing, 5 = Increasing"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation-semantic_output_articulationType a  vamp:SparseOutput ;
+    vamp:identifier       "articulationType" ;
+    dc:title              "Articulation Type" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:articulation-semantic_output_articulationIndex a  vamp:SparseOutput ;
+    vamp:identifier       "articulationIndex" ;
+    dc:title              "Articulation Index" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Expressive Means (advanced) plugin
+
+plugbase:onsets a vamp:Plugin ;
+    dc:title              "Expressive Means (advanced)" ;
+    vamp:name             "Expressive Means (advanced)" ;
+    dc:description        """Finds note onsets and durations in monophonic recordings based on changes in spectral content, power, and pitch""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "onsets" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Time > Onsets" ;
+    vamp:parameter   plugbase:onsets_param_normaliseAudio ;
+    vamp:parameter   plugbase:onsets_param_pyin-threshdistr ;
+    vamp:parameter   plugbase:onsets_param_pyin-lowampsuppression ;
+    vamp:parameter   plugbase:onsets_param_spectralFrequencyMin ;
+    vamp:parameter   plugbase:onsets_param_spectralFrequencyMax ;
+    vamp:parameter   plugbase:onsets_param_minimumOnsetInterval ;
+    vamp:parameter   plugbase:onsets_param_pitchAverageWindow ;
+    vamp:parameter   plugbase:onsets_param_onsetSensitivityPitch ;
+    vamp:parameter   plugbase:onsets_param_onsetSensitivityNoise ;
+    vamp:parameter   plugbase:onsets_param_onsetSensitivityLevel ;
+    vamp:parameter   plugbase:onsets_param_onsetSensitivityNoiseTimeWindow ;
+    vamp:parameter   plugbase:onsets_param_onsetSensitivityRawPowerThreshold ;
+    vamp:parameter   plugbase:onsets_param_sustainBeginThreshold ;
+    vamp:parameter   plugbase:onsets_param_noteDurationThreshold ;
+    vamp:parameter   plugbase:onsets_param_spectralDropFloor ;
+
+    vamp:output      plugbase:onsets_output_onsets ;
+    vamp:output      plugbase:onsets_output_offsets ;
+    vamp:output      plugbase:onsets_output_durations ;
+    vamp:output      plugbase:onsets_output_pitchdf ;
+    vamp:output      plugbase:onsets_output_transientdf ;
+    vamp:output      plugbase:onsets_output_power ;
+    vamp:output      plugbase:onsets_output_spectraloffset ;
+    .
+plugbase:onsets_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_pyin-threshdistr a  vamp:QuantizedParameter ;
+    vamp:identifier     "pyin-threshdistr" ;
+    dc:title            "pYIN: Yin threshold distribution" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       7 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ( "Uniform" "Beta (mean 0.10)" "Beta (mean 0.15)" "Beta (mean 0.20)" "Beta (mean 0.30)" "Single Value 0.10" "Single Value 0.15" "Single Value 0.20");
+    .
+plugbase:onsets_param_pyin-lowampsuppression a  vamp:Parameter ;
+    vamp:identifier     "pyin-lowampsuppression" ;
+    dc:title            "pYIN: Suppress low amplitude pitch estimates." ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.1 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_spectralFrequencyMin a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMin" ;
+    dc:title            "Spectral detection range minimum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_spectralFrequencyMax a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMax" ;
+    dc:title            "Spectral detection range maximum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   4000 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_minimumOnsetInterval a  vamp:Parameter ;
+    vamp:identifier     "minimumOnsetInterval" ;
+    dc:title            "Minimum onset interval" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_pitchAverageWindow a  vamp:Parameter ;
+    vamp:identifier     "pitchAverageWindow" ;
+    dc:title            "Moving pitch average window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   150 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_onsetSensitivityPitch a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityPitch" ;
+    dc:title            "Onset sensitivity: Pitch" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       250 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   15 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_onsetSensitivityNoise a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoise" ;
+    dc:title            "Onset sensitivity: Noise" ;
+    dc:format           "%" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "%"  ;
+    vamp:default_value   24 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_onsetSensitivityLevel a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityLevel" ;
+    dc:title            "Onset sensitivity: Level" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   8 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_onsetSensitivityNoiseTimeWindow a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoiseTimeWindow" ;
+    dc:title            "Onset sensitivity: Noise time window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       500 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_onsetSensitivityRawPowerThreshold a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityRawPowerThreshold" ;
+    dc:title            "Onset sensitivity: Power rise threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   6 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_sustainBeginThreshold a  vamp:Parameter ;
+    vamp:identifier     "sustainBeginThreshold" ;
+    dc:title            "Sustain phase begin threshold" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   60 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_noteDurationThreshold a  vamp:Parameter ;
+    vamp:identifier     "noteDurationThreshold" ;
+    dc:title            "Offset sensitivity: Power drop threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   12 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_param_spectralDropFloor a  vamp:Parameter ;
+    vamp:identifier     "spectralDropFloor" ;
+    dc:title            "Offset sensitivity: Spectral drop floor level" ;
+    dc:format           "dB" ;
+    vamp:min_value       -120 ;
+    vamp:max_value       0 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   -70 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets_output_onsets a  vamp:SparseOutput ;
+    vamp:identifier       "onsets" ;
+    dc:title              "Onsets" ;
+    dc:description        """Identified onset locations, labelled as either Pitch Change, Spectral Rise, or Power Rise depending on how they were identified."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsets_output_offsets a  vamp:SparseOutput ;
+    vamp:identifier       "offsets" ;
+    dc:title              "Offsets" ;
+    dc:description        """Estimated offset locations, labelled as either Power Drop, Spectral Drop, or Following Onset Reached depending on how they were identified."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsets_output_durations a  vamp:SparseOutput ;
+    vamp:identifier       "durations" ;
+    dc:title              "Durations" ;
+    dc:description        """Identified note onsets with estimated duration. Features have value 1 for notes identified via pitch change, 2 for spectral rise, and 3 for raw power rise. Offsets are determined using the "Note duration level drop threshold" parameter."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsets_output_pitchdf a  vamp:SparseOutput ;
+    vamp:identifier       "pitchdf" ;
+    dc:title              "Pitch Onset Detection Function" ;
+    dc:description        """Function used to identify onsets by pitch change. Onsets are considered likely when the function is low rather than high, i.e. when it first falls below a threshold."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "cents" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsets_output_transientdf a  vamp:SparseOutput ;
+    vamp:identifier       "transientdf" ;
+    dc:title              "Spectral Rise Onset Detection Function" ;
+    dc:description        """Function used to identify onsets by spectral rise. Onsets are considered likely when the function exceeds a threshold."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsets_output_power a  vamp:SparseOutput ;
+    vamp:identifier       "power" ;
+    dc:title              "Power" ;
+    dc:description        """Power curve used to identify onsets and offsets by power level."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "dB" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsets_output_spectraloffset a  vamp:SparseOutput ;
+    vamp:identifier       "spectraloffset" ;
+    dc:title              "Spectral Drop Offset Detection Function" ;
+    dc:description        """Function used to identify offsets by spectral drop."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Expressive Means plugin
+
+plugbase:onsets-semantic a vamp:Plugin ;
+    dc:title              "Expressive Means" ;
+    vamp:name             "Expressive Means" ;
+    dc:description        """Finds note onsets and durations in monophonic recordings based on changes in spectral content, power, and pitch""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "onsets-semantic" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Time > Onsets" ;
+    vamp:parameter   plugbase:onsets-semantic_param_clef ;
+    vamp:parameter   plugbase:onsets-semantic_param_instrumentType ;
+    vamp:parameter   plugbase:onsets-semantic_param_noteDurations ;
+    vamp:parameter   plugbase:onsets-semantic_param_normaliseAudio ;
+
+    vamp:output      plugbase:onsets-semantic_output_onsets ;
+    vamp:output      plugbase:onsets-semantic_output_durations ;
+    .
+plugbase:onsets-semantic_param_clef a  vamp:QuantizedParameter ;
+    vamp:identifier     "clef" ;
+    dc:title            "Clef" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Treble" "Alto" "Bass");
+    .
+plugbase:onsets-semantic_param_instrumentType a  vamp:QuantizedParameter ;
+    vamp:identifier     "instrumentType" ;
+    dc:title            "Signal type" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       4 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Strings" "Vocal" "Keys / Mallets" "Wind" "Percussion");
+    .
+plugbase:onsets-semantic_param_noteDurations a  vamp:QuantizedParameter ;
+    vamp:identifier     "noteDurations" ;
+    dc:title            "Note durations" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ( "Long (> 300 ms)" "Moderate (150-300 ms)" "Short (< 150 ms)");
+    .
+plugbase:onsets-semantic_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:onsets-semantic_output_onsets a  vamp:SparseOutput ;
+    vamp:identifier       "onsets" ;
+    dc:title              "Onsets" ;
+    dc:description        """Identified onset locations, labelled as either Pitch Change, Spectral Rise, or Power Rise depending on how they were identified."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsets-semantic_output_durations a  vamp:SparseOutput ;
+    vamp:identifier       "durations" ;
+    dc:title              "Durations" ;
+    dc:description        """Identified note onsets with estimated duration. Features have value 1 for notes identified via pitch change, 2 for spectral rise, and 3 for raw power rise. Offsets are determined using the "Note duration level drop threshold" parameter."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Expressive Means (advanced): Pitch Vibrato plugin
+
+plugbase:pitch-vibrato a vamp:Plugin ;
+    dc:title              "Expressive Means (advanced): Pitch Vibrato" ;
+    vamp:name             "Expressive Means (advanced): Pitch Vibrato" ;
+    dc:description        """Identifies types and intensities of pitch vibrato instances in monophonic recordings""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam, method partly by Tilo Haehnel" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "pitch-vibrato" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Notes > Expression" ;
+    vamp:parameter   plugbase:pitch-vibrato_param_normaliseAudio ;
+    vamp:parameter   plugbase:pitch-vibrato_param_pyin-threshdistr ;
+    vamp:parameter   plugbase:pitch-vibrato_param_pyin-lowampsuppression ;
+    vamp:parameter   plugbase:pitch-vibrato_param_spectralFrequencyMin ;
+    vamp:parameter   plugbase:pitch-vibrato_param_spectralFrequencyMax ;
+    vamp:parameter   plugbase:pitch-vibrato_param_minimumOnsetInterval ;
+    vamp:parameter   plugbase:pitch-vibrato_param_pitchAverageWindow ;
+    vamp:parameter   plugbase:pitch-vibrato_param_onsetSensitivityPitch ;
+    vamp:parameter   plugbase:pitch-vibrato_param_onsetSensitivityNoise ;
+    vamp:parameter   plugbase:pitch-vibrato_param_onsetSensitivityLevel ;
+    vamp:parameter   plugbase:pitch-vibrato_param_onsetSensitivityNoiseTimeWindow ;
+    vamp:parameter   plugbase:pitch-vibrato_param_onsetSensitivityRawPowerThreshold ;
+    vamp:parameter   plugbase:pitch-vibrato_param_sustainBeginThreshold ;
+    vamp:parameter   plugbase:pitch-vibrato_param_noteDurationThreshold ;
+    vamp:parameter   plugbase:pitch-vibrato_param_spectralDropFloor ;
+    vamp:parameter   plugbase:pitch-vibrato_param_vibratoRateMinimum ;
+    vamp:parameter   plugbase:pitch-vibrato_param_vibratoRateMaximum ;
+    vamp:parameter   plugbase:pitch-vibrato_param_rateBoundaryModerate ;
+    vamp:parameter   plugbase:pitch-vibrato_param_rateBoundaryFast ;
+    vamp:parameter   plugbase:pitch-vibrato_param_vibratoRangeMinimum ;
+    vamp:parameter   plugbase:pitch-vibrato_param_vibratoRangeMaximum ;
+    vamp:parameter   plugbase:pitch-vibrato_param_rangeBoundaryMedium ;
+    vamp:parameter   plugbase:pitch-vibrato_param_rangeBoundaryWide ;
+    vamp:parameter   plugbase:pitch-vibrato_param_sectionThreshold ;
+    vamp:parameter   plugbase:pitch-vibrato_param_developmentThreshold ;
+    vamp:parameter   plugbase:pitch-vibrato_param_correlationThreshold ;
+    vamp:parameter   plugbase:pitch-vibrato_param_scalingFactor ;
+    vamp:parameter   plugbase:pitch-vibrato_param_smoothingWindowLength ;
+    vamp:parameter   plugbase:pitch-vibrato_param_segmentationType ;
+
+    vamp:output      plugbase:pitch-vibrato_output_smoothedPitchTrack ;
+    vamp:output      plugbase:pitch-vibrato_output_summary ;
+    vamp:output      plugbase:pitch-vibrato_output_vibratoType ;
+    vamp:output      plugbase:pitch-vibrato_output_vibratoIndex ;
+    vamp:output      plugbase:pitch-vibrato_output_vibratoPitchTrack ;
+    vamp:output      plugbase:pitch-vibrato_output_meanDuration ;
+    vamp:output      plugbase:pitch-vibrato_output_meanRate ;
+    vamp:output      plugbase:pitch-vibrato_output_meanMaxRange ;
+    .
+plugbase:pitch-vibrato_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_pyin-threshdistr a  vamp:QuantizedParameter ;
+    vamp:identifier     "pyin-threshdistr" ;
+    dc:title            "pYIN: Yin threshold distribution" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       7 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ( "Uniform" "Beta (mean 0.10)" "Beta (mean 0.15)" "Beta (mean 0.20)" "Beta (mean 0.30)" "Single Value 0.10" "Single Value 0.15" "Single Value 0.20");
+    .
+plugbase:pitch-vibrato_param_pyin-lowampsuppression a  vamp:Parameter ;
+    vamp:identifier     "pyin-lowampsuppression" ;
+    dc:title            "pYIN: Suppress low amplitude pitch estimates." ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.1 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_spectralFrequencyMin a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMin" ;
+    dc:title            "Spectral detection range minimum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_spectralFrequencyMax a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMax" ;
+    dc:title            "Spectral detection range maximum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   4000 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_minimumOnsetInterval a  vamp:Parameter ;
+    vamp:identifier     "minimumOnsetInterval" ;
+    dc:title            "Minimum onset interval" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_pitchAverageWindow a  vamp:Parameter ;
+    vamp:identifier     "pitchAverageWindow" ;
+    dc:title            "Moving pitch average window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   150 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_onsetSensitivityPitch a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityPitch" ;
+    dc:title            "Onset sensitivity: Pitch" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       250 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   15 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_onsetSensitivityNoise a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoise" ;
+    dc:title            "Onset sensitivity: Noise" ;
+    dc:format           "%" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "%"  ;
+    vamp:default_value   24 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_onsetSensitivityLevel a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityLevel" ;
+    dc:title            "Onset sensitivity: Level" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   8 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_onsetSensitivityNoiseTimeWindow a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoiseTimeWindow" ;
+    dc:title            "Onset sensitivity: Noise time window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       500 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_onsetSensitivityRawPowerThreshold a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityRawPowerThreshold" ;
+    dc:title            "Onset sensitivity: Power rise threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   6 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_sustainBeginThreshold a  vamp:Parameter ;
+    vamp:identifier     "sustainBeginThreshold" ;
+    dc:title            "Sustain phase begin threshold" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   60 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_noteDurationThreshold a  vamp:Parameter ;
+    vamp:identifier     "noteDurationThreshold" ;
+    dc:title            "Offset sensitivity: Power drop threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   12 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_spectralDropFloor a  vamp:Parameter ;
+    vamp:identifier     "spectralDropFloor" ;
+    dc:title            "Offset sensitivity: Spectral drop floor level" ;
+    dc:format           "dB" ;
+    vamp:min_value       -120 ;
+    vamp:max_value       0 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   -70 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_vibratoRateMinimum a  vamp:Parameter ;
+    vamp:identifier     "vibratoRateMinimum" ;
+    dc:title            "Vibrato rate: Minimum" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0.1 ;
+    vamp:max_value       20 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   4 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_vibratoRateMaximum a  vamp:Parameter ;
+    vamp:identifier     "vibratoRateMaximum" ;
+    dc:title            "Vibrato rate: Maximum" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0.1 ;
+    vamp:max_value       20 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   10 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_rateBoundaryModerate a  vamp:Parameter ;
+    vamp:identifier     "rateBoundaryModerate" ;
+    dc:title            "Rate threshold: moderate" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   6.2 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_rateBoundaryFast a  vamp:Parameter ;
+    vamp:identifier     "rateBoundaryFast" ;
+    dc:title            "Rate threshold: fast" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   7.2 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_vibratoRangeMinimum a  vamp:Parameter ;
+    vamp:identifier     "vibratoRangeMinimum" ;
+    dc:title            "Vibrato range: Minimum" ;
+    dc:format           "cents" ;
+    vamp:min_value       1 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   20 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_vibratoRangeMaximum a  vamp:Parameter ;
+    vamp:identifier     "vibratoRangeMaximum" ;
+    dc:title            "Vibrato range: Maximum" ;
+    dc:format           "cents" ;
+    vamp:min_value       1 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   200 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_rangeBoundaryMedium a  vamp:Parameter ;
+    vamp:identifier     "rangeBoundaryMedium" ;
+    dc:title            "Range threshold: medium" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       250 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   40 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_rangeBoundaryWide a  vamp:Parameter ;
+    vamp:identifier     "rangeBoundaryWide" ;
+    dc:title            "Range threshold: wide" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       250 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   60 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_sectionThreshold a  vamp:Parameter ;
+    vamp:identifier     "sectionThreshold" ;
+    dc:title            "Section duration threshold" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   200 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_developmentThreshold a  vamp:Parameter ;
+    vamp:identifier     "developmentThreshold" ;
+    dc:title            "Development threshold" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       200 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   10 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_correlationThreshold a  vamp:Parameter ;
+    vamp:identifier     "correlationThreshold" ;
+    dc:title            "Vibrato shape: Correlation threshold" ;
+    dc:format           "" ;
+    vamp:min_value       0.1 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.2 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_scalingFactor a  vamp:Parameter ;
+    vamp:identifier     "scalingFactor" ;
+    dc:title            "Index scaling factor" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.1471 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_smoothingWindowLength a  vamp:Parameter ;
+    vamp:identifier     "smoothingWindowLength" ;
+    dc:title            "Smoothing window length" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       150 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   70 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato_param_segmentationType a  vamp:QuantizedParameter ;
+    vamp:identifier     "segmentationType" ;
+    dc:title            "Note segmentation" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       3 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   3 ;
+    vamp:value_names     ( "None" "Segmented" "Without Glides" "Without Glides and Segmented");
+    .
+plugbase:pitch-vibrato_output_smoothedPitchTrack a  vamp:SparseOutput ;
+    vamp:identifier       "smoothedPitchTrack" ;
+    dc:title              "Smoothed Pitch Track" ;
+    dc:description        """The pitch track computed by pYIN, with further smoothing as used for peak selection."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato_output_summary a  vamp:SparseOutput ;
+    vamp:identifier       "summary" ;
+    dc:title              "Summary" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato_output_vibratoType a  vamp:SparseOutput ;
+    vamp:identifier       "vibratoType" ;
+    dc:title              "Vibrato Type" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato_output_vibratoIndex a  vamp:SparseOutput ;
+    vamp:identifier       "vibratoIndex" ;
+    dc:title              "Vibrato Index" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato_output_vibratoPitchTrack a  vamp:SparseOutput ;
+    vamp:identifier       "vibratoPitchTrack" ;
+    dc:title              "Vibrato-Only Pitch Track" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato_output_meanDuration a  vamp:SparseOutput ;
+    vamp:identifier       "meanDuration" ;
+    dc:title              "Mean Duration" ;
+    dc:description        """Returns a single label containing the mean vibrato duration across all onsets"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato_output_meanRate a  vamp:SparseOutput ;
+    vamp:identifier       "meanRate" ;
+    dc:title              "Mean Rate" ;
+    dc:description        """Returns a single label containing the mean vibrato rate across all onsets"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato_output_meanMaxRange a  vamp:SparseOutput ;
+    vamp:identifier       "meanMaxRange" ;
+    dc:title              "Mean Maximum Range" ;
+    dc:description        """Returns a single label containing the mean maximum vibrato range across all onsets"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Expressive Means: Pitch Vibrato plugin
+
+plugbase:pitch-vibrato-semantic a vamp:Plugin ;
+    dc:title              "Expressive Means: Pitch Vibrato" ;
+    vamp:name             "Expressive Means: Pitch Vibrato" ;
+    dc:description        """Identifies types and intensities of pitch vibrato instances in monophonic recordings""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam, method partly by Tilo Haehnel" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "pitch-vibrato-semantic" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Notes > Expression" ;
+    vamp:parameter   plugbase:pitch-vibrato-semantic_param_clef ;
+    vamp:parameter   plugbase:pitch-vibrato-semantic_param_instrumentType ;
+    vamp:parameter   plugbase:pitch-vibrato-semantic_param_noteDurations ;
+    vamp:parameter   plugbase:pitch-vibrato-semantic_param_normaliseAudio ;
+
+    vamp:output      plugbase:pitch-vibrato-semantic_output_summary ;
+    vamp:output      plugbase:pitch-vibrato-semantic_output_vibratoType ;
+    vamp:output      plugbase:pitch-vibrato-semantic_output_vibratoIndex ;
+    vamp:output      plugbase:pitch-vibrato-semantic_output_vibratoPitchTrack ;
+    .
+plugbase:pitch-vibrato-semantic_param_clef a  vamp:QuantizedParameter ;
+    vamp:identifier     "clef" ;
+    dc:title            "Clef" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Treble" "Alto" "Bass");
+    .
+plugbase:pitch-vibrato-semantic_param_instrumentType a  vamp:QuantizedParameter ;
+    vamp:identifier     "instrumentType" ;
+    dc:title            "Signal type" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Instrumental" "Vocal");
+    .
+plugbase:pitch-vibrato-semantic_param_noteDurations a  vamp:QuantizedParameter ;
+    vamp:identifier     "noteDurations" ;
+    dc:title            "Note durations" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ( "Long (> 300 ms)" "Moderate (150-300 ms)" "Short (< 150 ms)");
+    .
+plugbase:pitch-vibrato-semantic_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:pitch-vibrato-semantic_output_summary a  vamp:SparseOutput ;
+    vamp:identifier       "summary" ;
+    dc:title              "Summary" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato-semantic_output_vibratoType a  vamp:SparseOutput ;
+    vamp:identifier       "vibratoType" ;
+    dc:title              "Vibrato Type" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato-semantic_output_vibratoIndex a  vamp:SparseOutput ;
+    vamp:identifier       "vibratoIndex" ;
+    dc:title              "Vibrato Index" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:pitch-vibrato-semantic_output_vibratoPitchTrack a  vamp:SparseOutput ;
+    vamp:identifier       "vibratoPitchTrack" ;
+    dc:title              "Vibrato-Only Pitch Track" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Expressive Means (advanced): Portamento plugin
+
+plugbase:portamento a vamp:Plugin ;
+    dc:title              "Expressive Means (advanced): Portamento" ;
+    vamp:name             "Expressive Means (advanced): Portamento" ;
+    dc:description        """Identifies types and intensities of portamento instances in monophonic recordings""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "portamento" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Notes > Expression" ;
+    vamp:parameter   plugbase:portamento_param_normaliseAudio ;
+    vamp:parameter   plugbase:portamento_param_pyin-threshdistr ;
+    vamp:parameter   plugbase:portamento_param_pyin-lowampsuppression ;
+    vamp:parameter   plugbase:portamento_param_spectralFrequencyMin ;
+    vamp:parameter   plugbase:portamento_param_spectralFrequencyMax ;
+    vamp:parameter   plugbase:portamento_param_minimumOnsetInterval ;
+    vamp:parameter   plugbase:portamento_param_pitchAverageWindow ;
+    vamp:parameter   plugbase:portamento_param_onsetSensitivityPitch ;
+    vamp:parameter   plugbase:portamento_param_onsetSensitivityNoise ;
+    vamp:parameter   plugbase:portamento_param_onsetSensitivityLevel ;
+    vamp:parameter   plugbase:portamento_param_onsetSensitivityNoiseTimeWindow ;
+    vamp:parameter   plugbase:portamento_param_onsetSensitivityRawPowerThreshold ;
+    vamp:parameter   plugbase:portamento_param_glideThresholdPitch ;
+    vamp:parameter   plugbase:portamento_param_glideThresholdHopMinimum ;
+    vamp:parameter   plugbase:portamento_param_glideThresholdHopMaximum ;
+    vamp:parameter   plugbase:portamento_param_glideThresholdDuration ;
+    vamp:parameter   plugbase:portamento_param_glideThresholdProximity ;
+    vamp:parameter   plugbase:portamento_param_linkThreshold ;
+    vamp:parameter   plugbase:portamento_param_rangeBoundaryMedium ;
+    vamp:parameter   plugbase:portamento_param_rangeBoundaryLarge ;
+    vamp:parameter   plugbase:portamento_param_durationBoundaryMedium ;
+    vamp:parameter   plugbase:portamento_param_durationBoundaryLong ;
+    vamp:parameter   plugbase:portamento_param_dynamicsThreshold ;
+    vamp:parameter   plugbase:portamento_param_scalingFactor ;
+
+    vamp:output      plugbase:portamento_output_summary ;
+    vamp:output      plugbase:portamento_output_portamentoType ;
+    vamp:output      plugbase:portamento_output_pitchTrack ;
+    vamp:output      plugbase:portamento_output_portamentoIndex ;
+    vamp:output      plugbase:portamento_output_portamentoPoints ;
+    vamp:output      plugbase:portamento_output_glideDirection ;
+    vamp:output      plugbase:portamento_output_glideLink ;
+    vamp:output      plugbase:portamento_output_glideDynamic ;
+    vamp:output      plugbase:portamento_output_glidePitchTrack ;
+    vamp:output      plugbase:portamento_output_meanRange ;
+    vamp:output      plugbase:portamento_output_meanDuration ;
+    vamp:output      plugbase:portamento_output_meanDynamics ;
+    .
+plugbase:portamento_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_pyin-threshdistr a  vamp:QuantizedParameter ;
+    vamp:identifier     "pyin-threshdistr" ;
+    dc:title            "pYIN: Yin threshold distribution" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       7 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ( "Uniform" "Beta (mean 0.10)" "Beta (mean 0.15)" "Beta (mean 0.20)" "Beta (mean 0.30)" "Single Value 0.10" "Single Value 0.15" "Single Value 0.20");
+    .
+plugbase:portamento_param_pyin-lowampsuppression a  vamp:Parameter ;
+    vamp:identifier     "pyin-lowampsuppression" ;
+    dc:title            "pYIN: Suppress low amplitude pitch estimates." ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.1 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_spectralFrequencyMin a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMin" ;
+    dc:title            "Spectral detection range minimum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_spectralFrequencyMax a  vamp:Parameter ;
+    vamp:identifier     "spectralFrequencyMax" ;
+    dc:title            "Spectral detection range maximum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       0 ;
+    vamp:max_value       20000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   4000 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_minimumOnsetInterval a  vamp:Parameter ;
+    vamp:identifier     "minimumOnsetInterval" ;
+    dc:title            "Minimum onset interval" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_pitchAverageWindow a  vamp:Parameter ;
+    vamp:identifier     "pitchAverageWindow" ;
+    dc:title            "Moving pitch average window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   150 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_onsetSensitivityPitch a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityPitch" ;
+    dc:title            "Onset sensitivity: Pitch" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       250 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   15 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_onsetSensitivityNoise a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoise" ;
+    dc:title            "Onset sensitivity: Noise" ;
+    dc:format           "%" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "%"  ;
+    vamp:default_value   24 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_onsetSensitivityLevel a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityLevel" ;
+    dc:title            "Onset sensitivity: Level" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   8 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_onsetSensitivityNoiseTimeWindow a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityNoiseTimeWindow" ;
+    dc:title            "Onset sensitivity: Noise time window" ;
+    dc:format           "ms" ;
+    vamp:min_value       20 ;
+    vamp:max_value       500 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   100 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_onsetSensitivityRawPowerThreshold a  vamp:Parameter ;
+    vamp:identifier     "onsetSensitivityRawPowerThreshold" ;
+    dc:title            "Onset sensitivity: Power rise threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   6 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_glideThresholdPitch a  vamp:Parameter ;
+    vamp:identifier     "glideThresholdPitch" ;
+    dc:title            "Glide detection: Minimum pitch difference" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       200 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   60 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_glideThresholdHopMinimum a  vamp:Parameter ;
+    vamp:identifier     "glideThresholdHopMinimum" ;
+    dc:title            "Glide detection: Minimum hop difference" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   10 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_glideThresholdHopMaximum a  vamp:Parameter ;
+    vamp:identifier     "glideThresholdHopMaximum" ;
+    dc:title            "Glide detection: Maximum hop difference" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       100 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   50 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_glideThresholdDuration a  vamp:Parameter ;
+    vamp:identifier     "glideThresholdDuration" ;
+    dc:title            "Glide detection: Minimum duration" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       200 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   70 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_glideThresholdProximity a  vamp:Parameter ;
+    vamp:identifier     "glideThresholdProximity" ;
+    dc:title            "Glide detection threshold: Onset Proximity" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   1000 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_linkThreshold a  vamp:Parameter ;
+    vamp:identifier     "linkThreshold" ;
+    dc:title            "Link threshold" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       200 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   70 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_rangeBoundaryMedium a  vamp:Parameter ;
+    vamp:identifier     "rangeBoundaryMedium" ;
+    dc:title            "Range threshold: medium" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1200 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   250 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_rangeBoundaryLarge a  vamp:Parameter ;
+    vamp:identifier     "rangeBoundaryLarge" ;
+    dc:title            "Range threshold: large" ;
+    dc:format           "cents" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1200 ;
+    vamp:unit           "cents"  ;
+    vamp:default_value   550 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_durationBoundaryMedium a  vamp:Parameter ;
+    vamp:identifier     "durationBoundaryMedium" ;
+    dc:title            "Duration threshold: moderate" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   120 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_durationBoundaryLong a  vamp:Parameter ;
+    vamp:identifier     "durationBoundaryLong" ;
+    dc:title            "Duration threshold: long" ;
+    dc:format           "ms" ;
+    vamp:min_value       0 ;
+    vamp:max_value       4000 ;
+    vamp:unit           "ms"  ;
+    vamp:default_value   210 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_dynamicsThreshold a  vamp:Parameter ;
+    vamp:identifier     "dynamicsThreshold" ;
+    dc:title            "Dynamics threshold" ;
+    dc:format           "dB" ;
+    vamp:min_value       0 ;
+    vamp:max_value       10 ;
+    vamp:unit           "dB"  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_param_scalingFactor a  vamp:Parameter ;
+    vamp:identifier     "scalingFactor" ;
+    dc:title            "Index scaling factor" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.0008 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento_output_summary a  vamp:SparseOutput ;
+    vamp:identifier       "summary" ;
+    dc:title              "Summary" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_portamentoType a  vamp:SparseOutput ;
+    vamp:identifier       "portamentoType" ;
+    dc:title              "Portamento Type" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_pitchTrack a  vamp:SparseOutput ;
+    vamp:identifier       "pitchTrack" ;
+    dc:title              "Pitch Track" ;
+    dc:description        """The smoothed pitch track computed by pYIN."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_portamentoIndex a  vamp:SparseOutput ;
+    vamp:identifier       "portamentoIndex" ;
+    dc:title              "Portamento Index" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_portamentoPoints a  vamp:SparseOutput ;
+    vamp:identifier       "portamentoPoints" ;
+    dc:title              "Portamento Significant Points" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_glideDirection a  vamp:SparseOutput ;
+    vamp:identifier       "glideDirection" ;
+    dc:title              "Glide Direction" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_glideLink a  vamp:SparseOutput ;
+    vamp:identifier       "glideLink" ;
+    dc:title              "Glide Link" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_glideDynamic a  vamp:SparseOutput ;
+    vamp:identifier       "glideDynamic" ;
+    dc:title              "Glide Dynamic" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_glidePitchTrack a  vamp:SparseOutput ;
+    vamp:identifier       "glidePitchTrack" ;
+    dc:title              "Glide-Only Pitch Track" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_meanRange a  vamp:SparseOutput ;
+    vamp:identifier       "meanRange" ;
+    dc:title              "Mean Range" ;
+    dc:description        """Returns a single label containing the mean range of all detected portamentos"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_meanDuration a  vamp:SparseOutput ;
+    vamp:identifier       "meanDuration" ;
+    dc:title              "Mean Duration" ;
+    dc:description        """Returns a single label containing the mean duration of all detected portamentos"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento_output_meanDynamics a  vamp:SparseOutput ;
+    vamp:identifier       "meanDynamics" ;
+    dc:title              "Mean Dynamics" ;
+    dc:description        """Returns two labels containing the mean maximum and minimum dB of all detected portamentos"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Expressive Means: Portamento plugin
+
+plugbase:portamento-semantic a vamp:Plugin ;
+    dc:title              "Expressive Means: Portamento" ;
+    vamp:name             "Expressive Means: Portamento" ;
+    dc:description        """Identifies types and intensities of portamento instances in monophonic recordings""" ;
+    foaf:maker            [ foaf:name "Frithjof Vollmer and Chris Cannam" ] ;
+    dc:rights             """GPLv2""" ;
+    cc:license            <https://www.gnu.org/licenses/old-licenses/gpl-2.0> ;
+    vamp:identifier       "portamento-semantic" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "2" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:category         "Notes > Expression" ;
+    vamp:parameter   plugbase:portamento-semantic_param_clef ;
+    vamp:parameter   plugbase:portamento-semantic_param_instrumentType ;
+    vamp:parameter   plugbase:portamento-semantic_param_noteDurations ;
+    vamp:parameter   plugbase:portamento-semantic_param_normaliseAudio ;
+
+    vamp:output      plugbase:portamento-semantic_output_summary ;
+    vamp:output      plugbase:portamento-semantic_output_portamentoType ;
+    vamp:output      plugbase:portamento-semantic_output_portamentoIndex ;
+    vamp:output      plugbase:portamento-semantic_output_portamentoPoints ;
+    .
+plugbase:portamento-semantic_param_clef a  vamp:QuantizedParameter ;
+    vamp:identifier     "clef" ;
+    dc:title            "Clef" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Treble" "Alto" "Bass");
+    .
+plugbase:portamento-semantic_param_instrumentType a  vamp:QuantizedParameter ;
+    vamp:identifier     "instrumentType" ;
+    dc:title            "Signal type" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Instrumental" "Vocal");
+    .
+plugbase:portamento-semantic_param_noteDurations a  vamp:QuantizedParameter ;
+    vamp:identifier     "noteDurations" ;
+    dc:title            "Note durations" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ( "Long (> 300 ms)" "Moderate (150-300 ms)" "Short (< 150 ms)");
+    .
+plugbase:portamento-semantic_param_normaliseAudio a  vamp:QuantizedParameter ;
+    vamp:identifier     "normaliseAudio" ;
+    dc:title            "Normalise audio" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:portamento-semantic_output_summary a  vamp:SparseOutput ;
+    vamp:identifier       "summary" ;
+    dc:title              "Summary" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento-semantic_output_portamentoType a  vamp:SparseOutput ;
+    vamp:identifier       "portamentoType" ;
+    dc:title              "Portamento Type" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento-semantic_output_portamentoIndex a  vamp:SparseOutput ;
+    vamp:identifier       "portamentoIndex" ;
+    dc:title              "Portamento Index" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:portamento-semantic_output_portamentoPoints a  vamp:SparseOutput ;
+    vamp:identifier       "portamentoPoints" ;
+    dc:title              "Portamento Significant Points" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

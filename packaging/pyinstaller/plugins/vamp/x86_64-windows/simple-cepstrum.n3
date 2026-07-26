@@ -1,0 +1,268 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/simple-cepstrum#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+
+## Properties of this document
+
+<> a vamp:PluginDescription ;
+    foaf:maker          <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic   <http://vamp-plugins.org/rdf/plugins/simple-cepstrum> .
+
+
+## Maker of the whole plugin library
+
+:library_maker
+    foaf:name "Chris Cannam" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/> .
+
+
+## Properties of the plugin library, and references to the plugins it contains
+
+plugbase:library a vamp:PluginLibrary ;
+    vamp:identifier        "simple-cepstrum" ;
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin  plugbase:simple-cepstrum ; 
+    dc:title               "Simple Cepstrum" ;
+    dc:description         """A simple Vamp plugin to calculate and return cepstrum values from DFT bins. Useful as a preliminary tool for looking at cepstral data for simple pitch or envelope methods.""" ;
+    foaf:page              <http://code.soundsoftware.ac.uk/projects/vamp-simple-cepstrum> ; 
+#    doap:download-page     <> ;  # Place download HTML page URL here and uncomment
+     vamp:has_source true ;
+    .
+
+
+## Properties of the Simple Cepstrum plugin
+
+plugbase:simple-cepstrum a vamp:Plugin ;
+    dc:title              "Simple Cepstrum" ;
+    vamp:name             "Simple Cepstrum" ;
+    dc:description        """Return simple cepstral data from DFT bins. This plugin is intended for casual inspection of cepstral data. It returns a lot of different sorts of data and is quite slow; it's not a good way to extract a single feature rapidly.""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """Freely redistributable (BSD license)""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "simple-cepstrum" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:FrequencyDomain ;
+
+    vamp:parameter   plugbase:simple-cepstrum_param_fmin ;
+    vamp:parameter   plugbase:simple-cepstrum_param_fmax ;
+    vamp:parameter   plugbase:simple-cepstrum_param_histlen ;
+    vamp:parameter   plugbase:simple-cepstrum_param_vflen ;
+    vamp:parameter   plugbase:simple-cepstrum_param_method ;
+    vamp:parameter   plugbase:simple-cepstrum_param_clamp ;
+
+    vamp:output      plugbase:simple-cepstrum_output_raw_cepstral_peak ;
+    vamp:output      plugbase:simple-cepstrum_output_interpolated_peak ;
+    vamp:output      plugbase:simple-cepstrum_output_variance ;
+    vamp:output      plugbase:simple-cepstrum_output_peak ;
+    vamp:output      plugbase:simple-cepstrum_output_peak_to_rms ;
+    vamp:output      plugbase:simple-cepstrum_output_peak_proportion ;
+    vamp:output      plugbase:simple-cepstrum_output_peak_to_second_peak ;
+    vamp:output      plugbase:simple-cepstrum_output_total ;
+    vamp:output      plugbase:simple-cepstrum_output_cepstrum ;
+    vamp:output      plugbase:simple-cepstrum_output_am ;
+    vamp:output      plugbase:simple-cepstrum_output_env ;
+    vamp:output      plugbase:simple-cepstrum_output_es ;
+    .
+plugbase:simple-cepstrum_param_fmin a  vamp:Parameter ;
+    vamp:identifier     "fmin" ;
+    dc:title            "Minimum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       46.875 ;
+    vamp:max_value       24000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   50 ;
+    vamp:value_names     ();
+    .
+plugbase:simple-cepstrum_param_fmax a  vamp:Parameter ;
+    vamp:identifier     "fmax" ;
+    dc:title            "Maximum frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       46.875 ;
+    vamp:max_value       24000 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   1000 ;
+    vamp:value_names     ();
+    .
+plugbase:simple-cepstrum_param_histlen a  vamp:QuantizedParameter ;
+    vamp:identifier     "histlen" ;
+    dc:title            "Mean filter history length" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       10 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:simple-cepstrum_param_vflen a  vamp:QuantizedParameter ;
+    vamp:identifier     "vflen" ;
+    dc:title            "Vertical filter length" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       11 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   2  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:simple-cepstrum_param_method a  vamp:QuantizedParameter ;
+    vamp:identifier     "method" ;
+    dc:title            "Cepstrum transform method" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       4 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Inverse symmetric" "Inverse asymmetric" "Inverse complex" "Forward magnitude" "Forward difference");
+    .
+plugbase:simple-cepstrum_param_clamp a  vamp:QuantizedParameter ;
+    vamp:identifier     "clamp" ;
+    dc:title            "Clamp negative values in cepstrum at zero" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ();
+    .
+plugbase:simple-cepstrum_output_raw_cepstral_peak a  vamp:DenseOutput ;
+    vamp:identifier       "raw_cepstral_peak" ;
+    dc:title              "Frequency corresponding to raw cepstral peak" ;
+    dc:description        """Return the frequency whose period corresponds to the quefrency with the maximum bin value within the specified range of the cepstrum"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    a                 vamp:KnownExtentsOutput ;
+    vamp:min_value    50  ;
+    vamp:max_value    1000  ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_interpolated_peak a  vamp:DenseOutput ;
+    vamp:identifier       "interpolated_peak" ;
+    dc:title              "Interpolated peak frequency" ;
+    dc:description        """Return the frequency whose period corresponds to the quefrency with the maximum bin value within the specified range of the cepstrum, using parabolic interpolation to estimate the peak quefrency to finer than single bin resolution"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    a                 vamp:KnownExtentsOutput ;
+    vamp:min_value    50  ;
+    vamp:max_value    1000  ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_variance a  vamp:DenseOutput ;
+    vamp:identifier       "variance" ;
+    dc:title              "Variance of cepstral bins in range" ;
+    dc:description        """Return the variance of bin values within the specified range of the cepstrum"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_peak a  vamp:DenseOutput ;
+    vamp:identifier       "peak" ;
+    dc:title              "Value at peak" ;
+    dc:description        """Return the value found in the maximum-valued bin within the specified range of the cepstrum"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_peak_to_rms a  vamp:DenseOutput ;
+    vamp:identifier       "peak_to_rms" ;
+    dc:title              "Peak-to-RMS distance" ;
+    dc:description        """Return the difference between maximum and root mean square bin values within the specified range of the cepstrum"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_peak_proportion a  vamp:DenseOutput ;
+    vamp:identifier       "peak_proportion" ;
+    dc:title              "Energy around peak" ;
+    dc:description        """Return the proportion of total energy that is found in the bins around the peak bin (as far as the nearest local minima), within the specified range of the cepstrum"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_peak_to_second_peak a  vamp:DenseOutput ;
+    vamp:identifier       "peak_to_second_peak" ;
+    dc:title              "Peak to second-peak difference" ;
+    dc:description        """Return the difference between the value found in the peak bin within the specified range of the cepstrum, and that found in the next highest peak"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_total a  vamp:DenseOutput ;
+    vamp:identifier       "total" ;
+    dc:title              "Total energy" ;
+    dc:description        """Return the total energy found in all bins within the specified range of the cepstrum"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_cepstrum a  vamp:DenseOutput ;
+    vamp:identifier       "cepstrum" ;
+    dc:title              "Cepstrum" ;
+    dc:description        """The unprocessed cepstrum bins within the specified range"""  ;
+    vamp:unit             "" ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_am a  vamp:DenseOutput ;
+    vamp:identifier       "am" ;
+    dc:title              "Cepstrum bins relative to RMS" ;
+    dc:description        """The cepstrum bins within the specified range, expressed as a value relative to the root mean square bin value in the range, with values below the RMS clamped to zero"""  ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_env a  vamp:DenseOutput ;
+    vamp:identifier       "env" ;
+    dc:title              "Spectral envelope" ;
+    dc:description        """Envelope calculated from the cepstral values below the specified minimum"""  ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:simple-cepstrum_output_es a  vamp:DenseOutput ;
+    vamp:identifier       "es" ;
+    dc:title              "Spectrum without envelope" ;
+    dc:description        """Magnitude of spectrum values divided by calculated envelope values, to deconvolve the envelope"""  ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

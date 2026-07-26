@@ -1,0 +1,9 @@
+vamp:mvamp:marsyas_bextract_centroid::Low Level Features
+vamp:mvamp:marsyas_bextract_lpcc::Low Level Features
+vamp:mvamp:marsyas_bextract_lsp::Low Level Features
+vamp:mvamp:marsyas_bextract_mfcc::Low Level Features
+vamp:mvamp:marsyas_bextract_rolloff::Low Level Features
+vamp:mvamp:marsyas_bextract_scf::Low Level Features
+vamp:mvamp:marsyas_bextract_sfm::Low Level Features
+vamp:mvamp:marsyas_bextract_zero_crossings::Low Level Features
+vamp:mvamp:marsyas_ibt::Time > Beat

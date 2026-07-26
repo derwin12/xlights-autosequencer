@@ -107,12 +107,20 @@ def detect_capabilities() -> dict[str, bool]:
             _venv_caps = _probe_venv_vamp()
         return bool(_venv_caps.get(key))
 
-    # vamp: package must be importable AND at least one plugin must exist
+    # vamp: package must be importable AND at least one plugin must exist.
+    # Windows paths/extension were missing entirely until 2026-07-25 (found
+    # while sourcing real Vamp plugin DLLs for the Windows packaged app) --
+    # this function reported vamp unavailable on every Windows dev machine
+    # regardless of whether plugins were actually installed, since neither
+    # the standard Windows install location nor the .dll extension were
+    # ever checked.
     plugin_dirs = [
         os.path.expanduser("~/Library/Audio/Plug-Ins/Vamp"),  # macOS
         os.path.expanduser("~/.local/lib/vamp"),  # Linux user-local
         "/usr/local/lib/vamp",
         "/usr/lib/vamp",
+        os.environ.get("PROGRAMFILES", r"C:\Program Files") + r"\Vamp Plugins",  # Windows (Vamp Plugin Pack default)
+        os.environ.get("COMMONPROGRAMFILES", r"C:\Program Files\Common Files") + r"\Vamp",  # Windows (alternate)
     ]
     # Also honour VAMP_PATH environment variable
     vamp_path = os.environ.get("VAMP_PATH", "")
@@ -120,7 +128,7 @@ def detect_capabilities() -> dict[str, bool]:
         plugin_dirs = vamp_path.split(os.pathsep) + plugin_dirs
     has_plugins = any(
         os.path.isdir(d) and any(
-            f.endswith(".dylib") or f.endswith(".so")
+            f.endswith(".dylib") or f.endswith(".so") or f.endswith(".dll")
             for f in os.listdir(d)
         )
         for d in plugin_dirs

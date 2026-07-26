@@ -1,0 +1,74 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/cepstral-pitchtracker#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+<>  a   vamp:PluginDescription ;
+    foaf:maker          <http://www.vamp-plugins.org/doap.rdf#template-generator> ;
+    foaf:primaryTopic   <http://vamp-plugins.org/rdf/plugins/cepstral-pitchtracker> .
+
+:library_maker
+    foaf:name "Chris Cannam" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/> .
+
+plugbase:library a  vamp:PluginLibrary ;
+    dc:title "Cepstral Pitch Tracker" ;
+    dc:description "A straightforward cepstral pitch- and note-tracker Vamp plugin, probably most suited to tracking singing pitch." ;
+    vamp:identifier "cepstral-pitchtracker"  ; 
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin plugbase:cepstral-pitchtracker ; 
+    foaf:page <http://code.soundsoftware.ac.uk/projects/cepstral-pitchtracker> ;
+    doap:download-page <http://code.soundsoftware.ac.uk/projects/cepstral-pitchtracker/files> ;
+    vamp:has_source true ;
+    .
+
+plugbase:cepstral-pitchtracker a   vamp:Plugin ;
+    dc:title              "Cepstral Pitch Tracker" ;
+    vamp:name             "Cepstral Pitch Tracker" ;
+    dc:description        """Estimate f0 of monophonic material using a cepstrum method.""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """Freely redistributable (BSD license)""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "cepstral-pitchtracker" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:FrequencyDomain ;
+
+    vamp:output      plugbase:cepstral-pitchtracker_output_f0 ;
+    vamp:output      plugbase:cepstral-pitchtracker_output_notes ;
+    .
+plugbase:cepstral-pitchtracker_output_f0 a  vamp:DenseOutput ;
+    vamp:identifier       "f0" ;
+    dc:title              "Estimated f0" ;
+    dc:description        """Estimated fundamental frequency"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    a                 vamp:KnownExtentsOutput ;
+    vamp:min_value    50  ;
+    vamp:max_value    900  ;
+    vamp:bin_count        1 ;
+    vamp:computes_event_type   af:Pitch ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:cepstral-pitchtracker_output_notes a  vamp:SparseOutput ;
+    vamp:identifier       "notes" ;
+    dc:title              "Notes" ;
+    dc:description        """Derived fixed-pitch note frequencies"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    a                 vamp:KnownExtentsOutput ;
+    vamp:min_value    50  ;
+    vamp:max_value    900  ;
+    vamp:bin_count        1 ;
+    vamp:computes_event_type   af:Note ;
+    .
+

@@ -1,0 +1,152 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/tuning-difference#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+
+## Properties of this document
+
+<> a vamp:PluginDescription ;
+    foaf:maker         <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic  <http://vamp-plugins.org/rdf/plugins/tuning-difference> .
+
+
+## Maker of the whole plugin library
+
+:library_maker
+    foaf:name  "Chris Cannam" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/> .
+
+## Properties of the plugin library, and references to the plugins it contains
+
+plugbase:library a vamp:PluginLibrary ;
+    vamp:identifier        "tuning-difference" ;
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin  plugbase:tuning-difference ; 
+    dc:title               "Tuning Difference" ;
+    dc:description         "Estimate the tuning frequency of a recording, by comparing it to another recording of the same music whose tuning frequency is known" ;
+    foaf:page              <http://code.soundsoftware.ac.uk/projects/tuning-difference> ;
+    doap:download-page     <http://code.soundsoftware.ac.uk/projects/tuning-difference> ;
+    .
+
+
+## Properties of the Tuning Difference plugin
+
+plugbase:tuning-difference a vamp:Plugin ;
+    dc:title              "Tuning Difference" ;
+    vamp:name             "Tuning Difference" ;
+    dc:description        """Estimate the tuning frequency of a recording, by comparing it to another recording of the same music whose tuning frequency is known""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """GPL""" ;
+    vamp:identifier       "tuning-difference" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "3" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:parameter   plugbase:tuning-difference_param_maxduration ;
+    vamp:parameter   plugbase:tuning-difference_param_maxrange ;
+    vamp:parameter   plugbase:tuning-difference_param_finetuning ;
+
+    vamp:output      plugbase:tuning-difference_output_cents ;
+    vamp:output      plugbase:tuning-difference_output_tuningfreq ;
+    vamp:output      plugbase:tuning-difference_output_reffeature ;
+    vamp:output      plugbase:tuning-difference_output_otherfeature ;
+    vamp:output      plugbase:tuning-difference_output_rotfeature ;
+    .
+plugbase:tuning-difference_param_maxduration a  vamp:Parameter ;
+    vamp:identifier     "maxduration" ;
+    dc:title            "Maximum duration to analyse" ;
+    dc:format           "s" ;
+    vamp:min_value       0 ;
+    vamp:max_value       3600 ;
+    vamp:unit           "s"  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ();
+    .
+plugbase:tuning-difference_param_maxrange a  vamp:QuantizedParameter ;
+    vamp:identifier     "maxrange" ;
+    dc:title            "Maximum range in semitones" ;
+    dc:format           "semitones" ;
+    vamp:min_value       1 ;
+    vamp:max_value       11 ;
+    vamp:unit           "semitones" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   4 ;
+    vamp:value_names     ();
+    .
+plugbase:tuning-difference_param_finetuning a  vamp:QuantizedParameter ;
+    vamp:identifier     "finetuning" ;
+    dc:title            "Fine tuning" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:tuning-difference_output_cents a  vamp:SparseOutput ;
+    vamp:identifier       "cents" ;
+    dc:title              "Tuning Difference" ;
+    dc:description        """Difference in averaged frequency profile between channels 1 and 2, in cents. A positive value means channel 2 is higher."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "cents" ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:tuning-difference_output_tuningfreq a  vamp:SparseOutput ;
+    vamp:identifier       "tuningfreq" ;
+    dc:title              "Relative Tuning Frequency" ;
+    dc:description        """Tuning frequency of channel 2, if channel 1 is assumed to contain the same music as it at a tuning frequency of A=440Hz."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "hz" ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:tuning-difference_output_reffeature a  vamp:DenseOutput ;
+    vamp:identifier       "reffeature" ;
+    dc:title              "Reference Feature" ;
+    dc:description        """Chroma feature from reference audio."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        60 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:tuning-difference_output_otherfeature a  vamp:DenseOutput ;
+    vamp:identifier       "otherfeature" ;
+    dc:title              "Other Feature" ;
+    dc:description        """Chroma feature from other audio, before rotation."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        60 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:tuning-difference_output_rotfeature a  vamp:DenseOutput ;
+    vamp:identifier       "rotfeature" ;
+    dc:title              "Other Feature at Rotated Frequency" ;
+    dc:description        """Chroma feature from reference audio calculated with the tuning frequency obtained from rotation matching."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        60 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

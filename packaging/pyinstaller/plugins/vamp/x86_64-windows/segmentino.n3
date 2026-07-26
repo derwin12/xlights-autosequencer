@@ -1,0 +1,69 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/segmentino#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix doap: 	  <http://usefulinc.com/ns/doap#> .
+@prefix :         <#> .
+
+<>  a   vamp:PluginDescription ;
+    foaf:maker          <http://www.vamp-plugins.org/doap.rdf#template-generator> ;
+    foaf:primaryTopic   <http://vamp-plugins.org/rdf/plugins/segmentino> .
+
+:maker 
+    foaf:name "Queen Mary, University of London" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/> .
+
+plugbase:library a  vamp:PluginLibrary ;
+    vamp:identifier "segmentino"  ; 
+    vamp:available_plugin plugbase:segmentino ; 
+    foaf:page <http://code.soundsoftware.ac.uk/projects/segmenter-vamp-plugin> ;
+    foaf:maker :maker ;
+    dc:title "Segmentino" ;
+    dc:description """Plugin for automatic music structural segmentation""" ;
+    doap:download-page <http://code.soundsoftware.ac.uk/projects/segmenter-vamp-plugin/files> ;
+    vamp:has_source true ;
+    vamp:has_binary "linux32" ;
+    vamp:has_binary "linux64" ;
+    vamp:has_binary "win32" ;
+    vamp:has_binary "osx" 
+    .
+
+plugbase:segmentino a   vamp:Plugin ;
+    dc:title              "Segmentino" ;
+    vamp:name             "Segmentino" ;
+    vamp:category	  "Classification" ;
+    dc:description        """Estimate contiguous segments pertaining to song parts such as verse and chorus.""" ;
+    foaf:maker            [ foaf:name "Queen Mary, University of London" ] ; # FIXME could give plugin author's URI here
+    dc:rights             """Plugin by Matthew Davies, Christian Landone, Chris Cannam, Matthias Mauch and Massimiliano Zanoni  Copyright (c) 2006-2013 QMUL - Affero GPL""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "segmentino" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "3" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:output      plugbase:segmentino_output_segmentation ;
+    .
+plugbase:segmentino_output_segmentation a  vamp:SparseOutput ;
+    vamp:identifier       "segmentation" ;
+    dc:title              "Segmentation" ;
+    dc:description        """Segmentation"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "segment-type" ;
+    a                     vamp:QuantizedOutput ;
+    vamp:quantize_step    1  ;
+    a                 vamp:KnownExtentsOutput ;
+    vamp:min_value    1  ;
+    vamp:max_value    5  ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      86.1326 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

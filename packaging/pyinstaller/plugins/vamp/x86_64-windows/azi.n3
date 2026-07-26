@@ -1,0 +1,71 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/azi#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+
+## Properties of this document
+
+<> a vamp:PluginDescription ;
+    foaf:maker         <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic  <http://vamp-plugins.org/rdf/plugins/azi> .
+
+
+## Maker of the whole plugin library
+
+:library_maker
+    foaf:name  "Chris Cannam" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/>
+    .
+
+
+## Properties of the plugin library, and references to the plugins it contains
+
+plugbase:library a vamp:PluginLibrary ;
+    vamp:identifier        "azi" ;
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin  plugbase:azi ; 
+    dc:title               "Stereo Plan" ;
+    dc:description         "Azimuth-based stereo plan" ;
+    foaf:page              <http://code.soundsoftware.ac.uk/projects/azi> ;
+    vamp:has_source        true ;
+    .
+
+
+## Properties of the Stereo Plan plugin
+
+plugbase:azi a vamp:Plugin ;
+    dc:title              "Stereo Plan" ;
+    vamp:name             "Stereo Plan" ;
+    dc:description        """Return a stereo plan decomposition of the audio. The returned feature grid covers the stereo plan from left-channel-only (first bin) to right-channel-only (last bin), with each value indicating what proportion of signal energy is found at that point on the plan at that moment. The input should consist of two channels containing left and right channel signals.""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """Freely redistributable (BSD license)""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "azi" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:FrequencyDomain ;
+
+    vamp:output      plugbase:azi_output_plan ;
+    .
+plugbase:azi_output_plan a  vamp:DenseOutput ;
+    vamp:identifier       "plan" ;
+    dc:title              "Plan" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        259 ;
+    vamp:bin_names        ( "Left" "L 100" "L 099" "L 098" "L 098" "L 097" "L 096" "L 095" "L 095" "L 094" "L 093" "L 092" "L 091" "L 091" "L 090" "L 089" "L 088" "L 088" "L 087" "L 086" "L 085" "L 084" "L 084" "L 083" "L 082" "L 081" "L 080" "L 080" "L 079" "L 078" "L 077" "L 077" "L 076" "L 075" "L 074" "L 073" "L 073" "L 072" "L 071" "L 070" "L 070" "L 069" "L 068" "L 067" "L 066" "L 066" "L 065" "L 064" "L 063" "L 063" "L 062" "L 061" "L 060" "L 059" "L 059" "L 058" "L 057" "L 056" "L 055" "L 055" "L 054" "L 053" "L 052" "L 052" "L 051" "L 050" "L 049" "L 048" "L 048" "L 047" "L 046" "L 045" "L 045" "L 044" "L 043" "L 042" "L 041" "L 041" "L 040" "L 039" "L 038" "L 038" "L 037" "L 036" "L 035" "L 034" "L 034" "L 033" "L 032" "L 031" "L 030" "L 030" "L 029" "L 028" "L 027" "L 027" "L 026" "L 025" "L 024" "L 023" "L 023" "L 022" "L 021" "L 020" "L 020" "L 019" "L 018" "L 017" "L 016" "L 016" "L 015" "L 014" "L 013" "L 013" "L 012" "L 011" "L 010" "L 009" "L 009" "L 008" "L 007" "L 006" "L 005" "L 005" "L 004" "L 003" "L 002" "L 002" "L 001" "Centre" "R 001" "R 002" "R 002" "R 003" "R 004" "R 005" "R 005" "R 006" "R 007" "R 008" "R 009" "R 009" "R 010" "R 011" "R 012" "R 013" "R 013" "R 014" "R 015" "R 016" "R 016" "R 017" "R 018" "R 019" "R 020" "R 020" "R 021" "R 022" "R 023" "R 023" "R 024" "R 025" "R 026" "R 027" "R 027" "R 028" "R 029" "R 030" "R 030" "R 031" "R 032" "R 033" "R 034" "R 034" "R 035" "R 036" "R 037" "R 038" "R 038" "R 039" "R 040" "R 041" "R 041" "R 042" "R 043" "R 044" "R 045" "R 045" "R 046" "R 047" "R 048" "R 048" "R 049" "R 050" "R 051" "R 052" "R 052" "R 053" "R 054" "R 055" "R 055" "R 056" "R 057" "R 058" "R 059" "R 059" "R 060" "R 061" "R 062" "R 063" "R 063" "R 064" "R 065" "R 066" "R 066" "R 067" "R 068" "R 069" "R 070" "R 070" "R 071" "R 072" "R 073" "R 073" "R 074" "R 075" "R 076" "R 077" "R 077" "R 078" "R 079" "R 080" "R 080" "R 081" "R 082" "R 083" "R 084" "R 084" "R 085" "R 086" "R 087" "R 088" "R 088" "R 089" "R 090" "R 091" "R 091" "R 092" "R 093" "R 094" "R 095" "R 095" "R 096" "R 097" "R 098" "R 098" "R 099" "R 100" "Right");
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

@@ -1,0 +1,343 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/match-vamp-plugin#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+<> a vamp:PluginDescription ;
+    foaf:maker         <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic  <http://vamp-plugins.org/rdf/plugins/match-vamp-plugin> .
+
+:library_maker
+    foaf:name "Simon Dixon and Chris Cannam" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/> ;
+    .
+
+plugbase:library a  vamp:PluginLibrary ;
+    vamp:identifier "match-vamp-plugin"  ; 
+    dc:title "MATCH Vamp Plugin" ;
+    dc:description """Vamp implementation of the MATCH audio alignment algorithm from Simon Dixon. Sonic Visualiser can use this for automatic time alignment among multiple audio files.""" ;
+    vamp:available_plugin plugbase:match ; 
+    foaf:maker             :library_maker ; 
+    foaf:page <http://code.soundsoftware.ac.uk/projects/match-vamp> ;
+    .
+
+plugbase:match a   vamp:Plugin ;
+    dc:title              "Match Performance Aligner" ;
+    vamp:name             "Match Performance Aligner" ;
+    dc:description        """Calculate alignment between two performances in separate channel inputs""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """GPL""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "match" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "3" ;
+    vamp:input_domain     vamp:FrequencyDomain ;
+
+    vamp:parameter   plugbase:match_param_freq1 ;
+    vamp:parameter   plugbase:match_param_freq2 ;
+    vamp:parameter   plugbase:match_param_usechroma ;
+    vamp:parameter   plugbase:match_param_usespecdiff ;
+    vamp:parameter   plugbase:match_param_framenorm ;
+    vamp:parameter   plugbase:match_param_metric ;
+    vamp:parameter   plugbase:match_param_distnorm ;
+    vamp:parameter   plugbase:match_param_silencethreshold ;
+    vamp:parameter   plugbase:match_param_noise ;
+    vamp:parameter   plugbase:match_param_gradientlimit ;
+    vamp:parameter   plugbase:match_param_zonewidth ;
+    vamp:parameter   plugbase:match_param_diagonalweight ;
+    vamp:parameter   plugbase:match_param_smooth ;
+    vamp:parameter   plugbase:match_param_serialise ;
+
+    vamp:output      plugbase:match_output_path ;
+    vamp:output      plugbase:match_output_a_b ;
+    vamp:output      plugbase:match_output_b_a ;
+    vamp:output      plugbase:match_output_a_b_divergence ;
+    vamp:output      plugbase:match_output_a_b_temporatio ;
+    vamp:output      plugbase:match_output_a_features ;
+    vamp:output      plugbase:match_output_b_features ;
+    vamp:output      plugbase:match_output_a_cfeatures ;
+    vamp:output      plugbase:match_output_b_cfeatures ;
+    vamp:output      plugbase:match_output_overall_cost ;
+    .
+
+plugbase:match_param_freq1 a  vamp:Parameter ;
+    vamp:identifier     "freq1" ;
+    dc:title            "Tuning frequency of first input" ;
+    dc:format           "Hz" ;
+    vamp:min_value       220 ;
+    vamp:max_value       880 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   440 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_freq2 a  vamp:Parameter ;
+    vamp:identifier     "freq2" ;
+    dc:title            "Tuning frequency of second input" ;
+    dc:format           "Hz" ;
+    vamp:min_value       220 ;
+    vamp:max_value       880 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   440 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_usechroma a  vamp:QuantizedParameter ;
+    vamp:identifier     "usechroma" ;
+    dc:title            "Feature type" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Spectral" "Chroma");
+    .
+plugbase:match_param_usespecdiff a  vamp:QuantizedParameter ;
+    vamp:identifier     "usespecdiff" ;
+    dc:title            "Use feature difference" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_framenorm a  vamp:QuantizedParameter ;
+    vamp:identifier     "framenorm" ;
+    dc:title            "Frame normalisation" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ( "None" "Sum to 1" "Long-term average");
+    .
+plugbase:match_param_metric a  vamp:QuantizedParameter ;
+    vamp:identifier     "metric" ;
+    dc:title            "Distance metric" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Manhattan" "Euclidean" "Cosine");
+    .
+plugbase:match_param_distnorm a  vamp:QuantizedParameter ;
+    vamp:identifier     "distnorm" ;
+    dc:title            "Distance normalisation" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ( "None" "Sum of frames" "Log sum of frames");
+    .
+plugbase:match_param_silencethreshold a  vamp:Parameter ;
+    vamp:identifier     "silencethreshold" ;
+    dc:title            "Silence threshold" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       0.1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.01 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_noise a  vamp:QuantizedParameter ;
+    vamp:identifier     "noise" ;
+    dc:title            "Add noise" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_gradientlimit a  vamp:QuantizedParameter ;
+    vamp:identifier     "gradientlimit" ;
+    dc:title            "Gradient limit" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       10 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   3 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_zonewidth a  vamp:QuantizedParameter ;
+    vamp:identifier     "zonewidth" ;
+    dc:title            "Search zone width" ;
+    dc:format           "s" ;
+    vamp:min_value       1 ;
+    vamp:max_value       60 ;
+    vamp:unit           "s" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   10 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_diagonalweight a  vamp:Parameter ;
+    vamp:identifier     "diagonalweight" ;
+    dc:title            "Diagonal weight" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       2 ;
+    vamp:unit           ""  ;
+    vamp:default_value   2 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_smooth a  vamp:QuantizedParameter ;
+    vamp:identifier     "smooth" ;
+    dc:title            "Use path smoothing" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ();
+    .
+plugbase:match_param_serialise a  vamp:QuantizedParameter ;
+    vamp:identifier     "serialise" ;
+    dc:title            "Serialise plugin invocations" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ();
+    .
+plugbase:match_output_path a  vamp:SparseOutput ;
+    vamp:identifier       "path" ;
+    dc:title              "Path" ;
+    dc:description        """Alignment path"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    a                     vamp:QuantizedOutput ;
+    vamp:quantize_step    1  ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      50 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_a_b a  vamp:SparseOutput ;
+    vamp:identifier       "a_b" ;
+    dc:title              "A-B Timeline" ;
+    dc:description        """Timing in performance B corresponding to moments in performance A"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "sec" ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      50 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_b_a a  vamp:SparseOutput ;
+    vamp:identifier       "b_a" ;
+    dc:title              "B-A Timeline" ;
+    dc:description        """Timing in performance A corresponding to moments in performance B"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "sec" ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      50 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_a_b_divergence a  vamp:SparseOutput ;
+    vamp:identifier       "a_b_divergence" ;
+    dc:title              "A-B Divergence" ;
+    dc:description        """Difference between timings in performances A and B"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "sec" ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      50 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_a_b_temporatio a  vamp:SparseOutput ;
+    vamp:identifier       "a_b_temporatio" ;
+    dc:title              "A-B Tempo Ratio" ;
+    dc:description        """Ratio of tempi between performances A and B"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      50 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_a_features a  vamp:DenseOutput ;
+    vamp:identifier       "a_features" ;
+    dc:title              "Raw A Features" ;
+    dc:description        """Spectral features extracted from performance A"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        84 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_b_features a  vamp:DenseOutput ;
+    vamp:identifier       "b_features" ;
+    dc:title              "Raw B Features" ;
+    dc:description        """Spectral features extracted from performance B"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        84 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_a_cfeatures a  vamp:DenseOutput ;
+    vamp:identifier       "a_cfeatures" ;
+    dc:title              "Conditioned A Features" ;
+    dc:description        """Spectral features extracted from performance A, after normalisation and conditioning"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        84 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_b_cfeatures a  vamp:DenseOutput ;
+    vamp:identifier       "b_cfeatures" ;
+    dc:title              "Conditioned B Features" ;
+    dc:description        """Spectral features extracted from performance B, after norrmalisation and conditioning"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        84 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:match_output_overall_cost a  vamp:DenseOutput ;
+    vamp:identifier       "overall_cost" ;
+    dc:title              "Overall Cost" ;
+    dc:description        """Normalised overall path cost for the cheapest path"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

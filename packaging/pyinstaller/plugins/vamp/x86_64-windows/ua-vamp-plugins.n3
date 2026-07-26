@@ -1,0 +1,194 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/ua-vamp-plugins#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+
+## Properties of this document
+
+<> a vamp:PluginDescription ;
+    foaf:maker         <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic  <http://vamp-plugins.org/rdf/plugins/ua-vamp-plugins> .
+
+
+## Maker of the whole plugin library
+
+:library_maker
+    foaf:name  "University of Alicante" ;
+    foaf:page  <http://grfia.dlsi.ua.es/cm/> ;
+    foaf:logo  <http://vamp-plugins.org/rdf/plugins/makers/ua.png> ;
+#    foaf:logo  <http://grfia.dlsi.ua.es/cm/img/cmlabPeq.png> ;
+    .
+
+
+## Properties of the plugin library, and references to the plugins it contains
+
+plugbase:library a vamp:PluginLibrary ;
+    vamp:identifier        "ua-vamp-plugins" ;
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin  plugbase:mf0ua ; 
+    vamp:available_plugin  plugbase:onsetsua ; 
+    dc:title               "University of Alicante Vamp Plugins" ;  
+    dc:description         """The UAPlugins set is a library of Vamp plugins developed in the DRIMS project to perform onset detection and polyphonic transcription. The methods used in this library were developed by Antonio Pertusa and José Manuel Iñesta.""" ; 
+    foaf:page              <http://grfia.dlsi.ua.es/cm/projects/drims/softwareVAMP.php> ; 
+    doap:download-page     <http://grfia.dlsi.ua.es/cm/projects/drims/softwareVAMP.php> ; 
+    vamp:has_source true;
+    vamp:has_binary "win32";
+    vamp:has_binary "linux32";
+    vamp:has_binary "linux64";
+    vamp:has_binary "osx";
+    .
+
+
+## Properties of the Polyphonic Transcription plugin
+
+plugbase:mf0ua a vamp:Plugin ;
+    dc:title              "Polyphonic Transcription" ;
+    vamp:name             "Polyphonic Transcription" ;
+    dc:description        """Multiple fundamental frequency estimation for polyphonic music transcription""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """Copyright 2012 Antonio Pertusa, Universidad de Alicante. Freely redistributable under GPL License""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "mf0ua" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:parameter   plugbase:mf0ua_param_algorithm ;
+    vamp:parameter   plugbase:mf0ua_param_maxpolyphony ;
+    vamp:parameter   plugbase:mf0ua_param_lowestnote ;
+    vamp:parameter   plugbase:mf0ua_param_highestnote ;
+    vamp:parameter   plugbase:mf0ua_param_minnoteduration ;
+
+    vamp:output      plugbase:mf0ua_output_mf0ua ;
+    .
+plugbase:mf0ua_param_algorithm a  vamp:QuantizedParameter ;
+    vamp:identifier     "algorithm" ;
+    dc:title            "Algorithm" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       2 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "EURASIP12" "EURASIP12 + tracking" "Onset-based");
+    .
+plugbase:mf0ua_param_maxpolyphony a  vamp:QuantizedParameter ;
+    vamp:identifier     "maxpolyphony" ;
+    dc:title            "Maximum polyphony" ;
+    dc:format           "" ;
+    vamp:min_value       1 ;
+    vamp:max_value       10 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   6 ;
+    vamp:value_names     ();
+    .
+plugbase:mf0ua_param_lowestnote a  vamp:Parameter ;
+    vamp:identifier     "lowestnote" ;
+    dc:title            "Minimum fundamental frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       1 ;
+    vamp:max_value       2500 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   38 ;
+    vamp:value_names     ();
+    .
+plugbase:mf0ua_param_highestnote a  vamp:Parameter ;
+    vamp:identifier     "highestnote" ;
+    dc:title            "Maximum fundamental frequency" ;
+    dc:format           "Hz" ;
+    vamp:min_value       1 ;
+    vamp:max_value       2500 ;
+    vamp:unit           "Hz"  ;
+    vamp:default_value   2100 ;
+    vamp:value_names     ();
+    .
+plugbase:mf0ua_param_minnoteduration a  vamp:Parameter ;
+    vamp:identifier     "minnoteduration" ;
+    dc:title            "Minimum note duration" ;
+    dc:format           "s" ;
+    vamp:min_value       0 ;
+    vamp:max_value       0.5 ;
+    vamp:unit           "s"  ;
+    vamp:default_value   0.023 ;
+    vamp:value_names     ();
+    .
+plugbase:mf0ua_output_mf0ua a  vamp:SparseOutput ;
+    vamp:identifier       "mf0ua" ;
+    dc:title              "UA Multiple f0 Estimation" ;
+    dc:description        """Estimated note pitch (MIDI note number)"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "MIDI units" ;
+    a                     vamp:QuantizedOutput ;
+    vamp:quantize_step    1  ;
+    a                 vamp:KnownExtentsOutput ;
+    vamp:min_value    0  ;
+    vamp:max_value    127  ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      0.00129909 ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+
+## Properties of the Note Onset Detector plugin
+
+plugbase:onsetsua a vamp:Plugin ;
+    dc:title              "Note Onset Detector" ;
+    vamp:name             "Note Onset Detector" ;
+    dc:description        """Note onset detection using a one-semitone filterbank""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """Copyright 2012 Antonio Pertusa, Universidad de Alicante. Freely redistributable under GPL License""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "onsetsua" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "1" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:parameter   plugbase:onsetsua_param_sensitivity ;
+
+    vamp:output      plugbase:onsetsua_output_odf ;
+    vamp:output      plugbase:onsetsua_output_onsets ;
+    .
+plugbase:onsetsua_param_sensitivity a  vamp:Parameter ;
+    vamp:identifier     "sensitivity" ;
+    dc:title            "Sensitivity" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           ""  ;
+    vamp:default_value   0.18 ;
+    vamp:value_names     ();
+    .
+plugbase:onsetsua_output_odf a  vamp:SparseOutput ;
+    vamp:identifier       "odf" ;
+    dc:title              "Onset Detection Function" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        1 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+plugbase:onsetsua_output_onsets a  vamp:SparseOutput ;
+    vamp:identifier       "onsets" ;
+    dc:title              "Note Onsets" ;
+    dc:description        """"""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        0 ;
+    vamp:sample_type      vamp:VariableSampleRate ;
+#   vamp:computes_event_type   <Place event type URI here and uncomment> ;
+#   vamp:computes_feature      <Place feature attribute URI here and uncomment> ;
+#   vamp:computes_signal_type  <Place signal type URI here and uncomment> ;
+    .
+

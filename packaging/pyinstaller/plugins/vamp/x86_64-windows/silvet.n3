@@ -1,0 +1,171 @@
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix vamp:     <http://purl.org/ontology/vamp/> .
+@prefix plugbase: <http://vamp-plugins.org/rdf/plugins/silvet#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix dc:       <http://purl.org/dc/elements/1.1/> .
+@prefix af:       <http://purl.org/ontology/af/> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix doap:     <http://usefulinc.com/ns/doap#> .
+@prefix cc:       <http://web.resource.org/cc/> .
+@prefix :         <#> .
+
+
+## Properties of this document
+
+<> a vamp:PluginDescription ;
+    foaf:maker          <http://vamp-plugins.org/rdf/template-generator> ;
+    foaf:primaryTopic   <http://vamp-plugins.org/rdf/plugins/silvet> .
+
+
+## Maker of the whole plugin library
+
+:library_maker
+    foaf:name "Queen Mary, University of London" ;
+    foaf:logo <http://vamp-plugins.org/rdf/plugins/makers/qm.png> ;
+    foaf:page <http://c4dm.eecs.qmul.ac.uk/>
+    .
+
+
+## Properties of the plugin library, and references to the plugins it contains
+
+plugbase:library a vamp:PluginLibrary ;
+    vamp:identifier        "silvet" ;
+    foaf:maker             :library_maker ; 
+    vamp:available_plugin  plugbase:silvet ; 
+    dc:title               "Silvet Note Transcription" ;  # Place library name here and uncomment
+    dc:description         """Silvet, or Shift-Invariant Latent Variable Transcription, is a Vamp plugin for polyphonic music transcription (from audio to note times and pitches).""" ; 
+    foaf:page              <http://code.soundsoftware.ac.uk/projects/silvet> ;
+    doap:download-page     <http://code.soundsoftware.ac.uk/projects/silvet/files> ;
+    .
+
+
+## Properties of the Silvet Note Transcription plugin
+
+plugbase:silvet a vamp:Plugin ;
+    dc:title              "Silvet Note Transcription" ;
+    vamp:name             "Silvet Note Transcription" ;
+    dc:description        """Estimate the note onsets, pitches, and durations that make up a music recording.""" ;
+    foaf:maker            :library_maker ;
+    dc:rights             """Method by Emmanouil Benetos and Simon Dixon; plugin by Chris Cannam and Emmanouil Benetos. GPL licence.""" ;
+#   cc:license            <Place plugin license URI here and uncomment> ; 
+    vamp:identifier       "silvet" ;
+    vamp:vamp_API_version vamp:api_version_2 ;
+    owl:versionInfo       "3" ;
+    vamp:input_domain     vamp:TimeDomain ;
+    vamp:parameter   plugbase:silvet_param_mode ;
+    vamp:parameter   plugbase:silvet_param_instrument ;
+    vamp:parameter   plugbase:silvet_param_finetune ;
+
+    vamp:output      plugbase:silvet_output_notes ;
+    vamp:output      plugbase:silvet_output_onsets ;
+    vamp:output      plugbase:silvet_output_onoffsets ;
+    vamp:output      plugbase:silvet_output_timefreq ;
+    vamp:output      plugbase:silvet_output_pitchactivation ;
+    vamp:output      plugbase:silvet_output_chroma ;
+    vamp:output      plugbase:silvet_output_templates ;
+    .
+    
+plugbase:silvet_param_mode a  vamp:QuantizedParameter ;
+    vamp:identifier     "mode" ;
+    dc:title            "Processing mode" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   1 ;
+    vamp:value_names     ( "Live (faster and lower latency)" "Intensive (higher quality)");
+    .
+plugbase:silvet_param_instrument a  vamp:QuantizedParameter ;
+    vamp:identifier     "instrument" ;
+    dc:title            "Instrument" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       13 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ( "Multiple or unknown instruments" "Piano" "Guitar" "Violin" "Viola" "Cello" "Horn" "Flute" "Oboe" "Clarinet" "Tenor Sax" "Bassoon" "String quartet" "Wind ensemble");
+    .
+plugbase:silvet_param_finetune a  vamp:QuantizedParameter ;
+    vamp:identifier     "finetune" ;
+    dc:title            "Return fine pitch estimates" ;
+    dc:format           "" ;
+    vamp:min_value       0 ;
+    vamp:max_value       1 ;
+    vamp:unit           "" ;
+    vamp:quantize_step   1  ;
+    vamp:default_value   0 ;
+    vamp:value_names     ();
+    .
+plugbase:silvet_output_notes a  vamp:SparseOutput ;
+    vamp:identifier       "notes" ;
+    dc:title              "Note transcription" ;
+    dc:description        """Overall note transcription. Each note has time, duration, estimated fundamental frequency, and a synthetic MIDI velocity (1-127) estimated from the strength of the pitch in the mixture."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        2 ;
+    vamp:bin_names        ( "Frequency" "Velocity");
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      711 ;
+    vamp:computes_event_type   af:Note ;
+    .
+plugbase:silvet_output_onsets a  vamp:SparseOutput ;
+    vamp:identifier       "onsets" ;
+    dc:title              "Note onsets" ;
+    dc:description        """Note onsets, without durations. These can be calculated sooner than complete notes, because it isn't necessary to wait for a note to finish before returning its feature. Each event has time, estimated fundamental frequency in Hz, and a synthetic MIDI velocity (1-127) estimated from the strength of the pitch in the mixture."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        2 ;
+    vamp:bin_names        ( "Frequency" "Velocity");
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      711 ;
+    vamp:computes_event_type   af:Onset ;
+    .
+plugbase:silvet_output_onoffsets a  vamp:SparseOutput ;
+    vamp:identifier       "onoffsets" ;
+    dc:title              "Note onsets and offsets" ;
+    dc:description        """Note onsets and offsets as separate events. Each onset event has time, estimated fundamental frequency in Hz, and a synthetic MIDI velocity (1-127) estimated from the strength of the pitch in the mixture. Offsets are represented in the same way but with a velocity of 0.""" ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "Hz" ;
+    vamp:bin_count        2 ;
+    vamp:bin_names        ( "Frequency" "Velocity");
+    vamp:sample_type      vamp:VariableSampleRate ;
+    vamp:sample_rate      711 ;
+    .
+plugbase:silvet_output_timefreq a  vamp:DenseOutput ;
+    vamp:identifier       "timefreq" ;
+    dc:title              "Time-frequency distribution" ;
+    dc:description        """Filtered constant-Q time-frequency distribution as used as input to the expectation-maximisation algorithm."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        545 ;
+    vamp:computes_signal_type  af:Spectrogram ;
+    .
+plugbase:silvet_output_pitchactivation a  vamp:DenseOutput ;
+    vamp:identifier       "pitchactivation" ;
+    dc:title              "Pitch activation distribution" ;
+    dc:description        """Pitch activation distribution resulting from expectation-maximisation algorithm, prior to note extraction."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        88 ;
+    vamp:computes_signal_type  af:Spectrogram ;
+    .
+plugbase:silvet_output_chroma a  vamp:DenseOutput ;
+    vamp:identifier       "chroma" ;
+    dc:title              "Pitch chroma distribution" ;
+    dc:description        """Pitch chroma distribution formed by wrapping the un-thresholded pitch activation distribution into a single octave of semitone bins."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        12 ;
+    vamp:computes_signal_type  af:Chromagram ;
+    .
+plugbase:silvet_output_templates a  vamp:DenseOutput ;
+    vamp:identifier       "templates" ;
+    dc:title              "Templates" ;
+    dc:description        """Constant-Q spectral templates for the selected instrument pack."""  ;
+    vamp:fixed_bin_count  "true" ;
+    vamp:unit             "" ;
+    vamp:bin_count        545 ;
+    .
