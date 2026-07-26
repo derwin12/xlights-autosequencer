@@ -3630,6 +3630,12 @@ def _place_drum_accents(
             effect_base = variant.base_effect if variant is not None else "Shockwave"
 
             accent_palette = list(assignment.theme.palette[:2])
+            # Theme-screen "Color Shift" slider (see place_effects's own
+            # application above) -- this function reads theme.palette
+            # independently and was never wired to it (user report,
+            # 2026-07-26: "not seeing that at all" for a drum-accent Shockwave).
+            if assignment.color_shift:
+                accent_palette = _hue_shift_palette(accent_palette, assignment.color_shift)
             if effect_base in _FIRST_COLOR_ONLY_EFFECTS:
                 accent_palette = accent_palette[:1]
 
@@ -3750,6 +3756,12 @@ def _place_whole_house_composite(
     section = assignment.section
     variation_seed = assignment.variation_seed
     palette = list(assignment.theme.palette[:2]) or ["#FFFFFF"]
+    # Theme-screen "Color Shift" slider (see place_effects's own application) --
+    # this function reads theme.palette independently and was never wired to
+    # it (user report, 2026-07-26: "not seeing that at all" for the whole-house
+    # Shockwave/Shader/Pinwheel/Ripple/On composite on 01_BASE_All).
+    if assignment.color_shift:
+        palette = _hue_shift_palette(palette, assignment.color_shift)
 
     # All layers in this call share the same start/end (the whole section),
     # so they render simultaneously -- indexing straight into the repeated

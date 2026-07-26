@@ -27,6 +27,7 @@ from src.generator.effect_placer import (
     _WHOLE_HOUSE_HIGH_ENERGY_GATE,
     _WHOLE_HOUSE_LOW_ENERGY_GATE,
     _WHOLE_HOUSE_MID_ENERGY_GATE,
+    _hue_shift_palette,
     _place_drum_accents,
     _place_impact_accent,
     _place_whole_house_composite,
@@ -80,6 +81,7 @@ def _make_assignment(
     whole_house_layers: int = 0,
     variation_seed: int = 0,
     theme: Theme | None = None,
+    color_shift: float = 0.0,
 ) -> SectionAssignment:
     """Build an assignment for accent-helper tests.
 
@@ -97,6 +99,7 @@ def _make_assignment(
             drum_hits=drum_hits, impact=impact, whole_house_layers=whole_house_layers,
         ),
         variation_seed=variation_seed,
+        color_shift=color_shift,
     )
 
 
@@ -692,6 +695,36 @@ class TestDrumAccentPalette:
             assert p.color_palette != ["#FFFFFF"]
             assert len(p.color_palette) > 0
 
+    def test_color_shift_rotates_the_drum_accent_palette(self):
+        # bug: _place_drum_accents read assignment.theme.palette directly,
+        # bypassing the Theme screen's "Color Shift" slider entirely -- moving
+        # the slider had zero effect on drum-accent Shockwave colors (user
+        # report, 2026-07-26: "not seeing that at all").
+        theme = _make_theme(palette=["#FF0000", "#0000FF"])
+        hits = [(1000, "kick")]
+        hierarchy = _make_hierarchy(drum_hits=hits)
+        group = _make_radial_group()
+        props_by_name = _make_props_by_name(group.members, pixel_count=50)
+
+        unshifted = _place_drum_accents(
+            groups=[group], hierarchy=hierarchy,
+            assignment=_make_assignment(energy_score=80, theme=theme, color_shift=0.0),
+            variant_library=_make_variant_library(), props_by_name=props_by_name,
+        )
+        shifted = _place_drum_accents(
+            groups=[group], hierarchy=hierarchy,
+            assignment=_make_assignment(energy_score=80, theme=theme, color_shift=0.5),
+            variant_library=_make_variant_library(), props_by_name=props_by_name,
+        )
+        unshifted_colors = [p.color_palette for ps in unshifted.values() for p in ps]
+        shifted_colors = [p.color_palette for ps in shifted.values() for p in ps]
+        assert unshifted_colors
+        assert shifted_colors
+        assert unshifted_colors != shifted_colors
+        expected = _hue_shift_palette(theme.palette[:2], 0.5)
+        for colors in shifted_colors:
+            assert all(c in expected for c in colors)
+
 
 # ---------------------------------------------------------------------------
 # 042A: first-color-only effects get a single-color palette
@@ -1222,6 +1255,40 @@ class TestWholeHouseCompositePlacement:
                     assert p.parameters.get("E_0FILEPICKERCTRL_IFS") in (
                         "Shaders/Plasma Emitter.fs", "Shaders/Creation by Silexars.fs",
                     )
+
+    def test_color_shift_rotates_the_whole_house_composite_palette(self):
+        # bug: _place_whole_house_composite read assignment.theme.palette
+        # directly, bypassing the Theme screen's "Color Shift" slider entirely
+        # -- moving the slider had zero effect on the Shockwave/Shader/
+        # Pinwheel/Ripple/On composite on 01_BASE_All (user report,
+        # 2026-07-26: "not seeing that at all").
+        theme = _make_theme(palette=["#FF0000", "#0000FF"])
+        base = _make_base_group()
+
+        unshifted = _place_whole_house_composite(
+            groups=[base],
+            assignment=_make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                theme=theme, color_shift=0.0,
+            ),
+            variant_library=_make_variant_library(),
+        )
+        shifted = _place_whole_house_composite(
+            groups=[base],
+            assignment=_make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                theme=theme, color_shift=0.5,
+            ),
+            variant_library=_make_variant_library(),
+        )
+        unshifted_colors = [p.color_palette for p in unshifted[base.name]]
+        shifted_colors = [p.color_palette for p in shifted[base.name]]
+        assert unshifted_colors
+        assert shifted_colors
+        assert unshifted_colors != shifted_colors
+        expected = _hue_shift_palette(theme.palette[:2], 0.5)
+        for colors in shifted_colors:
+            assert colors == expected
 
     def test_pinwheel_placements_vary_thickness_and_twist(self):
         # bug: whole-house Pinwheel placements always rendered with the bare
