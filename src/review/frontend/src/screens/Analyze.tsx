@@ -638,7 +638,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
 
   function renderMetadataRow() {
     return (
-      <div className={styles.metadataRow}>
+      <div className={styles.metadataRow} data-testid="metadata-banner">
         <input
           className={styles.metadataInput}
           type="text"
@@ -646,6 +646,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
           onChange={(e) => setTitleInput(e.target.value)}
           placeholder="Title"
           aria-label="Title"
+          data-testid="metadata-title"
         />
         <input
           className={styles.metadataInput}
@@ -654,6 +655,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
           onChange={(e) => setArtistInput(e.target.value)}
           placeholder="Artist"
           aria-label="Artist"
+          data-testid="metadata-artist"
         />
         <button
           className={styles.reanalyzeBtn}
@@ -680,6 +682,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         </button>
         <button
           className={styles.reanalyzeBtn}
+          data-testid="metadata-save-btn"
           onClick={handleSaveMetadata}
           disabled={metadataSaving || (!titleInput.trim() && !artistInput.trim())}
         >
@@ -688,7 +691,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         {!artistInput.trim() && (
           <span className={styles.metadataWarning}>⚠ Artist is missing — lyrics lookup may fail or match the wrong song</span>
         )}
-        {metadataError && <span className={styles.metadataError}>{metadataError}</span>}
+        {metadataError && <span className={styles.metadataError} data-testid="metadata-save-error">{metadataError}</span>}
         {lyricsCheckResult && (
           lyricsCheckResult.found
             ? <span className={styles.metadataSuccess}>

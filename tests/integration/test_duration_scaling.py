@@ -454,10 +454,34 @@ class TestUS7BimodalDuration:
             name for name, e in effect_lib.effects.items()
             if getattr(e, "duration_behavior", "standard") == "sustained"
         }
+        # duration_behavior is only consulted by the generic duration-scaling
+        # path (_place_by_duration/_place_per_beat). Corpus-recipe groups
+        # (recipe_for_group) and the whole-house composite (01_BASE_All)
+        # have their own mined-pattern cadence logic that deliberately
+        # ignores it -- e.g. a corpus recipe's per-beat motion loop can
+        # place "Color Wash" (catalog-tagged sustained) in short chase
+        # blocks on purpose (2026-07-26, test_sustained_effects_are_long
+        # caught this as a false positive on 04_BEAT_Chase/08_HERO_MegaTree).
+        from src.generator.corpus_recipes import recipe_for_group
+        groups_by_name = {g.name: g for g in scenario.groups}
+
+        def _has_dedicated_cadence(group_name: str) -> bool:
+            # 01_BASE_All: whole-house composite (see above). 04_BEAT_*:
+            # _substitute_beat_canvas_effect deliberately chases a
+            # substituted effect (e.g. Color Wash) in short per-beat blocks
+            # regardless of its catalog duration_behavior tag -- tier 4 is
+            # round-robin dissimilar props, so it needs blocky/chase
+            # cadence, not the substituted effect's own default behavior.
+            if group_name.startswith("01_BASE_All") or group_name.startswith("04_BEAT_"):
+                return True
+            group = groups_by_name.get(group_name)
+            return group is not None and recipe_for_group(group) is not None
 
         for assignment in plan.sections:
             section_dur = assignment.section.end_ms - assignment.section.start_ms
-            for placements in assignment.group_effects.values():
+            for group_name, placements in assignment.group_effects.items():
+                if _has_dedicated_cadence(group_name):
+                    continue
                 for p in placements:
                     if p.effect_name in sustained_names:
                         dur = p.end_ms - p.start_ms
@@ -489,9 +513,30 @@ class TestUS7BimodalDuration:
             name for name, e in effect_lib.effects.items()
             if getattr(e, "duration_behavior", "standard") == "accent"
         }
+        # See the matching comment in test_sustained_effects_are_long: the
+        # whole-house composite (01_BASE_All) deliberately places
+        # section-spanning "Shockwave" layers regardless of Shockwave's own
+        # catalog duration_behavior="accent" tag (mined-corpus-derived
+        # aggregate layer stacking, not a per-beat burst in that context).
+        from src.generator.corpus_recipes import recipe_for_group
+        groups_by_name = {g.name: g for g in scenario.groups}
+
+        def _has_dedicated_cadence(group_name: str) -> bool:
+            # 01_BASE_All: whole-house composite (see above). 04_BEAT_*:
+            # _substitute_beat_canvas_effect deliberately chases a
+            # substituted effect (e.g. Color Wash) in short per-beat blocks
+            # regardless of its catalog duration_behavior tag -- tier 4 is
+            # round-robin dissimilar props, so it needs blocky/chase
+            # cadence, not the substituted effect's own default behavior.
+            if group_name.startswith("01_BASE_All") or group_name.startswith("04_BEAT_"):
+                return True
+            group = groups_by_name.get(group_name)
+            return group is not None and recipe_for_group(group) is not None
 
         for assignment in plan.sections:
-            for placements in assignment.group_effects.values():
+            for group_name, placements in assignment.group_effects.items():
+                if _has_dedicated_cadence(group_name):
+                    continue
                 for p in placements:
                     if p.effect_name in accent_names:
                         dur = p.end_ms - p.start_ms

@@ -1267,6 +1267,36 @@ def place_effects(
                                     p.parameters[dc_param] = dc_values[pi % len(dc_values)]
                     if rot_placements:
                         result.setdefault(group.name, []).extend(rot_placements)
+                        # Warp-type Shader variants (Kaleidoscope Tile,
+                        # Vincent'sStorm) distort/tile whatever renders
+                        # beneath them rather than carrying their own
+                        # color -- auto-place their required companion
+                        # base on layer 1 (see VariantTags.companion_base_effect).
+                        if (
+                            placement_rotated_def is rotated_def
+                            and variant is not None
+                            and variant.tags.companion_base_effect
+                        ):
+                            companion_placements = _place_companion_base(
+                                companion_effect_name=variant.tags.companion_base_effect,
+                                layer=layer,
+                                group=group,
+                                section=assignment.section,
+                                hierarchy=hierarchy,
+                                palette=tier_palette,
+                                variation_seed=assignment.variation_seed,
+                                effect_library=effect_library,
+                                variant_library=variant_library,
+                                theme=theme,
+                                chord_marks=chord_marks,
+                                tension_curve=tension_curve,
+                                danceability=danceability,
+                                chord_weight=chord_weight,
+                                duration_scaling=duration_scaling,
+                                bpm=bpm,
+                            )
+                            if companion_placements:
+                                result.setdefault(group.name, []).extend(companion_placements)
                 continue
 
             # Tier 6-7 effect rotation (fallback): when rotation_plan is None, use WorkingSet
@@ -1788,6 +1818,102 @@ def _assign_layers_to_tiers(layers: list[EffectLayer]) -> dict[int, set[int]]:
             mapping[i] = _MID_TIERS | {1}
 
     return mapping
+
+
+# Fallback colors used to pad a companion-base palette (see
+# _ensure_min_palette_colors) when the theme/tier palette handed to a Warp
+# shader's auto-placed base doesn't already carry enough active colors.
+_COMPANION_BASE_FALLBACK_COLORS: tuple[str, ...] = (
+    "#FFFFFF", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF",
+)
+
+
+def _ensure_min_palette_colors(colors: list[str], minimum: int = 2) -> list[str]:
+    """Pad a color list to at least ``minimum`` entries.
+
+    A Warp-type Shader's companion base (Butterfly, Single Strand) renders
+    flat white with 0-1 active palette colors -- "if no colors are chosen
+    the warp shader renders white" (user-confirmed, 2026-07-26). Palette-mode
+    color cycling needs real color variety to have anything to cycle
+    through. Pads from ``_COMPANION_BASE_FALLBACK_COLORS`` without
+    duplicating an already-present color.
+    """
+    padded = list(colors)
+    for extra in _COMPANION_BASE_FALLBACK_COLORS:
+        if len(padded) >= minimum:
+            break
+        if extra not in padded:
+            padded.append(extra)
+    return padded
+
+
+def _place_companion_base(
+    companion_effect_name: str,
+    layer: EffectLayer,
+    group: PowerGroup,
+    section: SectionEnergy,
+    hierarchy: HierarchyResult,
+    palette: list[str],
+    variation_seed: int,
+    effect_library: EffectLibrary,
+    variant_library,
+    theme,
+    chord_marks: list[TimingMark] | None = None,
+    tension_curve: list[tuple[int, int]] | None = None,
+    danceability: float | None = None,
+    chord_weight: float = 0.4,
+    duration_scaling: bool = False,
+    bpm: float = 120.0,
+) -> list[EffectPlacement]:
+    """Auto-place a companion base effect on the layer beneath a Warp-type
+    Shader variant (see VariantTags.companion_base_effect).
+
+    Warp shaders (Kaleidoscope Tile, Vincent'sStorm) distort/tile whatever
+    renders on the layer beneath them rather than carrying their own color,
+    and render blank/flat white with no base layer or too few active
+    palette colors underneath (user-confirmed, 2026-07-26). Picks the
+    best-scoring variant of ``companion_effect_name`` for this group/section
+    (same scoring context the RotationEngine itself uses), pads the palette
+    to at least 3 active colors, and stamps the result to layer 1 so it
+    renders behind the shader's own default layer 0.
+    """
+    effect_def = effect_library.effects.get(companion_effect_name)
+    if effect_def is None or variant_library is None:
+        return []
+
+    from src.generator.rotation import build_scoring_context
+    from src.variants.scorer import _score_variant
+
+    context = build_scoring_context(section, group, theme)
+    candidates = variant_library.query(base_effect=companion_effect_name)
+    companion_params: dict[str, Any] = {}
+    if candidates:
+        scored = [(v, _score_variant(v, context, effect_library)[0]) for v in candidates]
+        scored.sort(key=lambda x: x[1], reverse=True)
+        companion_params = dict(scored[0][0].parameter_overrides)
+
+    companion_palette = _ensure_min_palette_colors(palette, minimum=3)
+
+    placements = _place_effect_on_group(
+        effect_def=effect_def,
+        layer=layer,
+        group=group,
+        section=section,
+        hierarchy=hierarchy,
+        palette=companion_palette,
+        variation_seed=variation_seed,
+        chord_marks=chord_marks,
+        tension_curve=tension_curve,
+        danceability=danceability,
+        chord_weight=chord_weight,
+        variant_library=None,  # params applied below from the pre-scored variant
+        duration_scaling=duration_scaling,
+        bpm=bpm,
+    )
+    for p in placements:
+        p.parameters.update(companion_params)
+        p.layer = 1  # renders behind the Warp shader's default layer 0
+    return placements
 
 
 def _place_effect_on_group(
@@ -2716,6 +2842,18 @@ def _place_corpus_recipe(
                 )
             if end <= start:
                 continue
+            # A trailing block clamped to section.end_ms can land under the
+            # absolute 250ms floor when the section length isn't an exact
+            # multiple of the beat stride (2026-07-26 fix,
+            # test_duration_scaling.py::test_no_sub_250ms_placements caught
+            # 225/200/125ms Spirals/Shockwave/Color Wash placements on an
+            # EDM-tempo Mega Tree/Candy Canes section). Same never-shorten-
+            # only-lengthen runt-merge idiom as the secondary/mirror-overlay
+            # blocks below -- extend the previous block instead of emitting
+            # a too-short placement of its own.
+            if end - start < _DURATION_MIN_MS and placements:
+                placements[-1].end_ms = end
+                continue
             direction_cycle = (
                 {"param": recipe.direction_field, "values": list(recipe.direction_ping_pong_values)}
                 if use_ping_pong_direction
@@ -2865,10 +3003,16 @@ def _place_corpus_recipe(
         # full-length neighbor, so it visibly spun faster over the shorter
         # span). Merge it into the previous block instead of leaving it as
         # its own runt — never shorten a block, only ever lengthen one.
+        # The merge threshold is also floored at _DURATION_MIN_MS (2026-07-26
+        # fix): a relative-only threshold (50% of nominal) let a trailing
+        # block that wasn't short *relative to its stride* still land under
+        # the codebase's absolute 250ms minimum at fast tempos, e.g. a
+        # 225ms/200ms/125ms remainder on an EDM-tempo Mega Tree/Candy Canes
+        # section (test_duration_scaling.py::test_no_sub_250ms_placements).
         secondary_nominal_ms = stride * median_interval
         if len(secondary_windows) >= 2:
             last_start, last_end = secondary_windows[-1]
-            if last_end - last_start < secondary_nominal_ms * 0.5:
+            if last_end - last_start < max(secondary_nominal_ms * 0.5, _DURATION_MIN_MS):
                 prev_start, _ = secondary_windows[-2]
                 secondary_windows[-2] = (prev_start, last_end)
                 secondary_windows.pop()
@@ -2954,11 +3098,14 @@ def _place_corpus_recipe(
             # values as its full-length neighbor, so the spiral visibly
             # spun much faster over the shorter span). Merge it into the
             # previous block instead of leaving it as its own runt --
-            # never shorten a block, only ever lengthen one.
+            # never shorten a block, only ever lengthen one. Also floored at
+            # _DURATION_MIN_MS (2026-07-26 fix) -- see the matching comment
+            # on secondary_nominal_ms above; a relative-only threshold let a
+            # fast-tempo trailing block land under the absolute 250ms floor.
             nominal_ms = overlay_stride * median_interval
             if len(overlay_windows) >= 2:
                 last_start, last_end = overlay_windows[-1]
-                if last_end - last_start < nominal_ms * 0.5:
+                if last_end - last_start < max(nominal_ms * 0.5, _DURATION_MIN_MS):
                     prev_start, _ = overlay_windows[-2]
                     overlay_windows[-2] = (prev_start, last_end)
                     overlay_windows.pop()

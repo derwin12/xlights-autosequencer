@@ -274,13 +274,24 @@ def apply_edits(
         tier = move.tier
         tm = tier_membership.setdefault(tier, {})
 
-        # Remove from current group
-        current_group_name = tm.get(move.prop_name)
+        # Remove from current group. Prefer move.from_group (the group the
+        # UI recorded the prop as leaving) over the shared per-tier
+        # membership map -- tier 1 in particular can have more than one
+        # group (01_BASE_All, 01_BASE_All_FADES) that legitimately contain
+        # every prop simultaneously as whole-house canvases, not mutually
+        # exclusive partitions, so a single prop_name -> group_name map per
+        # tier silently loses track of which specific group a move targets
+        # once a second group with the same member gets processed after it
+        # (2026-07-26 fix, test_export_with_edits_reflects_changes caught a
+        # move out of 01_BASE_All actually removing from 01_BASE_All_FADES
+        # instead, since dict iteration order let the FADES group's entry
+        # overwrite the base group's in tm).
+        current_group_name = move.from_group or tm.get(move.prop_name)
         if current_group_name and current_group_name in groups_by_name:
             grp = groups_by_name[current_group_name]
             if move.prop_name in grp.members:
                 grp.members.remove(move.prop_name)
-        if move.prop_name in tm:
+        if tm.get(move.prop_name) == current_group_name:
             del tm[move.prop_name]
 
         # Add to target group

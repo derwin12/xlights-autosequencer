@@ -1,14 +1,19 @@
 """Metadata override flow: edit artist/title on the analyze-screen banner,
-verify the save indicator appears, confirm the override persists across
-a page reload.
+click Save & Refresh, confirm the override persists server-side.
 
 This flow catches regressions in:
 - Input wiring on `metadata-artist` / `metadata-title` fields
 - The PATCH /api/v1/songs/<id>/metadata endpoint + response handling
 - Persistence of overrides in the library/session storage
-- UI re-read of overrides after navigation
 
 Smoke-level: no analyzer content assertions.
+
+Note: the metadata row is button-triggered (`metadata-save-btn`), not
+auto-saved on blur, and a successful save re-triggers a full analysis run
+rather than showing a lightweight "saved" toast (handleSaveMetadata resets
+the analysis state so the pipeline re-runs with the corrected metadata) --
+so this test confirms the save via the PATCH response and server-side
+persistence, not a transient UI indicator.
 """
 from __future__ import annotations
 
@@ -44,7 +49,7 @@ def test_metadata_artist_override_persists(
     snapshot("banner-before-edit")
 
     # Replace whatever the ID3-derived artist is with a known test value.
-    # Wrap the blur-triggering action in an expect_response context so we
+    # Wrap the Save & Refresh click in an expect_response context so we
     # don't race the PATCH completion before asserting UI state.
     new_artist = "Acceptance Gate Test Artist"
     artist_input.fill(new_artist)
@@ -52,7 +57,7 @@ def test_metadata_artist_override_persists(
         lambda r: "/metadata" in r.url and r.request.method == "PATCH",
         timeout=30000,
     ) as resp_info:
-        artist_input.press("Tab")  # Tab fires onBlur → triggers save
+        page.get_by_test_id("metadata-save-btn").click()
     assert resp_info.value.ok, (
         f"PATCH /metadata failed: {resp_info.value.status} "
         f"{resp_info.value.status_text}"
@@ -60,22 +65,28 @@ def test_metadata_artist_override_persists(
 
     # No error state.
     assert not page.get_by_test_id("metadata-save-error").is_visible()
-    # Saved indicator appears after React re-renders with the updated props.
-    expect(page.get_by_test_id("metadata-saved")).to_be_visible(timeout=15000)
-    snapshot("banner-saved-indicator")
+    snapshot("banner-after-save")
 
-    # Verify the input's current value matches what we saved.
+    # Verify the input's current value matches what we saved. A successful
+    # save re-triggers analysis (screen transitions to the live-analysis
+    # view) rather than showing a "saved" toast, but the metadata banner and
+    # its inputs render in that view too, retaining the same React state.
     expect(artist_input).to_have_value(new_artist)
 
     # Persistence check via API: hit GET /api/v1/library and confirm the
     # override is persisted server-side. This survives page reload since it
     # reads the same library.json that the UI rehydrates from. Avoids the
     # fragility of reload-then-rerender which depends on last_screen prefs.
+    # patch_song_metadata (src/review/api/v1/library.py) overwrites the
+    # song's plain "artist" field directly -- there is no separate
+    # "override_artist" field in library.json (that name only exists as an
+    # internal concept in build_song_story's title_override/artist_override,
+    # not the API/library schema).
     import requests
     lib = requests.get(f"{base_url}/api/v1/library", timeout=5).json()
     songs = lib.get("songs", [])
-    song = next((s for s in songs if s.get("override_artist") == new_artist), None)
+    song = next((s for s in songs if s.get("artist") == new_artist), None)
     assert song is not None, (
         f"Override not persisted to library. Songs: "
-        f"{[(s.get('song_id'), s.get('override_artist')) for s in songs]}"
+        f"{[(s.get('song_id'), s.get('artist')) for s in songs]}"
     )
