@@ -2014,3 +2014,71 @@ class TestIncludeExtraTiming:
         assert "Kick Hits" in timing_names
         assert "Chords" not in timing_names
         assert not any(n.startswith("Onsets") for n in timing_names)
+
+
+class TestFireHueShiftMatchesThemeColor:
+    """Fire always rendered as plain red/yellow (E_SLIDER_Fire_HueShift left
+    at xLights' default of 0, or a fixed creative value baked into a specific
+    variant) regardless of the section's actual theme color (user request,
+    2026-07-26). _serialize_effect_params now derives the hue-shift from the
+    placement's own color_palette using the user's real-xLights-tested
+    hue->shift calibration table.
+    """
+
+    def test_red_palette_stays_at_zero_shift(self) -> None:
+        placement = EffectPlacement(
+            effect_name="Fire", xlights_id="E_FIRE", model_or_group="Model1",
+            start_ms=0, end_ms=1000, color_palette=["#FF0000"],
+        )
+        params = _serialize_effect_params(placement)
+        assert "E_SLIDER_Fire_HueShift=0" in params
+
+    def test_green_palette_shifts_hue_into_green_band(self) -> None:
+        placement = EffectPlacement(
+            effect_name="Fire", xlights_id="E_FIRE", model_or_group="Model1",
+            start_ms=0, end_ms=1000, color_palette=["#00FF00"],
+        )
+        params = _serialize_effect_params(placement)
+        assert "E_SLIDER_Fire_HueShift=32" in params
+
+    def test_blue_palette_shifts_hue_into_blue_band(self) -> None:
+        placement = EffectPlacement(
+            effect_name="Fire", xlights_id="E_FIRE", model_or_group="Model1",
+            start_ms=0, end_ms=1000, color_palette=["#0000FF"],
+        )
+        params = _serialize_effect_params(placement)
+        assert "E_SLIDER_Fire_HueShift=61" in params
+
+    def test_overrides_a_variant_baked_fixed_hue_shift(self) -> None:
+        """A variant like "Fire Medium" bakes E_SLIDER_Fire_HueShift=79 --
+        theme-color derivation must win over that fixed creative value,
+        otherwise Fire Medium would always look magenta regardless of theme."""
+        placement = EffectPlacement(
+            effect_name="Fire", xlights_id="E_FIRE", model_or_group="Model1",
+            start_ms=0, end_ms=1000,
+            parameters={"E_SLIDER_Fire_HueShift": 79},
+            color_palette=["#00FF00"],
+        )
+        params = _serialize_effect_params(placement)
+        assert "E_SLIDER_Fire_HueShift=32" in params
+
+    def test_gray_palette_leaves_hue_shift_unchanged(self) -> None:
+        """No saturated color to derive a hue from -- leave whatever value
+        was already set (default or variant override) rather than forcing
+        a shift onto a genuinely colorless theme."""
+        placement = EffectPlacement(
+            effect_name="Fire", xlights_id="E_FIRE", model_or_group="Model1",
+            start_ms=0, end_ms=1000,
+            parameters={"E_SLIDER_Fire_HueShift": 42},
+            color_palette=["#EEEEEE", "#DDDDDD"],
+        )
+        params = _serialize_effect_params(placement)
+        assert "E_SLIDER_Fire_HueShift=42" in params
+
+    def test_other_effects_are_unaffected(self) -> None:
+        placement = EffectPlacement(
+            effect_name="Color Wash", xlights_id="E_COLORWASH", model_or_group="Model1",
+            start_ms=0, end_ms=1000, color_palette=["#00FF00"],
+        )
+        params = _serialize_effect_params(placement)
+        assert "E_SLIDER_Fire_HueShift" not in params

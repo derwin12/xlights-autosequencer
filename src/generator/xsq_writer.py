@@ -820,6 +820,72 @@ def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
 # _serialize_effect_params indexes into.
 _PINWHEEL_3D_OPTIONS = ("3D", "3D Inverted", "Sweep")
 
+# Fire_HueShift calibration (user request, 2026-07-26): xLights' Fire effect
+# always renders from a fixed red/orange gradient unless E_SLIDER_Fire_HueShift
+# rotates it -- every Fire placement previously left this at its xLights
+# default of 0 (or a hardcoded creative value baked into a specific variant,
+# e.g. "Fire Medium"'s 79), so Fire never matched a theme's actual color.
+# These bands are the user's own real-xLights-tested hue->shift calibration
+# table (hue_start, hue_end, shift_at_start, shift_at_end); a hue inside a
+# band interpolates linearly across it. The blue band's stated lower bound
+# (210deg) is nudged to 220deg here to remove its overlap with cyan's stated
+# upper bound (also 220deg) -- both can't hold simultaneously, and 220 is the
+# shared edge either table entry would round to anyway. A hue that falls in
+# a gap between bands (e.g. 60-90deg, the untabulated red->green transition)
+# holds at the nearer band edge rather than inventing a cross-fade the
+# table doesn't specify.
+_FIRE_HUE_SHIFT_BANDS: list[tuple[float, float, float, float]] = [
+    (0.0, 60.0, 0.0, 0.0),      # red-yellow -- normal fire, no shift
+    (90.0, 150.0, 25.0, 40.0),  # green
+    (160.0, 220.0, 45.0, 50.0), # cyan
+    (220.0, 270.0, 58.0, 65.0), # blue
+    (270.0, 330.0, 75.0, 85.0), # purple/magenta
+]
+
+
+def _dominant_hue_degrees(colors: list[str]) -> float | None:
+    """Return the hue (0-360) of the most saturated color in the list.
+
+    Returns None when no color is saturated enough to carry a meaningful hue
+    (all white/gray/near-black) -- callers should leave Fire's hue-shift at
+    its existing value in that case rather than snapping to red.
+    """
+    import colorsys
+    best_hue: float | None = None
+    best_sat = 0.0
+    for color in colors:
+        c = color.lstrip("#")
+        if len(c) != 6:
+            continue
+        r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+        h, s, v = colorsys.rgb_to_hsv(r, g, b)
+        if s > best_sat and s >= 0.25 and v >= 0.15:
+            best_sat = s
+            best_hue = h * 360.0
+    return best_hue
+
+
+def _fire_hue_shift_for_hue(hue_degrees: float) -> int:
+    """Map a theme color's hue to xLights' E_SLIDER_Fire_HueShift (0-100)."""
+    h = hue_degrees % 360.0
+
+    for h0, h1, s0, s1 in _FIRE_HUE_SHIFT_BANDS:
+        if h0 <= h <= h1:
+            frac = (h - h0) / (h1 - h0) if h1 != h0 else 0.0
+            return round(s0 + frac * (s1 - s0))
+
+    # Hue falls in an untabulated gap between bands -- hold at whichever
+    # band edge is circularly closest rather than inventing a cross-fade.
+    best_shift = 0.0
+    best_dist = None
+    for h0, h1, s0, s1 in _FIRE_HUE_SHIFT_BANDS:
+        for edge_h, edge_s in ((h0, s0), (h1, s1)):
+            dist = min(abs(h - edge_h), 360.0 - abs(h - edge_h))
+            if best_dist is None or dist < best_dist:
+                best_dist = dist
+                best_shift = edge_s
+    return round(best_shift)
+
 
 def _serialize_effect_params(
     placement: EffectPlacement, buffer_style: str | None = None,
@@ -869,6 +935,18 @@ def _serialize_effect_params(
     # non-flat options is deterministic per placement (same model+time
     # always picks the same one) rather than random, so re-running the
     # same generation reproduces identical output.
+    # Match Fire's flame color to this placement's own theme color instead
+    # of always rendering as plain red/yellow fire (user request, 2026-07-26).
+    # Overrides any variant-baked HueShift too, since a fixed creative value
+    # (e.g. "Fire Medium"'s 79) would otherwise ignore the song's actual
+    # theme -- the whole point is theme consistency, not a specific variant's
+    # fixed look. Section/backdrop palettes without a real saturated color
+    # (all white/gray) leave the existing value alone rather than forcing red.
+    if placement.effect_name == "Fire":
+        dominant_hue = _dominant_hue_degrees(placement.color_palette)
+        if dominant_hue is not None:
+            defaults["E_SLIDER_Fire_HueShift"] = str(_fire_hue_shift_for_hue(dominant_hue))
+
     if placement.effect_name == "Pinwheel" and defaults.get("E_CHOICE_Pinwheel_3D", "None") == "None":
         # zlib.crc32, not Python's hash() -- string hashing is randomized
         # per-process (PYTHONHASHSEED), which would make the same
