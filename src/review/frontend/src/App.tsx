@@ -18,6 +18,7 @@ import { Pictures } from 'src/screens/Pictures';
 import { Export } from 'src/screens/Export';
 import { Library } from 'src/screens/Library';
 import { debounce } from 'src/hooks/usePersist';
+import { apiUrl } from 'src/lib/apiClient';
 
 // ── shared types ─────────────────────────────────────────────────────────────
 
@@ -194,7 +195,12 @@ function GlobalAudioPlayer({ songId }: { songId: string | null }) {
   useEffect(() => {
     const audio = audioRef.current!;
     if (!songId) return;
-    audio.src = `/api/v1/songs/${songId}/audio`;
+    // Bare HTMLAudioElement.src assignment isn't covered by the window.fetch/
+    // EventSource origin-patching in backendPort.ts -- in the packaged app a
+    // relative URL here resolves against the WebView's own asset origin, not
+    // the backend's http://127.0.0.1:<port>, so audio silently never loads
+    // (bug found 2026-07-25: play button did nothing, no visible error).
+    audio.src = apiUrl(`/api/v1/songs/${songId}/audio`);
     audio.load();
     usePlaybackStore.getState().setSongId(songId);
     usePlaybackStore.setState({ playing: false, timeMs: 0 });
