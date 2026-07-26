@@ -23,6 +23,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Exclude workspace from Windows Defender real-time scanning
+        # GitHub-hosted Windows runners have Defender real-time protection
+        # on by default -- it was slowing every file write during this
+        # build (Rust compiles, and especially NSIS packaging the ~220MB
+        # installer, which took 6-7+ minutes here vs under a minute
+        # locally) and, worse, could still be actively scanning the
+        # freshly-written installer .exe well after cargo tauri build's
+        # own "Finished 1 bundle" success message -- a post-build
+        # Get-ChildItem check for the file failed even after a 60-second
+        # retry window (2026-07-26, reproduced). Excluding the whole
+        # workspace up front is the actual fix; retrying longer would
+        # only be treating the symptom.
+        shell: pwsh
+        run: Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:

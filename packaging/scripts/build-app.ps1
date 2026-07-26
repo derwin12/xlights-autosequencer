@@ -29,10 +29,14 @@ $BundleRoot = "src-tauri\target\$Triple\release\bundle"
 # cargo tauri build's own "Finished 1 bundle at: ..." message has been
 # observed to print successfully while this immediate Get-ChildItem check
 # still comes back empty -- reproduced locally (2026-07-25, brief) and on a
-# GitHub Actions runner (2026-07-26, ~10+ seconds -- CI disk/AV scanning is
-# apparently slower than a local machine, a 10x1s retry window wasn't
-# enough there). Retry for up to a minute instead of failing outright on
-# what cargo tauri build itself already confirmed succeeded.
+# GitHub Actions runner (2026-07-26, still failing after a full 60s retry
+# window). Root-caused on CI: Windows Defender's real-time scanning on the
+# freshly-written ~220MB installer (GitHub-hosted Windows runners have it
+# on by default) -- also explains why NSIS packaging itself took 6-7+
+# minutes there vs under a minute locally. The real fix is excluding the
+# workspace from Defender scanning in the workflow (see
+# release-windows.yml); this retry loop is defense-in-depth only, not the
+# primary fix -- don't just widen it further if this keeps happening.
 $ExePath = $null
 for ($i = 0; $i -lt 30 -and -not $ExePath; $i++) {
     if ($i -gt 0) { Start-Sleep -Seconds 2 }
@@ -40,9 +44,13 @@ for ($i = 0; $i -lt 30 -and -not $ExePath; $i++) {
 }
 
 if (-not $ExePath) {
-    Write-Error "error: NSIS installer not produced under $BundleRoot\nsis\ after 60s of retrying"
+    # Write-Error under $ErrorActionPreference = "Stop" terminates the
+    # script immediately -- diagnostics must run BEFORE it, not after
+    # (a real bug in an earlier version of this check: the diagnostic
+    # listing silently never ran because it came after Write-Error).
     Write-Host "-> Diagnostic listing of $BundleRoot (recursive):"
     Get-ChildItem -Recurse -Path $BundleRoot -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.FullName)" }
+    Write-Error "error: NSIS installer not produced under $BundleRoot\nsis\ after 60s of retrying"
     exit 1
 }
 
