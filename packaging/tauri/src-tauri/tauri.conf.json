@@ -35,7 +35,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../../pyinstaller/plugins/vamp": "vamp",
+      "../../pyinstaller/plugins/vamp/x86_64-windows": "vamp",
       "binaries/backend-x86_64-pc-windows-msvc": "backend",
       "packaging-manifest.json": "packaging-manifest.json"
     },

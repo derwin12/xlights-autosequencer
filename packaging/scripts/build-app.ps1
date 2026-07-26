@@ -25,7 +25,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $BundleRoot = "src-tauri\target\$Triple\release\bundle"
-$ExePath = Join-Path $BundleRoot "nsis" | Get-ChildItem -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+
+# cargo tauri build's own "Finished 1 bundle at: ..." message has been
+# observed to print successfully while this immediate Get-ChildItem check
+# still comes back empty (2026-07-25, reproduced twice) -- likely a brief
+# antivirus lock or filesystem metadata delay on the freshly-written ~200MB
+# exe right after NSIS closes it. Retry briefly instead of failing outright
+# on what cargo tauri build itself already confirmed succeeded.
+$ExePath = $null
+for ($i = 0; $i -lt 10 -and -not $ExePath; $i++) {
+    if ($i -gt 0) { Start-Sleep -Seconds 1 }
+    $ExePath = Join-Path $BundleRoot "nsis" | Get-ChildItem -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+}
 
 if (-not $ExePath) {
     Write-Error "error: NSIS installer not produced under $BundleRoot\nsis\"

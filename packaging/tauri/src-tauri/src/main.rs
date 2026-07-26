@@ -108,6 +108,18 @@ fn spawn_backend(app: &AppHandle) -> Result<(), String> {
         .resource_dir()
         .map_err(|e| format!("resource_dir: {e}"))?;
 
+    // tauri.conf.json's resources entry maps the arch-specific source
+    // subfolder (packaging/pyinstaller/plugins/vamp/x86_64-windows/)
+    // directly onto "vamp" -- the .dll files end up flat under
+    // resource_dir/vamp/, not resource_dir/vamp/x86_64-windows/. Bug found
+    // 2026-07-25: mapping the outer "vamp" source folder (which still had
+    // the arch subdirectory nested inside) meant every plugin failed to
+    // load at runtime ("No library found in Vamp path") despite
+    // capabilities.py correctly detecting the plugins on disk -- Python-side
+    // detection and the actual Vamp C++ host's runtime search were looking
+    // one directory level apart. If a second arch target is ever added,
+    // this needs to select the right resource subfolder per
+    // std::env::consts::ARCH, matching backend_binary_path()'s pattern.
     let vamp_path = resource_dir.join("vamp");
     let torch_home = app_support_root()?
         .join("models")
