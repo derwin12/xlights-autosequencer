@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from src.generator.rotation import RotationEntry, RotationPlan, build_scoring_context
+from src.generator.rotation import (
+    RotationEntry,
+    RotationPlan,
+    build_scoring_context,
+    _pick_among_tied_top_scorers,
+)
 
 try:
     from src.generator.rotation import RotationEngine
@@ -745,3 +750,67 @@ class TestEffectPoolSelection:
 
         # Should fall back to library — still return something, not error
         assert result is not None, "Expected fallback to library scoring"
+
+
+class _StubVariant:
+    """Bare-bones stand-in for EffectVariant — only `.name` is read by the tie-breaker."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class TestPickAmongTiedTopScorers:
+    """Variants sharing identical scoring tags score exactly equal (e.g.
+    Shader.json's "Shader Plasma Emitter Surge" and "Shader Continua
+    Variation" both tag tier_affinity=hero/energy_level=high/section_roles=
+    [chorus,drop,build]). A plain stable sort always resolves such ties to
+    whichever variant is listed first in the JSON -- every hero/high-energy
+    section in every song landed on the same shader (user report,
+    2026-07-26: "we just used the plasma emitter... can we add some
+    variety"). _pick_among_tied_top_scorers hashes a per-(section, group)
+    seed to break ties instead, so different sections get different
+    shaders while one section's own choice stays stable.
+    """
+
+    def test_single_top_scorer_is_returned_directly(self) -> None:
+        results = [
+            (_StubVariant("A"), 0.9, {}),
+            (_StubVariant("B"), 0.5, {}),
+        ]
+        variant, score, _ = _pick_among_tied_top_scorers(results, "seed")
+        assert variant.name == "A"
+        assert score == 0.9
+
+    def test_tied_top_scorers_vary_by_seed(self) -> None:
+        results = [
+            (_StubVariant("Shader Plasma Emitter Surge"), 0.675, {}),
+            (_StubVariant("Shader Continua Variation"), 0.675, {}),
+        ]
+        picks = {
+            _pick_among_tied_top_scorers(results, f"{i}:08_HERO_Matrix")[0].name
+            for i in range(8)
+        }
+        assert picks == {"Shader Plasma Emitter Surge", "Shader Continua Variation"}, (
+            "Expected both tied variants to appear across different section seeds, "
+            f"got only {picks}"
+        )
+
+    def test_same_seed_is_deterministic(self) -> None:
+        results = [
+            (_StubVariant("Shader Plasma Emitter Surge"), 0.675, {}),
+            (_StubVariant("Shader Continua Variation"), 0.675, {}),
+        ]
+        seed = "3:08_HERO_Matrix"
+        first = _pick_among_tied_top_scorers(results, seed)[0].name
+        second = _pick_among_tied_top_scorers(results, seed)[0].name
+        assert first == second
+
+    def test_non_tied_lower_scorers_are_never_picked(self) -> None:
+        results = [
+            (_StubVariant("A"), 0.675, {}),
+            (_StubVariant("B"), 0.675, {}),
+            (_StubVariant("C"), 0.55, {}),
+        ]
+        for i in range(20):
+            variant, _, _ = _pick_among_tied_top_scorers(results, f"seed-{i}")
+            assert variant.name in ("A", "B")

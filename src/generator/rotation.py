@@ -1,6 +1,7 @@
 """Intelligent effect rotation engine — pre-computes variant assignments for tier 5-8 groups."""
 from __future__ import annotations
 
+import zlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
@@ -9,6 +10,34 @@ from src.effects.library import EffectLibrary
 from src.variants.library import VariantLibrary
 from src.variants.models import EffectVariant
 from src.variants.scorer import _score_variant, rank_variants_with_fallback
+
+# Variants that share identical scoring tags (e.g. Shader.json's hero+high
+# variants "Shader Plasma Emitter Surge" and "Shader Continua Variation" both
+# tag tier_affinity=hero/energy_level=high/section_roles=[chorus,drop,build])
+# score exactly equal in _score_variant. A plain `sort()` is stable, so ties
+# always resolved to whichever variant appears first in the JSON file --
+# every hero/high-energy section in every song landed on the same shader
+# (user report, 2026-07-26: "we just used the plasma emitter"). This hashes
+# a per-(section, group) seed to pick among tied top-scorers instead, so
+# different sections deterministically get different shaders/variants while
+# a single section's own choice stays stable (recomputing the same seed
+# always yields the same pick -- re-running the same song is reproducible).
+_SCORE_TIE_EPSILON = 1e-9
+
+
+def _pick_among_tied_top_scorers(
+    results: list[tuple[EffectVariant, float, dict]], seed_key: str,
+) -> tuple[EffectVariant, float, dict]:
+    """Return one of the top-scoring entries in `results`, breaking ties by hash.
+
+    `results` must already be sorted descending by score and non-empty.
+    """
+    top_score = results[0][1]
+    tied = [r for r in results if top_score - r[1] < _SCORE_TIE_EPSILON]
+    if len(tied) == 1:
+        return tied[0]
+    idx = zlib.crc32(seed_key.encode("utf-8")) % len(tied)
+    return tied[idx]
 
 
 # Base effects whose variants light >50% of a prop's pixels at any frame.
@@ -176,13 +205,15 @@ class RotationEngine:
                     scored.append((v, total, breakdown))
                 scored.sort(key=lambda x: x[1], reverse=True)
                 if scored[0][1] >= 0.3:
-                    return scored[0][0]
+                    seed_key = f"{section.start_ms}:{group.name}"
+                    return _pick_among_tied_top_scorers(scored, seed_key)[0]
 
         # Full library fallback
         results = self._rank_for_group(section, group, theme)
         if not results:
             return None
-        return results[0][0]
+        seed_key = f"{section.start_ms}:{group.name}"
+        return _pick_among_tied_top_scorers(results, seed_key)[0]
 
     def build_rotation_plan(
         self,
@@ -333,17 +364,23 @@ class RotationEngine:
                     ]
                     results.sort(key=lambda x: x[1], reverse=True)
 
+                # Seed for tied-top-score tie-breaking (see
+                # _pick_among_tied_top_scorers): unique per section+group, so
+                # a group's choice is stable for that section's whole
+                # duration but can differ from section to section.
+                tie_seed = f"{section_index}:{group.name}"
+
                 if embrace_repetition:
                     # T018: No intra-section dedup — same variant can repeat across groups
-                    variant, score, breakdown = results[0]
+                    variant, score, breakdown = _pick_among_tied_top_scorers(results, tie_seed)
                 else:
                     # T025: prefer variants not yet used in this section
                     unused = [(v, s, b) for v, s, b in results if v.name not in used_in_section]
                     if unused:
-                        variant, score, breakdown = unused[0]
+                        variant, score, breakdown = _pick_among_tied_top_scorers(unused, tie_seed)
                     else:
                         # All variants exhausted — fall back to highest-scoring one
-                        variant, score, breakdown = results[0]
+                        variant, score, breakdown = _pick_among_tied_top_scorers(results, tie_seed)
 
                 # T008/T010 (FR-001, FR-006): within-tier base-effect dedup for tiers 5-8.
                 # Independent of embrace_repetition — applies in both modes.
@@ -359,14 +396,14 @@ class RotationEngine:
                         if v.base_effect not in used_effects_per_tier[group.tier] and s >= 0.3
                     ]
                     if unclaimed:
-                        variant, score, breakdown = unclaimed[0]
+                        variant, score, breakdown = _pick_among_tied_top_scorers(unclaimed, tie_seed)
                     else:
                         dense_fallback = [
                             (v, s, b) for v, s, b in results
                             if v.base_effect in _DENSE_FILL_BASE_EFFECTS
                         ]
                         if dense_fallback:
-                            variant, score, breakdown = dense_fallback[0]
+                            variant, score, breakdown = _pick_among_tied_top_scorers(dense_fallback, tie_seed)
                         # else: no dense fill in `results` — keep current selection.
 
                 # Global effect cap: if this base_effect already occupies ≥ 25%
@@ -388,7 +425,7 @@ class RotationEngine:
                             and s >= 0.3
                         ]
                         if capped_alt:
-                            variant, score, breakdown = capped_alt[0]
+                            variant, score, breakdown = _pick_among_tied_top_scorers(capped_alt, tie_seed)
 
                 used_in_section.add(variant.name)
                 # T009: record base effect as used for this tier
