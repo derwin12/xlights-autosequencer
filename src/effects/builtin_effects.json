@@ -244,28 +244,6 @@
           "choices": null,
           "description": "Reverse the direction of horizontal/vertical fades",
           "supports_value_curve": false
-        },
-        {
-          "name": "Color_Wash_Cycles",
-          "storage_name": "E_TEXTCTRL_ColorWash_Cycles",
-          "widget_type": "textctrl",
-          "value_type": "float",
-          "default": 0.1,
-          "min": 0.1,
-          "max": 1.0,
-          "description": "Number of color fade cycles per second",
-          "supports_value_curve": true
-        },
-        {
-          "name": "Color_Wash_Shimmer",
-          "storage_name": "E_CHECKBOX_ColorWash_Shimmer",
-          "widget_type": "checkbox",
-          "value_type": "bool",
-          "default": 0,
-          "min": null,
-          "max": null,
-          "description": "Enable shimmer/sparkle overlay on the color wash",
-          "supports_value_curve": false
         }
       ],
       "prop_suitability": {
@@ -5817,7 +5795,7 @@
     "Lightning": {
       "name": "Lightning",
       "xlights_id": "eff_LIGHTNING",
-      "category": "burst",
+      "category": "pattern",
       "description": "Jagged lightning bolts flashing across the model",
       "intent": "Sub-beat white flicker accents on house outline lines and high-impact moments",
       "parameters": [
@@ -5927,7 +5905,7 @@
         "arch": "good",
         "vertical": "ideal",
         "tree": "good",
-        "radial": "poor"
+        "radial": "not_recommended"
       },
       "analysis_mappings": [],
       "layer_role": "either",
