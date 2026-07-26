@@ -570,7 +570,16 @@ def write_xsq(
     for group_name, placements in all_placements.items():
         for p in placements:
             buffer_style = _buffer_style_for_placement(group_name, p.effect_name, p.buffer_style_override)
-            pal_idx = _ensure_palette(p.color_palette, palette_index, palette_list, p.music_sparkles)
+            hue_adjust = None
+            if p.effect_name == "Shader" and str(
+                p.parameters.get("E_0FILEPICKERCTRL_IFS", "")
+            ).endswith("Black Cherry Cosmos.fs"):
+                dominant_hue = _dominant_hue_degrees(p.color_palette)
+                if dominant_hue is not None:
+                    hue_adjust = _shader_hue_adjust_for_hue(
+                        dominant_hue, _BLACK_CHERRY_COSMOS_BASELINE_HUE_DEG,
+                    )
+            pal_idx = _ensure_palette(p.color_palette, palette_index, palette_list, p.music_sparkles, hue_adjust)
             eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list, buffer_style)
             placement_cache[id(p)] = (eff_idx, pal_idx)
 
@@ -784,7 +793,9 @@ _DEFAULT_PALETTE_COLORS = [
 ]
 
 
-def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
+def _serialize_palette(
+    colors: list[str], music_sparkles: int = 0, hue_adjust: int | None = None,
+) -> str:
     """Convert a list of hex colors to xLights C_BUTTON_Palette format.
 
     Always fills all 8 palette slots — theme colors first, then defaults.
@@ -796,6 +807,8 @@ def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
     checkbox alongside the slider, and without it the slider value alone
     does nothing, so every prior sparkle placement (tier-1 BASE, palette-
     restraint pool effects) rendered with sparkles silently off.
+    ``hue_adjust``, when given, appends C_SLIDER_Color_HueAdjust -- the
+    generic Color-tab hue-rotation slider (see _shader_hue_adjust_for_hue).
     """
     padded = list(colors[:8])
     active_count = len(padded)
@@ -811,6 +824,8 @@ def _serialize_palette(colors: list[str], music_sparkles: int = 0) -> str:
     if music_sparkles > 0:
         parts.append("C_CHECKBOX_MusicSparkles=1")
         parts.append(f"C_SLIDER_SparkleFrequency={music_sparkles}")
+    if hue_adjust is not None:
+        parts.append(f"C_SLIDER_Color_HueAdjust={hue_adjust}")
     return ",".join(parts)
 
 
@@ -863,6 +878,32 @@ def _dominant_hue_degrees(colors: list[str]) -> float | None:
             best_sat = s
             best_hue = h * 360.0
     return best_hue
+
+
+def _shader_hue_adjust_for_hue(
+    hue_degrees: float, baseline_hue_degrees: float,
+) -> int:
+    """Map a theme hue to xLights' generic C_SLIDER_Color_HueAdjust (-100-100).
+
+    Live-tested in xLights (user request, 2026-07-26) on the Black Cherry
+    Cosmos shader: unlike Fire's own hand-tuned band table, this slider is
+    a plain circular HSV hue rotation applied to whatever the effect
+    already renders, at ~3.6deg/unit (100 units = 360deg -- v=100 measured
+    back to within ~8deg of v=0's own baseline color). ``baseline_hue_degrees``
+    is that shader's native (unadjusted) hue -- e.g. Black Cherry Cosmos's own
+    hardcoded magenta/crimson measures ~336deg. Returns the shortest-rotation
+    value in [-50, 50] (both signs reach every hue once each way around).
+    """
+    raw = ((hue_degrees - baseline_hue_degrees) % 360.0) / 3.6
+    if raw > 50.0:
+        raw -= 100.0
+    return round(raw)
+
+
+# Black Cherry Cosmos's own hardcoded color (no color uniform in its .fs --
+# see _shader_hue_adjust_for_hue) measured via live xLights render_frame
+# captures at C_SLIDER_Color_HueAdjust=0 (user request, 2026-07-26).
+_BLACK_CHERRY_COSMOS_BASELINE_HUE_DEG = 336.0
 
 
 def _fire_hue_shift_for_hue(hue_degrees: float) -> int:
@@ -1042,9 +1083,10 @@ def _ensure_palette(
     index: dict[str, int],
     palette_list: list[str],
     music_sparkles: int = 0,
+    hue_adjust: int | None = None,
 ) -> int:
     """Add palette to dedup index if not already present. Return index."""
-    key = _serialize_palette(colors, music_sparkles)
+    key = _serialize_palette(colors, music_sparkles, hue_adjust)
     if key not in index:
         index[key] = len(palette_list)
         palette_list.append(key)

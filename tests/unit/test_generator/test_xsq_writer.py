@@ -14,7 +14,12 @@ from src.generator.models import (
     SequencePlan,
     SongProfile,
 )
-from src.generator.xsq_writer import _collect_timing_tracks, _serialize_effect_params, write_xsq
+from src.generator.xsq_writer import (
+    _collect_timing_tracks,
+    _serialize_effect_params,
+    _shader_hue_adjust_for_hue,
+    write_xsq,
+)
 from src.themes.models import EffectLayer, Theme
 
 
@@ -2082,3 +2087,70 @@ class TestFireHueShiftMatchesThemeColor:
         )
         params = _serialize_effect_params(placement)
         assert "E_SLIDER_Fire_HueShift" not in params
+
+
+class TestBlackCherryCosmosHueMatchesThemeColor:
+    """Black Cherry Cosmos.fs has no color uniform of its own -- its cosmic
+    magenta/crimson look is hardcoded in the GLSL (confirmed by reading the
+    shader source: its only declared INPUT is a "mouse" point2D). It always
+    rendered with that fixed color regardless of the section's theme (user
+    request, 2026-07-26). Unlike Fire, xLights exposes a generic Color-tab
+    C_SLIDER_Color_HueAdjust slider (-100 to 100) that rotates whatever an
+    effect already renders; live-tested in xLights via render_frame captures
+    at several slider values (sampled with real pixel-hue extraction, not by
+    eye) confirmed it's a plain ~3.6deg/unit circular HSV rotation -- not a
+    hand-tuned band table like Fire's. write_xsq now derives this slider's
+    value from the placement's own color_palette for this specific shader.
+    """
+
+    def test_shift_for_hue_at_the_shaders_own_native_color_is_zero(self) -> None:
+        assert _shader_hue_adjust_for_hue(336.0, baseline_hue_degrees=336.0) == 0
+
+    def test_shift_rotates_toward_a_green_theme(self) -> None:
+        # Live-measured: v=25 landed at ~71deg (yellow-green) from a 336deg baseline.
+        assert _shader_hue_adjust_for_hue(71.1, baseline_hue_degrees=336.0) == 26
+
+    def test_shift_rotates_toward_a_blue_theme(self) -> None:
+        # Live-measured: v=-25 landed at ~251deg (blue-violet).
+        assert _shader_hue_adjust_for_hue(251.3, baseline_hue_degrees=336.0) == -24
+
+    def test_shift_stays_within_the_shorter_half_of_the_slider_range(self) -> None:
+        for hue in range(0, 360, 15):
+            v = _shader_hue_adjust_for_hue(float(hue), baseline_hue_degrees=336.0)
+            assert -50 <= v <= 50
+
+    def test_write_xsq_applies_hue_adjust_to_black_cherry_cosmos_placement(
+        self, tmp_path: Path,
+    ) -> None:
+        plan = _make_plan()
+        plan.sections[0].group_effects["Model1"] = [EffectPlacement(
+            effect_name="Shader",
+            xlights_id="E_SHADER",
+            model_or_group="Model1",
+            start_ms=0,
+            end_ms=1000,
+            parameters={"E_0FILEPICKERCTRL_IFS": "Shaders\\Black Cherry Cosmos.fs"},
+            color_palette=["#00FF00"],
+        )]
+        root = _write_and_parse(plan, tmp_path)
+        palettes_text = "".join(
+            cp.text or "" for cp in root.find("ColorPalettes")
+        )
+        assert "C_SLIDER_Color_HueAdjust=40" in palettes_text
+
+    def test_write_xsq_leaves_other_shaders_unaffected(self, tmp_path: Path) -> None:
+        plan = _make_plan()
+        plan.sections[0].group_effects["Model1"] = [EffectPlacement(
+            effect_name="Shader",
+            xlights_id="E_SHADER",
+            model_or_group="Model1",
+            start_ms=0,
+            end_ms=1000,
+            parameters={"E_0FILEPICKERCTRL_IFS": "Shaders\\Plasma Emitter.fs"},
+            color_palette=["#00FF00"],
+        )]
+        root = _write_and_parse(plan, tmp_path)
+        palettes_text = "".join(
+            cp.text or "" for cp in root.find("ColorPalettes")
+        )
+        assert "C_SLIDER_Color_HueAdjust" not in palettes_text
