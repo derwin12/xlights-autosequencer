@@ -513,7 +513,7 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
                     Download Package
                   </button>
                   <div className={styles.downloadNote}>
-                    ⚠ Shaders and images are not included in the package
+                    ⚠ Media, shaders, and images are not included in the package
                   </div>
                 </>
               )}
