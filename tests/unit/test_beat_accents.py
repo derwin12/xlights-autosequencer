@@ -1156,6 +1156,7 @@ class TestWholeHouseCompositePlacement:
         variant_library = _make_variant_library({
             "Shader Plasma Emitter Drift": {"E_0FILEPICKERCTRL_IFS": "Shaders/Plasma Emitter.fs"},
             "Shader Plasma Emitter Surge": {"E_0FILEPICKERCTRL_IFS": "Shaders/Plasma Emitter.fs"},
+            "Shader Continua Variation": {"E_0FILEPICKERCTRL_IFS": "Shaders/Continua Variation.fs"},
         })
         result = _place_whole_house_composite(
             groups=[base], assignment=assignment, variant_library=variant_library,
@@ -1163,7 +1164,55 @@ class TestWholeHouseCompositePlacement:
         shader_placements = [p for p in result[base.name] if p.effect_name == "Shader"]
         assert shader_placements
         for p in shader_placements:
-            assert p.parameters.get("E_0FILEPICKERCTRL_IFS") == "Shaders/Plasma Emitter.fs"
+            assert p.parameters.get("E_0FILEPICKERCTRL_IFS", "").startswith("Shaders/")
+
+    def test_shader_choice_varies_by_seed_within_the_energy_appropriate_bucket(self):
+        # bug: whole-house Shader placements always hard-coded a binary choice
+        # between "Surge" and "Drift" based only on the high-energy gate,
+        # regardless of variation_seed -- so a real generated song always
+        # rendered the same one or two shaders and never Hex 3D Spiral /
+        # Creation Silexars / Black Cherry Cosmos / Continua Variation /
+        # xLights Fractal Audio (user report, 2026-07-26). Sweep seeds at a
+        # high-energy score and confirm both high-bucket shaders appear.
+        base = _make_base_group()
+        variant_library = _make_variant_library({
+            "Shader Plasma Emitter Surge": {"E_0FILEPICKERCTRL_IFS": "Shaders/Plasma Emitter.fs"},
+            "Shader Continua Variation": {"E_0FILEPICKERCTRL_IFS": "Shaders/Continua Variation.fs"},
+        })
+        seen_ifs: set[str] = set()
+        for seed in range(12):
+            assignment = _make_assignment(
+                energy_score=90, whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                variation_seed=seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=variant_library,
+            )
+            for p in result[base.name]:
+                if p.effect_name == "Shader":
+                    seen_ifs.add(p.parameters.get("E_0FILEPICKERCTRL_IFS"))
+        assert seen_ifs == {"Shaders/Plasma Emitter.fs", "Shaders/Continua Variation.fs"}
+
+    def test_shader_choice_stays_within_the_low_energy_bucket(self):
+        base = _make_base_group()
+        variant_library = _make_variant_library({
+            "Shader Plasma Emitter Calm": {"E_0FILEPICKERCTRL_IFS": "Shaders/Plasma Emitter.fs"},
+            "Shader Creation Silexars": {"E_0FILEPICKERCTRL_IFS": "Shaders/Creation by Silexars.fs"},
+        })
+        for seed in range(8):
+            assignment = _make_assignment(
+                energy_score=_WHOLE_HOUSE_LOW_ENERGY_GATE - 1,
+                whole_house_layers=len(_WHOLE_HOUSE_EFFECT_POOL),
+                variation_seed=seed,
+            )
+            result = _place_whole_house_composite(
+                groups=[base], assignment=assignment, variant_library=variant_library,
+            )
+            for p in result[base.name]:
+                if p.effect_name == "Shader":
+                    assert p.parameters.get("E_0FILEPICKERCTRL_IFS") in (
+                        "Shaders/Plasma Emitter.fs", "Shaders/Creation by Silexars.fs",
+                    )
 
     def test_pinwheel_placements_vary_thickness_and_twist(self):
         # bug: whole-house Pinwheel placements always rendered with the bare

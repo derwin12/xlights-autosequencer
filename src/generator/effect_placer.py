@@ -588,6 +588,24 @@ _WHOLE_HOUSE_RIPPLE_DRAW_STYLE = (
 _WHOLE_HOUSE_RIPPLE_THICKNESS = (8, 15, 25, 35)
 _WHOLE_HOUSE_RIPPLE_SCALE = (80, 100, 120, 150)
 
+# Whole-house Shader variety pools, bucketed by energy_score using the same
+# three gates as the layer-count sizing above. Grouped by each variant's own
+# Shader.json energy_level tag (low/medium/high) so the energy-appropriate
+# feel is preserved; within a bucket, rotate by (variation_seed + layer_idx)
+# like every sibling effect above instead of a single hard-coded pick -- the
+# previous code only ever chose between "Surge" and "Drift" (binary on the
+# high-energy gate alone), so every song's whole-house Shader accent always
+# rendered as one of exactly two presets regardless of variation_seed, and
+# never picked Hex 3D Spiral / Creation Silexars / Black Cherry Cosmos /
+# Continua Variation / xLights Fractal Audio at all (user report,
+# 2026-07-26: a real generated sequence used only Plasma Emitter).
+_WHOLE_HOUSE_SHADER_LOW = ("Shader Plasma Emitter Calm", "Shader Creation Silexars")
+_WHOLE_HOUSE_SHADER_MEDIUM = (
+    "Shader Plasma Emitter Drift", "Shader Hex 3D Spiral",
+    "Shader Black Cherry Cosmos", "Shader xLights Fractal Audio",
+)
+_WHOLE_HOUSE_SHADER_HIGH = ("Shader Plasma Emitter Surge", "Shader Continua Variation")
+
 
 def _apply_palette_target(palette: list[str], target: int) -> list[str]:
     """Trim a palette to ``target`` colours using spread-based indexing.
@@ -3780,11 +3798,14 @@ def _place_whole_house_composite(
                 ),
             }
         elif effect_name == "Shader":
-            variant_name = (
-                "Shader Plasma Emitter Surge"
-                if section.energy_score >= _WHOLE_HOUSE_HIGH_ENERGY_GATE
-                else "Shader Plasma Emitter Drift"
-            )
+            local_seed = variation_seed + i
+            if section.energy_score >= _WHOLE_HOUSE_HIGH_ENERGY_GATE:
+                shader_bucket = _WHOLE_HOUSE_SHADER_HIGH
+            elif section.energy_score < _WHOLE_HOUSE_LOW_ENERGY_GATE:
+                shader_bucket = _WHOLE_HOUSE_SHADER_LOW
+            else:
+                shader_bucket = _WHOLE_HOUSE_SHADER_MEDIUM
+            variant_name = shader_bucket[local_seed % len(shader_bucket)]
             variant = variant_library.get(variant_name) if variant_library is not None else None
             params = dict(variant.parameter_overrides) if variant is not None else {}
         elif effect_name == "Pinwheel":
