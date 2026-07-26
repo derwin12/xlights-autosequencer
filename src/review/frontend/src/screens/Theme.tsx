@@ -5,6 +5,8 @@ import { LightsPreview } from '../components/LightsPreview/LightsPreview';
 import { SectionStrip } from '../components/SectionStrip/SectionStrip';
 import { Inspector } from '../components/Inspector/Inspector';
 import { ParameterSliders, ParameterOverrides } from '../components/ParameterSliders/ParameterSliders';
+import { MiniLights } from '../components/MiniLights/MiniLights';
+import { hueShiftHex, hueShiftPalette } from '../lib/hueShift';
 import type { Assignment } from 'src/store/assignments';
 
 interface Theme {
@@ -182,6 +184,9 @@ export function Theme({
   const [resetting, setResetting] = useState(false);
 
   const currentAssignment = localAssignments.find((a) => a.section_index === selectedSectionIdx);
+  const currentTheme = currentAssignment?.theme_id
+    ? themes.find((t) => t.theme_id === currentAssignment.theme_id)
+    : undefined;
 
   // Reverse lookup for the theme grid: which section(s) currently use each
   // theme, so the assignment is visible without clicking through every
@@ -394,12 +399,19 @@ export function Theme({
           <LightsPreview
             n={20}
             label={sections[selectedSectionIdx]?.label ?? ''}
-            accent={currentAssignment?.theme_id
-              ? (themes.find((t) => t.theme_id === currentAssignment.theme_id)?.accent ?? '#4ade80')
+            accent={currentTheme
+              ? hueShiftHex(currentTheme.accent, liveOverrides.color_shift)
               : '#555'
             }
             energyPulse={0.6 * liveOverrides.brightness}
           />
+          {currentTheme && currentTheme.swatches.length > 0 && (
+            <MiniLights
+              themeId={currentTheme.theme_id}
+              kind="color-shift-preview"
+              swatches={hueShiftPalette(currentTheme.swatches, liveOverrides.color_shift)}
+            />
+          )}
         </div>
 
         <Inspector title="Section Parameters">
