@@ -28,6 +28,13 @@ def app(tmp_path, monkeypatch):
     application.config["TESTING"] = True
     yield application
 
+    # Block until any background analysis thread this test spawned finishes,
+    # before monkeypatch reverts XLIGHT_STATE_HOME below. Otherwise a thread
+    # still running past the end of this test picks up the NEXT test's env
+    # var (it's read live, not captured at spawn) and writes into that
+    # test's temp dir instead of this one's.
+    _analysis_module._join_active_threads()
+
 
 @pytest.fixture()
 def client(app):

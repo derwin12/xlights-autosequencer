@@ -29,6 +29,24 @@ from src.review.storage.assignments import load_session, save_session, save_full
 _runs: dict[str, "_RunState"] = {}
 _runs_lock = threading.Lock()
 
+# Tracks spawned background analysis threads so tests can join them before
+# tearing down XLIGHT_STATE_HOME — a still-running daemon thread reads env
+# vars live (not at spawn time), so one left over from a prior test can
+# write into the NEXT test's temp dir once monkeypatch repoints the env var,
+# corrupting that test's on-disk state. See _join_active_threads() and its
+# use in tests/review/conftest.py.
+_active_threads: list[threading.Thread] = []
+_active_threads_lock = threading.Lock()
+
+
+def _join_active_threads(timeout: float = 5.0) -> None:
+    """Test-only: block until all spawned analysis threads finish."""
+    with _active_threads_lock:
+        threads = list(_active_threads)
+        _active_threads.clear()
+    for th in threads:
+        th.join(timeout=timeout)
+
 # Caches a confirmed-good "Check Lyrics" result by (title, artist) so the
 # actual analyze pass can reuse it instead of re-fetching — a second
 # independent network round-trip against a flaky lyrics provider could land
@@ -1008,7 +1026,11 @@ def start_analyze(song_id: str):
 
     with _runs_lock:
         existing = _runs.get(song_id)
-        if existing and existing.status == "running":
+        # Idempotent unless force is requested: a "done" run counts too, not
+        # just "running" — otherwise a second immediate call (which can land
+        # after the first has already finished, e.g. the fast test stub)
+        # spawns a duplicate concurrent analysis with a different run_id.
+        if existing and not force and existing.status in ("running", "done"):
             return jsonify({"run_id": existing.run_id,
                             "started_at": existing.started_at}), 202
         # Start new run
@@ -1021,6 +1043,8 @@ def start_analyze(song_id: str):
         args=(state, source_path, song_id, None),
         daemon=True,
     )
+    with _active_threads_lock:
+        _active_threads.append(t)
     t.start()
 
     return jsonify({"run_id": state.run_id, "started_at": state.started_at}), 202
