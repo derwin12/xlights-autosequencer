@@ -489,7 +489,7 @@ _SMALL_RADIAL_THRESHOLD = 200    # pixel count threshold for "small" radial prop
 # Custom-modeled spinners, flakes, and similar shapes are classified as "outline"
 # by prop_type_for_display_as(), so we fall back to name matching.
 _RADIAL_NAME_KEYWORDS: frozenset[str] = frozenset({
-    "spinner", "flake", "snowflake", "wreath", "star", "circle",
+    "spinner", "flake", "snowflake", "wreath", "star", "circle", "spiral",
 })
 
 _DRUM_VARIANT_MAP: dict[str, str] = {
@@ -4330,8 +4330,11 @@ _PICTURE_LEAD_MS = 1_000
 # to the sequence, not overwhelm it.
 _PICTURE_SCALE_PERCENT = 55
 # Movement speed varies per burst within this inclusive range (user request,
-# 2026-07-18: the fixed 3 made every pan glide at the same rate).
-_PICTURE_SPEED_RANGE = (2, 6)
+# 2026-07-18: the fixed 3 made every pan glide at the same rate). Narrowed to
+# 0.0-2.0 (user request, 2026-07-26): E_TEXTCTRL_Pictures_Speed is a float
+# with 1 decimal place in real xLights, not the 0-20 integer range this
+# catalog previously assumed -- 2-6 was rendering far too fast.
+_PICTURE_SPEED_RANGE = (0.0, 2.0)
 # All 8 cardinal/diagonal xLights Pictures_Direction pan directions (user
 # request, 2026-07-15: the original 4 felt monotonous burst-to-burst).
 _PICTURE_DIRECTIONS = (
@@ -4554,9 +4557,9 @@ def _place_picture_effects(
         motion = random.Random(
             f"{variation_seed}:motion:{match.get('word')}:{word_start}"
         ).choices(_PICTURE_MOTION_NAMES, weights=_PICTURE_MOTION_WEIGHTS)[0]
-        speed = random.Random(
+        speed = round(random.Random(
             f"{variation_seed}:speed:{match.get('word')}:{word_start}"
-        ).randint(*_PICTURE_SPEED_RANGE)
+        ).uniform(*_PICTURE_SPEED_RANGE), 1)
         for target_name in set(targets.values()):
             # Bursts on the same target may never overlap in time regardless
             # of image, but the _PICTURE_MIN_GAP_MS cooldown only applies to

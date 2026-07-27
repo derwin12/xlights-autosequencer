@@ -456,6 +456,7 @@ class TestRadialNameKeywordFallback:
         assert "flake" in _RADIAL_NAME_KEYWORDS
         assert "snowflake" in _RADIAL_NAME_KEYWORDS
         assert "star" in _RADIAL_NAME_KEYWORDS
+        assert "spiral" in _RADIAL_NAME_KEYWORDS
 
 
 # ---------------------------------------------------------------------------

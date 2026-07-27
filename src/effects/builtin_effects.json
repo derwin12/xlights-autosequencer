@@ -5031,13 +5031,13 @@
         {
           "name": "Pictures_Speed",
           "storage_name": "E_TEXTCTRL_Pictures_Speed",
-          "widget_type": "slider",
-          "value_type": "int",
-          "default": 1,
-          "min": 0,
-          "max": 20,
+          "widget_type": "textctrl",
+          "value_type": "float",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 2.0,
           "choices": null,
-          "description": "Speed of image movement",
+          "description": "Speed of image movement (float, 1 decimal place)",
           "supports_value_curve": true
         },
         {
