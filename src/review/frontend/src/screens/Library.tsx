@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { Song, Folder } from 'src/store/library';
+import { isTauri, onDrop as onNativeDrop, importByPath } from '../lib/nativeDialog';
 
 const ALLOWED_AUDIO_EXTS = new Set(['.mp3', '.wav', '.flac', '.aiff', '.aif']);
 // Video files import as songs too (audio track extracted server-side; the
@@ -109,6 +110,49 @@ export function Library({ songs, folders, onSelectSong, onFileDrop }: Props) {
       (msg) => { setDropLoading(false); setDropError(msg); },
     );
   }
+
+  // Handles a real absolute path from Tauri's native drag-drop listener --
+  // there's no File blob to multipart-upload here either, so this posts the
+  // path directly (see the matching wiring/comment in Drop.tsx).
+  const handleNativePath = useCallback(async (path: string) => {
+    if (!onFileDrop) return;
+    const ext = getExt(path);
+    if (!ALLOWED_VIDEO_EXTS.has(ext) && !ALLOWED_AUDIO_EXTS.has(ext)) {
+      setDropError(`Unsupported type: ${ext}`);
+      return;
+    }
+    setDropLoading(true);
+    setDropError(null);
+    try {
+      const body: any = await importByPath(path);
+      setDropLoading(false);
+      onFileDrop(body.song, Boolean(body?.created));
+    } catch (e) {
+      setDropLoading(false);
+      setDropError(e instanceof Error ? e.message : 'Import failed');
+    }
+  }, [onFileDrop]);
+
+  // Same root cause as Drop.tsx and Chrome.tsx's LibraryRail: Tauri's
+  // native window-level drag-drop capture intercepts drops before the DOM
+  // onDrop/onDragOver handlers on the empty-drop target below ever fire in
+  // the packaged app.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    onNativeDrop((paths) => {
+      const first = paths[0];
+      if (first) handleNativePath(first);
+    }).then((unsub) => {
+      if (cancelled) unsub();
+      else unsubscribe = unsub;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [handleNativePath]);
 
   // T134: Empty-library first-run centered drop target (FR-005c)
   if (songs.length === 0 && folders.every((f) => {

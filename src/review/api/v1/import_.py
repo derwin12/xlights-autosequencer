@@ -65,30 +65,22 @@ def _read_id3(audio_bytes: bytes) -> tuple[str | None, str | None]:
         return None, None
 
 
-@api_v1.route("/import", methods=["POST"])
-def import_song():
-    # Validate file present
-    if "audio" not in request.files:
-        return jsonify({"error": {"code": "missing_file", "message": "No audio file provided"}}), 400
+def finalize_audio_import(
+    audio_bytes: bytes,
+    filename: str,
+    ext: str,
+    folder_id: str,
+    extra_source_path: str | None = None,
+) -> tuple[dict, int]:
+    """Dedup-by-hash, validate, and persist a library entry for audio bytes.
 
-    f = request.files["audio"]
-    filename = f.filename or ""
-    ext = Path(filename).suffix.lower()
-
-    if ext not in _ALLOWED_EXTENSIONS:
-        return jsonify({"error": {"code": "unsupported_format",
-                                   "message": f"Unsupported file type: {ext}"}}), 400
-
-    audio_bytes = f.read()
-    if len(audio_bytes) > _MAX_BYTES:
-        return jsonify({"error": {"code": "audio_too_large",
-                                   "message": "File exceeds 200 MB limit"}}), 413
-
+    Shared by the multipart upload route below and import_by_path.py's
+    local-file-path route (Tauri desktop app native drag-drop/dialogs give
+    absolute paths, not uploadable blobs, but dedup/validation/song-schema
+    logic is identical either way). Returns (response_body, http_status).
+    """
     # Compute content hash — first 16 hex chars of SHA-256
     song_id = hashlib.sha256(audio_bytes).hexdigest()[:16]
-
-    source_path = request.form.get("source_path") or None
-    folder_id = request.form.get("folder_id") or "unfiled"
 
     # Always persist the audio bytes into the state directory so the pipeline
     # has a stable path regardless of where the user's original file lives.
@@ -125,18 +117,17 @@ def import_song():
                 stored_audio_path.parent.parent.rmdir()
             except OSError:
                 pass
-            return jsonify({"error": {"code": exc.code,
-                                       "message": exc.message}}), 400
+            return {"error": {"code": exc.code, "message": exc.message}}, 400
 
     if existing is not None:
         # Ensure the canonical path is recorded
         if canonical_path not in existing["source_paths"]:
             existing["source_paths"].insert(0, canonical_path)
         # Also record the original source path if provided
-        if source_path and source_path not in existing["source_paths"]:
-            existing["source_paths"].append(source_path)
+        if extra_source_path and extra_source_path not in existing["source_paths"]:
+            existing["source_paths"].append(extra_source_path)
         save_library(lib)
-        return jsonify({"created": False, "source_path_added": True, "song": existing}), 200
+        return {"created": False, "source_path_added": True, "song": existing}, 200
 
     # Compute duration
     duration_ms = _duration_ms(audio_bytes, ext)
@@ -149,8 +140,8 @@ def import_song():
 
     # canonical stored path first, original source path second (if different)
     source_paths = [canonical_path]
-    if source_path and source_path != canonical_path:
-        source_paths.append(source_path)
+    if extra_source_path and extra_source_path != canonical_path:
+        source_paths.append(extra_source_path)
 
     song = {
         "song_id": song_id,
@@ -170,4 +161,30 @@ def import_song():
     lib["songs"].append(song)
     save_library(lib)
 
-    return jsonify({"created": True, "song": song}), 201
+    return {"created": True, "song": song}, 201
+
+
+@api_v1.route("/import", methods=["POST"])
+def import_song():
+    # Validate file present
+    if "audio" not in request.files:
+        return jsonify({"error": {"code": "missing_file", "message": "No audio file provided"}}), 400
+
+    f = request.files["audio"]
+    filename = f.filename or ""
+    ext = Path(filename).suffix.lower()
+
+    if ext not in _ALLOWED_EXTENSIONS:
+        return jsonify({"error": {"code": "unsupported_format",
+                                   "message": f"Unsupported file type: {ext}"}}), 400
+
+    audio_bytes = f.read()
+    if len(audio_bytes) > _MAX_BYTES:
+        return jsonify({"error": {"code": "audio_too_large",
+                                   "message": "File exceeds 200 MB limit"}}), 413
+
+    source_path = request.form.get("source_path") or None
+    folder_id = request.form.get("folder_id") or "unfiled"
+
+    body, status = finalize_audio_import(audio_bytes, filename, ext, folder_id, source_path)
+    return jsonify(body), status

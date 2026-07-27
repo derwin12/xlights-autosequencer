@@ -23,7 +23,7 @@ import { apiFetch } from "./apiClient";
 
 const AUDIO_EXTENSIONS = ["mp3", "wav", "flac", "aiff", "aif", "m4a"];
 
-function isTauri(): boolean {
+export function isTauri(): boolean {
   return typeof window !== "undefined" &&
     Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
 }
@@ -87,10 +87,20 @@ export type DropUnsubscribe = () => void;
 
 export async function onDrop(callback: (paths: string[]) => void): Promise<DropUnsubscribe> {
   if (isTauri()) {
-    const { listen } = await import("@tauri-apps/api/event");
-    // Tauri 2 renamed the event from `tauri://file-drop` to `tauri://drag-drop`.
-    const unlisten = await listen<string[]>("tauri://drag-drop", (event) => {
-      callback(event.payload);
+    const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+    // Tauri 2's DragDropEvent is a discriminated union keyed by `type`
+    // ('enter' | 'over' | 'drop' | 'leave') -- only 'enter' and 'drop'
+    // carry `paths`. The previous implementation treated the whole
+    // event.payload as a bare string[] (a holdover from Tauri 1's
+    // `tauri://file-drop`, which really was just paths), so it silently
+    // passed the wrong shape to every caller and this listener was never
+    // actually wired into the UI to catch it (2026-07-26 bug report:
+    // dropping audio/video onto the packaged app did nothing, only the
+    // file picker worked).
+    const unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+      if (event.payload.type === "drop") {
+        callback(event.payload.paths);
+      }
     });
     return unlisten;
   }

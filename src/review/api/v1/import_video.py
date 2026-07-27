@@ -64,6 +64,95 @@ def _extract_audio(video_path: Path) -> bytes:
         return audio_out.read_bytes()
 
 
+def finalize_video_import(video_path: Path, filename: str, folder_id: str) -> tuple[dict, int]:
+    """Extract audio, dedup-by-hash, validate, and persist a library entry.
+
+    Shared by the multipart upload route below and import_by_path.py's
+    local-file-path route -- ``video_path`` just needs to be a real file on
+    disk (a tempfile for the upload route, or the user's original dropped
+    file for the by-path route), since ffmpeg extraction reads from a path
+    either way.
+    """
+    try:
+        audio_bytes = _extract_audio(video_path)
+    except VideoImportError as exc:
+        return {"error": {"code": exc.code, "message": exc.message}}, 400
+
+    song_id = hashlib.sha256(audio_bytes).hexdigest()[:16]
+
+    audio_dir = library_root() / "songs" / song_id / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    stored_audio_path = audio_dir / (Path(filename).stem + ".mp3")
+    if not stored_audio_path.exists():
+        tmp_audio_out = stored_audio_path.with_suffix(".tmp")
+        tmp_audio_out.write_bytes(audio_bytes)
+        os.replace(str(tmp_audio_out), str(stored_audio_path))
+
+    video_dir = library_root() / "songs" / song_id / "video"
+    video_dir.mkdir(parents=True, exist_ok=True)
+    stored_video_path = video_dir / filename
+    if not stored_video_path.exists():
+        tmp_video_out = stored_video_path.with_suffix(stored_video_path.suffix + ".tmp")
+        shutil.copy2(video_path, tmp_video_out)
+        os.replace(str(tmp_video_out), str(stored_video_path))
+
+    canonical_audio_path = str(stored_audio_path)
+    stored_video_path_str = str(stored_video_path)
+
+    lib = load_library()
+    existing = next((s for s in lib["songs"] if s["song_id"] == song_id), None)
+
+    if existing is None:
+        try:
+            validate_audio(canonical_audio_path)
+        except AudioValidationError as exc:
+            try:
+                stored_audio_path.unlink()
+                stored_audio_path.parent.rmdir()
+                stored_video_path.unlink()
+                stored_video_path.parent.rmdir()
+                stored_audio_path.parent.parent.rmdir()
+            except OSError:
+                pass
+            return {"error": {"code": exc.code, "message": exc.message}}, 400
+
+    if existing is not None:
+        if canonical_audio_path not in existing["source_paths"]:
+            existing["source_paths"].insert(0, canonical_audio_path)
+        # This route requires a video file (see the missing_file check
+        # above), so the just-stored video is always the freshest one --
+        # always adopt it, even on dedup, so the export pipeline never
+        # references a stale video from an earlier drop.
+        existing["video_path"] = stored_video_path_str
+        save_library(lib)
+        return {"created": False, "source_path_added": True, "song": existing}, 200
+
+    duration_ms = _duration_ms(audio_bytes, ".mp3")
+    id3_title, id3_artist = _read_id3(audio_bytes)
+    title = id3_title or Path(filename).stem
+
+    song = {
+        "song_id": song_id,
+        "title": title,
+        "artist": id3_artist,
+        "duration_ms": duration_ms,
+        "bpm": None,
+        "key": None,
+        "time_signature": None,
+        "status": "draft",
+        "source_paths": [canonical_audio_path],
+        "video_path": stored_video_path_str,
+        "folder_id": folder_id,
+        "imported_at": _now_iso(),
+        "last_opened_at": None,
+    }
+
+    lib["songs"].append(song)
+    save_library(lib)
+
+    return {"created": True, "song": song}, 201
+
+
 @api_v1.route("/import-video", methods=["POST"])
 def import_video():
     if "video" not in request.files:
@@ -87,82 +176,5 @@ def import_video():
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_video_path = Path(tmp_dir) / filename
         tmp_video_path.write_bytes(video_bytes)
-
-        try:
-            audio_bytes = _extract_audio(tmp_video_path)
-        except VideoImportError as exc:
-            return jsonify({"error": {"code": exc.code, "message": exc.message}}), 400
-
-        song_id = hashlib.sha256(audio_bytes).hexdigest()[:16]
-
-        audio_dir = library_root() / "songs" / song_id / "audio"
-        audio_dir.mkdir(parents=True, exist_ok=True)
-        stored_audio_path = audio_dir / (Path(filename).stem + ".mp3")
-        if not stored_audio_path.exists():
-            tmp_audio_out = stored_audio_path.with_suffix(".tmp")
-            tmp_audio_out.write_bytes(audio_bytes)
-            os.replace(str(tmp_audio_out), str(stored_audio_path))
-
-        video_dir = library_root() / "songs" / song_id / "video"
-        video_dir.mkdir(parents=True, exist_ok=True)
-        stored_video_path = video_dir / filename
-        if not stored_video_path.exists():
-            tmp_video_out = stored_video_path.with_suffix(stored_video_path.suffix + ".tmp")
-            shutil.copy2(tmp_video_path, tmp_video_out)
-            os.replace(str(tmp_video_out), str(stored_video_path))
-
-        canonical_audio_path = str(stored_audio_path)
-        video_path = str(stored_video_path)
-
-        lib = load_library()
-        existing = next((s for s in lib["songs"] if s["song_id"] == song_id), None)
-
-        if existing is None:
-            try:
-                validate_audio(canonical_audio_path)
-            except AudioValidationError as exc:
-                try:
-                    stored_audio_path.unlink()
-                    stored_audio_path.parent.rmdir()
-                    stored_video_path.unlink()
-                    stored_video_path.parent.rmdir()
-                    stored_audio_path.parent.parent.rmdir()
-                except OSError:
-                    pass
-                return jsonify({"error": {"code": exc.code, "message": exc.message}}), 400
-
-        if existing is not None:
-            if canonical_audio_path not in existing["source_paths"]:
-                existing["source_paths"].insert(0, canonical_audio_path)
-            # This route requires a video file (see the missing_file check
-            # above), so the just-stored video is always the freshest one --
-            # always adopt it, even on dedup, so the export pipeline never
-            # references a stale video from an earlier drop.
-            existing["video_path"] = video_path
-            save_library(lib)
-            return jsonify({"created": False, "source_path_added": True, "song": existing}), 200
-
-        duration_ms = _duration_ms(audio_bytes, ".mp3")
-        id3_title, id3_artist = _read_id3(audio_bytes)
-        title = id3_title or Path(filename).stem
-
-        song = {
-            "song_id": song_id,
-            "title": title,
-            "artist": id3_artist,
-            "duration_ms": duration_ms,
-            "bpm": None,
-            "key": None,
-            "time_signature": None,
-            "status": "draft",
-            "source_paths": [canonical_audio_path],
-            "video_path": video_path,
-            "folder_id": folder_id,
-            "imported_at": _now_iso(),
-            "last_opened_at": None,
-        }
-
-        lib["songs"].append(song)
-        save_library(lib)
-
-        return jsonify({"created": True, "song": song}), 201
+        body, status = finalize_video_import(tmp_video_path, filename, folder_id)
+        return jsonify(body), status

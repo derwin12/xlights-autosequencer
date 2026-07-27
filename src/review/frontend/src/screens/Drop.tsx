@@ -1,5 +1,6 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import styles from './Drop.module.css';
+import { isTauri, onDrop as onNativeDrop, importByPath } from '../lib/nativeDialog';
 
 interface Song {
   song_id: string;
@@ -91,6 +92,54 @@ export function Drop({ onSongImported }: DropProps) {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
   }
+
+  // Handles a real absolute path from Tauri's native drag-drop listener
+  // (see the useEffect below) -- there's no File blob to multipart-upload,
+  // so this posts the path directly for the backend to read off disk.
+  const handleNativePath = useCallback(async (path: string) => {
+    const ext = getExt(path);
+    const mode = detectMode(ext);
+    if (!mode) {
+      setError(`Unsupported file type: ${ext}. Supported: ${[...ALL_ALLOWED_EXTS].join(', ')}`);
+      return;
+    }
+
+    setError(null);
+    setLoading(mode);
+    try {
+      const body: any = await importByPath(path);
+      onSongImported(body.song, Boolean(body?.created));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setLoading(null);
+    }
+  }, [onSongImported]);
+
+  // The packaged Tauri app's dragDropEnabled setting intercepts native OS
+  // drag-drop at the window level before the DOM onDrop/onDragOver handlers
+  // below ever fire (same root cause as the LibraryRail song-move bug --
+  // see Chrome.tsx), so dropping a file here silently did nothing except in
+  // dev/browser mode. Wiring the dedicated Tauri listener (only when
+  // isTauri()) fixes the packaged app without touching the DOM handlers,
+  // which remain the correct path for dev/browser (Tauri's browser
+  // fallback in onDrop only exposes filenames, not real File content).
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    onNativeDrop((paths) => {
+      const first = paths[0];
+      if (first) handleNativePath(first);
+    }).then((unsub) => {
+      if (cancelled) unsub();
+      else unsubscribe = unsub;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [handleNativePath]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
