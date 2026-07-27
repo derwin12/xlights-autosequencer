@@ -1,0 +1,37 @@
+XLight AutoSequencer — Release Notes
+=====================================
+
+This file ships in the installed app's directory (next to xlightsAI.exe) so
+you can see what changed without checking GitHub. It's overwritten on every
+new install/update — keep a copy elsewhere if you want to compare across
+versions.
+
+0.1.1 (2026-07-26/27)
+---------------------
+- Fixed: dragging an audio or video file from Explorer onto the app did
+  nothing in the installed build — only the file-picker button worked.
+  Root cause was Tauri's native drag-drop capture intercepting the drop
+  before the app's own drop-zone code ever saw it. Both the import screen
+  and the empty-library screen are fixed.
+- Fixed: the installed executable is now xlightsAI.exe (was xlight.exe).
+- Shader effects: color-matching to your theme's palette now covers 7
+  shaders (Plasma Emitter, Continua Variation, xLights Audio Fractal Audio,
+  Creation by Silexars, Audio Surf, Fly Through, Black Cherry Cosmos) instead
+  of just one. Warp Kaleidoscope Tile is back with a working paired base
+  effect (it previously rendered blank).
+- Fixed: "The Void" theme's accent colors were all red with no way to add
+  a non-red accent.
+- Fixed: Pictures effect (image overlays) movement speed was rendering far
+  too fast — capped to a sane range.
+- Fixed: spiral-shaped props no longer get Lightning suggested as an effect
+  (a coiled single-line shape can't show Lightning's bolt path).
+- Fixed several generator bugs: some effect placements were rendering
+  shorter than intended near section boundaries, and a layout-editor bug
+  where removing a prop from one whole-house group could silently remove it
+  from the wrong one instead.
+
+0.1.0 (2026-07-25)
+------------------
+- First working end-to-end packaged build: analyze, theme, and generate a
+  full sequence entirely inside the installed app (no dev environment
+  needed), including demucs stem separation and madmom beat/bar tracking.

@@ -1,9 +1,17 @@
 [package]
 name = "xlight"
-version = "0.1.0"
+version = "0.1.1"
 description = "XLight AutoSequencer desktop shell"
 authors = ["XLight AutoSequencer"]
 edition = "2021"
+
+# The installed binary name (xlightsAI.exe) is intentionally different from
+# the Cargo package name above -- renaming the package itself would ripple
+# into Cargo.lock and any internal `xlight::` crate paths, whereas [[bin]]
+# only changes what the compiled executable is called.
+[[bin]]
+name = "xlightsAI"
+path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Main window capabilities for XLight desktop app",
+  "description": "Main window capabilities for xLightsAI desktop app",
   "windows": ["main"],
   "permissions": [
     "core:default",

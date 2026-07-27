@@ -52,7 +52,7 @@ def test_falls_back_to_application_support_when_parent_unwritable_macos(
         fake_home
         / "Library"
         / "Application Support"
-        / "XLight"
+        / "xLightsAI"
         / "stems"
         / "readonly"
         / "stems"
@@ -79,7 +79,7 @@ def test_falls_back_to_application_support_when_parent_unwritable_windows(
         tmp_path
         / "AppData"
         / "Local"
-        / "XLight"
+        / "xLightsAI"
         / "stems"
         / "readonly"
         / "stems"
@@ -91,4 +91,4 @@ def test_falls_back_to_application_support_when_parent_unwritable_windows(
 def test_user_fallback_root_shape() -> None:
     root = _user_fallback_root()
     assert root.name == "stems"
-    assert root.parent.name == "XLight"
+    assert root.parent.name == "xLightsAI"

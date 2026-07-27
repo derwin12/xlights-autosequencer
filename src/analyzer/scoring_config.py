@@ -321,7 +321,7 @@ def list_profiles() -> list[dict[str, str]]:
 def generate_default_toml() -> str:
     """Generate a fully commented TOML string with all defaults."""
     lines = [
-        "# XLight Scoring Configuration",
+        "# xLightsAI Scoring Configuration",
         "# Copy this file and modify to create a custom scoring profile.",
         "",
         "[weights]",

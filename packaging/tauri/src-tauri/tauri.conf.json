@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "xLightsAI",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.xlight.autosequencer",
   "build": {
     "beforeDevCommand": "cd ../../src/review/frontend && npm run dev",
@@ -37,7 +37,8 @@
     "resources": {
       "../../pyinstaller/plugins/vamp/x86_64-windows": "vamp",
       "binaries/backend-x86_64-pc-windows-msvc": "backend",
-      "packaging-manifest.json": "packaging-manifest.json"
+      "packaging-manifest.json": "packaging-manifest.json",
+      "../../ReleaseNotes.txt": "ReleaseNotes.txt"
     },
     "windows": {
       "certificateThumbprint": null,

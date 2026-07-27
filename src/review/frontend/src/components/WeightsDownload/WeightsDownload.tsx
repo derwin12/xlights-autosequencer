@@ -34,7 +34,7 @@ export function WeightsDownload() {
             <p className={styles.body}>
               Stem separation needs a one-time download of
               approximately {mb(status.size_bytes)} MB. Files are stored
-              under <code>~/Library/Application Support/XLight/models/</code>
+              under <code>~/Library/Application Support/xLightsAI/models/</code>
               and will be reused across app updates.
             </p>
             <div className={styles.license}>

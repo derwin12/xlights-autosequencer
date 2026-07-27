@@ -40,6 +40,18 @@ async function openLogsFolder(): Promise<void> {
   await open(dir);
 }
 
+/** Open ReleaseNotes.txt (bundled as a resource next to the exe, see
+ * tauri.conf.json's bundle.resources) with the OS's default text viewer --
+ * packaged app only, there's nothing bundled to resolve in dev mode. */
+async function openReleaseNotes(): Promise<void> {
+  const [{ resolveResource }, { open }] = await Promise.all([
+    import("@tauri-apps/api/path"),
+    import("@tauri-apps/plugin-shell"),
+  ]);
+  const path = await resolveResource("ReleaseNotes.txt");
+  await open(path);
+}
+
 /** Full 40-char hashes (bundled manifests) are trimmed; short dev hashes
  * keep their "-dirty" suffix intact. */
 export function shortCommit(commit: string): string {
@@ -49,10 +61,25 @@ export function shortCommit(commit: string): string {
 export function About({ open, onClose }: { open: boolean; onClose: () => void }) {
   const manifest = useManifestStore((s) => s.manifest);
   const load = useManifestStore((s) => s.load);
+  // Neither openLogsFolder nor openReleaseNotes previously surfaced errors --
+  // their buttons were fired with `void fn()`, so an invoke()/open() failure
+  // (e.g. no logs written yet, resource not found) silently vanished as an
+  // unhandled promise rejection with nothing shown in the UI (user report,
+  // 2026-07-26/27: "Open Logs folder doesn't appear to do anything").
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) void load();
+    if (open) { void load(); setActionError(null); }
   }, [open, load]);
+
+  async function runAction(fn: () => Promise<void>) {
+    setActionError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   if (!open) return null;
 
@@ -90,12 +117,24 @@ export function About({ open, onClose }: { open: boolean; onClose: () => void })
           {isTauri() && (
             <button
               className={styles.linkBtn}
-              onClick={() => void openLogsFolder()}
+              onClick={() => void runAction(openReleaseNotes)}
+            >
+              Release notes
+            </button>
+          )}
+          {isTauri() && (
+            <button
+              className={styles.linkBtn}
+              onClick={() => void runAction(openLogsFolder)}
             >
               Open logs folder
             </button>
           )}
         </div>
+
+        {actionError && (
+          <div className={styles.staleWarning}>⚠ {actionError}</div>
+        )}
 
         {manifest?.bundled_vamp_plugins && manifest.bundled_vamp_plugins.length > 0 && (
           <div className={styles.credits}>

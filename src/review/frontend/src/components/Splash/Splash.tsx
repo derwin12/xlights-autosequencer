@@ -11,7 +11,7 @@ import styles from './Splash.module.css';
 export function Splash({ error }: { error?: string }) {
   return (
     <div className={styles.splash} data-testid="splash-screen">
-      <div className={styles.logo}>XLight</div>
+      <div className={styles.logo}>xLightsAI</div>
       {error ? (
         <div className={styles.error}>
           <p className={styles.errorTitle}>Backend didn't start</p>

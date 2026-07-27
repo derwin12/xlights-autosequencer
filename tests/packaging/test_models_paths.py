@@ -20,7 +20,7 @@ def test_torch_home_layout_macos(tmp_path: Path, monkeypatch) -> None:
         tmp_path
         / "Library"
         / "Application Support"
-        / "XLight"
+        / "xLightsAI"
         / "models"
         / "torch-hub"
     )
@@ -37,7 +37,7 @@ def test_torch_home_layout_windows(tmp_path: Path, monkeypatch) -> None:
         tmp_path
         / "AppData"
         / "Local"
-        / "XLight"
+        / "xLightsAI"
         / "models"
         / "torch-hub"
     )

@@ -103,7 +103,7 @@ const FAQ: FaqEntry[] = [
       <>
         <p>
           Your song library, themes, and settings live under <code>~/.xlight/</code> (on Windows,
-          under your user's <code>AppData\Local\XLight</code>). Audio-specific caches (stems, analysis
+          under your user's <code>AppData\Local\xLightsAI</code>). Audio-specific caches (stems, analysis
           results) are stored alongside the source audio file itself, in a <code>.stems/</code> folder,
           keyed by the file's content hash.
         </p>

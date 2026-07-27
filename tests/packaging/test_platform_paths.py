@@ -12,7 +12,7 @@ def test_macos_uses_library_application_support(tmp_path: Path, monkeypatch) -> 
 
     root = app_support_root()
 
-    assert root == tmp_path / "Library" / "Application Support" / "XLight"
+    assert root == tmp_path / "Library" / "Application Support" / "xLightsAI"
 
 
 def test_windows_uses_localappdata_env_var(tmp_path: Path, monkeypatch) -> None:
@@ -21,7 +21,7 @@ def test_windows_uses_localappdata_env_var(tmp_path: Path, monkeypatch) -> None:
 
     root = app_support_root()
 
-    assert root == tmp_path / "AppData" / "Local" / "XLight"
+    assert root == tmp_path / "AppData" / "Local" / "xLightsAI"
 
 
 def test_windows_falls_back_to_home_when_localappdata_unset(
@@ -33,7 +33,7 @@ def test_windows_falls_back_to_home_when_localappdata_unset(
 
     root = app_support_root()
 
-    assert root == tmp_path / "AppData" / "Local" / "XLight"
+    assert root == tmp_path / "AppData" / "Local" / "xLightsAI"
 
 
 def test_linux_uses_local_share(tmp_path: Path, monkeypatch) -> None:
@@ -42,4 +42,4 @@ def test_linux_uses_local_share(tmp_path: Path, monkeypatch) -> None:
 
     root = app_support_root()
 
-    assert root == tmp_path / ".local" / "share" / "XLight"
+    assert root == tmp_path / ".local" / "share" / "xLightsAI"

@@ -274,14 +274,14 @@ fn dirs_home() -> Option<std::path::PathBuf> {
 
 /// Application Support root, matching
 /// `src/packaging/platform_paths.py::app_support_root()` exactly:
-/// `%LOCALAPPDATA%\XLight` (falling back to `<home>/AppData/Local/XLight`
+/// `%LOCALAPPDATA%\xLightsAI` (falling back to `<home>/AppData/Local/xLightsAI`
 /// if the env var is unset).
 fn app_support_root() -> Result<PathBuf, String> {
     let local = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .or_else(|| dirs_home().map(|h| h.join("AppData").join("Local")))
         .ok_or_else(|| "no LOCALAPPDATA or home dir".to_string())?;
-    Ok(local.join("XLight"))
+    Ok(local.join("xLightsAI"))
 }
 
 /// Best-effort: terminate the backend pid we recorded at spawn via
