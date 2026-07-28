@@ -4526,8 +4526,10 @@ _PICTURE_SCALE_PERCENT = 55
 # 2026-07-18: the fixed 3 made every pan glide at the same rate). Narrowed to
 # 0.0-2.0 (user request, 2026-07-26): E_TEXTCTRL_Pictures_Speed is a float
 # with 1 decimal place in real xLights, not the 0-20 integer range this
-# catalog previously assumed -- 2-6 was rendering far too fast.
-_PICTURE_SPEED_RANGE = (0.0, 2.0)
+# catalog previously assumed -- 2-6 was rendering far too fast. Floor raised
+# to 1.0 (user request, 2026-07-28): a rolled 0.0-0.9 speed reads as no
+# movement at all, which looked like a bug rather than a slow pan.
+_PICTURE_SPEED_RANGE = (1.0, 2.0)
 # All 8 cardinal/diagonal xLights Pictures_Direction pan directions (user
 # request, 2026-07-15: the original 4 felt monotonous burst-to-burst).
 _PICTURE_DIRECTIONS = (

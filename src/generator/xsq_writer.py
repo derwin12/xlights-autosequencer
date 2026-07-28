@@ -798,6 +798,15 @@ _DEFAULT_PALETTE_COLORS = [
     "#000000", "#00FFFF", "#FF00FF", "#FFFFFF",
 ]
 
+# Hard ceiling on C_SLIDER_SparkleFrequency (user request, 2026-07-28):
+# applies to every sparkle value regardless of which upstream formula
+# produced it or whether MusicSparkles came from a corpus recipe's
+# mask_sparkles, the tier-1/_ALWAYS_SPARKLE_EFFECTS unconditional pass, or
+# the palette-restraint probabilistic roll -- upstream formulas already
+# produce values well above this (15-65), so every real placement gets
+# clamped down to this ceiling.
+_SPARKLE_FREQUENCY_MAX = 10
+
 
 def _serialize_palette(
     colors: list[str], music_sparkles: int = 0, hue_adjust: int | None = None,
@@ -813,7 +822,12 @@ def _serialize_palette(
     a real xLights palette string with sparkles active always carries the
     checkbox alongside the slider, and without it the slider value alone
     does nothing, so every prior sparkle placement (tier-1 BASE, palette-
-    restraint pool effects) rendered with sparkles silently off.
+    restraint pool effects) rendered with sparkles silently off. The slider
+    value itself is capped at ``_SPARKLE_FREQUENCY_MAX`` (user request,
+    2026-07-28) regardless of which upstream formula computed it (mask_
+    sparkles' energy-scaled value, compute_music_sparkles' palette-restraint
+    roll, etc.) -- clamped here, the single point every sparkle value passes
+    through before serialization, rather than in each caller.
     ``sparkle_color``, when given alongside music_sparkles > 0, appends
     C_COLOURPICKERCTRL_SparklesColour -- a real xLights clipboard sample
     (user-supplied, 2026-07-28) showed sparkles rendering in a distinct
@@ -835,7 +849,7 @@ def _serialize_palette(
     parts = buttons + checkboxes
     if music_sparkles > 0:
         parts.append("C_CHECKBOX_MusicSparkles=1")
-        parts.append(f"C_SLIDER_SparkleFrequency={music_sparkles}")
+        parts.append(f"C_SLIDER_SparkleFrequency={min(music_sparkles, _SPARKLE_FREQUENCY_MAX)}")
         if sparkle_color is not None:
             parts.append(f"C_COLOURPICKERCTRL_SparklesColour={sparkle_color}")
     if hue_adjust is not None:

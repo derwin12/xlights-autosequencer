@@ -11,13 +11,10 @@
     <sequenceDuration>20.000</sequenceDuration>
   </head>
   <ColorPalettes>
-    <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=77</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=63</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#00FF44,C_BUTTON_Palette2=#00CC33,C_BUTTON_Palette3=#88FF22,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=10</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#FFFFFF,C_BUTTON_Palette2=#00FF00,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=0,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#49309B,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=25</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#462F9C,C_BUTTON_Palette3=#49309B,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=37</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#462F9C,C_BUTTON_Palette3=#49309B,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=63</ColorPalette>
-    <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#49309B,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=27</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#49309B,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=10</ColorPalette>
+    <ColorPalette>C_BUTTON_Palette1=#1A094E,C_BUTTON_Palette2=#462F9C,C_BUTTON_Palette3=#49309B,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=1,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0,C_CHECKBOX_MusicSparkles=1,C_SLIDER_SparkleFrequency=10</ColorPalette>
     <ColorPalette>C_BUTTON_Palette1=#FF0000,C_BUTTON_Palette2=#FF4400,C_BUTTON_Palette3=#0000FF,C_BUTTON_Palette4=#FFFF00,C_BUTTON_Palette5=#000000,C_BUTTON_Palette6=#00FFFF,C_BUTTON_Palette7=#FF00FF,C_BUTTON_Palette8=#FFFFFF,C_CHECKBOX_Palette1=1,C_CHECKBOX_Palette2=1,C_CHECKBOX_Palette3=0,C_CHECKBOX_Palette4=0,C_CHECKBOX_Palette5=0,C_CHECKBOX_Palette6=0,C_CHECKBOX_Palette7=0,C_CHECKBOX_Palette8=0</ColorPalette>
   </ColorPalettes>
   <EffectDB>
@@ -53,55 +50,55 @@
     <Element type="model" name="04_BEAT_1">
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
         <Effect ref="0" name="Color Wash" startTime="10000" endTime="10500" palette="0" selected="0" />
-        <Effect ref="1" name="Color Wash" startTime="11000" endTime="11500" palette="1" selected="0" />
-        <Effect ref="0" name="Color Wash" startTime="12000" endTime="13000" palette="1" selected="0" />
-        <Effect ref="1" name="Color Wash" startTime="13500" endTime="14000" palette="1" selected="0" />
-        <Effect ref="0" name="Color Wash" startTime="14500" endTime="15000" palette="1" selected="0" />
+        <Effect ref="1" name="Color Wash" startTime="11000" endTime="11500" palette="0" selected="0" />
+        <Effect ref="0" name="Color Wash" startTime="12000" endTime="13000" palette="0" selected="0" />
+        <Effect ref="1" name="Color Wash" startTime="13500" endTime="14000" palette="0" selected="0" />
+        <Effect ref="0" name="Color Wash" startTime="14500" endTime="15000" palette="0" selected="0" />
       </EffectLayer>
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="2" name="Shockwave" startTime="10000" endTime="10800" palette="2" selected="0" />
+        <Effect ref="2" name="Shockwave" startTime="10000" endTime="10800" palette="1" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="model" name="04_BEAT_2">
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="3" name="Color Wash" startTime="10500" endTime="11000" palette="1" selected="0" />
+        <Effect ref="3" name="Color Wash" startTime="10500" endTime="11000" palette="0" selected="0" />
         <Effect ref="4" name="Color Wash" startTime="11500" endTime="12000" palette="0" selected="0" />
-        <Effect ref="3" name="Color Wash" startTime="13000" endTime="13500" palette="1" selected="0" />
+        <Effect ref="3" name="Color Wash" startTime="13000" endTime="13500" palette="0" selected="0" />
         <Effect ref="4" name="Color Wash" startTime="14000" endTime="14500" palette="0" selected="0" />
-        <Effect ref="3" name="Color Wash" startTime="15000" endTime="15500" palette="1" selected="0" />
+        <Effect ref="3" name="Color Wash" startTime="15000" endTime="15500" palette="0" selected="0" />
       </EffectLayer>
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="2" name="Shockwave" startTime="10000" endTime="10800" palette="2" selected="0" />
+        <Effect ref="2" name="Shockwave" startTime="10000" endTime="10800" palette="1" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="model" name="05_TEX_LoDens">
       <EffectLayer settings="B_CHOICE_BufferStyle=Per Model Default">
-        <Effect ref="2" name="Shockwave" startTime="10000" endTime="10800" palette="2" selected="0" />
+        <Effect ref="2" name="Shockwave" startTime="10000" endTime="10800" palette="1" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="modelGroup" name="01_BASE_All">
       <EffectLayer settings="B_CHOICE_BufferStyle=Default">
-        <Effect ref="9" name="Shockwave" startTime="0" endTime="4000" palette="3" selected="0" />
-        <Effect ref="10" name="Pinwheel" startTime="4000" endTime="10000" palette="4" selected="0" />
-        <Effect ref="11" name="Strobe" startTime="10000" endTime="16000" palette="5" selected="0" />
-        <Effect ref="12" name="Shockwave" startTime="16000" endTime="20000" palette="6" selected="0" />
+        <Effect ref="9" name="Shockwave" startTime="0" endTime="4000" palette="2" selected="0" />
+        <Effect ref="10" name="Pinwheel" startTime="4000" endTime="10000" palette="3" selected="0" />
+        <Effect ref="11" name="Strobe" startTime="10000" endTime="16000" palette="3" selected="0" />
+        <Effect ref="12" name="Shockwave" startTime="16000" endTime="20000" palette="2" selected="0" />
       </EffectLayer>
       <EffectLayer settings="B_CHOICE_BufferStyle=Default">
-        <Effect ref="5" name="Butterfly" startTime="0" endTime="4000" palette="3" selected="0" />
-        <Effect ref="6" name="Pinwheel" startTime="4000" endTime="10000" palette="4" selected="0" />
-        <Effect ref="7" name="Bars" startTime="10000" endTime="16000" palette="5" selected="0" />
-        <Effect ref="8" name="Butterfly" startTime="16000" endTime="20000" palette="6" selected="0" />
+        <Effect ref="5" name="Butterfly" startTime="0" endTime="4000" palette="2" selected="0" />
+        <Effect ref="6" name="Pinwheel" startTime="4000" endTime="10000" palette="3" selected="0" />
+        <Effect ref="7" name="Bars" startTime="10000" endTime="16000" palette="3" selected="0" />
+        <Effect ref="8" name="Butterfly" startTime="16000" endTime="20000" palette="2" selected="0" />
       </EffectLayer>
       <EffectLayer settings="B_CHOICE_BufferStyle=Default">
-        <Effect ref="13" name="Shader" startTime="10000" endTime="16000" palette="7" selected="0" />
+        <Effect ref="13" name="Shader" startTime="10000" endTime="16000" palette="4" selected="0" />
       </EffectLayer>
       <EffectLayer settings="B_CHOICE_BufferStyle=Default">
-        <Effect ref="14" name="Pinwheel" startTime="10000" endTime="16000" palette="7" selected="0" />
+        <Effect ref="14" name="Pinwheel" startTime="10000" endTime="16000" palette="4" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="modelGroup" name="01_BASE_All_FADES">
       <EffectLayer settings="B_CHOICE_BufferStyle=Default">
-        <Effect ref="15" name="On" startTime="18000" endTime="20000" palette="2" selected="0" />
+        <Effect ref="15" name="On" startTime="18000" endTime="20000" palette="1" selected="0" />
       </EffectLayer>
     </Element>
     <Element type="timing" name="Sections">

@@ -2181,3 +2181,18 @@ class TestSerializePaletteSparkleColor:
         result = _serialize_palette(["#0000FF"], music_sparkles=20)
         assert "C_CHECKBOX_MusicSparkles=1" in result
         assert "C_COLOURPICKERCTRL_SparklesColour" not in result
+
+
+class TestSparkleFrequencyCap:
+    # User request (2026-07-28): the SparkleFrequency slider must never
+    # exceed 10, regardless of which upstream formula computed the value
+    # (mask_sparkles' energy-scaled 15-65, compute_music_sparkles'
+    # palette-restraint roll, etc.) or whether MusicSparkles is on.
+
+    def test_high_value_clamped_to_ten(self) -> None:
+        result = _serialize_palette(["#0000FF"], music_sparkles=65)
+        assert "C_SLIDER_SparkleFrequency=10" in result
+
+    def test_value_at_or_under_ten_unchanged(self) -> None:
+        result = _serialize_palette(["#0000FF"], music_sparkles=7)
+        assert "C_SLIDER_SparkleFrequency=7" in result
