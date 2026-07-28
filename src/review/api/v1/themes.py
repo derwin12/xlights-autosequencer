@@ -43,7 +43,13 @@ def _theme_to_api(raw: dict, theme_id: str, editable: bool = False) -> dict:
     palette: list[str] = raw.get("palette", [])
     accent_palette: list[str] = raw.get("accent_palette", [])
     accent = accent_palette[0] if accent_palette else (palette[0] if palette else "#ffffff")
-    swatches = (palette + accent_palette)[:5]
+    # Every distinct color the theme actually uses, deduped -- NOT capped at
+    # 5 (bug found 2026-07-28, user report: "The Void"'s theme-browser card
+    # showed only its palette + accent_palette[0], silently truncating off
+    # accent_palette[1:] -- 4 mismatched red accent colors were fully
+    # active in generated sequences but invisible in this preview the whole
+    # time, since palette alone already used up 4 of the old 5-slot cap).
+    swatches = list(dict.fromkeys(palette + accent_palette))
 
     result: dict = {
         "theme_id": theme_id,

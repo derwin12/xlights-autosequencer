@@ -59,3 +59,27 @@ def test_themes_swatches_are_hex(client):
     for theme in data["themes"]:
         for swatch in theme["swatches"]:
             assert swatch.startswith("#"), f"swatch {swatch} not hex"
+
+
+def test_themes_swatches_include_every_accent_color(client):
+    """Bug found 2026-07-28 (user report): swatches used to be capped at
+    (palette + accent_palette)[:5], so a theme with a 4-color palette only
+    ever showed accent_palette[0] -- the remaining accent colors were fully
+    active in generated sequences but invisible in the theme browser. Every
+    theme's swatches must now include its complete accent_palette (minus
+    any color duplicated from its own palette)."""
+    import json as _json
+    from src.review.api.v1.themes import _BUILTIN_THEMES_PATH
+
+    raw_themes = _json.loads(_BUILTIN_THEMES_PATH.read_text(encoding="utf-8"))["themes"]
+    data = client.get("/api/v1/themes").get_json()
+    by_id = {t["theme_id"]: t for t in data["themes"]}
+
+    for name, raw in raw_themes.items():
+        theme_id = next((t for t in by_id if by_id[t]["name"] == name), None)
+        assert theme_id is not None, f"{name} missing from API response"
+        swatches = set(by_id[theme_id]["swatches"])
+        for accent_color in raw.get("accent_palette", []):
+            assert accent_color in swatches, (
+                f"{name}: accent color {accent_color} missing from swatches"
+            )
