@@ -204,12 +204,22 @@ class StemSeparator:
         demucs.apply.apply_model's own segment callback -- it processes the
         track in overlapping chunks and already reports each chunk's
         ("start"/"end", segment_offset) via this exact mechanism, no need
-        to poll or estimate.
+        to poll or estimate. Confirmed the callback itself fires reliably
+        (every ~4s on a 60s test clip, called directly outside Flask); the
+        live in-app symptom was still one event for the whole run, pointing
+        to GIL contention instead -- PyTorch's own intra-op thread pool
+        fighting a resource-constrained container for the same CPU
+        core(s), starving the separate SSE-polling thread of scheduling
+        time until the heavy computation eases up. torch.set_num_threads(1)
+        below trades a little raw separation speed for the SSE-polling
+        thread actually getting scheduled promptly.
         """
         import librosa
         import torch
         from demucs.apply import apply_model
         from demucs.pretrained import get_model
+
+        torch.set_num_threads(1)
 
         wav_np, sr = librosa.load(str(audio_path), sr=None, mono=False, dtype=np.float32)
         if wav_np.ndim == 1:

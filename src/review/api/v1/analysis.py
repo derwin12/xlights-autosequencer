@@ -431,6 +431,14 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         state.push({"overall": {"status": "running", "progress": 0.05,
                                 "eta_ms": 85000,
                                 "elapsed_ms": int((_time.monotonic() - _t0) * 1000)}})
+        if caps.get("demucs"):
+            # User request 2026-07-28: even with progress ticks, this step
+            # can visibly outlast every other detector combined on CPU --
+            # a plain heads-up that this is expected keeps it from reading
+            # as broken/stuck.
+            state.push({"log": {"at_ms": 0, "level": "info",
+                        "message": "Stem separation (Demucs) can take 1-3 minutes on CPU — "
+                                   "this is expected, not stuck."}})
 
         # Demucs runs as one blocking call with no other checkpoint, so
         # without this the SSE stream sits completely still for the whole
