@@ -693,13 +693,17 @@ def write_xsq(
     # Add timing track display elements. "Sections" uses the classified
     # section roles (verse/chorus/bridge/...) instead of the raw segmentino/
     # QM-segmenter labels (letters, N#, "qm_boundary") when available (user
-    # request 2026-07-21) -- see _section_role_marks.
+    # request 2026-07-21) -- see _section_role_marks. "Themes" shows which
+    # theme each section was assigned (user request 2026-07-28) -- see
+    # _section_theme_marks.
     section_role_marks = _section_role_marks(plan) if plan.sections else None
+    section_theme_marks = _section_theme_marks(plan) if plan.sections else None
     timing_tracks = (_collect_timing_tracks(hierarchy, None if lyric_layers else lyrics,
                                             include_extra_timing=include_extra_timing,
                                             section_role_marks=section_role_marks,
-                                            force_include=_referenced_timing_track_names(all_placements))
-                     if (hierarchy or lyrics or section_role_marks) else {})
+                                            force_include=_referenced_timing_track_names(all_placements),
+                                            section_theme_marks=section_theme_marks)
+                     if (hierarchy or lyrics or section_role_marks or section_theme_marks) else {})
     timing_names = list(timing_tracks)
     if lyric_layers:
         timing_names.append("Lyrics")
@@ -1466,6 +1470,33 @@ def _section_role_marks(plan: SequencePlan) -> list[TimingMark]:
     return marks
 
 
+def _section_theme_marks(plan: SequencePlan) -> list[TimingMark]:
+    """Build a 'Themes' timing track showing which theme each section uses.
+
+    Diagnostic track (user request 2026-07-28, after investigating a real
+    generated .xsq where two same-role chorus sections rendered in
+    unrelated color families -- tier-6+ prop colors follow each section's
+    OWN assigned theme, not one song-wide identity, and there was no way to
+    see which theme was active from the .xsq alone). Same repeated-label
+    numeric-suffix convention as _section_role_marks.
+    """
+    theme_total: dict[str, int] = {}
+    for a in plan.sections:
+        theme_total[a.theme.name] = theme_total.get(a.theme.name, 0) + 1
+
+    marks: list[TimingMark] = []
+    theme_seen: dict[str, int] = {}
+    for a in plan.sections:
+        name = a.theme.name
+        theme_seen[name] = theme_seen.get(name, 0) + 1
+        label = f"{name}_{theme_seen[name]}" if theme_total[name] > 1 else name
+        marks.append(TimingMark(
+            time_ms=a.section.start_ms, confidence=None, label=label,
+            duration_ms=max(1, a.section.end_ms - a.section.start_ms),
+        ))
+    return marks
+
+
 def _referenced_timing_track_names(
     all_placements: dict[str, list[EffectPlacement]],
 ) -> set[str]:
@@ -1490,6 +1521,7 @@ def _collect_timing_tracks(
     include_extra_timing: bool = True,
     section_role_marks: list[TimingMark] | None = None,
     force_include: set[str] | None = None,
+    section_theme_marks: list[TimingMark] | None = None,
 ) -> dict[str, list[TimingMark]]:
     """Collect single-layer timing tracks from hierarchy (+ optional lyric lines).
 
@@ -1503,6 +1535,9 @@ def _collect_timing_tracks(
 
     if section_role_marks:
         tracks["Sections"] = section_role_marks
+
+    if section_theme_marks:
+        tracks["Themes"] = section_theme_marks
 
     if hierarchy is not None:
         if hierarchy.beats and hierarchy.beats.marks:

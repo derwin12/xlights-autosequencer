@@ -1735,6 +1735,57 @@ class TestSectionRoleLabels:
         assert "Sections" not in names
 
 
+class TestSectionThemeLabels:
+    """The "Themes" timing track shows which theme each section was
+    assigned -- user request 2026-07-28, added after investigating a real
+    generated .xsq where two same-role chorus sections rendered in
+    unrelated color families and there was no way to see which theme was
+    active from the .xsq alone."""
+
+    def _themes_track(self, plan, tmp_path: Path):
+        out = tmp_path / "test.xsq"
+        write_xsq(plan, out)
+        root = ET.parse(out).getroot()
+        effect_els = root.find("ElementEffects").findall("Element")
+        return [e for e in effect_els
+                if e.get("type") == "timing" and e.get("name") == "Themes"][0]
+
+    def test_repeated_theme_gets_numeric_suffix(self, tmp_path: Path) -> None:
+        # _make_plan()'s two sections share the same theme ("TestTheme").
+        themes_el = self._themes_track(_make_plan(), tmp_path)
+        labels = [e.get("label") for e in themes_el.findall("EffectLayer")[0].findall("Effect")]
+        assert labels == ["TestTheme_1", "TestTheme_2"]
+
+    def test_distinct_themes_shown_separately(self, tmp_path: Path) -> None:
+        plan = _make_plan()
+        other_theme = Theme(
+            name="OtherTheme", mood="aggressive", occasion="general", genre="any",
+            intent="test", layers=[EffectLayer(variant="Fire")], palette=["#0000FF"],
+        )
+        plan.sections[1].theme = other_theme
+        themes_el = self._themes_track(plan, tmp_path)
+        labels = [e.get("label") for e in themes_el.findall("EffectLayer")[0].findall("Effect")]
+        assert labels == ["TestTheme", "OtherTheme"]
+
+    def test_themes_track_written_without_a_hierarchy(self, tmp_path: Path) -> None:
+        out = tmp_path / "test.xsq"
+        write_xsq(_make_plan(), out, hierarchy=None)
+        root = ET.parse(out).getroot()
+        names = {e.get("name") for e in root.find("ElementEffects").findall("Element")
+                 if e.get("type") == "timing"}
+        assert "Themes" in names
+
+    def test_no_sections_omits_the_themes_track(self, tmp_path: Path) -> None:
+        plan = _make_plan()
+        plan.sections = []
+        out = tmp_path / "test.xsq"
+        write_xsq(plan, out)
+        root = ET.parse(out).getroot()
+        names = {e.get("name") for e in root.find("ElementEffects").findall("Element")
+                 if e.get("type") == "timing"}
+        assert "Themes" not in names
+
+
 class TestVocalDiarizationBackupTrack:
     """vocal_diarization=True splits words/phonemes tagged speaker=1 into a
     second "Lyrics - Backup" 3-layer timing track."""

@@ -40,6 +40,7 @@
     <Element type="modelGroup" name="01_BASE_All" visible="1" collapsed="0" active="1" />
     <Element type="modelGroup" name="01_BASE_All_FADES" visible="1" collapsed="0" active="1" />
     <Element type="timing" name="Sections" visible="1" collapsed="0" active="0" />
+    <Element type="timing" name="Themes" visible="1" collapsed="0" active="0" />
     <Element type="timing" name="Beats" visible="1" collapsed="0" active="1" />
     <Element type="timing" name="Bars" visible="1" collapsed="0" active="0" />
     <Element type="timing" name="Onsets (drums)" visible="0" collapsed="0" active="0" />
@@ -94,6 +95,14 @@
         <Effect label="verse" startTime="4000" endTime="10000" />
         <Effect label="chorus" startTime="10000" endTime="16000" />
         <Effect label="outro" startTime="16000" endTime="20000" />
+      </EffectLayer>
+    </Element>
+    <Element type="timing" name="Themes">
+      <EffectLayer>
+        <Effect label="Stellar Wind_1" startTime="0" endTime="4000" />
+        <Effect label="Cyber Grid" startTime="4000" endTime="10000" />
+        <Effect label="Tracer Fire" startTime="10000" endTime="16000" />
+        <Effect label="Stellar Wind_2" startTime="16000" endTime="20000" />
       </EffectLayer>
     </Element>
     <Element type="timing" name="Beats">
