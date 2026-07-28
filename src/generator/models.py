@@ -97,6 +97,12 @@ class EffectPlacement:
     #   list[tuple[float, float]]  — legacy (points only, assumes 0-100 range)
     #   tuple[list[tuple[float,float]], float, float] — (points, min, max)
     music_sparkles: int = 0  # 0=off, 1-100=sparkle frequency
+    # Hex color for the sparkle flashes themselves, distinct from
+    # color_palette (the base effect color) -- xLights' MusicSparkles
+    # renders sparkles in this dedicated C_COLOURPICKERCTRL_SparklesColour
+    # field, not by flashing the base palette color. None -> xLights default
+    # (white). See effect_placer._contrast_color (user request 2026-07-28).
+    sparkle_color: Optional[str] = None
     # xsq_writer serializes <EffectLayer> children per group in ascending
     # order of this field. For 06_PROP_Matrix on a real generated .xsq
     # (bug-248, 2026-07-15), xLights rendered the FIRST child on top and

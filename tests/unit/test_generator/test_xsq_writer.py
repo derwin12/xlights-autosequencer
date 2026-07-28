@@ -17,6 +17,7 @@ from src.generator.models import (
 from src.generator.xsq_writer import (
     _collect_timing_tracks,
     _serialize_effect_params,
+    _serialize_palette,
     _shader_hue_adjust_for_hue,
     write_xsq,
 )
@@ -2159,3 +2160,24 @@ class TestBlackCherryCosmosHueMatchesThemeColor:
             cp.text or "" for cp in root.find("ColorPalettes")
         )
         assert "C_SLIDER_Color_HueAdjust" not in palettes_text
+
+
+class TestSerializePaletteSparkleColor:
+    # User request (2026-07-28), matching a real xLights clipboard sample:
+    # red sparkles over a blue Bars effect via a dedicated
+    # C_COLOURPICKERCTRL_SparklesColour field.
+
+    def test_sparkle_color_emitted_alongside_music_sparkles(self) -> None:
+        result = _serialize_palette(["#0000FF"], music_sparkles=20, sparkle_color="#FF0000")
+        assert "C_CHECKBOX_MusicSparkles=1" in result
+        assert "C_COLOURPICKERCTRL_SparklesColour=#FF0000" in result
+
+    def test_sparkle_color_omitted_without_music_sparkles(self) -> None:
+        # No point emitting a sparkle color xLights would never render.
+        result = _serialize_palette(["#0000FF"], music_sparkles=0, sparkle_color="#FF0000")
+        assert "C_COLOURPICKERCTRL_SparklesColour" not in result
+
+    def test_no_sparkle_color_field_when_none(self) -> None:
+        result = _serialize_palette(["#0000FF"], music_sparkles=20)
+        assert "C_CHECKBOX_MusicSparkles=1" in result
+        assert "C_COLOURPICKERCTRL_SparklesColour" not in result

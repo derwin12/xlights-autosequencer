@@ -582,7 +582,10 @@ def write_xsq(
                     dominant_hue = _dominant_hue_degrees(p.color_palette)
                     if dominant_hue is not None:
                         hue_adjust = _shader_hue_adjust_for_hue(dominant_hue, baseline_hue)
-            pal_idx = _ensure_palette(p.color_palette, palette_index, palette_list, p.music_sparkles, hue_adjust)
+            pal_idx = _ensure_palette(
+                p.color_palette, palette_index, palette_list, p.music_sparkles, hue_adjust,
+                p.sparkle_color,
+            )
             eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list, buffer_style)
             placement_cache[id(p)] = (eff_idx, pal_idx)
 
@@ -798,6 +801,7 @@ _DEFAULT_PALETTE_COLORS = [
 
 def _serialize_palette(
     colors: list[str], music_sparkles: int = 0, hue_adjust: int | None = None,
+    sparkle_color: str | None = None,
 ) -> str:
     """Convert a list of hex colors to xLights C_BUTTON_Palette format.
 
@@ -810,6 +814,11 @@ def _serialize_palette(
     checkbox alongside the slider, and without it the slider value alone
     does nothing, so every prior sparkle placement (tier-1 BASE, palette-
     restraint pool effects) rendered with sparkles silently off.
+    ``sparkle_color``, when given alongside music_sparkles > 0, appends
+    C_COLOURPICKERCTRL_SparklesColour -- a real xLights clipboard sample
+    (user-supplied, 2026-07-28) showed sparkles rendering in a distinct
+    color from the base palette (red sparkles over a blue Bars effect) via
+    this dedicated field, not by flashing the base palette color itself.
     ``hue_adjust``, when given, appends C_SLIDER_Color_HueAdjust -- the
     generic Color-tab hue-rotation slider (see _shader_hue_adjust_for_hue).
     """
@@ -827,6 +836,8 @@ def _serialize_palette(
     if music_sparkles > 0:
         parts.append("C_CHECKBOX_MusicSparkles=1")
         parts.append(f"C_SLIDER_SparkleFrequency={music_sparkles}")
+        if sparkle_color is not None:
+            parts.append(f"C_COLOURPICKERCTRL_SparklesColour={sparkle_color}")
     if hue_adjust is not None:
         parts.append(f"C_SLIDER_Color_HueAdjust={hue_adjust}")
     return ",".join(parts)
@@ -1135,9 +1146,10 @@ def _ensure_palette(
     palette_list: list[str],
     music_sparkles: int = 0,
     hue_adjust: int | None = None,
+    sparkle_color: str | None = None,
 ) -> int:
     """Add palette to dedup index if not already present. Return index."""
-    key = _serialize_palette(colors, music_sparkles, hue_adjust)
+    key = _serialize_palette(colors, music_sparkles, hue_adjust, sparkle_color)
     if key not in index:
         index[key] = len(palette_list)
         palette_list.append(key)

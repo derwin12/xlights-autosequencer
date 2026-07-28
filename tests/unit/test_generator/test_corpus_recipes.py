@@ -1463,6 +1463,19 @@ class TestMaskSparkles:
         assert ons
         assert all(p.music_sparkles == 15 for p in ons)
 
+    def test_mask_sparkles_get_a_contrast_color(self) -> None:
+        # 2026-07-28: user-supplied real xLights clipboard sample showed red
+        # sparkles over a blue Bars effect via a dedicated sparkle-color
+        # field, distinct from the base mask color -- not xLights' plain
+        # white default.
+        result = _place(_make_section(label="chorus", energy=80), _CANE_GROUP,
+                        library_names=_LIBRARY_WITH_ON)
+        ons = [p for p in result["06_PROP_Candy_Cane"] if p.effect_name == "On"]
+        assert ons
+        for p in ons:
+            assert p.sparkle_color is not None
+            assert p.sparkle_color != p.color_palette[0]
+
 
 # ── Alternating Flip Horizontal buffer transform ─────────────────────────────
 # User request (2026-07-15), matching a real xLights clipboard paste of a
@@ -1630,6 +1643,31 @@ class TestVividMaskColor:
             assert any(_hue_distance_deg(hue * 360.0, h) < 25.0 for h in own_hues), (
                 f"{color} is not within any of the theme's own hues {own_hues}"
             )
+
+
+# ── MusicSparkles contrast color ─────────────────────────────────────────────
+# User request (2026-07-28), matching a real xLights clipboard sample: red
+# sparkles over a blue Bars effect via a dedicated
+# C_COLOURPICKERCTRL_SparklesColour field, distinct from the base palette.
+
+
+class TestContrastColor:
+    def test_returns_complementary_hue(self) -> None:
+        from src.generator.effect_placer import _contrast_color
+        assert _contrast_color("#0000FF") == "#FFFF00"
+        assert _contrast_color("#FF0000") == "#00FFFF"
+
+    def test_pushes_to_full_saturation_and_value(self) -> None:
+        from src.generator.effect_placer import _contrast_color
+        color = _contrast_color("#336699")  # muted blue
+        c = color.lstrip("#")
+        r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+        assert max(r, g, b) == 255
+        assert min(r, g, b) == 0
+
+    def test_unparseable_input_falls_back_to_white(self) -> None:
+        from src.generator.effect_placer import _contrast_color
+        assert _contrast_color("not-a-color") == "#FFFFFF"
 
 
 # ── placement progress callback ──────────────────────────────────────────────

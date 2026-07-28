@@ -327,6 +327,27 @@ def _vivid_mask_color(
     return candidates[(variation_seed + spread + offset) % len(candidates)]
 
 
+def _contrast_color(hex_color: str) -> str:
+    """Return the complementary (opposite-hue) color of ``hex_color``.
+
+    Used for MusicSparkles' dedicated sparkle color (user request
+    2026-07-28, a real xLights clipboard sample: red sparkles over a blue
+    Bars effect) so the sparkle pops against the mask's own vivid color
+    instead of xLights' plain-white default. Pushed to full saturation/
+    value like ``_vivid_mask_color``'s own candidates, so the contrast
+    color reads as vivid too, not washed out. Falls back to white for an
+    unparseable input.
+    """
+    import colorsys
+    c = hex_color.lstrip("#")
+    if len(c) != 6:
+        return "#FFFFFF"
+    r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    h, _, _ = colorsys.rgb_to_hsv(r, g, b)
+    r2, g2, b2 = colorsys.hsv_to_rgb((h + 0.5) % 1.0, 1.0, 1.0)
+    return f"#{round(r2 * 255):02X}{round(g2 * 255):02X}{round(b2 * 255):02X}"
+
+
 def _saturated_colors(palette: list[str]) -> list[str]:
     """Return the palette's saturated colors (drops whites/grays/near-blacks).
 
@@ -3004,6 +3025,7 @@ def _place_corpus_recipe(
                 color_layer.layer = 0
                 if recipe.mask_sparkles:
                     color_layer.music_sparkles = 15 + round(section.energy_score * 0.5)
+                    color_layer.sparkle_color = _contrast_color(color)
                 placements.append(color_layer)
         else:
             color = _vivid_mask_color(theme_palette, variation_seed, group.name)
@@ -3014,6 +3036,7 @@ def _place_corpus_recipe(
             color_layer.layer = 0
             if recipe.mask_sparkles:
                 color_layer.music_sparkles = 15 + round(section.energy_score * 0.5)
+                color_layer.sparkle_color = _contrast_color(color)
             placements.append(color_layer)
 
     # Optional sustained motion layer beneath the per-beat bursts (matrix
