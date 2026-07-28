@@ -438,6 +438,88 @@ class TestThemeOverrideBypassesAnchorPalette:
         )
 
 
+class TestAccentBlendsWithAnchorPalette:
+    """Tier 3+ 'accent' colors blend toward the song-wide anchor palette
+    instead of using the section's own theme.accent_palette outright (user
+    report, 2026-07-28, on a real generated .xsq: two same-role chorus
+    sections rendered in unrelated color families -- red vs. gold/cyan --
+    because theme.accent_palette always won outright regardless of the
+    anchor). Same theme_overridden exemption as TestThemeOverrideBypasses
+    AnchorPalette above: an explicitly pinned theme shows its own colors
+    undiluted.
+    """
+
+    def _place(self, theme_overridden: bool) -> list:
+        import colorsys
+        from src.generator.models import WorkingSet, WorkingSetEntry
+        # Anchor is pure blue (hue 240); theme's own accent is pure red
+        # (hue 0) -- a 50/50 hue blend should land near hue 300 (magenta),
+        # nowhere near either the raw anchor or the raw theme accent.
+        anchor = ["#0000FF"]
+        theme = Theme(
+            name="Red Theme", mood="structural", occasion="general", genre="any",
+            intent="test", layers=[EffectLayer(variant="Color Wash")],
+            palette=["#FF0000"], accent_palette=["#FF0000"],
+        )
+        # Non-corpus-recipe-matching group name + WorkingSet, same setup as
+        # the proven-working TestColorWashAlwaysGetsMusicSparkles above --
+        # tier 6 without a qualifying corpus recipe routes through the
+        # focused-vocabulary WorkingSet path, not theme.layers directly.
+        assignment = SectionAssignment(
+            section=_make_section(energy_score=50),
+            theme=theme,
+            active_tiers=frozenset({6}),
+            anchor_palette=anchor,
+            theme_overridden=theme_overridden,
+            working_set=WorkingSet(
+                effects=[WorkingSetEntry(
+                    effect_name="Color Wash", variant_name="Color Wash",
+                    weight=1.0, source="layer_0",
+                )],
+                theme_name="Red Theme",
+            ),
+        )
+        groups = [PowerGroup(name="06_PROP_Arches", tier=6, members=["Model_A"])]
+        library = _make_library(_make_effect("Color Wash"))
+        variant_library = _make_variant_library("Color Wash")
+        hierarchy = _make_hierarchy(beat_times=[0, 500, 1000])
+
+        result = place_effects(assignment, groups, library, hierarchy,
+                               variant_library=variant_library)
+        placements = result.get("06_PROP_Arches", [])
+        hues = []
+        for p in placements:
+            for c in p.color_palette:
+                c = c.lstrip("#")
+                if len(c) != 6:
+                    continue
+                r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+                h, s, _ = colorsys.rgb_to_hsv(r, g, b)
+                if s > 0.3:
+                    hues.append(h * 360.0)
+        return hues
+
+    def test_auto_selected_section_blends_accent_toward_anchor(self) -> None:
+        hues = self._place(theme_overridden=False)
+        assert hues, "expected at least one saturated accent color"
+        # Blended hue must sit strictly between the raw theme accent (0)
+        # and the raw anchor (240) -- not equal to either endpoint. Circular
+        # midpoint of a 0/240 blend is 300 (going the short way through
+        # magenta/purple), not 120 (green, the long way around).
+        assert all(200 <= h <= 340 for h in hues), (
+            f"expected hues blended toward anchor (near 300deg), got {hues}"
+        )
+
+    def test_overridden_section_keeps_raw_theme_accent(self) -> None:
+        hues = self._place(theme_overridden=True)
+        assert hues, "expected at least one saturated accent color"
+        # Pinned theme must NOT blend toward the anchor -- stays near the
+        # theme's own red hue (0/360).
+        assert all(h <= 20 or h >= 340 for h in hues), (
+            f"pinned theme must keep its own red hue undiluted, got {hues}"
+        )
+
+
 class TestSectionParameterOverrides:
     """The Theme screen's per-section sliders (brightness/hit_strength/
     color_shift) must actually change placed colors -- previously they only

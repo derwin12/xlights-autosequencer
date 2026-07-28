@@ -1055,6 +1055,19 @@ def place_effects(
     else:
         accent = _lighten_palette(effective_base, 0.5)
 
+    # Blend accent toward the song-level anchor so tier-6+ prop colors stay
+    # a recognizable shade of the overall identity instead of swapping to a
+    # completely different hue at each section boundary (user report,
+    # 2026-07-28: two same-role chorus sections rendered in unrelated color
+    # families -- red vs. gold/cyan -- because theme.accent_palette above
+    # always wins outright, regardless of the anchor). 50/50 hue blend
+    # (blend_palettes keeps accent's own saturation/value, only rotates hue
+    # toward the anchor) -- same user-pinned-theme exemption as
+    # effective_base above, so an explicitly chosen theme still shows its
+    # own colors undiluted.
+    if assignment.anchor_palette and not assignment.theme_overridden:
+        accent = blend_palettes(accent, assignment.anchor_palette, chord_weight=0.5)
+
     # Theme-screen "Color Shift" slider: rotate this section's hue away from
     # the theme's authored colors. Applied before backdrop/accent brightness
     # scaling so both derive from the shifted hue.
