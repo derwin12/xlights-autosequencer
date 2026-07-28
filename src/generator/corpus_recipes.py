@@ -724,13 +724,17 @@ _COLOR_WASH_MATRIX: tuple[tuple[str, str], ...] = (
 # Spiral-tree Color Wash preset — mined 2026-07-28 from a 392-song reference
 # scan (764 Color Wash placements on Spiral-named models, 7.5% of all
 # effects there): VFade on (95% of specified placements), HFade on (87%),
-# CircularPalette on (100% of the 164 that specify it), Cycles=2 (most
-# common specified value). Distinct from _COLOR_WASH_MATRIX -- that preset's
-# own mined data had no CircularPalette/Cycles signal at all.
+# Cycles=2 (most common specified value). The mined data also showed
+# CircularPalette on (100% of the 164 that specify it), but this recipe's
+# own placement is always flat white (recipe.palette defaults to
+# ("#FFFFFF",); the real color comes from the On mask layer above via
+# color_over_mask) -- CircularPalette only affects how a MULTI-color
+# palette cycles, so it's a no-op here and deliberately omitted (user
+# correction, 2026-07-28). Distinct from _COLOR_WASH_MATRIX -- that
+# preset's own mined data had no Cycles signal at all.
 _COLOR_WASH_SPIRAL: tuple[tuple[str, str], ...] = (
     ("E_CHECKBOX_ColorWash_HFade", "1"),
     ("E_CHECKBOX_ColorWash_VFade", "1"),
-    ("E_CHECKBOX_ColorWash_CircularPalette", "1"),
     ("E_TEXTCTRL_ColorWash_Cycles", "2"),
 )
 

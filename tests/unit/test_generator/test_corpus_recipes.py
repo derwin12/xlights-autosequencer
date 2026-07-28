@@ -1391,7 +1391,12 @@ class TestSpiralTreeRecipe:
         placements = colorwash["06_PROP_Spiral_Tree"]
         assert placements
         assert all(p.effect_name == "Color Wash" for p in placements)
-        assert all(p.parameters["E_CHECKBOX_ColorWash_CircularPalette"] == "1" for p in placements)
+        assert all(p.parameters["E_CHECKBOX_ColorWash_HFade"] == "1" for p in placements)
+        assert all(p.parameters["E_CHECKBOX_ColorWash_VFade"] == "1" for p in placements)
+        # No CircularPalette -- the placement's own color is flat white
+        # (color_over_mask supplies the real color), so it's a no-op here
+        # (user correction, 2026-07-28).
+        assert all("E_CHECKBOX_ColorWash_CircularPalette" not in p.parameters for p in placements)
         # Cycles varies per beat (2026-07-28), not fixed at the mined
         # default -- see test_color_wash_cycles_varies_per_beat.
         assert all(
