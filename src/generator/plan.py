@@ -364,6 +364,7 @@ def build_plan(
         )
         for gname, placements in _place_lyric_text(
             effect_props, config.vocal_words, config.vocal_diarization,
+            theme_palette=_anchor,
         ).items():
             vocal_effects.setdefault(gname, []).extend(placements)
 

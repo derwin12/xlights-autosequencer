@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from src.generator.effect_placer import (
     _best_face_definition,
+    _lightest_color,
     _place_lyric_text,
     _place_singing_faces,
     _vocal_regions,
@@ -126,20 +127,91 @@ class TestPlaceLyricText:
         ]
         result = _place_lyric_text(props, WORDS)
         assert set(result) == {"Lyrics Matrix", "Lyrics Matrix Small"}
-        assert len(result["Lyrics Matrix"]) == 2
-        assert len(result["Lyrics Matrix Small"]) == 2
+        assert len(result["Lyrics Matrix"]) == 2  # one per vocal region
+        assert len(result["Lyrics Matrix Small"]) == 3  # one per word (2026-07-28)
 
-    def test_small_named_matrix_uses_smaller_bitmap_font(self):
+    def test_small_named_matrix_gets_per_word_placements(self):
+        # 2026-07-28: a "small"-named target renders one Text effect per
+        # word, sized to that word's own timing, instead of one effect per
+        # vocal region using LyricTrack mode.
         props = [
             _prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
             _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
         ]
         result = _place_lyric_text(props, WORDS)
-        assert "E_CHOICE_Text_Font" not in result["Lyrics Matrix"][0].parameters
-        assert result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_Font"] == "5-5x5 Thin"
-        # Everything else about the effect is identical between targets.
-        assert (result["Lyrics Matrix"][0].parameters["E_CHOICE_Text_LyricTrack"]
-                == result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_LyricTrack"])
+        big = result["Lyrics Matrix"]
+        small = result["Lyrics Matrix Small"]
+
+        # Non-small target unchanged: region-based, LyricTrack mode.
+        assert len(big) == 2
+        assert big[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+        assert "E_TEXTCTRL_Text" not in big[0].parameters
+
+        # Small target: one placement per word, sized to the word itself,
+        # driven by the LyricTrack (not literal text) -- see
+        # test_small_named_matrix_scrolls_long_words for why.
+        assert len(small) == 3
+        assert [p.start_ms for p in small] == [1000, 1600, 9000]
+        assert [p.end_ms for p in small] == [1400, 2000, 9500]
+        assert all(p.parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words" for p in small)
+        assert all("E_TEXTCTRL_Text" not in p.parameters for p in small)
+        assert all(p.parameters["E_CHOICE_Text_Font"] == "5-5x5 Mono" for p in small)
+
+    def test_small_named_matrix_scrolls_long_words(self):
+        # MORNING (7 letters, the shortest scrolling word) and AMORNING
+        # (8 letters) are the user-verified reference points: each extra
+        # letter shifts XStart +3 / XEnd -3 (2026-07-28).
+        long_words = [
+            {"label": "HELLO", "start_ms": 1000, "end_ms": 1400},
+            {"label": "MORNING", "start_ms": 1600, "end_ms": 2400},
+            {"label": "AMORNING", "start_ms": 2600, "end_ms": 3400},
+        ]
+        props = [_prop("Lyrics Matrix Small", display_as="Matrix", pixels=512)]
+        result = _place_lyric_text(props, long_words)
+        placements = result["Lyrics Matrix Small"]
+
+        short = placements[0].parameters
+        assert short["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+        assert "E_CHOICE_Text_Dir" not in short
+
+        long = placements[1].parameters
+        assert long["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+        assert long["E_CHOICE_Text_Dir"] == "vector"
+        assert long["E_NOTEBOOK"] == "Start Position"
+        assert long["E_CHECKBOX_Text_PixelOffsets"] == "1"
+        assert long["E_SLIDER_Text_XStart"] == "3"
+        assert long["E_SLIDER_Text_XEnd"] == "-2"
+
+        longer = placements[2].parameters
+        assert longer["E_SLIDER_Text_XStart"] == "6"
+        assert longer["E_SLIDER_Text_XEnd"] == "-5"
+
+    def test_defaults_to_white_without_theme_palette(self):
+        props = [_prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
+                 _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512)]
+        result = _place_lyric_text(props, WORDS)
+        assert result["Lyrics Matrix"][0].color_palette == ["#FFFFFF"]
+        assert result["Lyrics Matrix Small"][0].color_palette == ["#FFFFFF"]
+
+    def test_uses_lightest_theme_color(self):
+        # Darkest first to make sure it's not just picking palette[0].
+        palette = ["#101010", "#804020", "#FFCC66"]
+        props = [_prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
+                 _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512)]
+        result = _place_lyric_text(props, WORDS, theme_palette=palette)
+        assert result["Lyrics Matrix"][0].color_palette == ["#FFCC66"]
+        assert result["Lyrics Matrix Small"][0].color_palette == ["#FFCC66"]
+
+
+class TestLightestColor:
+    def test_picks_highest_lightness_entry(self):
+        assert _lightest_color(["#101010", "#804020", "#FFCC66"]) == "#FFCC66"
+
+    def test_empty_palette_falls_back_to_white(self):
+        assert _lightest_color([]) == "#FFFFFF"
+
+    def test_unparseable_entries_skipped(self):
+        assert _lightest_color(["not-a-color", "#00FF00"]) == "#00FF00"
 
 
 DUET_WORDS = [
@@ -197,11 +269,16 @@ class TestLyricTextDiarization:
             _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
         ]
         result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
+        # Lead target ("Lyrics Matrix") is not "small" -- unchanged region path.
         assert len(result["Lyrics Matrix"]) == 1
         assert result["Lyrics Matrix"][0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
-        assert len(result["Lyrics Matrix Small"]) == 1
-        assert (result["Lyrics Matrix Small"][0].parameters["E_CHOICE_Text_LyricTrack"]
-                == "Lyrics - Backup - Words")
+        # Backup target ("Lyrics Matrix Small") is "small" -- per-word path,
+        # rendering only the backup speaker's word ("AGAIN"), via the
+        # backup LyricTrack.
+        small = result["Lyrics Matrix Small"]
+        assert len(small) == 1
+        assert small[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
+        assert "E_TEXTCTRL_Text" not in small[0].parameters
 
     def test_single_target_degrades_to_all_words(self):
         props = [_prop("Matrix Big", display_as="Matrix", pixels=4800)]

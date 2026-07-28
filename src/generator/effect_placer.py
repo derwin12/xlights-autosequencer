@@ -155,6 +155,29 @@ def _darken_palette_hsl(palette: list[str], target_lightness: float = 0.15) -> l
     return result
 
 
+def _lightest_color(palette: list[str]) -> str:
+    """Return the palette entry with the highest HSL lightness.
+
+    Falls back to white when the palette is empty or has no parseable
+    6-digit hex entries.
+    """
+    import colorsys
+    best_color = "#FFFFFF"
+    best_lightness = -1.0
+    for color in palette:
+        c = color.lstrip("#")
+        if len(c) != 6:
+            continue
+        r = int(c[0:2], 16) / 255.0
+        g = int(c[2:4], 16) / 255.0
+        b = int(c[4:6], 16) / 255.0
+        _, l, _ = colorsys.rgb_to_hls(r, g, b)
+        if l > best_lightness:
+            best_lightness = l
+            best_color = color
+    return best_color
+
+
 # Solid saturated primaries used by the reference packages' On unmask layers
 # (mined mask-color histogram: blue, cyan, red, yellow dominate), used as the
 # fallback rotation when a section palette has no saturated color to promote.
@@ -4159,18 +4182,50 @@ def _best_face_definition(prop_name: str, face_definitions: list[str]) -> str:
 
 
 # Bitmap font for a "*Lyrics*Small*"-named matrix (user request,
-# 2026-07-18, changed to 5-5x5 Thin 2026-07-21): xLights has no numeric
-# font-size slider for the Text effect's bitmap-font mode, only a fixed
-# choice list; "5-5x5 Thin" is 5px tall vs. the default "10-12x12 Bold"'s
-# 12px (_XLIGHTS_EFFECT_DEFAULTS["Text"]["E_CHOICE_Text_Font"] in
+# 2026-07-18, changed to 5-5x5 Thin 2026-07-21, changed to 5-5x5 Mono
+# 2026-07-28): xLights has no numeric font-size slider for the Text
+# effect's bitmap-font mode, only a fixed choice list; "5-5x5 Mono" is
+# 5px tall vs. the default "10-12x12 Bold"'s 12px
+# (_XLIGHTS_EFFECT_DEFAULTS["Text"]["E_CHOICE_Text_Font"] in
 # xsq_writer.py).
-_LYRIC_TEXT_SMALL_FONT = "5-5x5 Thin"
+_LYRIC_TEXT_SMALL_FONT = "5-5x5 Mono"
+
+# Small-matrix words longer than this many characters won't fit statically
+# on a 5px-tall font, so they scroll instead (user request 2026-07-28).
+_LYRIC_TEXT_SMALL_LONG_WORD_CHARS = 6
+# Vector scroll slider values for long words on the small matrix. A 7-letter
+# word (the shortest that qualifies for scrolling) starts at XStart=3/
+# XEnd=-2; every additional letter shifts XStart +3 and XEnd -3 further
+# (e.g. an 8-letter word starts at 6/-5) so longer words get proportionally
+# more scroll travel. Values/formula from a user-verified real .xsqz export
+# (2026-07-28) -- provisional, may need retuning per matrix width.
+_LYRIC_TEXT_SMALL_VECTOR_BASE_XSTART = 3
+_LYRIC_TEXT_SMALL_VECTOR_BASE_XEND = -2
+_LYRIC_TEXT_SMALL_VECTOR_PER_EXTRA_CHAR = 3
+
+
+def _word_spans(words: Optional[list[dict]]) -> list[tuple[int, int, str]]:
+    """Return each word's own ``(start_ms, end_ms, text)``, sorted by start.
+
+    Unlike ``_vocal_regions``, adjacent words are NOT merged -- each word
+    keeps its individual timing so a per-word effect can be sized exactly
+    to it.
+    """
+    if not words:
+        return []
+    spans = [
+        (int(w["start_ms"]), int(w["end_ms"]), str(w.get("label") or w.get("word") or ""))
+        for w in words
+        if int(w["end_ms"]) > int(w["start_ms"])
+    ]
+    return sorted(spans, key=lambda s: (s[0], s[1]))
 
 
 def _place_lyric_text(
     props: list[Any],
     vocal_words: Optional[list[dict]],
     vocal_diarization: bool = False,
+    theme_palette: Optional[list[str]] = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place a word-synced Text effect on every matrix prop named for lyrics.
 
@@ -4181,14 +4236,28 @@ def _place_lyric_text(
     render layer of the matrix's own model element. Returns ``{}`` when
     there are no words or no Matrix props in the layout.
 
+    Colored with the lightest entry (highest HSL lightness) of
+    ``theme_palette`` — the song's anchor palette when given (user request
+    2026-07-28: legible against the small bitmap font, but still on-theme
+    instead of flat white). Falls back to white when no palette is passed.
+
     Every matrix prop whose name contains "lyric" (e.g. "Lyrics Matrix",
-    "Lyrics Matrix Small") gets the same placement -- not just the
-    largest one (2026-07-18: previously only ever targeted a single
-    matrix, so a second lyrics-display prop got nothing). A prop whose
-    name also contains "small" renders at ``_LYRIC_TEXT_SMALL_FONT``
-    instead of the catalog default; everything else about the effect is
-    identical between targets. When no prop is named for lyrics at all,
-    falls back to the single largest matrix prop (unchanged behavior).
+    "Lyrics Matrix Small") gets a placement -- not just the largest one
+    (2026-07-18: previously only ever targeted a single matrix, so a
+    second lyrics-display prop got nothing). When no prop is named for
+    lyrics at all, falls back to the single largest matrix prop
+    (unchanged behavior).
+
+    A target whose name also contains "small" gets a DIFFERENT effect
+    shape (user request 2026-07-28): one ``Text`` placement per
+    individual word, sized exactly to that word's own start/end (no
+    region merging), rendered at ``_LYRIC_TEXT_SMALL_FONT`` and still
+    driven by ``E_CHOICE_Text_LyricTrack`` (not literal text -- see
+    ``_small_lyric_word_placement``). Words longer than
+    ``_LYRIC_TEXT_SMALL_LONG_WORD_CHARS`` scroll via a vector
+    (``E_CHOICE_Text_Dir="vector"``) since they won't fit statically on
+    the small font. Every other target keeps the original region-based
+    placement, one per contiguous vocal region.
 
     When ``vocal_diarization`` is on and at least two targets exist, the
     second target (by the same order as above) renders only speaker-1
@@ -4218,11 +4287,30 @@ def _place_lyric_text(
 
     lead_regions = _vocal_regions(lead_words)
     backup_regions = _vocal_regions(backup_words) if backup_target is not None else []
+    lead_spans = _word_spans(lead_words)
+    backup_spans = _word_spans(backup_words) if backup_target is not None else []
     if not lead_regions and not backup_regions:
         return result
 
+    color = _lightest_color(theme_palette) if theme_palette else "#FFFFFF"
+
     for target in targets:
         is_backup = target is backup_target
+        is_small = "small" in target.name.lower()
+
+        if is_small:
+            spans = backup_spans if is_backup else lead_spans
+            if not spans:
+                continue
+            placements = [_small_lyric_word_placement(target.name, start, end, text, is_backup, color)
+                          for start, end, text in spans]
+            result[target.name] = placements
+            logger.info(
+                "lyric_text: per-word Text placed on small matrix '%s' over %d word(s)",
+                target.name, len(placements),
+            )
+            continue
+
         regions = backup_regions if is_backup else lead_regions
         if not regions:
             continue
@@ -4231,9 +4319,7 @@ def _place_lyric_text(
                 _LYRIC_TEXT_BACKUP_TIMING_TRACK if is_backup else _LYRIC_TEXT_TIMING_TRACK
             ),
         }
-        if "small" in target.name.lower():
-            parameters["E_CHOICE_Text_Font"] = _LYRIC_TEXT_SMALL_FONT
-        placements: list[EffectPlacement] = []
+        placements = []
         for start, end in regions:
             placements.append(EffectPlacement(
                 effect_name="Text",
@@ -4242,7 +4328,7 @@ def _place_lyric_text(
                 start_ms=start,
                 end_ms=end,
                 parameters=dict(parameters),
-                color_palette=["#FFFFFF"],
+                color_palette=[color],
             ))
         result[target.name] = placements
 
@@ -4251,6 +4337,54 @@ def _place_lyric_text(
             target.name, len(regions),
         )
     return result
+
+
+def _small_lyric_word_placement(
+    target_name: str, start_ms: int, end_ms: int, text: str, is_backup: bool = False,
+    color: str = "#FFFFFF",
+) -> EffectPlacement:
+    """Build one per-word ``Text`` placement for a small lyrics matrix.
+
+    Driven by ``E_CHOICE_Text_LyricTrack`` (same "Lyrics - Words" /
+    "Lyrics - Backup - Words" track the region-based path uses), not a
+    literal ``E_TEXTCTRL_Text`` string -- a user-verified working effect
+    showed the "From Lyrics" field populated this way, and since each
+    placement's start/end already narrows to exactly one word's own
+    timing window, the track shows only that word (2026-07-28).
+
+    Words no longer than ``_LYRIC_TEXT_SMALL_LONG_WORD_CHARS`` render
+    statically; longer words scroll via a vector (with
+    ``E_CHECKBOX_Text_PixelOffsets=1`` so the XStart/XEnd sliders move in
+    pixel units) so they aren't clipped by the small bitmap font -- the
+    scroll distance grows with word length, see
+    ``_LYRIC_TEXT_SMALL_VECTOR_BASE_XSTART``/``..._PER_EXTRA_CHAR``.
+    """
+    parameters: dict[str, Any] = {
+        "E_CHOICE_Text_LyricTrack": (
+            _LYRIC_TEXT_BACKUP_TIMING_TRACK if is_backup else _LYRIC_TEXT_TIMING_TRACK
+        ),
+        "E_CHOICE_Text_Font": _LYRIC_TEXT_SMALL_FONT,
+    }
+    if len(text) > _LYRIC_TEXT_SMALL_LONG_WORD_CHARS:
+        extra_chars = len(text) - (_LYRIC_TEXT_SMALL_LONG_WORD_CHARS + 1)
+        xstart = _LYRIC_TEXT_SMALL_VECTOR_BASE_XSTART + _LYRIC_TEXT_SMALL_VECTOR_PER_EXTRA_CHAR * extra_chars
+        xend = _LYRIC_TEXT_SMALL_VECTOR_BASE_XEND - _LYRIC_TEXT_SMALL_VECTOR_PER_EXTRA_CHAR * extra_chars
+        parameters["E_CHOICE_Text_Dir"] = "vector"
+        parameters["E_NOTEBOOK"] = "Start Position"
+        parameters["E_CHECKBOX_Text_PixelOffsets"] = "1"
+        parameters["E_SLIDER_Text_XStart"] = str(xstart)
+        parameters["E_SLIDER_Text_XEnd"] = str(xend)
+        parameters["E_SLIDER_Text_YStart"] = "0"
+        parameters["E_SLIDER_Text_YEnd"] = "0"
+    return EffectPlacement(
+        effect_name="Text",
+        xlights_id="Text",
+        model_or_group=target_name,
+        start_ms=start_ms,
+        end_ms=end_ms,
+        parameters=parameters,
+        color_palette=[color],
+    )
 
 
 def _format_video_duration(duration_ms: int) -> str:

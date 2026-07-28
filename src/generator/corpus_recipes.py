@@ -1534,17 +1534,25 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     # treatment instead of mini-tree's: a spiral-wrapped prop is a tall thin
     # line shape, the same silhouette a vertical-lines element has, and the
     # user specifically wants a Single-Strand-led idiom here rather than the
-    # mini-tree chase-across-the-whole-group preset. Same effect/alt/preset/
+    # mini-tree chase-across-the-whole-group preset. Same effect/preset/
     # direction+size rotation as "vertical" below, applied to this family
     # instead — not a placeholder anymore, but still open to a genuinely
     # spiral-specific idiom later if real rendering suggests one.
+    #
+    # Alt effect changed Lightning -> Shockwave (mini-tree's alt) 2026-07-28:
+    # user caught Lightning still firing on a real "06_PROP_Spiral_Tree"
+    # export and asked for it gone -- a coiled/wrapped shape can't render
+    # Lightning's straight bolt path (same reasoning as the 2026-07-26
+    # radial-suitability fix for Custom-displayed mini spiral props, which
+    # never applied here since this recipe sets its effects explicitly and
+    # doesn't go through prop_suitability filtering at all).
     PropFamilyRecipe(
         family="spiraltree",
         match_tokens=("spiral",),
         effect_name="Single Strand",
-        alt_effect_name="Lightning",
+        alt_effect_name="Shockwave",
         parameter_overrides=_CHASE_FROM_HEAD,
-        alt_parameter_overrides=_LIGHTNING_FLICKER,
+        alt_parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
         mask_sparkles=True,
         color_cycle_bars=True,
