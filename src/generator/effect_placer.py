@@ -2709,6 +2709,26 @@ def _place_corpus_recipe(
         params = dict(recipe.label_alt_parameter_overrides)
     else:
         params = dict(recipe.alt_parameter_overrides)
+        # Alternate-occurrence "bounce" preset for the alt effect (e.g.
+        # Shockwave explode/implode) -- every other occurrence of the alt
+        # effect swaps to alt_parameter_overrides_bounce instead of
+        # repeating the same preset every time (user request 2026-07-28).
+        # Fallback parity deliberately uses variation_seed's LOW bit, not
+        # (variation_seed // 2) -- that's the same bit the alt-vs-primary
+        # choice below uses (recipe.alt_effect_name branch), so reusing it
+        # here would make bounce fire on every single alt occurrence and
+        # explode never render at all when occurrence_index is unavailable.
+        if recipe.alt_parameter_overrides_bounce:
+            bounce_occurrence = occurrence_index if occurrence_index is not None else variation_seed
+            if bounce_occurrence % 2 == 1:
+                params = dict(recipe.alt_parameter_overrides_bounce)
+            # Small per-occurrence variety on top of the explode/implode
+            # choice itself (user request 2026-07-28): nudge Shockwave's
+            # radius/width fields +/-10, floored at 1 so the ring never
+            # collapses to nothing or inverts sign.
+            _jitter_shockwave_radius_width(
+                params, f"shockwave_bounce:{group.name}:{section.start_ms}:{bounce_occurrence}",
+            )
 
     # Occurrence style rotation applies only to the primary effect's own
     # preset (see PropFamilyRecipe.direction_field/size_field docstrings): one
@@ -4495,6 +4515,36 @@ def _randomized_lightning_fields(seed_key: str) -> dict[str, str]:
         "E_SLIDER_Lightning_WIDTH": str(rng.randint(*_LIGHTNING_WIDTH_RANGE)),
         "E_SLIDER_Number_Segments": str(rng.randint(*_LIGHTNING_SEGMENTS_RANGE)),
     }
+
+
+# Shockwave radius/width jitter (user request, 2026-07-28): applied on top
+# of the explode/implode bounce choice so consecutive Shockwave occurrences
+# don't all render the exact same ring size. +/-10 per field, floored at 1
+# so a ring never collapses to 0 or goes negative.
+_SHOCKWAVE_JITTER_FIELDS = (
+    "E_SLIDER_Shockwave_Start_Radius",
+    "E_SLIDER_Shockwave_End_Radius",
+    "E_SLIDER_Shockwave_Start_Width",
+    "E_SLIDER_Shockwave_End_Width",
+)
+_SHOCKWAVE_JITTER_RANGE = 10
+
+
+def _jitter_shockwave_radius_width(params: dict[str, Any], seed_key: str) -> None:
+    """Nudge Shockwave's radius/width fields +/-10 in place, floored at 1.
+
+    No-op for any field not present in ``params`` (e.g. an explode/implode
+    preset missing a field). Deterministic per ``seed_key`` so repeated
+    builds of the same song don't thrash.
+    """
+    rng = random.Random(seed_key)
+    for field in _SHOCKWAVE_JITTER_FIELDS:
+        if field not in params:
+            continue
+        base = int(params[field])
+        jittered = base + rng.randint(-_SHOCKWAVE_JITTER_RANGE, _SHOCKWAVE_JITTER_RANGE)
+        params[field] = str(max(1, jittered))
+
 
 # Occasional buffer-transform motion overlays for picture bursts (user
 # request, 2026-07-18). The value-curve strings are copied verbatim from

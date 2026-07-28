@@ -89,6 +89,18 @@ class PropFamilyRecipe:
     # (empty → the alternate keeps library defaults).
     parameter_overrides: tuple[tuple[str, str], ...] = ()
     alt_parameter_overrides: tuple[tuple[str, str], ...] = ()
+    # Alternate-occurrence preset for the ALT effect specifically (distinct
+    # from label_alt/alt_direction, which target different axes): every
+    # other occurrence of alt_effect_name uses this preset instead of
+    # alt_parameter_overrides, keyed by the same per-family occurrence
+    # counter motion_rotation/secondary_rotation use (SectionAssignment.
+    # corpus_occurrence). Used for a Shockwave "bounce" cadence -- explode
+    # outward on one occurrence, implode inward on the next (Start/End
+    # Radius swapped) -- on spiral trees and mini-trees (user request
+    # 2026-07-28, after the Lightning->Shockwave alt swap read as static/
+    # one-note across a whole song). Empty tuple -> alt_parameter_overrides
+    # always used, no alternation.
+    alt_parameter_overrides_bounce: tuple[tuple[str, str], ...] = ()
     # Optional secondary alternate keyed by section label rather than
     # variation_seed parity -- some families have a section label whose mined
     # idiom genuinely differs from both the primary and the seed-alternated
@@ -304,6 +316,27 @@ _SHOCKWAVE_BURST: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Shockwave_Start_Radius", "1"),
     ("E_SLIDER_Shockwave_Start_Width", "5"),
     ("E_SLIDER_Shockwave_End_Radius", "100"),
+    ("E_SLIDER_Shockwave_End_Width", "35"),
+)
+
+# Same preset with Start/End Radius swapped -- a ring collapsing inward
+# instead of blooming outward. Used as the alternate-occurrence "bounce"
+# preset (PropFamilyRecipe.alt_parameter_overrides_bounce) for spiral-tree
+# and mini-tree Shockwave so consecutive occurrences read as an outward/
+# inward bounce instead of the same explode every time (user request
+# 2026-07-28). Start/End Width intentionally left as-is -- only the
+# radius direction was asked to flip.
+_SHOCKWAVE_BURST_IMPLODE: tuple[tuple[str, str], ...] = (
+    ("E_NOTEBOOK_Shockwave", "Position"),
+    ("E_CHECKBOX_Shockwave_Blend_Edges", "1"),
+    ("E_CHECKBOX_Shockwave_Scale", "1"),
+    ("E_SLIDER_Shockwave_Accel", "0"),
+    ("E_SLIDER_Shockwave_CenterX", "50"),
+    ("E_SLIDER_Shockwave_CenterY", "50"),
+    ("E_SLIDER_Shockwave_Cycles", "1"),
+    ("E_SLIDER_Shockwave_Start_Radius", "100"),
+    ("E_SLIDER_Shockwave_Start_Width", "5"),
+    ("E_SLIDER_Shockwave_End_Radius", "1"),
     ("E_SLIDER_Shockwave_End_Width", "35"),
 )
 
@@ -1553,6 +1586,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_effect_name="Shockwave",
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_SHOCKWAVE_BURST,
+        alt_parameter_overrides_bounce=_SHOCKWAVE_BURST_IMPLODE,
         color_over_mask=True,
         mask_sparkles=True,
         color_cycle_bars=True,
@@ -1572,6 +1606,7 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         alt_effect_name="Shockwave",
         parameter_overrides=_CHASE_MINITREE,
         alt_parameter_overrides=_SHOCKWAVE_BURST,
+        alt_parameter_overrides_bounce=_SHOCKWAVE_BURST_IMPLODE,
         color_over_mask=True,
         mask_sparkles=True,
         # Off backdrop beneath the mask+motion stack, matching horizontal/

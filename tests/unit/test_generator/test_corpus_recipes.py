@@ -1299,13 +1299,45 @@ class TestSpiralTreeRecipe:
             assert p.parameters["E_CHECKBOX_Chase_Group_All"] == "1"
 
     def test_minitree_alternate_is_shockwave_burst(self) -> None:
-        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3)
+        # corpus_occurrence=0 (even) forces the explode preset regardless of
+        # the +/-10 jitter now applied on top (2026-07-28) -- End_Radius
+        # lands within 10 of the mined 100 baseline, not exactly 100.
+        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
+                         corpus_occurrence={"minitree": 0})
         placements = result["06_PROP_Tree"]
         assert placements
         for p in placements:
             assert p.effect_name == "Shockwave"
-            assert p.parameters["E_SLIDER_Shockwave_End_Radius"] == "100"
+            assert 90 <= int(p.parameters["E_SLIDER_Shockwave_End_Radius"]) <= 110
             assert "E_CHOICE_Chase_Type1" not in p.parameters
+
+    def test_minitree_bounce_occurrence_implodes(self) -> None:
+        # corpus_occurrence=1 (odd) selects the implode "bounce" preset --
+        # Start/End Radius roles swapped from the explode baseline.
+        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
+                         corpus_occurrence={"minitree": 1})
+        placements = result["06_PROP_Tree"]
+        assert placements
+        for p in placements:
+            assert p.effect_name == "Shockwave"
+            assert 90 <= int(p.parameters["E_SLIDER_Shockwave_Start_Radius"]) <= 110
+            assert 1 <= int(p.parameters["E_SLIDER_Shockwave_End_Radius"]) <= 11
+
+    def test_shockwave_radius_jitter_floors_at_one(self) -> None:
+        # Start_Radius=1 (explode baseline) minus jitter must never go
+        # below 1 -- run enough occurrences to make a floor hit likely and
+        # confirm no value ever dips under 1.
+        for occurrence in range(30):
+            result = _place(_make_section(label="chorus"), _MINITREE_GROUP,
+                             corpus_occurrence={"minitree": occurrence})
+            for p in result["06_PROP_Tree"]:
+                if p.effect_name != "Shockwave":
+                    continue
+                for field in (
+                    "E_SLIDER_Shockwave_Start_Radius", "E_SLIDER_Shockwave_End_Radius",
+                    "E_SLIDER_Shockwave_Start_Width", "E_SLIDER_Shockwave_End_Width",
+                ):
+                    assert int(p.parameters[field]) >= 1
 
     def test_minitree_on_color_layer_over_chase_mask(self) -> None:
         result = _place(_make_section(label="chorus"), _MINITREE_GROUP,
