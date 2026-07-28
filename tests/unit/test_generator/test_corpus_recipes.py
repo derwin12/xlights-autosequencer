@@ -100,7 +100,8 @@ def _make_full_hierarchy(beat_times: list[int] | None) -> HierarchyResult:
 def _make_assignment(section: SectionEnergy, layers: list[EffectLayer],
                      variation_seed: int = 0,
                      active_tiers: frozenset[int] = frozenset({1, 6}),
-                     corpus_occurrence: dict[str, int] | None = None) -> SectionAssignment:
+                     corpus_occurrence: dict[str, int] | None = None,
+                     palette_target: dict[int, int] | None = None) -> SectionAssignment:
     theme = Theme(
         name="Test Theme", mood="structural", occasion="general", genre="any",
         intent="test", layers=layers, palette=["#ff0000", "#00ff00"],
@@ -110,6 +111,7 @@ def _make_assignment(section: SectionEnergy, layers: list[EffectLayer],
         active_tiers=active_tiers,
         variation_seed=variation_seed,
         corpus_occurrence=corpus_occurrence or {},
+        palette_target=palette_target,
     )
 
 
@@ -144,13 +146,15 @@ def _place(section: SectionEnergy, group: PowerGroup,
            library_names: tuple[str, ...] = _DEFAULT_LIBRARY_NAMES,
            active_tiers: frozenset[int] = frozenset({1, 6}),
            corpus_occurrence: dict[str, int] | None = None,
-           vocal_words: list[dict] | None = None):
+           vocal_words: list[dict] | None = None,
+           palette_target: dict[int, int] | None = None):
     layers = layers or [EffectLayer(variant="Color Wash")]
     library = _make_library(*library_names)
     variant_library = _make_variant_library(*library_names)
     assignment = _make_assignment(section, layers, variation_seed=variation_seed,
                                   active_tiers=active_tiers,
-                                  corpus_occurrence=corpus_occurrence)
+                                  corpus_occurrence=corpus_occurrence,
+                                  palette_target=palette_target)
     return place_effects(
         assignment, [group], library,
         hierarchy if hierarchy is not None else _make_hierarchy(_BEATS),
@@ -1434,6 +1438,21 @@ class TestMaskSparkles:
         high_on = [p for p in high["06_PROP_Candy_Cane"] if p.effect_name == "On"][0]
         assert low_on.music_sparkles == 15 + round(20 * 0.5)
         assert high_on.music_sparkles == 15 + round(100 * 0.5)
+
+    def test_mask_sparkles_survive_palette_restraint(self) -> None:
+        # Bug found 2026-07-28 (user report on a real generated .xsq): the
+        # palette-restraint MusicSparkles post-process pass in place_effects
+        # ran unconditionally and overwrote every placement's music_sparkles
+        # with compute_music_sparkles' probabilistic roll, silently
+        # clobbering the deterministic value mask_sparkles=True had already
+        # set here. energy=0 makes compute_music_sparkles' enable
+        # probability exactly 0 (energy_score/200), so if the bug regresses,
+        # this reliably fails by asserting music_sparkles == 0.
+        result = _place(_make_section(label="chorus", energy=0), _CANE_GROUP,
+                        library_names=_LIBRARY_WITH_ON, palette_target={6: 50})
+        ons = [p for p in result["06_PROP_Candy_Cane"] if p.effect_name == "On"]
+        assert ons
+        assert all(p.music_sparkles == 15 for p in ons)
 
 
 # ── Alternating Flip Horizontal buffer transform ─────────────────────────────

@@ -1662,10 +1662,22 @@ def place_effects(
     # MusicSparkles: post-process placements when palette restraint is active.
     # Read the active state off the assignment (spec 048) — palette_target is
     # non-None iff restraint is enabled.
+    #
+    # Skips any placement that already has music_sparkles>0 (bug found
+    # 2026-07-28, user report: a corpus recipe's mask_sparkles=True -- e.g.
+    # spiraltree/minitree/horizontal/vertical/cane's On mask layer -- sets a
+    # deterministic sparkle value in _place_corpus_recipe, but this pass ran
+    # unconditionally afterward and overwrote it with compute_music_sparkles'
+    # probabilistic roll (only energy_score/200 chance of enabling at all),
+    # silently disabling the recipe's explicit choice most of the time. The
+    # Tier-1/_ALWAYS_SPARKLE_EFFECTS pass right below already guards this way
+    # -- this pass was just missing the same check.
     if palette_target is not None:
         sparkle_rng = random.Random(section.start_ms * 31 + section.energy_score)
         for placements in result.values():
             for p in placements:
+                if p.music_sparkles > 0:
+                    continue
                 p.music_sparkles = compute_music_sparkles(
                     section.energy_score, p.effect_name, sparkle_rng
                 )
