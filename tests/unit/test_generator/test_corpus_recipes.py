@@ -5,6 +5,7 @@ from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import EffectLibrary
 from src.effects.models import EffectDefinition
 from src.generator.corpus_recipes import (
+    _COLOR_WASH_SPIRAL_CYCLES_OPTIONS,
     CORPUS_RECIPES,
     recipe_for_group,
     section_qualifies,
@@ -1391,7 +1392,26 @@ class TestSpiralTreeRecipe:
         assert placements
         assert all(p.effect_name == "Color Wash" for p in placements)
         assert all(p.parameters["E_CHECKBOX_ColorWash_CircularPalette"] == "1" for p in placements)
-        assert all(p.parameters["E_TEXTCTRL_ColorWash_Cycles"] == "2" for p in placements)
+        # Cycles varies per beat (2026-07-28), not fixed at the mined
+        # default -- see test_color_wash_cycles_varies_per_beat.
+        assert all(
+            p.parameters["E_TEXTCTRL_ColorWash_Cycles"] in _COLOR_WASH_SPIRAL_CYCLES_OPTIONS
+            for p in placements
+        )
+
+    def test_color_wash_cycles_varies_per_beat(self) -> None:
+        # 2026-07-28: a fixed Cycles rendered identically every time this
+        # rotation slot fired -- the same 764-placement scan that mined
+        # Cycles=2 as the top value also showed real spread (3, 4, ...).
+        # Not every beat is guaranteed to differ from its neighbor (3
+        # options, random per beat), but across the 8-beat fixture at
+        # least 2 distinct values must appear.
+        result = _place(_make_section(label="chorus"), _SPIRAL_TREE_GROUP, variation_seed=3,
+                        corpus_occurrence={"spiraltree": 2})
+        placements = result["06_PROP_Spiral_Tree"]
+        assert placements
+        cycles_seen = {p.parameters["E_TEXTCTRL_ColorWash_Cycles"] for p in placements}
+        assert len(cycles_seen) >= 2
 
     def test_spiraltree_falls_back_to_shockwave_bounce_without_color_wash(self) -> None:
         # If Color Wash isn't in the effect library, the occurrence that

@@ -9,6 +9,7 @@ from typing import Any, Callable, Optional
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
 from src.effects.library import EffectLibrary
 from src.generator.corpus_recipes import (
+    _COLOR_WASH_SPIRAL_CYCLES_OPTIONS,
     _LIGHTNING_FLICKER,
     _SHAPE_MATRIX_STAR,
     PropFamilyRecipe,
@@ -2972,6 +2973,17 @@ def _place_corpus_recipe(
                 _jitter_shockwave_radius_width(
                     beat_params, f"shockwave_bounce:{group.name}:{start}",
                 )
+            if effect_name == "Color Wash" and effect_name == recipe.alt_rotation_effect_name:
+                # Vary Cycles per beat (user request 2026-07-28) -- the
+                # mined _COLOR_WASH_SPIRAL preset's Cycles=2 was the single
+                # most common value, but the same 764-placement scan showed
+                # real variety (3, 4, and others); a fixed value rendered
+                # identically every time this rotation slot fires.
+                if beat_params is params:
+                    beat_params = dict(params)
+                beat_params["E_TEXTCTRL_ColorWash_Cycles"] = random.Random(
+                    f"colorwash_cycles:{group.name}:{start}"
+                ).choice(_COLOR_WASH_SPIRAL_CYCLES_OPTIONS)
             p = _make_placement(
                 effect_def, group.name, start, end,
                 beat_params, palette, layer.blend_mode, "beat",

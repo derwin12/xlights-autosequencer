@@ -734,6 +734,13 @@ _COLOR_WASH_SPIRAL: tuple[tuple[str, str], ...] = (
     ("E_TEXTCTRL_ColorWash_Cycles", "2"),
 )
 
+# Per-beat Cycles variety for the spiral-tree Color Wash rotation slot (user
+# request 2026-07-28): "2" was the single most common mined value (used as
+# _COLOR_WASH_SPIRAL's default above), but the same scan showed real spread
+# across low integer values -- a fixed Cycles rendered identically every
+# time this rotation slot fired.
+_COLOR_WASH_SPIRAL_CYCLES_OPTIONS: tuple[str, ...] = ("2", "3", "4")
+
 
 # Matrix Shape preset, Snowflake variant — mined from the same second-vendor
 # sample (21 Shape placements): FadeAway/HoldColour/RandomInitial/
