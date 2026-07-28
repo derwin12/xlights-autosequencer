@@ -293,6 +293,7 @@ def run_orchestrator(
     dry_run: bool = False,
     progress_callback=None,
     profile: str | None = None,
+    stem_progress_callback=None,
 ) -> "HierarchyResult":
     """Run the full hierarchy analysis pipeline on a single MP3 file.
 
@@ -303,6 +304,10 @@ def run_orchestrator(
         progress_callback: Optional callable(index, total, name, mark_count).
         profile: Analysis preset — "quick" (librosa-only), "standard" (auto-detect),
                  "full" (all available), or None (same as standard).
+        stem_progress_callback: Optional callable(fraction: float), called
+                 repeatedly during Demucs stem separation (a single blocking
+                 call that otherwise reports nothing for 1-2 minutes -- see
+                 src.analyzer.stems.StemSeparator.separate).
 
     Returns:
         HierarchyResult with all available hierarchy levels populated.
@@ -402,7 +407,7 @@ def run_orchestrator(
         print("Stems: separating...", end=" ", flush=True)
         try:
             separator = StemSeparator()
-            stems = separator.separate(src_path)
+            stems = separator.separate(src_path, progress_cb=stem_progress_callback)
             stem_names = [n for n in ("drums", "bass", "vocals", "guitar", "piano", "other")
                           if stems.get(n) is not None]
             stems_available = ["full_mix"] + stem_names

@@ -432,6 +432,20 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                                 "eta_ms": 85000,
                                 "elapsed_ms": int((_time.monotonic() - _t0) * 1000)}})
 
+        # Demucs runs as one blocking call with no other checkpoint, so
+        # without this the SSE stream sits completely still for the whole
+        # 1-2 minute separation (user report, 2026-07-28: looked frozen/
+        # stuck). Fires from apply_model's own per-segment callback (see
+        # src.analyzer.stems.StemSeparator._run_demucs_inprocess), possibly
+        # off a worker thread -- state.push is lock-protected so this is safe.
+        def _stem_progress(frac: float) -> None:
+            state.push({"detector": "stems (demucs)", "library": "demucs",
+                        "status": "running", "progress": round(frac, 2)})
+            state.push({"overall": {"status": "running",
+                                    "progress": round(0.05 + 0.04 * frac, 3),
+                                    "eta_ms": 85000,
+                                    "elapsed_ms": int((_time.monotonic() - _t0) * 1000)}})
+
         # ── Build SSE-streaming progress callback ────────────────────────────
         # The orchestrator calls progress_callback(index, total, name, mark_count)
         # after each algorithm finishes.  We map that to detector SSE events.
@@ -481,6 +495,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             audio_path=str(src),
             fresh=state.force,
             progress_callback=_progress,
+            stem_progress_callback=_stem_progress,
         )
 
         elapsed_ms = int((_time.monotonic() - _t0) * 1000)

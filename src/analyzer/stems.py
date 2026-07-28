@@ -7,6 +7,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -134,12 +135,16 @@ class StemSeparator:
     def __init__(self, cache_dir: Path | None = None) -> None:
         self._cache_dir = cache_dir  # passed through to StemCache
 
-    def separate(self, audio_path: Path) -> StemSet:
+    def separate(
+        self, audio_path: Path, progress_cb: Optional[Callable[[float], None]] = None,
+    ) -> StemSet:
         """
         Return a StemSet for *audio_path*.
 
         Checks cache first; runs Demucs if no valid cache exists; writes
-        result to cache before returning.
+        result to cache before returning. ``progress_cb``, when given, is
+        called with a 0.0-1.0 fraction as Demucs processes segments (only
+        on a cache miss, in-process path -- see _run_demucs_inprocess).
         """
         cache = StemCache(audio_path, cache_root=self._cache_dir)
 
@@ -150,14 +155,17 @@ class StemSeparator:
         print("Stem separation: checking cache...", file=sys.stderr)
         print("  → No cache found. Separating (this may take 1-2 minutes)...", file=sys.stderr)
 
-        stem_set = self._run_demucs(audio_path, cache.source_hash)
+        stem_set = self._run_demucs(audio_path, cache.source_hash, progress_cb)
 
         cache.save(stem_set)
         print(f"  → Stems cached to {cache.stem_dir}/", file=sys.stderr)
 
         return stem_set
 
-    def _run_demucs(self, audio_path: Path, source_hash: str) -> StemSet:
+    def _run_demucs(
+        self, audio_path: Path, source_hash: str,
+        progress_cb: Optional[Callable[[float], None]] = None,
+    ) -> StemSet:
         """Run Demucs and return a StemSet.
 
         Tries an in-process import first -- this is what the packaged
@@ -181,11 +189,23 @@ class StemSeparator:
         except ImportError:
             pass
         else:
-            return self._run_demucs_inprocess(audio_path)
+            return self._run_demucs_inprocess(audio_path, progress_cb)
         return self._run_demucs_subprocess(audio_path, source_hash)
 
-    def _run_demucs_inprocess(self, audio_path: Path) -> StemSet:
-        """Run Demucs directly in this process (demucs/torch already importable)."""
+    def _run_demucs_inprocess(
+        self, audio_path: Path, progress_cb: Optional[Callable[[float], None]] = None,
+    ) -> StemSet:
+        """Run Demucs directly in this process (demucs/torch already importable).
+
+        ``progress_cb``, when given, is called with a 0.0-1.0 fraction as
+        each segment finishes (user report, 2026-07-28: the SSE analysis
+        stream had zero intermediate events for the whole 1-2 minute
+        separation, reading as a frozen/stuck progress bar). Hooks
+        demucs.apply.apply_model's own segment callback -- it processes the
+        track in overlapping chunks and already reports each chunk's
+        ("start"/"end", segment_offset) via this exact mechanism, no need
+        to poll or estimate.
+        """
         import librosa
         import torch
         from demucs.apply import apply_model
@@ -208,8 +228,23 @@ class StemSeparator:
         elif wav.shape[0] > 2:
             wav = wav[:2]
 
+        demucs_callback = None
+        if progress_cb is not None:
+            total_length = wav.shape[-1]
+
+            def demucs_callback(d: dict) -> None:  # noqa: F811
+                if d.get("state") != "end":
+                    return
+                offset = d.get("segment_offset")
+                if offset is None:
+                    return
+                progress_cb(min(1.0, offset / max(total_length, 1)))
+
         with torch.no_grad():
-            out = apply_model(model, wav.unsqueeze(0), device="cpu", shifts=0, progress=False)
+            out = apply_model(
+                model, wav.unsqueeze(0), device="cpu", shifts=0, progress=False,
+                callback=demucs_callback,
+            )
         out = out[0]
 
         arrays: dict[str, np.ndarray] = {}

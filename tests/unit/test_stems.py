@@ -89,6 +89,65 @@ class TestStemSeparator:
         mock_inprocess.assert_called_once()
         mock_subprocess.assert_not_called()
 
+    def test_inprocess_forwards_progress_cb_via_apply_model_callback(self, tmp_path: Path):
+        """User report, 2026-07-28: the SSE analysis stream had zero
+        intermediate events for the whole 1-2 minute Demucs separation,
+        reading as a frozen/stuck progress bar. _run_demucs_inprocess must
+        build a callback= for apply_model that forwards a 0.0-1.0 fraction
+        to progress_cb on each segment's "end" event."""
+        pytest.importorskip("demucs")
+        pytest.importorskip("torch")
+        import torch
+
+        sep = StemSeparator(cache_dir=tmp_path / ".stems")
+        total_samples = 1000
+        fake_model = MagicMock()
+        fake_model.sources = STEM_NAMES
+        fake_model.samplerate = SR
+        captured = {}
+
+        def _fake_apply_model(model, mix, **kwargs):
+            captured["callback"] = kwargs.get("callback")
+            return torch.zeros(1, len(STEM_NAMES), 2, total_samples)
+
+        with patch("librosa.load",
+                    return_value=(np.zeros((2, total_samples), dtype=np.float32), SR)), \
+             patch("demucs.pretrained.get_model", return_value=fake_model), \
+             patch("demucs.apply.apply_model", side_effect=_fake_apply_model):
+            progress_values = []
+            sep._run_demucs_inprocess(Path("fake.mp3"), progress_cb=progress_values.append)
+
+        assert captured["callback"] is not None
+        # Midway and final segment should map to a proportional fraction.
+        captured["callback"]({"state": "end", "segment_offset": 500})
+        captured["callback"]({"state": "end", "segment_offset": 1000})
+        # "start" events (no progress yet) must not report anything.
+        captured["callback"]({"state": "start", "segment_offset": 0})
+        assert progress_values == [0.5, 1.0]
+
+    def test_inprocess_without_progress_cb_passes_no_callback(self, tmp_path: Path):
+        pytest.importorskip("demucs")
+        pytest.importorskip("torch")
+        import torch
+
+        sep = StemSeparator(cache_dir=tmp_path / ".stems")
+        fake_model = MagicMock()
+        fake_model.sources = STEM_NAMES
+        fake_model.samplerate = SR
+        captured = {}
+
+        def _fake_apply_model(model, mix, **kwargs):
+            captured["callback"] = kwargs.get("callback")
+            return torch.zeros(1, len(STEM_NAMES), 2, 100)
+
+        with patch("librosa.load",
+                    return_value=(np.zeros((2, 100), dtype=np.float32), SR)), \
+             patch("demucs.pretrained.get_model", return_value=fake_model), \
+             patch("demucs.apply.apply_model", side_effect=_fake_apply_model):
+            sep._run_demucs_inprocess(Path("fake.mp3"))
+
+        assert captured["callback"] is None
+
     def test_run_demucs_falls_back_to_subprocess_when_not_importable(self, tmp_path: Path):
         """When demucs/torch aren't importable in-process (dev-mode main
         venv), fall back to the .venv-vamp sidecar subprocess as before."""
