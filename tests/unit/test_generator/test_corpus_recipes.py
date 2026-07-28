@@ -9,7 +9,7 @@ from src.generator.corpus_recipes import (
     recipe_for_group,
     section_qualifies,
 )
-from src.generator.effect_placer import place_effects
+from src.generator.effect_placer import _SHOCKWAVE_BOUNCE_REROLL_BEATS, place_effects
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.grouper.grouper import PowerGroup
 from src.themes.models import EffectLayer, Theme
@@ -1299,29 +1299,56 @@ class TestSpiralTreeRecipe:
             assert p.parameters["E_CHECKBOX_Chase_Group_All"] == "1"
 
     def test_minitree_alternate_is_shockwave_burst(self) -> None:
-        # corpus_occurrence=0 (even) forces the explode preset regardless of
-        # the +/-10 jitter now applied on top (2026-07-28) -- End_Radius
-        # lands within 10 of the mined 100 baseline, not exactly 100.
+        # corpus_occurrence=0 (even) forces the explode preset on the first
+        # beat-block, regardless of the +/-10 jitter now applied on top
+        # (2026-07-28) -- End_Radius lands within 10 of the mined 100
+        # baseline, not exactly 100. Only the first block (beats 0-3 of the
+        # 8-beat fixture) is checked here -- see
+        # test_shockwave_bounce_rerolls_within_one_occurrence for the
+        # within-occurrence alternation itself.
         result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
                          corpus_occurrence={"minitree": 0})
         placements = result["06_PROP_Tree"]
         assert placements
-        for p in placements:
+        first_block = placements[:_SHOCKWAVE_BOUNCE_REROLL_BEATS]
+        for p in first_block:
             assert p.effect_name == "Shockwave"
             assert 90 <= int(p.parameters["E_SLIDER_Shockwave_End_Radius"]) <= 110
             assert "E_CHOICE_Chase_Type1" not in p.parameters
 
     def test_minitree_bounce_occurrence_implodes(self) -> None:
-        # corpus_occurrence=1 (odd) selects the implode "bounce" preset --
-        # Start/End Radius roles swapped from the explode baseline.
+        # corpus_occurrence=1 (odd) selects the implode "bounce" preset for
+        # the first beat-block -- Start/End Radius roles swapped from the
+        # explode baseline.
         result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
                          corpus_occurrence={"minitree": 1})
         placements = result["06_PROP_Tree"]
         assert placements
-        for p in placements:
+        first_block = placements[:_SHOCKWAVE_BOUNCE_REROLL_BEATS]
+        for p in first_block:
             assert p.effect_name == "Shockwave"
             assert 90 <= int(p.parameters["E_SLIDER_Shockwave_Start_Radius"]) <= 110
             assert 1 <= int(p.parameters["E_SLIDER_Shockwave_End_Radius"]) <= 11
+
+    def test_shockwave_bounce_rerolls_within_one_occurrence(self) -> None:
+        # 2026-07-28: user report on a real generated .xsq -- a single long
+        # (65s) occurrence rendered completely static because bounce/jitter
+        # were originally computed once per occurrence, not per beat-block.
+        # The 8-beat fixture spans two _SHOCKWAVE_BOUNCE_REROLL_BEATS blocks
+        # (4 beats each); block 1 must flip explode<->implode relative to
+        # block 0 within this SAME occurrence (no corpus_occurrence change).
+        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
+                         corpus_occurrence={"minitree": 0})
+        placements = result["06_PROP_Tree"]
+        assert len(placements) == 8
+        block0_start_radius = int(placements[0].parameters["E_SLIDER_Shockwave_Start_Radius"])
+        block1_start_radius = int(placements[_SHOCKWAVE_BOUNCE_REROLL_BEATS].parameters[
+            "E_SLIDER_Shockwave_Start_Radius"
+        ])
+        # Explode's Start_Radius jitters near 1 (single digits); implode's
+        # jitters near 100. A block that flipped reads as "the other side".
+        assert block0_start_radius < 50
+        assert block1_start_radius > 50
 
     def test_shockwave_radius_jitter_floors_at_one(self) -> None:
         # Start_Radius=1 (explode baseline) minus jitter must never go

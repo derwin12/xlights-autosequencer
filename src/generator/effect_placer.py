@@ -2709,26 +2709,12 @@ def _place_corpus_recipe(
         params = dict(recipe.label_alt_parameter_overrides)
     else:
         params = dict(recipe.alt_parameter_overrides)
-        # Alternate-occurrence "bounce" preset for the alt effect (e.g.
-        # Shockwave explode/implode) -- every other occurrence of the alt
-        # effect swaps to alt_parameter_overrides_bounce instead of
-        # repeating the same preset every time (user request 2026-07-28).
-        # Fallback parity deliberately uses variation_seed's LOW bit, not
-        # (variation_seed // 2) -- that's the same bit the alt-vs-primary
-        # choice below uses (recipe.alt_effect_name branch), so reusing it
-        # here would make bounce fire on every single alt occurrence and
-        # explode never render at all when occurrence_index is unavailable.
-        if recipe.alt_parameter_overrides_bounce:
-            bounce_occurrence = occurrence_index if occurrence_index is not None else variation_seed
-            if bounce_occurrence % 2 == 1:
-                params = dict(recipe.alt_parameter_overrides_bounce)
-            # Small per-occurrence variety on top of the explode/implode
-            # choice itself (user request 2026-07-28): nudge Shockwave's
-            # radius/width fields +/-10, floored at 1 so the ring never
-            # collapses to nothing or inverts sign.
-            _jitter_shockwave_radius_width(
-                params, f"shockwave_bounce:{group.name}:{section.start_ms}:{bounce_occurrence}",
-            )
+        # Bounce (explode/implode) + jitter are applied PER BEAT-BLOCK below,
+        # not here -- a single long occurrence (e.g. a 65s chorus) would
+        # otherwise freeze on one look for its entire span (user report,
+        # 2026-07-28: "the shockwaves don't seem to change" on a real
+        # generated .xsq, same class of bug alt_render_style_beats_per_style
+        # was added to fix for Single Strand render style).
 
     # Occurrence style rotation applies only to the primary effect's own
     # preset (see PropFamilyRecipe.direction_field/size_field docstrings): one
@@ -2919,6 +2905,24 @@ def _place_corpus_recipe(
                 beat_params.update(_randomized_lightning_fields(
                     f"{variation_seed}:lightning:{group.name}:{start}"
                 ))
+            if effect_name == recipe.alt_effect_name and recipe.alt_parameter_overrides_bounce:
+                # Re-picks explode-vs-implode + jitter every
+                # _SHOCKWAVE_BOUNCE_REROLL_BEATS beats instead of once for
+                # the whole occurrence (see the comment above where `params`
+                # is built) -- block advances with instance_index, so a
+                # short occurrence still gets at most one bounce state
+                # (unchanged from before) while a long one keeps varying.
+                if beat_params is params:
+                    beat_params = dict(params)
+                block = instance_index // _SHOCKWAVE_BOUNCE_REROLL_BEATS
+                bounce_key = occurrence_index if occurrence_index is not None else variation_seed
+                if (bounce_key + block) % 2 == 1:
+                    beat_params.update(recipe.alt_parameter_overrides_bounce)
+                else:
+                    beat_params.update(recipe.alt_parameter_overrides)
+                _jitter_shockwave_radius_width(
+                    beat_params, f"shockwave_bounce:{group.name}:{start}",
+                )
             p = _make_placement(
                 effect_def, group.name, start, end,
                 beat_params, palette, layer.blend_mode, "beat",
@@ -4521,6 +4525,15 @@ def _randomized_lightning_fields(seed_key: str) -> dict[str, str]:
 # of the explode/implode bounce choice so consecutive Shockwave occurrences
 # don't all render the exact same ring size. +/-10 per field, floored at 1
 # so a ring never collapses to 0 or goes negative.
+#
+# Re-picked every this-many beats within a single occurrence (user report,
+# 2026-07-28: a real generated .xsq had one 65s continuous occurrence that
+# rendered completely static because bounce/jitter were originally computed
+# once per occurrence, not per beat-block -- same class of bug
+# alt_render_style_beats_per_style fixed for Single Strand render style).
+# Provisional -- 4 beats (~1 bar at 4/4) is a starting guess, may need
+# retuning after real playback.
+_SHOCKWAVE_BOUNCE_REROLL_BEATS = 4
 _SHOCKWAVE_JITTER_FIELDS = (
     "E_SLIDER_Shockwave_Start_Radius",
     "E_SLIDER_Shockwave_End_Radius",
