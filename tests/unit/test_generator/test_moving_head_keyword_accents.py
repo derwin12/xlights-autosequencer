@@ -20,7 +20,7 @@ from src.grouper.layout import parse_layout
 from src.themes.models import EffectLayer, Theme
 
 FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "grouper"
-DEFAULT_KEYWORDS = ("shake", "spin", "bounce")
+DEFAULT_KEYWORDS = {"shake": "shake", "spin": "spin", "bounce": "bounce"}
 
 
 def _theme() -> Theme:
@@ -97,30 +97,30 @@ class TestKeywordTriggers:
 class TestKeywordTriggerEndMs:
     def test_uses_full_base_duration_when_no_next_same_keyword(self):
         triggers = [("shake", 1000)]
-        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000, DEFAULT_KEYWORDS)
         assert end_ms == 1000 + _KEYWORD_ACCENT_DURATION_MS["shake"]
 
     def test_shortened_to_fit_before_a_tight_next_same_keyword_hit(self):
         # Real reference-song gap: only 40ms between two consecutive
         # "shake" words -- the pulse must shrink to fit, not overlap.
         triggers = [("shake", 1000), ("shake", 1040)]
-        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000, DEFAULT_KEYWORDS)
         assert end_ms == 1040 - _KEYWORD_PULSE_GAP_MS
 
     def test_full_duration_used_when_next_trigger_is_a_different_keyword(self):
         triggers = [("shake", 1000), ("spin", 1040)]
-        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000, DEFAULT_KEYWORDS)
         assert end_ms == 1000 + _KEYWORD_ACCENT_DURATION_MS["shake"]
 
     def test_clamped_to_song_duration(self):
         triggers = [("shake", 199_900)]
-        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000, DEFAULT_KEYWORDS)
         assert end_ms == 200_000
 
     def test_spin_uses_pattern_accent_duration(self):
         from src.generator.moving_head import _ACCENT_DURATION_MS
         triggers = [("spin", 1000)]
-        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000)
+        end_ms = _keyword_trigger_end_ms(triggers, 0, 200_000, DEFAULT_KEYWORDS)
         assert end_ms == 1000 + _ACCENT_DURATION_MS
 
 
@@ -132,7 +132,7 @@ class TestPlaceMovingHeadKeywordAccents:
     def test_no_keywords_returns_empty(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         words = [_word("shake", 1000, 1300)]
-        assert place_moving_head_keyword_accents(layout, words, (), 200_000) == {}
+        assert place_moving_head_keyword_accents(layout, words, {}, 200_000) == {}
 
     def test_no_matching_word_returns_empty(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
@@ -238,13 +238,28 @@ class TestPlaceMovingHeadKeywordAccents:
         assert "MH GRP" in result  # the shake fired
         assert "MH1" not in result and "MH2" not in result  # the spin was skipped
 
-    def test_unrecognized_keyword_in_config_is_silently_ignored(self):
+    def test_unrecognized_motion_in_config_is_silently_ignored(self):
+        # A custom word can map to any string, but only "shake"/"bounce"/
+        # "spin" have an actual physical motion -- an invalid motion string
+        # (e.g. a corrupted session) is silently skipped, not an error.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         words = [_word("wiggle", 10_000, 10_300)]
         result = place_moving_head_keyword_accents(
-            layout, words, ("wiggle",), 200_000,
+            layout, words, {"wiggle": "wiggle"}, 200_000,
         )
         assert result == {}
+
+    def test_custom_word_mapped_to_bounce_motion_triggers_bounce(self):
+        # User adds their own trigger word from a song's lyrics (e.g.
+        # "explode"), mapped to the existing "bounce" motion.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        words = [_word("explode", 10_000, 10_300)]
+        result = place_moving_head_keyword_accents(
+            layout, words, {"explode": "bounce"}, 200_000,
+        )
+        assert set(result) == {"MH GRP"}
+        punch = next(p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"])
+        assert "Tilt VC:" in punch.parameters["E_TEXTCTRL_MH1_Settings"]
 
     def test_accent_clamped_to_song_duration(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")

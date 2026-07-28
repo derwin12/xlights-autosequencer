@@ -1472,8 +1472,11 @@ def _heads_already_posed(
 # spaced regardless of lyrics at all. So this isn't an idiom pulled from the
 # corpus like every other Moving Head accent in this module -- it's a
 # deliberate per-song user choice (default keywords: shake/spin/bounce, see
-# GenerationConfig.moving_head_keywords), same category as a manual
-# override.
+# GenerationConfig.moving_head_keyword_motions), same category as a manual
+# override. Users can add their own custom trigger words too (2026-07-28,
+# review UI's Extras screen), each mapped to one of the three motions
+# below -- the searched WORD and the physical MOTION it performs are
+# independent (keyword_motions: dict[word, motion]).
 #
 # Runs FIRST among every Moving Head pass (before place_moving_head_moves)
 # so a specific lyric moment always gets to claim its accent -- every other
@@ -1570,13 +1573,13 @@ def _build_static_warmup_settings(head_count: int, pan_deg: float, tilt_deg: flo
 
 
 def _keyword_triggers(
-    vocal_words: Optional[list[dict]], keywords: tuple[str, ...],
+    vocal_words: Optional[list[dict]], keyword_motions: dict[str, str],
 ) -> list[tuple[str, int]]:
     """Scan ``vocal_words`` for exact (case-insensitive) matches against
-    ``keywords``. Returns one trigger per matched word (no collapsing --
-    see the module comment above _KEYWORD_ACCENT_DURATION_MS), as
-    ``[(keyword, start_ms), ...]`` in chronological order."""
-    keyword_set = {k.lower() for k in keywords}
+    ``keyword_motions``'s keys. Returns one trigger per matched word (no
+    collapsing -- see the module comment above _KEYWORD_ACCENT_DURATION_MS),
+    as ``[(keyword, start_ms), ...]`` in chronological order."""
+    keyword_set = {k.lower() for k in keyword_motions}
     hits: list[tuple[str, int]] = []
     for w in (vocal_words or []):
         raw = str(w.get("label") or w.get("word") or "").strip().lower()
@@ -1587,14 +1590,15 @@ def _keyword_triggers(
     return hits
 
 
-def _keyword_base_duration_ms(keyword: str) -> int:
-    if keyword == "spin":
+def _keyword_base_duration_ms(motion: str) -> int:
+    if motion == "spin":
         return _ACCENT_DURATION_MS  # forward-referenced module constant (1400ms)
-    return _KEYWORD_ACCENT_DURATION_MS.get(keyword, 900)
+    return _KEYWORD_ACCENT_DURATION_MS.get(motion, 900)
 
 
 def _keyword_trigger_end_ms(
     triggers: list[tuple[str, int]], index: int, duration_ms: int,
+    keyword_motions: dict[str, str],
 ) -> int:
     """End time for ``triggers[index]``, capped to whatever room exists
     before the next trigger of the SAME keyword (leaving
@@ -1602,7 +1606,7 @@ def _keyword_trigger_end_ms(
     a real, shortened pulse instead of overlapping into -- or being
     overlap-skipped by -- the next one."""
     keyword, start_ms = triggers[index]
-    base_duration = _keyword_base_duration_ms(keyword)
+    base_duration = _keyword_base_duration_ms(keyword_motions[keyword])
     end_ms = min(start_ms + base_duration, duration_ms)
     for next_keyword, next_start_ms in triggers[index + 1:]:
         if next_keyword != keyword:
@@ -1615,19 +1619,27 @@ def _keyword_trigger_end_ms(
 def place_moving_head_keyword_accents(
     layout: Layout,
     vocal_words: Optional[list[dict]],
-    keywords: tuple[str, ...],
+    keyword_motions: dict[str, str],
     duration_ms: int,
     existing_placements: Optional[dict[str, list[EffectPlacement]]] = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place a Moving Head accent every time a user-curated keyword is sung
     (see the module comment above for the design/validation caveats).
+
+    ``keyword_motions`` maps each searched lyric word to one of the three
+    supported motions ("shake"/"bounce"/"spin") -- decoupling the word
+    being searched for from the physical motion it triggers (user request
+    2026-07-28: let users add their OWN custom trigger words from a song's
+    lyrics, each assigned one of the existing motions, rather than only
+    ever recognizing the three literal built-in words).
+
     Returns ``{}`` when the layout has no moving-head group, there are no
     words, or no keyword ever matches."""
     mh_groups = find_moving_head_groups(layout)
-    if not mh_groups or not vocal_words or not keywords:
+    if not mh_groups or not vocal_words or not keyword_motions:
         return {}
 
-    triggers = _keyword_triggers(vocal_words, keywords)
+    triggers = _keyword_triggers(vocal_words, keyword_motions)
     if not triggers:
         return {}
 
@@ -1639,12 +1651,13 @@ def place_moving_head_keyword_accents(
         relevant_keys = (mh_group.name, *mh_group.head_names)
 
         for trigger_index, (keyword, mark_ms) in enumerate(triggers):
+            motion = keyword_motions[keyword]
             start_ms = mark_ms
-            end_ms = _keyword_trigger_end_ms(triggers, trigger_index, duration_ms)
+            end_ms = _keyword_trigger_end_ms(triggers, trigger_index, duration_ms, keyword_motions)
             if end_ms <= start_ms:
                 continue
 
-            if keyword == "spin":
+            if motion == "spin":
                 # Per-head placements, every head (not a random subset) --
                 # the exact validated Pattern Circle mechanic.
                 for head_name in mh_group.head_names:
@@ -1720,7 +1733,7 @@ def place_moving_head_keyword_accents(
             if _has_overlap(channel_existing, start_ms, end_ms):
                 continue
 
-            if keyword == "shake":
+            if motion == "shake":
                 settings = _build_shake_head_settings(head_count)
                 warmup_pan, warmup_tilt = -_SHAKE_PAN_AMPLITUDE_DEG, _SHAKE_STATIC_TILT_DEG
                 params = _build_parameters(
@@ -1730,7 +1743,7 @@ def place_moving_head_keyword_accents(
                 params["E_VALUECURVE_MHPan"] = _pan_lrl_vc_descriptor(
                     -_SHAKE_PAN_AMPLITUDE_DEG, _SHAKE_PAN_AMPLITUDE_DEG, -_SHAKE_PAN_AMPLITUDE_DEG,
                 )
-            elif keyword == "bounce":
+            elif motion == "bounce":
                 settings = _build_bounce_head_settings(head_count)
                 warmup_pan, warmup_tilt = 0.0, _BOUNCE_TILT_LO_DEG
                 params = _build_parameters(
@@ -1741,7 +1754,7 @@ def place_moving_head_keyword_accents(
                     _BOUNCE_TILT_LO_DEG, _BOUNCE_TILT_HI_DEG, _BOUNCE_TILT_LO_DEG,
                 )
             else:
-                continue  # unrecognized keyword -- no mapping, skip silently
+                continue  # unrecognized/invalid motion -- no mapping, skip silently
 
             warmup_settings = _build_static_warmup_settings(head_count, warmup_pan, warmup_tilt)
             warmup_params = _build_parameters(

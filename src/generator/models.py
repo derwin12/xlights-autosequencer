@@ -320,9 +320,14 @@ class GenerationConfig:
     # Moving Head content ties a placement to a single keyword), so this is
     # a deliberate per-song choice rather than a general idiom. Runs before
     # every other Moving Head pass so a specific lyric moment always claims
-    # its accent. "shake"=Pan L-R-L, "spin"=Pattern Circle, "bounce"=Tilt
-    # up-down-up; an unrecognized keyword is silently ignored.
-    moving_head_keywords: tuple[str, ...] = ("shake", "spin", "bounce")
+    # its accent. Maps each searched lyric word to one of three motions --
+    # "shake"=Pan L-R-L, "spin"=Pattern Circle, "bounce"=Tilt up-down-up --
+    # decoupling the word from the motion so a custom word (e.g. "explode")
+    # can trigger any of the three (review UI's Extras screen, 2026-07-28).
+    # A word mapped to an unrecognized motion string is silently ignored.
+    moving_head_keyword_motions: dict[str, str] = field(
+        default_factory=lambda: {"shake": "shake", "spin": "spin", "bounce": "bounce"}
+    )
     # Pinwheel burst on Star-family groups at each rare drum fill
     # (hierarchy.riff_bursts, riff_bursts.detect_riff_bursts — snare-roll
     # detection on an isolated snare stem). Replaced an earlier bass+chord

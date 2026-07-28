@@ -21,7 +21,7 @@ const TABS: { id: Screen; label: string; key: string }[] = [
   { id: 'analyze', label: 'Analyze', key: '3' },
   { id: 'timeline', label: 'Timeline', key: '4' },
   { id: 'theme', label: 'Theme', key: '5' },
-  { id: 'pictures', label: 'Pictures', key: '6' },
+  { id: 'pictures', label: 'Extras', key: '6' },
   { id: 'export', label: 'Export', key: '7' },
 ];
 

@@ -37,6 +37,7 @@ def run(
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
+    moving_head_keyword_motions: Optional[dict[str, str]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -74,6 +75,11 @@ def run(
                     the user unmapped on the Pictures screen — suppresses
                     lyric-matched Pictures bursts for those words
                     (GenerationConfig.ignored_image_words).
+        moving_head_keyword_motions: Optional {word: motion} map overriding
+                    the default shake/spin/bounce Moving Head keyword
+                    triggers with the user's own per-song additions/removals
+                    from the review UI's Extras screen
+                    (GenerationConfig.moving_head_keyword_motions).
         include_extra_timing: When False, the Chords and per-stem Onsets (...)
                     timing tracks are omitted from the .xsq (display-only
                     tracks; effect placement is unaffected).
@@ -136,6 +142,7 @@ def run(
                               lyrics=lyrics, words=words, phonemes=phonemes,
                               genre=genre, occasion=occasion, video_path=video_path,
                               ignored_image_words=ignored_image_words,
+                              moving_head_keyword_motions=moving_head_keyword_motions,
                               include_extra_timing=include_extra_timing,
                               title_override=title_override, artist_override=artist_override,
                               vocal_diarization=vocal_diarization,
@@ -160,6 +167,7 @@ def _run_pipeline(
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
+    moving_head_keyword_motions: Optional[dict[str, str]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -218,6 +226,11 @@ def _run_pipeline(
             story_path=story_path,
             video_path=video_path,
             ignored_image_words=ignored_image_words,
+            moving_head_keyword_motions=(
+                moving_head_keyword_motions
+                if moving_head_keyword_motions is not None
+                else {"shake": "shake", "spin": "spin", "bounce": "bounce"}
+            ),
             title_override=title_override,
             artist_override=artist_override,
         )

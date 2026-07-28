@@ -23,7 +23,7 @@ const FAQ: FaqEntry[] = [
           <li><strong>Analyze</strong> — confirm the song's title/artist, then run the audio analysis pipeline (beats, stems, structure, lyrics).</li>
           <li><strong>Timeline</strong> — review the detected sections, beats, and timing tracks.</li>
           <li><strong>Theme</strong> — assign a color/effect theme to each section (or let auto-selection do it), and fine-tune per-section sliders.</li>
-          <li><strong>Pictures</strong> — optionally upload images that get matched to lyric words for Pictures effects.</li>
+          <li><strong>Extras</strong> — optionally upload images matched to lyric words (Pictures effects), and set up custom lyric words that trigger a Moving Head accent.</li>
           <li><strong>Export</strong> — generate the final <code>.xsq</code> sequence file and download it.</li>
         </ul>
         <p>
@@ -90,10 +90,22 @@ const FAQ: FaqEntry[] = [
     q: "How do the Pictures uploads work?",
     a: (
       <p>
-        The Pictures screen shows lyric words that don't yet have a matching image in your library.
+        The Extras screen shows lyric words that don't yet have a matching image in your library.
         Upload an image and tag it with a word/topic; the generator then places that image as a
         Pictures effect on matrix/mega-tree props whenever that word is sung. This is entirely manual —
         the app never scrapes images from the web on your behalf.
+      </p>
+    ),
+  },
+  {
+    q: "How do Moving Head Triggers work?",
+    a: (
+      <p>
+        The Extras screen also lists <strong>shake</strong>, <strong>bounce</strong>, and <strong>spin</strong> —
+        three built-in lyric words that trigger a Moving Head accent when sung. Uncheck any of them to
+        disable it for this song, or add your own custom word from the song's lyrics and assign it one
+        of the three existing motions. Motions are fixed (there's no way to invent a new physical
+        movement) — a custom word just maps onto one of shake/bounce/spin's behavior.
       </p>
     ),
   },

@@ -664,6 +664,7 @@ export default function App() {
             song={song}
             imageSuggestions={analysis.image_suggestions ?? []}
             imageTopics={analysis.image_topics ?? []}
+            vocalWords={(analysis.words as { label?: string; word?: string; start_ms: number; end_ms: number }[]) ?? []}
             onContinue={handlePicturesContinue}
           />
         );

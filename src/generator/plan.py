@@ -375,16 +375,16 @@ def build_plan(
     if config.video_path is not None:
         video_effects = _place_video_effect(props, config.video_path, hierarchy.duration_ms)
 
-    # 5cz. Keyword-triggered Moving Head accents (config.moving_head_keywords)
+    # 5cz. Keyword-triggered Moving Head accents (config.moving_head_keyword_motions)
     # -- user-curated, not mined (see moving_head.py's module comment above
     # place_moving_head_keyword_accents). Computed FIRST among every Moving
     # Head pass so a specific lyric moment (e.g. "shake") always claims its
     # accent; every other pass below treats these placements as already-
     # occupied via existing_placements/existing_mh.
     keyword_head_effects: dict[str, list] = {}
-    if config.moving_head_effects and layout is not None and config.moving_head_keywords:
+    if config.moving_head_effects and layout is not None and config.moving_head_keyword_motions:
         keyword_head_effects = place_moving_head_keyword_accents(
-            layout, config.vocal_words, config.moving_head_keywords, hierarchy.duration_ms,
+            layout, config.vocal_words, config.moving_head_keyword_motions, hierarchy.duration_ms,
         )
 
     # 5d0. DMX moving-head fixture groups (config.moving_head_effects) --

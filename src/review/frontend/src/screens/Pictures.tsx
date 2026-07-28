@@ -21,11 +21,40 @@ interface Song {
   title: string;
 }
 
+interface VocalWord {
+  label?: string;
+  word?: string;
+  start_ms: number;
+  end_ms: number;
+}
+
 interface PicturesScreenProps {
   song: Song;
   imageSuggestions: ImageSuggestion[];
   imageTopics: ImageTopic[];
+  vocalWords?: VocalWord[];
   onContinue: () => void;
+}
+
+type MotionType = 'shake' | 'bounce' | 'spin';
+const MOTIONS: MotionType[] = ['shake', 'bounce', 'spin'];
+
+// Candidate words for the "add from lyrics" picker -- distinct real words,
+// no noun-only bias (unlike Pictures' find_unmatched_topics, action words
+// like "explode"/"jump" are exactly what a Moving Head trigger wants).
+const MH_STOPWORDS = new Set([
+  'the', 'and', 'a', 'an', 'to', 'of', 'in', 'on', 'is', 'it', 'you', 'i',
+  'me', 'my', 'we', 'us', 'our', 'that', 'this', 'for', 'with', 'your',
+]);
+
+function lyricWordCandidates(words: VocalWord[]): { word: string; start_ms: number }[] {
+  const seen = new Map<string, number>();
+  for (const w of words) {
+    const raw = (w.label || w.word || '').toLowerCase().replace(/[^a-z]/g, '');
+    if (raw.length < 3 || MH_STOPWORDS.has(raw) || seen.has(raw)) continue;
+    seen.set(raw, w.start_ms);
+  }
+  return Array.from(seen.entries()).map(([word, start_ms]) => ({ word, start_ms }));
 }
 
 function formatTimestamp(ms: number): string {
@@ -55,13 +84,17 @@ async function openExternal(url: string) {
   }
 }
 
-export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: PicturesScreenProps) {
+export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onContinue }: PicturesScreenProps) {
   const [uploaded, setUploaded] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [promptWord, setPromptWord] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
+  const [keywordMotions, setKeywordMotions] = useState<Record<string, string>>({});
+  const [candidateMotions, setCandidateMotions] = useState<Record<string, MotionType>>({});
+  const [newWord, setNewWord] = useState('');
+  const [newMotion, setNewMotion] = useState<MotionType>('shake');
 
   useEffect(() => {
     fetch(`/api/v1/songs/${song.song_id}/ignored-images`)
@@ -69,6 +102,56 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
       .then((body) => setIgnored(new Set<string>(body.words ?? [])))
       .catch(() => {});
   }, [song.song_id]);
+
+  useEffect(() => {
+    fetch(`/api/v1/songs/${song.song_id}/moving-head-keywords`)
+      .then((r) => (r.ok ? r.json() : { keywords: {} }))
+      .then((body) => setKeywordMotions(body.keywords ?? {}))
+      .catch(() => {});
+  }, [song.song_id]);
+
+  async function addKeyword(word: string, motion: MotionType) {
+    const token = word.trim().toLowerCase();
+    if (!token) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/songs/${song.song_id}/moving-head-keywords`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: token, motion }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Failed to add keyword');
+        return;
+      }
+      setKeywordMotions(body.keywords ?? {});
+      setNewWord('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
+
+  async function removeKeyword(word: string) {
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/songs/${song.song_id}/moving-head-keywords/${encodeURIComponent(word)}`,
+        { method: 'DELETE' },
+      );
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Failed to remove keyword');
+        return;
+      }
+      setKeywordMotions(body.keywords ?? {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
+
+  const lyricCandidates = lyricWordCandidates(vocalWords ?? [])
+    .filter((c) => !(c.word in keywordMotions));
 
   async function ignoreMatch(word: string) {
     const token = word.toLowerCase();
@@ -323,6 +406,97 @@ export function Pictures({ song, imageSuggestions, imageTopics, onContinue }: Pi
           </ul>
         </section>
       )}
+
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>Moving Head Triggers</h3>
+        <p className={styles.sectionHint}>
+          These lyric words trigger a Moving Head accent when sung. Uncheck a built-in to disable it
+          for this song, or add your own word from the lyrics below and assign it one of the three
+          existing motions.
+        </p>
+        {Object.keys(keywordMotions).length === 0 ? (
+          <p className={styles.empty}>No active triggers for this song.</p>
+        ) : (
+          <ul className={styles.topicList}>
+            {Object.entries(keywordMotions).map(([word, motion]) => (
+              <li key={word} className={styles.topicItem}>
+                <span className={styles.topicWord}>&ldquo;{word}&rdquo;</span>
+                <span className={styles.matchedFile}>{motion}</span>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  onClick={() => removeKeyword(word)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {lyricCandidates.length > 0 && (
+          <>
+            <p className={styles.sectionHint} style={{ marginTop: 16 }}>
+              Add from this song&apos;s lyrics:
+            </p>
+            <ul className={styles.topicList}>
+              {lyricCandidates.slice(0, 30).map((c) => (
+                <li key={c.word} className={styles.topicItem}>
+                  <span className={styles.topicTime}>{formatTimestamp(c.start_ms)}</span>
+                  <span className={styles.topicWord}>&ldquo;{c.word}&rdquo;</span>
+                  <select
+                    aria-label={`Motion for ${c.word}`}
+                    className={styles.createImageBtn}
+                    value={candidateMotions[c.word] ?? 'shake'}
+                    onChange={(e) =>
+                      setCandidateMotions((prev) => ({ ...prev, [c.word]: e.target.value as MotionType }))
+                    }
+                  >
+                    {MOTIONS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className={styles.createImageBtn}
+                    onClick={() => addKeyword(c.word, candidateMotions[c.word] ?? 'shake')}
+                  >
+                    Add
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <div className={styles.topicItem} style={{ marginTop: 12 }}>
+          <input
+            type="text"
+            placeholder="Custom word"
+            value={newWord}
+            onChange={(e) => setNewWord(e.target.value)}
+            className={styles.createImageBtn}
+            style={{ flex: 1 }}
+          />
+          <select
+            aria-label="Motion for custom word"
+            className={styles.createImageBtn}
+            value={newMotion}
+            onChange={(e) => setNewMotion(e.target.value as MotionType)}
+          >
+            {MOTIONS.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={styles.createImageBtn}
+            onClick={() => addKeyword(newWord, newMotion)}
+          >
+            Add
+          </button>
+        </div>
+      </section>
 
       {promptWord !== null && (
         <div className={styles.promptOverlay} onClick={() => setPromptWord(null)}>
