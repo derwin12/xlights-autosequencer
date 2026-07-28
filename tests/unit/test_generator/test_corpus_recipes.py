@@ -1383,10 +1383,10 @@ class TestSpiralTreeRecipe:
 
 # ── MusicSparkles on the color_over_mask "On" layer ──────────────────────────
 # User request (2026-07-15), matching a real xLights clipboard paste of an
-# On effect with C_CHECKBOX_MusicSparkles=1. Only horizontal/vertical/cane/
-# minitree opted in (PropFamilyRecipe.mask_sparkles) -- megatree and matrix
-# also use color_over_mask but weren't part of the request and must stay
-# unaffected.
+# On effect with C_CHECKBOX_MusicSparkles=1. horizontal/vertical/cane/
+# minitree/spiraltree/megatree/megatopper opted in (PropFamilyRecipe.
+# mask_sparkles; megatree/megatopper added 2026-07-28) -- matrix also uses
+# color_over_mask but wasn't part of the request and must stay unaffected.
 
 
 class TestMaskSparkles:
@@ -1412,13 +1412,22 @@ class TestMaskSparkles:
         assert ons
         assert all(p.music_sparkles > 0 for p in ons)
 
-    def test_megatree_on_layer_not_affected(self) -> None:
-        # Also color_over_mask, but not part of the request -- must stay off.
+    def test_megatree_on_layer_gets_sparkles(self) -> None:
+        # 2026-07-28: extended to megatree (previously deliberately off,
+        # not part of the original 2026-07-15 request) per user follow-up.
         result = _place(_make_section(label="chorus", energy=80), _MEGATREE_GROUP,
                         library_names=_LIBRARY_WITH_ON)
         ons = [p for p in result["06_PROP_Mega_Tree"] if p.effect_name == "On"]
         assert ons
-        assert all(p.music_sparkles == 0 for p in ons)
+        assert all(p.music_sparkles > 0 for p in ons)
+
+    def test_megatopper_on_layer_gets_sparkles(self) -> None:
+        # 2026-07-28: extended to megatopper alongside megatree.
+        result = _place(_make_section(label="chorus", energy=80), _TOPPER_GROUP,
+                        library_names=_LIBRARY_TOPPER, active_tiers=frozenset({1, 8}))
+        ons = [p for p in result["08_HERO_Mega_Topper"] if p.effect_name == "On"]
+        assert ons
+        assert all(p.music_sparkles > 0 for p in ons)
 
     def test_matrix_on_layer_not_affected(self) -> None:
         result = _place(_make_section(label="chorus", energy=80), _MATRIX_GROUP,

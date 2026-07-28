@@ -1316,6 +1316,11 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
             ("Twinkle", _TWINKLE_MEGATREE),
         ),
         color_over_mask=True,
+        # Sparkles Reflect Music on the On mask layer (user request
+        # 2026-07-28, same idiom as horizontal/vertical/cane/minitree/
+        # spiraltree) -- previously deliberately left off for megatree since
+        # it wasn't part of that original request; now extended here too.
+        mask_sparkles=True,
         color_cycle_bars=True,
         color_cycle_beats_alt=8,
         # Twin-Spirals overlay added 2026-07-23 (user request, after
@@ -1657,6 +1662,10 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         effect_name="Shockwave",
         parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
+        # Sparkles Reflect Music on the On mask layer (user request
+        # 2026-07-28, same idiom as horizontal/vertical/cane/minitree/
+        # spiraltree/megatree).
+        mask_sparkles=True,
         color_cycle_bars=True,
         off_backdrop=True,
     ),
