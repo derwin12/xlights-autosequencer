@@ -101,6 +101,18 @@ class PropFamilyRecipe:
     # one-note across a whole song). Empty tuple -> alt_parameter_overrides
     # always used, no alternation.
     alt_parameter_overrides_bounce: tuple[tuple[str, str], ...] = ()
+    # Third state in the alt-effect occurrence rotation: 1-in-3 alt
+    # occurrences (keyed by the same occurrence counter as
+    # alt_parameter_overrides_bounce) render this DIFFERENT effect entirely
+    # instead of alt_effect_name, rather than just a different preset of the
+    # same effect. Used for spiral trees' Color Wash (user request
+    # 2026-07-28, after mining 764 real Color Wash placements on spiral
+    # elements -- 7.5% of all spiral effect placements, a genuine secondary
+    # idiom alongside the Shockwave bounce). None -> alt stays the 2-way
+    # Shockwave bounce only. Falls back to the 2-way bounce if this effect
+    # is missing from the effect library.
+    alt_rotation_effect_name: str | None = None
+    alt_rotation_parameter_overrides: tuple[tuple[str, str], ...] = ()
     # Optional secondary alternate keyed by section label rather than
     # variation_seed parity -- some families have a section label whose mined
     # idiom genuinely differs from both the primary and the seed-alternated
@@ -707,6 +719,19 @@ _COLOR_WASH_MATRIX: tuple[tuple[str, str], ...] = (
     ("E_CHECKBOX_ColorWash_HFade", "1"),
     ("E_CHECKBOX_ColorWash_VFade", "1"),
     ("T_CHOICE_LayerMethod", "Layered"),
+)
+
+# Spiral-tree Color Wash preset — mined 2026-07-28 from a 392-song reference
+# scan (764 Color Wash placements on Spiral-named models, 7.5% of all
+# effects there): VFade on (95% of specified placements), HFade on (87%),
+# CircularPalette on (100% of the 164 that specify it), Cycles=2 (most
+# common specified value). Distinct from _COLOR_WASH_MATRIX -- that preset's
+# own mined data had no CircularPalette/Cycles signal at all.
+_COLOR_WASH_SPIRAL: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_ColorWash_HFade", "1"),
+    ("E_CHECKBOX_ColorWash_VFade", "1"),
+    ("E_CHECKBOX_ColorWash_CircularPalette", "1"),
+    ("E_TEXTCTRL_ColorWash_Cycles", "2"),
 )
 
 
@@ -1592,6 +1617,11 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         parameter_overrides=_CHASE_FROM_HEAD,
         alt_parameter_overrides=_SHOCKWAVE_BURST,
         alt_parameter_overrides_bounce=_SHOCKWAVE_BURST_IMPLODE,
+        # 1-in-3 alt occurrences render Color Wash instead of Shockwave
+        # (user request 2026-07-28, backed by the 764-placement mining note
+        # on _COLOR_WASH_SPIRAL above).
+        alt_rotation_effect_name="Color Wash",
+        alt_rotation_parameter_overrides=_COLOR_WASH_SPIRAL,
         color_over_mask=True,
         mask_sparkles=True,
         color_cycle_bars=True,

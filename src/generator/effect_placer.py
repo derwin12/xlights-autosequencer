@@ -2699,6 +2699,22 @@ def _place_corpus_recipe(
                 rotation_params = None
     elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
         effect_name = recipe.alt_effect_name
+        # 1-in-3 alt occurrences render a DIFFERENT effect entirely (e.g.
+        # spiral trees' Color Wash) instead of alt_effect_name -- decided
+        # once per occurrence here (which effect this whole occurrence
+        # uses), distinct from alt_parameter_overrides_bounce's per-beat-
+        # block explode/implode alternation further below (which effect
+        # VARIANT a Shockwave occurrence gets). Falls back to the 2-way
+        # Shockwave bounce if the rotation effect is missing from the
+        # catalog, same fallback shape as motion_rotation above.
+        if (
+            recipe.alt_rotation_effect_name is not None
+            and effect_library.effects.get(recipe.alt_rotation_effect_name) is not None
+        ):
+            rotation_key = occurrence_index if occurrence_index is not None else variation_seed
+            if rotation_key % 3 == 2:
+                effect_name = recipe.alt_rotation_effect_name
+                rotation_params = recipe.alt_rotation_parameter_overrides
     # Shape and VU Meter don't fit the color_over_mask idiom the rest of the
     # matrix rotation shares: checked against the real vendor sequences
     # (2026-07-23) neither ever appears alongside an On "2 is Unmask" layer

@@ -1241,6 +1241,11 @@ class TestMinitreeRecipe:
         assert layer0_names == {"On"}
 
 
+_SPIRAL_TREE_GROUP = PowerGroup(
+    name="06_PROP_Spiral_Tree", tier=6, members=["Spiral Tree 1", "Spiral Tree 2"],
+)
+
+
 class TestSpiralTreeRecipe:
     """Spiral trees get their own recipe (family='spiraltree'), separate
     from ordinary mini trees, so their effects can be tuned independently
@@ -1369,6 +1374,36 @@ class TestSpiralTreeRecipe:
                     "E_SLIDER_Shockwave_Start_Width", "E_SLIDER_Shockwave_End_Width",
                 ):
                     assert int(p.parameters[field]) >= 1
+
+    def test_spiraltree_alt_rotation_includes_color_wash(self) -> None:
+        # 2026-07-28: 1-in-3 alt occurrences (occurrence % 3 == 2) render
+        # Color Wash instead of Shockwave, mined from 764 real Color Wash
+        # placements on spiral elements.
+        explode = _place(_make_section(label="chorus"), _SPIRAL_TREE_GROUP, variation_seed=3,
+                         corpus_occurrence={"spiraltree": 0})
+        implode = _place(_make_section(label="chorus"), _SPIRAL_TREE_GROUP, variation_seed=3,
+                         corpus_occurrence={"spiraltree": 1})
+        colorwash = _place(_make_section(label="chorus"), _SPIRAL_TREE_GROUP, variation_seed=3,
+                           corpus_occurrence={"spiraltree": 2})
+        assert all(p.effect_name == "Shockwave" for p in explode["06_PROP_Spiral_Tree"])
+        assert all(p.effect_name == "Shockwave" for p in implode["06_PROP_Spiral_Tree"])
+        placements = colorwash["06_PROP_Spiral_Tree"]
+        assert placements
+        assert all(p.effect_name == "Color Wash" for p in placements)
+        assert all(p.parameters["E_CHECKBOX_ColorWash_CircularPalette"] == "1" for p in placements)
+        assert all(p.parameters["E_TEXTCTRL_ColorWash_Cycles"] == "2" for p in placements)
+
+    def test_spiraltree_falls_back_to_shockwave_bounce_without_color_wash(self) -> None:
+        # If Color Wash isn't in the effect library, the occurrence that
+        # would have picked it falls back to the ordinary Shockwave bounce
+        # (same fallback shape as a missing motion_rotation effect).
+        result = _place(_make_section(label="chorus"), _SPIRAL_TREE_GROUP, variation_seed=3,
+                        corpus_occurrence={"spiraltree": 2},
+                        library_names=("Shockwave", "Single Strand"),
+                        layers=[EffectLayer(variant="Shockwave")])
+        placements = result["06_PROP_Spiral_Tree"]
+        assert placements
+        assert all(p.effect_name == "Shockwave" for p in placements)
 
     def test_minitree_on_color_layer_over_chase_mask(self) -> None:
         result = _place(_make_section(label="chorus"), _MINITREE_GROUP,
