@@ -913,26 +913,23 @@ class TestHouseLineRecipes:
                 assert p.color_palette == ["#FFFFFF"]
                 assert p.parameters["E_CHOICE_Fade_Type"] == "From Head"
 
-    def test_alternate_is_lightning_with_mined_preset(self) -> None:
-        # Direction/Width/Number_Segments are randomized per bolt (user
-        # request 2026-07-18: xLights' Number_Segments field is labeled
-        # "Width of Bolt" in the UI despite its ID -- verified against
-        # resources/effectmetadata/Lightning.json); Number_Bolts (UI label
-        # "Number of Segments") stays fixed at the mined value of 10.
+    def test_alternate_is_shockwave_not_lightning(self) -> None:
+        # 2026-07-28: user direction -- Lightning is no longer considered a
+        # valid look on horizontal/vertical lines regardless of the mined
+        # corpus data (see the family's module comment). Alt is now
+        # Shockwave, same swap already applied to spiral/mini trees.
         result = _place(_make_section(label="chorus"), _VERTICAL_GROUP,
                         variation_seed=3,
                         library_names=_DEFAULT_LIBRARY_NAMES + ("Lightning",))
         placements = result["06_PROP_Vertical"]
         assert placements
         for p in placements:
-            assert p.effect_name == "Lightning"
-            assert p.parameters["E_CHOICE_Lightning_Direction"] in ("Up", "Down")
-            assert 1 <= int(p.parameters["E_SLIDER_Lightning_WIDTH"]) <= 3
-            assert 1 <= int(p.parameters["E_SLIDER_Number_Segments"]) <= 5
-            assert p.parameters["E_SLIDER_Number_Bolts"] == "10"
-            assert "E_CHOICE_Fade_Type" not in p.parameters
+            assert p.effect_name == "Shockwave"
+            assert p.parameters["E_SLIDER_Shockwave_Start_Radius"] == "1"
+            assert p.parameters["E_SLIDER_Shockwave_End_Radius"] == "100"
+            assert "E_CHOICE_Lightning_Direction" not in p.parameters
 
-    def test_lightning_randomization_is_deterministic(self) -> None:
+    def test_shockwave_alternate_is_deterministic(self) -> None:
         result_a = _place(_make_section(label="chorus"), _VERTICAL_GROUP,
                           variation_seed=3,
                           library_names=_DEFAULT_LIBRARY_NAMES + ("Lightning",))
@@ -1289,9 +1286,10 @@ class TestSpiralTreeRecipe:
     def test_spiraltree_alt_is_shockwave_not_lightning(self) -> None:
         # 2026-07-28: user caught Lightning still firing on a real spiral
         # tree export -- a coiled/wrapped shape can't render Lightning's
-        # straight bolt path. Alt swapped to Shockwave (mini-tree's alt)
-        # instead of vertical's Lightning; everything else about the
-        # recipe still mirrors "vertical" (see the test above).
+        # straight bolt path. Alt swapped to Shockwave (mini-tree's alt).
+        # ("vertical" also had its own Lightning alt swapped to Shockwave
+        # the same day, for the same reason -- see
+        # TestHouseLineRecipes.test_alternate_is_shockwave_not_lightning.)
         spiraltree = next(r for r in CORPUS_RECIPES if r.family == "spiraltree")
         minitree = next(r for r in CORPUS_RECIPES if r.family == "minitree")
         assert spiraltree.alt_effect_name == "Shockwave"

@@ -1427,8 +1427,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
     # docs/vertical_sequencing_corpus/ 1.8k over 9). Both families share one
     # idiom: white per-beat SingleStrand chase (70%/66%, From Head 85-89%,
     # Number_Chases 1) colored by an On layer with "2 is Unmask" (100% of
-    # 243/159 On placements), alternating with white Lightning flickers
-    # (11%/18%, unanimous preset). The On layer bar-cycles rather than
+    # 243/159 On placements). Originally alternated with white Lightning
+    # flickers (11%/18% of placements, unanimous preset) -- kept here as the
+    # historical mining record, but per explicit user direction (2026-07-28)
+    # Lightning is no longer considered a valid look for these families
+    # regardless of how the reference corpus used it; the alt effect is now
+    # Shockwave (see the two PropFamilyRecipe entries below). The On layer
+    # bar-cycles rather than
     # spanning the section -- direct block-duration measurement (2026-07-15)
     # corrected an earlier claim that these placements were section-spanning;
     # e.g. Bad Habits measures ~3800ms blocks against a ~475ms beat = 8
@@ -1451,9 +1456,14 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         family="horizontal",
         match_tokens=("horizontal", "horiz"),
         effect_name="Single Strand",
-        alt_effect_name="Lightning",
+        # Alt changed Lightning -> Shockwave 2026-07-28 (user request, same
+        # swap already applied to spiral/mini trees): despite real mined
+        # data supporting Lightning here (11%, unanimous preset), the user
+        # judged it doesn't read well on these props and asked it not be
+        # considered a valid look going forward.
+        alt_effect_name="Shockwave",
         parameter_overrides=_CHASE_FROM_HEAD,
-        alt_parameter_overrides=_LIGHTNING_FLICKER,
+        alt_parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
         mask_sparkles=True,
         color_cycle_bars=True,
@@ -1480,9 +1490,11 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         family="vertical",
         match_tokens=("vertical", "vert"),
         effect_name="Single Strand",
-        alt_effect_name="Lightning",
+        # Alt changed Lightning -> Shockwave 2026-07-28 -- see the matching
+        # comment on the "horizontal" recipe above.
+        alt_effect_name="Shockwave",
         parameter_overrides=_CHASE_FROM_HEAD,
-        alt_parameter_overrides=_LIGHTNING_FLICKER,
+        alt_parameter_overrides=_SHOCKWAVE_BURST,
         color_over_mask=True,
         mask_sparkles=True,
         color_cycle_bars=True,
