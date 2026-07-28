@@ -804,8 +804,12 @@ _DEFAULT_PALETTE_COLORS = [
 # mask_sparkles, the tier-1/_ALWAYS_SPARKLE_EFFECTS unconditional pass, or
 # the palette-restraint probabilistic roll -- upstream formulas already
 # produce values well above this (15-65), so every real placement gets
-# clamped down to this ceiling.
-_SPARKLE_FREQUENCY_MAX = 10
+# clamped down to this ceiling. Raised from 10 to 20 the same day after a
+# 392-song reference-corpus scan: real vendor sequences use 0-200 (median
+# 50), but the user specifically liked how the sub-10 clamp looked and,
+# after inspecting a real 20-valued reference example (Carol of the
+# Bells), settled on 20 as the ceiling.
+_SPARKLE_FREQUENCY_MAX = 20
 
 
 def _serialize_palette(

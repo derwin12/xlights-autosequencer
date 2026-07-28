@@ -30,24 +30,24 @@ class TestMusicSparklesXsqSerialization:
         # bug (2026-07-15): the checkbox is what actually enables sparkles in
         # xLights -- the slider value alone did nothing without it, so every
         # prior sparkle placement silently rendered with sparkles off.
-        # Value itself is capped at 10 regardless of input (user request,
+        # Value itself is capped at 20 regardless of input (user request,
         # 2026-07-28) -- see TestSparkleFrequencyCap in test_xsq_writer.py.
         pal_str = _serialize_palette(["#FF0000", "#00FF00"], music_sparkles=50)
         assert "C_CHECKBOX_MusicSparkles=1" in pal_str
-        assert "C_SLIDER_SparkleFrequency=10" in pal_str
+        assert "C_SLIDER_SparkleFrequency=20" in pal_str
 
     def test_sparkles_at_end_of_palette(self):
         pal_str = _serialize_palette(["#FF0000"], music_sparkles=80)
         parts = pal_str.split(",")
         assert parts[-2] == "C_CHECKBOX_MusicSparkles=1"
-        assert parts[-1] == "C_SLIDER_SparkleFrequency=10"
+        assert parts[-1] == "C_SLIDER_SparkleFrequency=20"
 
-    def test_sparkles_value_capped_at_ten(self) -> None:
-        # 2026-07-28: the slider must never exceed 10 regardless of how high
+    def test_sparkles_value_capped_at_twenty(self) -> None:
+        # 2026-07-28: the slider must never exceed 20 regardless of how high
         # the upstream music_sparkles value is.
         pal_str = _serialize_palette(["#FF0000"], music_sparkles=100)
         assert "C_CHECKBOX_MusicSparkles=1" in pal_str
-        assert "C_SLIDER_SparkleFrequency=10" in pal_str
+        assert "C_SLIDER_SparkleFrequency=20" in pal_str
 
 
 # ---------------------------------------------------------------------------
