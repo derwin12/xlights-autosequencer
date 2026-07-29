@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="x-onset logo" width="200">
+  <img src="assets/logo.svg" alt="xLightsAI logo" width="200">
 </p>
 
-<h1 align="center">x-onset</h1>
+<h1 align="center">xLightsAI</h1>
 <p align="center"><strong>MP3 to xLights Sequencer</strong></p>
 <p align="center">
   Analyzes your music, detects beats/onsets/chords/sections, groups your layout props, and applies themed effects — all driven by the audio.
@@ -96,10 +96,10 @@ another machine, `docker cp` it out of/into the `xlight-state` volume.
 ## Launch the App
 
 `docker compose up` already started the app — open **http://localhost:5000**.
-The whole workflow lives in six tabs across the top of every screen:
+The whole workflow lives in seven tabs across the top of every screen:
 
 ```
-xOnset  1 Library   2 Drop   3 Analyze   4 Timeline   5 Theme   6 Export
+xLightsAI  1 Library   2 Import   3 Analyze   4 Timeline   5 Theme   6 Extras   7 Export
 ```
 
 The numbers indicate the natural order — drop a song in, walk through the tabs left-to-right, finish with an `.xsq` ready for xLights.
@@ -198,7 +198,48 @@ Per-section overrides are remembered when you switch sections; the **Accept All 
 
 ---
 
-### 6. Export — produce the .xsq
+### 6. Extras — Pictures & Shadow Text words
+
+Optional per-song lyric-word triggers for two effects: image accents on
+Matrix/Mega Tree props (Pictures), and a two-layer drop-shadow word effect
+(Shadow Text). Nothing here is required — skip straight to Export if you
+don't want either.
+
+- **Suggested topics** — lyric words from this song that don't have a
+  matching image in your shared image library yet. Per word:
+  - **Create image** — opens a pre-filled AI image-generation prompt you
+    can copy into Gemini (or any image generator), styled to match the
+    catalog's flat-icon look.
+  - **Choose image** — upload an image file directly for this word.
+  - **Shadow** — tags the word for the Shadow Text effect. Click again to
+    untag (shows *Shadow ✓* while active).
+  - A previously unmapped word shows an *"unmapped from `<file>`"* note
+    and a **Restore match** button instead.
+- **Already matched** — words already resolved to a library image, shown
+  as `"word" → filename.png`. Same **Create image** / **Choose image** /
+  **Shadow** buttons, plus **Unmap** — suppresses the Pictures effect for
+  that word *in this song only* (the library image itself isn't deleted,
+  and stays available for other songs).
+- **Moving Head Triggers** — a separate list of lyric words that fire a
+  Moving Head accent when sung, independent of Pictures/Shadow. Three
+  built-ins (*shake*, *bounce*, *spin*) are on by default; uncheck
+  (**Remove**) to disable one for this song. Add your own word either from
+  the *"Add from this song's lyrics"* picker or the custom-word box at the
+  bottom, assigning it one of four motions: **shake**, **bounce**,
+  **spin**, or **flash** (points every head straight up at full white).
+
+At generation time, **Pictures** cycles catalog images in as an overlay on
+Matrix/Mega Tree props, timed to each lyric match, with a short pan and an
+occasional zoom/rotation flourish. **Shadow Text** renders a tagged word
+itself as two stacked layers on the same props whenever it's sung — the
+word in the song's main palette color on top, a slightly offset copy in a
+second palette color directly behind it — using the same pan/zoom/rotation
+movement Pictures bursts use. Both are optional accents layered on top of
+whatever the Theme tab already assigned.
+
+---
+
+### 7. Export — produce the .xsq
 
 ![Export — layout required](assets/screenshots/07-export.png)
 
@@ -211,7 +252,7 @@ The terminal step. Generates the xLights `.xsq` sequence from the analyzed song 
 
 ---
 
-### 7. Library — populated state
+### 8. Library — populated state
 
 ![Library populated](assets/screenshots/08-library-populated.png)
 
