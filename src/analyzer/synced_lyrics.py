@@ -139,6 +139,51 @@ def find_chorus_body(
     return " ".join(lines[j][1] for j in range(first_idx, first_idx + block_size))
 
 
+_SEARCH_TIMEOUT_S = 60
+
+
+def _search_once_with_timeout(search_term: str) -> tuple[Optional[str], Optional[Exception]]:
+    """Run one ``syncedlyrics.search()`` call bounded by ``_SEARCH_TIMEOUT_S``.
+
+    syncedlyrics queries multiple third-party providers over HTTP with no
+    timeout of its own — a single unresponsive provider could otherwise hang
+    a whole retry loop indefinitely (never reaching the next attempt).
+    Bounded with a *daemon* thread rather than
+    ``concurrent.futures.ThreadPoolExecutor``: the executor registers an
+    atexit hook that joins its worker threads on interpreter shutdown, so it
+    would still block process exit on a genuinely hung call even after
+    ``future.result(timeout=...)`` returns. A daemon thread is abandoned
+    outright on timeout — it dies with the process instead of blocking it.
+
+    Returns ``(result, exc)`` — exactly one is ``None``. On timeout, both are
+    effectively "no result": ``result`` is ``None`` and ``exc`` is a
+    synthetic ``TimeoutError``.
+    """
+    import syncedlyrics
+
+    outcome: dict[str, object] = {}
+
+    def _do_search() -> None:
+        try:
+            outcome["result"] = syncedlyrics.search(search_term, providers=list(_ALLOWED_PROVIDERS))
+        except Exception as exc:  # noqa: BLE001 — surfaced via outcome, not raised across threads
+            outcome["exc"] = exc
+
+    import threading as _threading
+    search_thread = _threading.Thread(target=_do_search, daemon=True)
+    search_thread.start()
+    search_thread.join(timeout=_SEARCH_TIMEOUT_S)
+
+    if search_thread.is_alive():
+        return None, TimeoutError(
+            f"syncedlyrics search timed out after {_SEARCH_TIMEOUT_S}s "
+            f"(search thread abandoned, may still be running in background)"
+        )
+    if "exc" in outcome:
+        return None, outcome["exc"]  # type: ignore[return-value]
+    return outcome.get("result"), None  # type: ignore[return-value]
+
+
 def _search_synced_lyrics(search_term: str, *, max_attempts: int = 3) -> tuple[Optional[str], Optional[str]]:
     """Try ``syncedlyrics.search()`` up to ``max_attempts`` times, preferring
     a timed-LRC result over plain text.
@@ -150,6 +195,11 @@ def _search_synced_lyrics(search_term: str, *, max_attempts: int = 3) -> tuple[O
     found". Retrying a couple of times gives a transient timeout another
     chance to land on a provider that returns real LRC timestamps instead.
 
+    Each attempt is individually bounded by ``_SEARCH_TIMEOUT_S`` (see
+    ``_search_once_with_timeout``) so a provider that hangs rather than
+    raising still lets the retry loop reach its next attempt instead of
+    blocking here forever.
+
     Returns ``(text, reason)``: ``text`` is the best result found (a timed
     result if any attempt got one, else the first plain-text result, else
     ``None``). ``reason`` is ``None`` when ``text`` is not ``None``,
@@ -158,16 +208,15 @@ def _search_synced_lyrics(search_term: str, *, max_attempts: int = 3) -> tuple[O
     nothing without raising.
     """
     try:
-        import syncedlyrics
+        import syncedlyrics  # noqa: F401
     except ImportError:
         return None, "not_installed"
 
     best_result: Optional[str] = None
     any_attempt_succeeded = False
     for _ in range(max_attempts):
-        try:
-            result = syncedlyrics.search(search_term, providers=list(_ALLOWED_PROVIDERS))
-        except Exception as exc:
+        result, exc = _search_once_with_timeout(search_term)
+        if exc is not None:
             log.warning("syncedlyrics search failed for %r: %s", search_term, exc)
             continue
         any_attempt_succeeded = True
@@ -183,11 +232,71 @@ def _search_synced_lyrics(search_term: str, *, max_attempts: int = 3) -> tuple[O
     return None, "search_failed" if not any_attempt_succeeded else "no_match"
 
 
+_LRC_METADATA_RE = re.compile(r"^\[(ar|ti):(.*)\]$", re.IGNORECASE)
+
+
+def _parse_lrc_metadata(lrc_text: str) -> dict[str, str]:
+    """Extract ``[ar:]``/``[ti:]`` metadata tags from LRC text, if present.
+
+    Coverage varies by provider — some embed these header tags, others
+    don't — so callers must treat an empty result as "nothing to validate
+    against", not as a mismatch.
+    """
+    meta: dict[str, str] = {}
+    for raw_line in lrc_text.splitlines():
+        m = _LRC_METADATA_RE.match(raw_line.strip())
+        if m:
+            meta[m.group(1).lower()] = m.group(2).strip()
+    return meta
+
+
+def _significant_tokens(text: str) -> set[str]:
+    """Lowercase alphanumeric word tokens, dropping 1-2 letter filler words."""
+    tokens = re.findall(r"[a-z0-9]+", text.lower())
+    return {t for t in tokens if len(t) > 2 or t.isdigit()}
+
+
+def _lyrics_match_expected(lrc_text: str, title: str, artist: str) -> bool:
+    """Best-effort check that a fetched lyrics result is for the requested song.
+
+    A fuzzy provider search can confidently return the wrong song by the
+    same artist (e.g. a "Blue Christmas" search landing on "Hound Dog" —
+    both Elvis Presley, both ~2:15 long), so artist agreement alone isn't
+    enough, and duration-mismatch checking (``_DURATION_MISMATCH_TOLERANCE_MS``)
+    doesn't help either since it only catches a differently-*timed*
+    recording of the same song, not a same-length wrong song — this is a
+    complementary safeguard, not a redundant one.
+
+    Returns True (accept) whenever the provider's response doesn't include
+    a metadata tag to check against — there's nothing to validate, and
+    providers that omit them shouldn't be penalized versus one that
+    includes an accurate tag.
+    """
+    meta = _parse_lrc_metadata(lrc_text)
+    tag_artist = meta.get("ar")
+    tag_title = meta.get("ti")
+
+    if tag_artist:
+        expected = _significant_tokens(artist)
+        got = _significant_tokens(tag_artist)
+        if expected and got and expected.isdisjoint(got):
+            return False
+
+    if tag_title:
+        expected = _significant_tokens(title)
+        got = _significant_tokens(tag_title)
+        if expected and got and expected.isdisjoint(got):
+            return False
+
+    return True
+
+
 def fetch_synced_lyrics(title: str, artist: str) -> Optional[str]:
     """Search for synced lyrics via ``syncedlyrics``, restricted to non-Genius providers.
 
     Returns raw LRC (or plain, provider-dependent) text, or ``None`` when no
-    match is found, the search fails, or ``syncedlyrics`` isn't installed.
+    match is found, the search fails, the result looks like a mismatch (see
+    ``_lyrics_match_expected``), or ``syncedlyrics`` isn't installed.
     """
     search_term = f"{title} {artist}".strip()
     if not search_term:
@@ -196,6 +305,14 @@ def fetch_synced_lyrics(title: str, artist: str) -> Optional[str]:
     text, reason = _search_synced_lyrics(search_term)
     if reason == "not_installed":
         log.warning("syncedlyrics is not installed — skipping synced-lyrics lookup")
+
+    if text and not _lyrics_match_expected(text, title, artist):
+        log.warning(
+            "syncedlyrics result for %r looks like a mismatch (expected "
+            "title=%r artist=%r) — discarding", search_term, title, artist,
+        )
+        return None
+
     return text
 
 
@@ -233,6 +350,10 @@ def check_synced_lyrics_with_text(
     result, reason = _search_synced_lyrics(search_term)
     if result is None:
         return {"found": False, "reason": reason, "line_count": 0, "preview": [],
+                "song_duration_ms": duration_ms, "lyrics_duration_ms": None}, None
+
+    if not _lyrics_match_expected(result, title, artist):
+        return {"found": False, "reason": "title_mismatch", "line_count": 0, "preview": [],
                 "song_duration_ms": duration_ms, "lyrics_duration_ms": None}, None
 
     lines = parse_lrc(result)
@@ -288,16 +409,19 @@ def check_synced_lyrics_available(title: str, artist: str, duration_ms: Optional
     """Look up synced lyrics for (title, artist) and report why, not just whether.
 
     Standalone diagnostic for the review UI's "Check Lyrics" button — same
-    underlying lookup as ``fetch_synced_lyrics``, but distinguishes the four
+    underlying lookup as ``fetch_synced_lyrics``, but distinguishes the five
     cases that otherwise all collapse to ``None`` there: the package isn't
     installed, the provider search raised (network/rate-limit), the search
-    genuinely found no match, or (when ``duration_ms`` is given) the match
-    found is timed for a differently-timed recording. Returns
-    ``{"found": bool, "reason": str | None, "line_count": int, "preview":
-    list[str], "song_duration_ms": int | None, "lyrics_duration_ms": int |
-    None}`` — ``reason`` is one of ``"not_installed"``, ``"search_failed"``,
-    ``"no_match"``, or ``"duration_mismatch"`` when ``found`` is False, else
-    ``None``.
+    genuinely found no match, the match's ``[ar:]``/``[ti:]`` tags don't
+    resemble the requested title/artist (see ``_lyrics_match_expected`` —
+    catches a same-artist wrong-song match that duration checking alone
+    wouldn't), or (when ``duration_ms`` is given) the match found is timed
+    for a differently-timed recording. Returns ``{"found": bool, "reason":
+    str | None, "line_count": int, "preview": list[str], "song_duration_ms":
+    int | None, "lyrics_duration_ms": int | None}`` — ``reason`` is one of
+    ``"not_installed"``, ``"search_failed"``, ``"no_match"``,
+    ``"title_mismatch"``, or ``"duration_mismatch"`` when ``found`` is
+    False, else ``None``.
     """
     result, _text = check_synced_lyrics_with_text(title, artist, duration_ms)
     return result

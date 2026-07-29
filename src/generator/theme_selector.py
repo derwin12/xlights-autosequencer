@@ -1,9 +1,17 @@
 """Theme selection engine — maps section energy/genre/occasion to themes."""
 from __future__ import annotations
 
+import random
+
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.themes.library import ThemeLibrary
 from src.themes.models import Theme
+
+# Upper bound (exclusive) on the random jump mixed into a section's
+# variation_seed at randomness=1.0. Large enough to scramble every modulo
+# base used downstream in effect_placer.py (parity, %4, motion_rotation
+# lengths, theme.alternates lengths) rather than just flipping low bits.
+_MAX_VARIATION_JUMP = 64
 
 
 # Map essentia scale to mood preference.
@@ -21,6 +29,7 @@ def select_themes(
     occasion: str,
     scale: str | None = None,
     base_variation_seed: int = 0,
+    randomness: float = 0.0,
 ) -> list[SectionAssignment]:
     """Select a theme for each song section based on mood, genre, and occasion.
 
@@ -40,6 +49,15 @@ def select_themes(
     same section-mood sequence get different theme lineups. Generation
     derives it from the audio hash (``generator_runner._derive_seed``);
     the microscope tool pins it for deterministic measurement runs.
+
+    ``randomness`` (0.0-1.0) mixes a seeded random jump into each section's
+    effective variation_seed on top of the ``+ i`` progression, scaled by
+    this factor. At 0.0 (default) the jump is always 0, preserving the
+    historical smooth progression exactly. Above 0.0, downstream parity/
+    modulo decisions in effect_placer.py land less predictably from section
+    to section. The jump is drawn from a RNG seeded on
+    ``(base_variation_seed, i)``, so results stay fully reproducible for a
+    given seed + randomness combination.
     """
     assignments: list[SectionAssignment] = []
     prev_theme_name: str | None = None
@@ -58,12 +76,18 @@ def select_themes(
             selection_seed=base_variation_seed,
         )
 
-        # Use global section index as variation seed so every section cycles
-        # through theme alternates independently of repeated-label counting.
+        jump = 0
+        if randomness > 0.0:
+            section_rng = random.Random(f"{base_variation_seed}:{i}")
+            jump = round(section_rng.uniform(0, _MAX_VARIATION_JUMP) * randomness)
+
+        # Use global section index (plus the randomness jump) as variation
+        # seed so every section cycles through theme alternates independently
+        # of repeated-label counting.
         assignments.append(SectionAssignment(
             section=section,
             theme=theme,
-            variation_seed=base_variation_seed + i,
+            variation_seed=base_variation_seed + i + jump,
         ))
         prev_theme_name = theme.name
 

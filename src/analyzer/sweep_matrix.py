@@ -470,10 +470,14 @@ class MatrixSweepRunner:
                     if not line:
                         continue
                     msg = json.loads(line)
-                    if msg.get("event") == "done":
-                        tracks = msg.get("tracks", [])
-                        if tracks:
-                            return tracks[0]  # first (only) track
+                    # vamp_runner.py emits one "track" event per completed
+                    # algorithm (not batched into "done") — this call only
+                    # ever requests a single algorithm, so the first one is
+                    # the only one.
+                    if msg.get("event") == "track":
+                        track = msg.get("track")
+                        if track:
+                            return track
                 return None
             except Exception as exc:
                 log.warning("Vamp subprocess for %s failed: %s", perm.algorithm, exc)

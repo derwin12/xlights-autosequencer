@@ -436,7 +436,18 @@ def run_orchestrator(
     effective_callback = progress_callback or _default_progress
 
     runner = AnalysisRunner(algos)
-    analysis = runner.run(str(src_path), progress_callback=effective_callback, stems=stems)
+    try:
+        analysis = runner.run(str(src_path), progress_callback=effective_callback, stems=stems)
+    except Exception as exc:
+        # Every other stage in this orchestrator degrades to a warning on
+        # failure rather than aborting the whole run — this one didn't,
+        # so a single bad algorithm (or a failure loading audio) could
+        # crash the entire analysis with no partial output. Fall back to
+        # zero tracks; downstream sections/bars/beats derivation already
+        # tolerates missing tracks (see the empty-sections fallback path).
+        warnings.append(f"Algorithm run failed: {exc}. No tracks produced.")
+        import types as _types
+        analysis = _types.SimpleNamespace(timing_tracks=[])
 
     # Index tracks by base algorithm name (strip :stem or _stem suffix)
     tracks_by_name: dict[str, list["TimingTrack"]] = {}

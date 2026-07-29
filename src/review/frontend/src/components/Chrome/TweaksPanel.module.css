@@ -68,3 +68,22 @@
   border-color: var(--color-error, #ef4444);
   color: var(--color-error, #ef4444);
 }
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sliderRow input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.sliderValue {
+  font-size: 12px;
+  font-family: var(--font-sans);
+  color: var(--ink2);
+  min-width: 2.5em;
+  text-align: right;
+}

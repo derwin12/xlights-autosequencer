@@ -51,6 +51,19 @@ def put_preferences():
             400,
         )
 
+    randomness = body.get("randomness")
+    if randomness is not None:
+        try:
+            randomness = float(randomness)
+        except (TypeError, ValueError):
+            randomness = None
+        if randomness is None or not 0.0 <= randomness <= 1.0:
+            return (
+                jsonify({"error": {"code": "invalid_preferences", "message": f"Invalid randomness: {body.get('randomness')!r}. Must be between 0.0 and 1.0"}}),
+                400,
+            )
+        body["randomness"] = randomness
+
     lib = load_library()
     prefs = lib["preferences"]
     prefs.update(body)

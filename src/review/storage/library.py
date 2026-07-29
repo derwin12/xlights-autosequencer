@@ -34,6 +34,7 @@ def _default_library() -> dict[str, Any]:
             "last_playhead_ms_by_song": {},
             "layout_id": None,
             "library_state_version": 0,
+            "randomness": 0.0,
         },
         "layout": None,
     }

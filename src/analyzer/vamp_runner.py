@@ -17,8 +17,16 @@ stdin  : one JSON line
 stdout : newline-delimited JSON, one object per line
   {"event": "progress", "idx": 1, "total": 14, "name": "qm_beats", "mark_count": 210}
   {"event": "warn",     "name": "qm_beats",   "message": "..."}
-  {"event": "done",     "tracks": [...],       "algorithms": [...]}
+  {"event": "track",    "track": {...},       "algorithm": {...}}
+  {"event": "done"}
   {"event": "error",    "message": "fatal error string"}
+
+Tracks are emitted one at a time, immediately after each algorithm completes
+(as "track" events), rather than batched into the final "done" — a hung or
+crashing algorithm later in the list should not cost the caller every result
+computed before it. The parent process (see runner.py's idle-timeout watchdog)
+may kill this subprocess mid-batch; whatever "track" events already arrived
+on its stdout pipe by then are still usable.
 """
 from __future__ import annotations
 
@@ -93,8 +101,6 @@ def main() -> None:
 
     algo_map = _build_algo_map()
 
-    tracks: list[dict] = []
-    algorithms_meta: list[dict] = []
     total = len(algo_names)
 
     for idx, raw_name in enumerate(algo_names):
@@ -132,8 +138,13 @@ def main() -> None:
                 track.stem_source = stem_override
                 if hasattr(track, "value_curve") and track.value_curve is not None:
                     track.value_curve.stem_source = stem_override
-            tracks.append(track.to_dict())
-            algorithms_meta.append(algo.metadata().to_dict())
+            # Emitted immediately (not batched into the final "done") so a
+            # later algorithm hanging doesn't cost the caller this result.
+            _emit({
+                "event": "track",
+                "track": track.to_dict(),
+                "algorithm": algo.metadata().to_dict(),
+            })
 
         has_curve = track is not None and getattr(track, "value_curve", None) is not None
         _emit({
@@ -145,7 +156,7 @@ def main() -> None:
             "has_curve": has_curve,
         })
 
-    _emit({"event": "done", "tracks": tracks, "algorithms": algorithms_meta})
+    _emit({"event": "done"})
 
 
 if __name__ == "__main__":

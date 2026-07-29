@@ -35,6 +35,7 @@ def run(
     phonemes: Optional[list[dict]] = None,
     genre: str = "pop",
     occasion: str = "general",
+    randomness: float = 0.0,
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
@@ -70,6 +71,8 @@ def run(
                   "Phonemes" timing track for the Faces effect.
         genre: Theme-selection genre hint (GenerationConfig.genre).
         occasion: Theme-selection occasion hint (GenerationConfig.occasion).
+        randomness: Chaos knob 0.0-1.0 (GenerationConfig.randomness). 0.0
+                    preserves the deterministic per-seed rotation.
         video_path: Optional path to an imported video file — placed as a
                     Video effect on the largest matrix prop (GenerationConfig.video_path).
         ignored_image_words: Optional lyric words whose image-library matches
@@ -145,7 +148,8 @@ def run(
         return _run_pipeline(audio_path, layout_path, seed, theme_overrides=theme_overrides,
                               section_overrides=section_overrides,
                               lyrics=lyrics, words=words, phonemes=phonemes,
-                              genre=genre, occasion=occasion, video_path=video_path,
+                              genre=genre, occasion=occasion, randomness=randomness,
+                              video_path=video_path,
                               ignored_image_words=ignored_image_words,
                               moving_head_keyword_motions=moving_head_keyword_motions,
                               shadow_text_words=shadow_text_words,
@@ -171,6 +175,7 @@ def _run_pipeline(
     phonemes: Optional[list[dict]] = None,
     genre: str = "pop",
     occasion: str = "general",
+    randomness: float = 0.0,
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
@@ -226,6 +231,7 @@ def _run_pipeline(
             # differ between songs instead of repeating the section-index
             # pattern (identical output across songs otherwise).
             variation_seed=seed,
+            randomness=randomness,
             # Faces placements reference the "Phonemes" timing track, so
             # only enable vocal placements when both mark sets exist.
             vocal_words=words if (words and phonemes) else None,

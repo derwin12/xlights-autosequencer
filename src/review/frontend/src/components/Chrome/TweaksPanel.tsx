@@ -13,8 +13,10 @@ const GENRES: Preferences['genre'][] = ['any', 'pop', 'rock', 'classical'];
 const OCCASIONS: Preferences['occasion'][] = ['general', 'christmas', 'halloween'];
 
 export function TweaksPanel() {
-  const { mode, density, inspector_open, genre, occasion, setMode, setDensity, setPreferences } =
-    usePreferencesStore();
+  const {
+    mode, density, inspector_open, genre, occasion, randomness,
+    setMode, setDensity, setPreferences,
+  } = usePreferencesStore();
 
   // Replace-mode double-confirm state
   const [replaceConfirmPending, setReplaceConfirmPending] = useState(false);
@@ -38,6 +40,17 @@ export function TweaksPanel() {
   function handleOccasion(value: Preferences['occasion']) {
     setPreferences({ occasion: value });
     persistPrefs({ occasion: value });
+  }
+
+  function handleRandomnessChange(value: number) {
+    // Live-update the store on every drag tick for a responsive slider, but
+    // only persist to the backend on release (handleRandomnessCommit) so
+    // dragging doesn't spam PUT /preferences.
+    setPreferences({ randomness: value });
+  }
+
+  function handleRandomnessCommit() {
+    persistPrefs({ randomness: usePreferencesStore.getState().randomness });
   }
 
   function handleInspectorToggle() {
@@ -164,6 +177,24 @@ export function TweaksPanel() {
               {o.charAt(0).toUpperCase() + o.slice(1)}
             </button>
           ))}
+        </div>
+      </div>
+      <div className={styles.row}>
+        <span className={styles.label}>Randomness</span>
+        <div className={styles.sliderRow}>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(randomness * 100)}
+            data-testid="randomness-slider"
+            onChange={(e) => handleRandomnessChange(Number(e.target.value) / 100)}
+            onMouseUp={handleRandomnessCommit}
+            onTouchEnd={handleRandomnessCommit}
+            onKeyUp={handleRandomnessCommit}
+          />
+          <span className={styles.sliderValue}>{Math.round(randomness * 100)}%</span>
         </div>
       </div>
       <div className={styles.row}>

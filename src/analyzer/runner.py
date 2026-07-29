@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import json
 import os
+import queue as _queue
 import subprocess
 import sys
+import threading as _threading
+import time as _time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +30,15 @@ from src.analyzer.stems import StemSet
 # rather than assumed, so algorithms only fall back to the .venv-vamp
 # subprocess when the library genuinely isn't importable here.
 _SUBPROCESS_LIBS: frozenset[str] = frozenset({"vamp", "madmom"})
+
+# Vamp/madmom algorithms normally finish in well under a minute each even on
+# long songs. If the subprocess produces no protocol line for this long,
+# treat it as hung (a native plugin stuck in a C loop raises no exception —
+# see _run_subprocess_batch). _BATCH_HARD_TIMEOUT_S is a backstop in case a
+# string of individually-fast-but-numerous algorithms keeps resetting the
+# idle timer without ever actually finishing.
+_ALGO_IDLE_TIMEOUT_S = 120
+_BATCH_HARD_TIMEOUT_S = 1800
 
 # Path to the repo root (src/analyzer/runner.py → ../../)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -253,7 +265,42 @@ def _run_subprocess_batch(
 
     dropped_lines: list[str] = []
 
-    for line in proc.stdout:
+    # A hung native Vamp/madmom call (e.g. a plugin stuck in a C loop) blocks
+    # forever with no exception to catch — `for line in proc.stdout` would
+    # wait indefinitely. Read on a background thread instead so the main
+    # thread can apply an idle timeout (no output for a while → treat as
+    # hung) and a hard cap on top, then kill the subprocess rather than
+    # block the whole analysis run forever. Tracks already emitted (see
+    # vamp_runner.py's per-algorithm "track" events) are kept even if a
+    # later algorithm is what hangs.
+    line_queue: "_queue.Queue[str | None]" = _queue.Queue()
+
+    def _reader() -> None:
+        try:
+            for raw_line in proc.stdout:
+                line_queue.put(raw_line)
+        except Exception:
+            pass
+        finally:
+            line_queue.put(None)  # sentinel: stdout closed
+
+    reader_thread = _threading.Thread(target=_reader, daemon=True)
+    reader_thread.start()
+
+    batch_start = _time.monotonic()
+    timed_out = False
+    while True:
+        remaining = _BATCH_HARD_TIMEOUT_S - (_time.monotonic() - batch_start)
+        if remaining <= 0:
+            timed_out = True
+            break
+        try:
+            line = line_queue.get(timeout=min(_ALGO_IDLE_TIMEOUT_S, remaining))
+        except _queue.Empty:
+            timed_out = True
+            break
+        if line is None:
+            break  # subprocess stdout closed — normal completion or crash
         line = line.strip()
         if not line:
             continue
@@ -278,11 +325,16 @@ def _run_subprocess_batch(
         elif event == "warn":
             print(f"WARNING: {msg.get('name', '')}: {msg.get('message', '')}", file=sys.stderr)
 
-        elif event == "done":
-            for t_dict in msg.get("tracks", []):
+        elif event == "track":
+            t_dict = msg.get("track")
+            if t_dict:
                 tracks.append(TimingTrack.from_dict(t_dict))
-            for a_dict in msg.get("algorithms", []):
+            a_dict = msg.get("algorithm")
+            if a_dict:
                 algo_meta.append(AnalysisAlgorithm.from_dict(a_dict))
+
+        elif event == "done":
+            pass  # completion marker only — tracks arrive via "track" events
 
         elif event == "error":
             print(f"WARNING: vamp subprocess error: {msg.get('message', '')}", file=sys.stderr)
@@ -290,8 +342,21 @@ def _run_subprocess_batch(
         else:
             dropped_lines.append(line[:200])
 
-    proc.wait()
-    stderr_out = proc.stderr.read()
+    if timed_out:
+        print(
+            f"WARNING: vamp subprocess unresponsive (no output for "
+            f"{_ALGO_IDLE_TIMEOUT_S}s, or exceeded {_BATCH_HARD_TIMEOUT_S}s total) "
+            f"— killing. {len(tracks)} track(s) already collected are kept.",
+            file=sys.stderr,
+        )
+        proc.kill()
+
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        pass
+
+    stderr_out = proc.stderr.read() if proc.stderr else ""
     if stderr_out:
         print(f"[vamp subprocess stderr]\n{stderr_out}", file=sys.stderr)
 

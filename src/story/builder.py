@@ -24,6 +24,7 @@ from src.story.moment_classifier import classify_moments
 from src.story.energy_arc import detect_energy_arc
 from src.story.lighting_mapper import map_lighting
 from src.story.stem_curves import extract_stem_curves
+from src.song_identity import split_title_artist
 
 SCHEMA_VERSION = "1.1.0"
 
@@ -398,6 +399,13 @@ def build_song_story(
     except Exception:
         # mutagen not available, file not readable, or no ID3 tags — use defaults
         pass
+
+    # YouTube-to-MP3 tools commonly dump the whole video title (e.g.
+    # "Elvis Presley - Blue Christmas (Audio)") into TIT2 with no TPE1 —
+    # split it and strip upload-tool junk before this feeds the synced-lyrics
+    # lookup below (a garbled query there previously matched the wrong song).
+    title, artist = split_title_artist(title, artist)
+    artist = artist or "Unknown"
 
     if title_override:
         title = title_override

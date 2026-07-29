@@ -87,7 +87,8 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
                 genre: str = "pop", occasion: str = "general",
                 include_extra_timing: bool = True,
                 vocal_diarization: bool = False,
-                variation_seed: int | None = None) -> None:
+                variation_seed: int | None = None,
+                randomness: float = 0.0) -> None:
     """Run the export in a background thread."""
     try:
         state.push({"stage": "building_plan", "progress": 0.1})
@@ -195,6 +196,7 @@ def _run_export(state: "_ExportState", song: dict, session: dict,
             phonemes=phonemes or None,
             genre=genre,
             occasion=occasion,
+            randomness=randomness,
             video_path=song.get("video_path"),
             ignored_image_words=session.get("ignored_image_words") or None,
             moving_head_keyword_motions=session.get("moving_head_keyword_motions") or None,
@@ -292,6 +294,7 @@ def start_export(song_id: str):
     prefs = lib.get("preferences", {}) or {}
     genre = prefs.get("genre") or "pop"
     occasion = prefs.get("occasion") or "general"
+    randomness = prefs.get("randomness", 0.0)
 
     try:
         variation_seed = _resolve_variation_seed(body)
@@ -317,7 +320,7 @@ def start_export(song_id: str):
     t = threading.Thread(
         target=_run_export,
         args=(state, song, session, layout, destination_name, fmt, genre, occasion,
-              include_extra_timing, vocal_diarization, variation_seed),
+              include_extra_timing, vocal_diarization, variation_seed, randomness),
         daemon=True,
     )
     t.start()

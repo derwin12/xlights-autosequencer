@@ -156,6 +156,43 @@ def test_find_chorus_body_case_and_punctuation_insensitive_matching():
 
 
 # ---------------------------------------------------------------------------
+# _search_once_with_timeout — bounding a hung provider
+# ---------------------------------------------------------------------------
+
+def test_search_once_with_timeout_abandons_hung_search(monkeypatch):
+    import time as _time
+
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            _time.sleep(5)  # much longer than the patched timeout below
+            return "should never be seen"
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    monkeypatch.setattr(sl, "_SEARCH_TIMEOUT_S", 0.2)
+
+    start = _time.monotonic()
+    result, exc = sl._search_once_with_timeout("placeholder query")
+    elapsed = _time.monotonic() - start
+
+    assert result is None
+    assert isinstance(exc, TimeoutError)
+    assert elapsed < 2.0  # bounded by the patched timeout, not the 5s sleep
+
+
+def test_search_once_with_timeout_returns_result_when_fast(monkeypatch):
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return "[00:01.00]placeholder lyric\n"
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result, exc = sl._search_once_with_timeout("placeholder query")
+    assert result == "[00:01.00]placeholder lyric\n"
+    assert exc is None
+
+
+# ---------------------------------------------------------------------------
 # fetch_synced_lyrics — provider allowlist + error handling
 # ---------------------------------------------------------------------------
 
@@ -210,6 +247,59 @@ def test_fetch_synced_lyrics_returns_none_when_package_missing(monkeypatch):
 
 def test_fetch_synced_lyrics_empty_title_and_artist_returns_none():
     assert sl.fetch_synced_lyrics("", "") is None
+
+
+# ---------------------------------------------------------------------------
+# _lyrics_match_expected / fetch_synced_lyrics + check_synced_lyrics_with_text
+# mismatch rejection
+# ---------------------------------------------------------------------------
+
+def test_lyrics_match_expected_accepts_matching_title_and_artist():
+    lrc = "[ar:Placeholder Artist]\n[ti:Placeholder Title]\n[00:01.00]la la\n"
+    assert sl._lyrics_match_expected(lrc, "Placeholder Title", "Placeholder Artist") is True
+
+
+def test_lyrics_match_expected_rejects_same_artist_different_title():
+    # Same-artist mismatches (e.g. an Elvis "Blue Christmas" search landing
+    # on Elvis "Hound Dog") aren't caught by artist agreement alone, and
+    # duration checking doesn't help either since both are similar length.
+    lrc = "[ar:Elvis Presley]\n[ti:Hound Dog]\n[00:01.00]placeholder lyric\n"
+    assert sl._lyrics_match_expected(lrc, "Blue Christmas", "Elvis Presley") is False
+
+
+def test_lyrics_match_expected_rejects_different_artist():
+    lrc = "[ar:Someone Else]\n[ti:Placeholder Title]\n[00:01.00]placeholder lyric\n"
+    assert sl._lyrics_match_expected(lrc, "Placeholder Title", "Placeholder Artist") is False
+
+
+def test_lyrics_match_expected_accepts_when_no_metadata_tags_present():
+    # Providers that omit [ar:]/[ti:] headers have nothing to validate
+    # against — accept rather than penalize.
+    lrc = "[00:01.00]placeholder lyric with no header tags\n"
+    assert sl._lyrics_match_expected(lrc, "Anything", "Anyone") is True
+
+
+def test_fetch_synced_lyrics_discards_mismatched_result(monkeypatch):
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return "[ar:Elvis Presley]\n[ti:Hound Dog]\n[00:01.00]placeholder lyric\n"
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    assert sl.fetch_synced_lyrics("Blue Christmas", "Elvis Presley") is None
+
+
+def test_check_synced_lyrics_with_text_reports_title_mismatch(monkeypatch):
+    class _FakeSyncedLyrics:
+        @staticmethod
+        def search(term, providers=None, **kwargs):
+            return "[ar:Elvis Presley]\n[ti:Hound Dog]\n[00:01.00]placeholder lyric\n"
+
+    monkeypatch.setitem(__import__("sys").modules, "syncedlyrics", _FakeSyncedLyrics)
+    result, text = sl.check_synced_lyrics_with_text("Blue Christmas", "Elvis Presley", 135000)
+    assert result["found"] is False
+    assert result["reason"] == "title_mismatch"
+    assert text is None
 
 
 # ---------------------------------------------------------------------------

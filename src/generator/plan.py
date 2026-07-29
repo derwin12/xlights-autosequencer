@@ -63,6 +63,7 @@ from src.grouper.classifier import classify_props, normalize_coords
 from src.grouper.grouper import PowerGroup, generate_groups
 from src.grouper.layout import Layout, Prop, parse_layout
 from src.themes.library import ThemeLibrary, load_theme_library
+from src.song_identity import split_title_artist
 
 
 def read_song_metadata(audio_path: Path, hierarchy: Optional[HierarchyResult] = None) -> SongProfile:
@@ -90,6 +91,13 @@ def read_song_metadata(audio_path: Path, hierarchy: Optional[HierarchyResult] = 
             genre = _first_tag(audio, "genre", genre)
     except Exception:
         pass
+
+    # YouTube-to-MP3 tools commonly dump the whole video title (e.g.
+    # "Elvis Presley - Blue Christmas (Audio)") into the title tag with no
+    # artist tag — split it and strip upload-tool junk before this feeds the
+    # synced-lyrics lookup (a garbled query there previously matched the
+    # wrong song).
+    title, artist = split_title_artist(title, artist)
 
     return SongProfile(
         title=title,
@@ -194,6 +202,7 @@ def build_plan(
         section_energies, theme_library, inferred_genre, inferred_occasion,
         scale=scale,
         base_variation_seed=config.variation_seed,
+        randomness=config.randomness,
     )
 
     # Apply theme overrides before deriving the anchor palette so the anchor
@@ -1068,6 +1077,7 @@ def regenerate_sections(config: GenerationConfig, existing_xsq: Path) -> Path:
         target_section_energies, theme_library, config.genre, config.occasion,
         scale=ef_regen.get("scale"),
         base_variation_seed=config.variation_seed,
+        randomness=config.randomness,
     )
 
     # Build rotation plan for regenerated sections

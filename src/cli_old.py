@@ -1863,10 +1863,14 @@ def _load_curves_mode_from_config() -> str:
 @click.option("--reroll", "reroll", is_flag=True, default=False,
               help="Pick a random --variation-seed for this run instead of the default "
                    "(0). The chosen seed is printed so the run can be reproduced later.")
+@click.option("--randomness", "randomness", default=0.0, type=click.FloatRange(0.0, 1.0),
+              help="Chaos knob (0.0-1.0) for effect variety. 0.0 (default) keeps the "
+                   "deterministic rotation; higher values mix in more randomized "
+                   "effect/motion/color choices per section.")
 def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
                  fresh, no_wizard, target_section, theme_overrides_raw,
                  tiers_raw, story_path, transition_mode, curves_mode,
-                 variation_seed, reroll):
+                 variation_seed, reroll, randomness):
     """Generate an xLights .xsq sequence from an MP3 and layout file."""
     import random
 
@@ -1943,6 +1947,7 @@ def generate_cmd(audio_file, layout_file, output_dir, genre, occasion,
         transition_mode=transition_mode,
         curves_mode=curves_mode,
         variation_seed=variation_seed,
+        randomness=randomness,
     )
 
     tiers_label = ", ".join(sorted(

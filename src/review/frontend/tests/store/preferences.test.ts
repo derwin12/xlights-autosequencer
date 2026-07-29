@@ -91,4 +91,13 @@ describe('preferences store', () => {
     usePreferencesStore.getState().setPreferences({ inspector_open: true });
     expect(usePreferencesStore.getState().inspector_open).toBe(true);
   });
+
+  it('has default randomness 0', () => {
+    expect(usePreferencesStore.getState().randomness).toBe(0);
+  });
+
+  it('setPreferences updates randomness', () => {
+    usePreferencesStore.getState().setPreferences({ randomness: 0.5 });
+    expect(usePreferencesStore.getState().randomness).toBe(0.5);
+  });
 });

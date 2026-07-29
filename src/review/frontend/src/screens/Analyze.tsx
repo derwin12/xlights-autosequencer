@@ -206,6 +206,7 @@ export function lyricsCheckReasonLabel(reason: string | null): string {
     case 'search_failed': return 'provider search failed';
     case 'no_match': return 'no match found';
     case 'duration_mismatch': return 'match runs longer than this song — likely wrong version';
+    case 'title_mismatch': return "match doesn't look like this song/artist — likely wrong match";
     case 'empty': return 'no text entered';
     default: return reason || 'not found';
   }

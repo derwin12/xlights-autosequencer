@@ -109,7 +109,7 @@ class TestExportStart:
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
                               genre="pop", occasion="general", include_extra_timing=True,
-                              vocal_diarization=False, variation_seed=None):
+                              vocal_diarization=False, variation_seed=None, randomness=0.0):
             captured["destination_name"] = destination_name
             with state.lock:
                 state.status = "done"
@@ -178,7 +178,7 @@ class TestExportStart:
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
                               genre="pop", occasion="general", include_extra_timing=True,
-                              vocal_diarization=False, variation_seed=None):
+                              vocal_diarization=False, variation_seed=None, randomness=0.0):
             captured["variation_seed"] = variation_seed
             with state.lock:
                 state.status = "done"
@@ -449,7 +449,7 @@ class TestDownloadPackage:
 
         def _fake_run_export(state, song, session, layout, destination_name, fmt,
                               genre="pop", occasion="general", include_extra_timing=True,
-                              vocal_diarization=False, variation_seed=None):
+                              vocal_diarization=False, variation_seed=None, randomness=0.0):
             out_dir = tmp_path / "export_out"
             out_dir.mkdir(exist_ok=True)
             output_path = out_dir / (destination_name or "output.xsq")

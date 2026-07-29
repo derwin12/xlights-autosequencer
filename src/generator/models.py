@@ -373,6 +373,15 @@ class GenerationConfig:
     mood_intent: str = "auto"           # Brief mood axis: auto/party/emotional/dramatic/playful
     duration_feel: str = "auto"         # Brief duration axis: auto/snappy/balanced/flowing
     accent_strength: str = "auto"       # Brief accent axis: auto/subtle/strong
+    # Chaos knob (0.0-1.0) for effect variety. 0.0 preserves the historical
+    # variation_seed=base+section_index progression (deterministic parity/
+    # rotation choices throughout effect_placer.py). Values above 0 mix a
+    # seeded random jump into each section's effective variation_seed,
+    # scaled by this factor, so downstream modulo/parity decisions (motion
+    # rotation, alt-effect toggles, mask color spread, layer counts) land
+    # less predictably. Still fully reproducible for a given
+    # (variation_seed, randomness) pair.
+    randomness: float = 0.0
     # Base seed for theme selection variation. Each section's ThemeAssignment
     # gets variation_seed = config.variation_seed + section_index, so changing
     # this value reproducibly shifts every section's alternate selection. The
@@ -447,4 +456,8 @@ class GenerationConfig:
             raise ValueError(
                 f"Invalid accent_strength {self.accent_strength!r}. "
                 f"Must be one of: {sorted(self._VALID_ACCENT_STRENGTHS)}"
+            )
+        if not 0.0 <= self.randomness <= 1.0:
+            raise ValueError(
+                f"Invalid randomness {self.randomness!r}. Must be between 0.0 and 1.0"
             )

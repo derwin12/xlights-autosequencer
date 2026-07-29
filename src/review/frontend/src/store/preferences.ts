@@ -12,6 +12,7 @@ export interface Preferences {
   library_state_version: number;
   genre: 'any' | 'pop' | 'rock' | 'classical';
   occasion: 'general' | 'christmas' | 'halloween';
+  randomness: number;
 }
 
 interface PreferencesState extends Preferences {
@@ -32,6 +33,7 @@ const DEFAULTS: Preferences = {
   library_state_version: 0,
   genre: 'any',
   occasion: 'general',
+  randomness: 0,
 };
 
 function applyDataMode(mode: Preferences['mode']) {

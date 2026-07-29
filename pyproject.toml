@@ -43,6 +43,12 @@ phonemes = ["whisperx>=3.1", "nltk>=3.8", "matplotlib>=3.5"]
 # Fix 1/Fix 2 (see docs/segment-classification-changelog.md). Pure Python —
 # no native/platform-specific build step, works on every OS this project runs on.
 lyrics = ["syncedlyrics>=1.0"]
+# Key/scale, danceability, dynamic complexity, and loudness features
+# (src/analyzer/essentia_features.py). PyPI only publishes a Python 3.12
+# wheel on some dev snapshots — pin to one known to have it rather than
+# leaving this unbounded, which can resolve to a snapshot with no cp312
+# wheel and force a slow, unreliable from-source build.
+essentia = ["essentia==2.1b6.dev1389"]
 # Install everything: pip install -e ".[all]"
 all = [
     "demucs>=4.0",
@@ -53,6 +59,7 @@ all = [
     "scipy>=1.11",
     "zstandard>=0.21",
     "syncedlyrics>=1.0",
+    "essentia==2.1b6.dev1389",
 ]
 dev = [
     "pytest>=7.4",
