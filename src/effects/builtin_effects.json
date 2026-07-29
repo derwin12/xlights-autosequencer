@@ -512,7 +512,7 @@
           "storage_name": "E_CHECKBOX_Strobe_Music",
           "widget_type": "checkbox",
           "value_type": "bool",
-          "default": false,
+          "default": true,
           "min": null,
           "max": null,
           "choices": null,

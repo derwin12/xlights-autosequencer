@@ -6,7 +6,6 @@
       "base_effect": "Strobe",
       "description": "Three rapid strobe flashes with short duration. High-energy flash accent for drops and impacts.",
       "parameter_overrides": {
-        "E_CHECKBOX_Strobe_Music": 0,
         "E_SLIDER_Number_Strobes": 3,
         "E_SLIDER_Strobe_Duration": 10
       },

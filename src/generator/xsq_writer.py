@@ -78,6 +78,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_TEXTCTRL_Shimmer_Cycles": "0.4",
     },
     "Strobe": {
+        "E_CHECKBOX_Strobe_Music": "1",
         "E_SLIDER_Number_Strobes": "3",
         "E_SLIDER_Strobe_Duration": "10",
         "E_SLIDER_Strobe_Type": "1",
