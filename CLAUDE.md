@@ -151,6 +151,42 @@ changes need a rebuild first (`cd src/review/frontend && npm run build`) —
 the `ui <commit>` banner segment only changes when that bundle is rebuilt;
 the restart above is only needed for backend Python changes.
 
+## Desktop App Release Process
+
+Pushing a `v*` git tag (e.g. `v0.1.3`) triggers `.github/workflows/release-windows.yml`,
+which builds the Windows installer fresh on a GitHub-hosted runner and attaches it to
+a new GitHub Release automatically (`generate_release_notes: true` — no hand-written
+release notes needed). `workflow_dispatch` also works for a manual run without a tag,
+but that run does not create a release (the "Create GitHub Release" step is gated on
+`startsWith(github.ref, 'refs/tags/')`).
+
+To cut a release:
+
+1. Bump the version in **both** `packaging/tauri/src-tauri/tauri.conf.json`
+   (`"version"`) and `packaging/tauri/src-tauri/Cargo.toml` (`version = "..."`) —
+   they are not auto-synced. Run `cargo check` (or any cargo command) once in
+   `packaging/tauri/src-tauri` afterward so `Cargo.lock`'s own `xlight` entry picks
+   up the new version; commit all three files together.
+2. Optionally build+verify locally first (see `packaging/README.md`) — not required,
+   since CI does a full clean build anyway, but catches problems faster than waiting
+   on a 15-20 min cold CI run.
+3. `git push origin main`, then `git tag -a vX.Y.Z -m "..."` and `git push origin vX.Y.Z`.
+4. Watch the run: `gh run list --workflow=release-windows.yml --limit 3`. A cold
+   runner (no warm Cargo/pnpm cache) takes ~15-20+ minutes.
+
+Do **not** commit `packaging/tauri/src-tauri/packaging-manifest.json` after a local
+build — `generate-manifest.ps1` overwrites it with real build metadata (version+sha,
+timestamp), but the checked-in copy is meant to stay the static `"0.0.0-dev"`
+placeholder (see the file's own comment in `packaging/README.md`). `git checkout --`
+it before committing if a local build dirtied it.
+
+The default `GITHUB_TOKEN` does not include `contents: write` by default — the
+workflow declares `permissions: contents: write` explicitly (added after v0.1.0's
+first tagged run built successfully but failed at the release-creation step with
+"Resource not accessible by integration"). If a future release run fails at that
+same step, check this permission block hasn't been reverted before re-diagnosing
+from scratch.
+
 ## Segment Classification — Mandatory Changelog Rule
 
 Any change to segment detection, section merging, or section role classification
