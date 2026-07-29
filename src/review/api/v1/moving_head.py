@@ -3,8 +3,10 @@ lyric-word-triggered Moving Head accents (GenerationConfig.moving_head_keyword_m
 
 Three built-in words (shake/bounce/spin) each map to their own physical
 motion by default. Users can add custom words from a song's own lyrics,
-assigning each to one of the three existing motions, or remove any word
-(built-in or custom) to disable it for this song. Stored as
+assigning each to one of the four existing motions (shake/bounce/spin/
+flash -- "flash" points every head straight up at full white, the same
+pose used for the song-ending flash), or remove any word (built-in or
+custom) to disable it for this song. Stored as
 ``moving_head_keyword_motions`` in the song's session JSON, consumed at
 export time (``GenerationConfig.moving_head_keyword_motions``) -- same
 per-song-override pattern as ``ignored_image_words`` in images.py.
@@ -16,7 +18,7 @@ from flask import jsonify, request
 from . import api_v1
 
 _DEFAULT_KEYWORD_MOTIONS: dict[str, str] = {"shake": "shake", "spin": "spin", "bounce": "bounce"}
-_VALID_MOTIONS = {"shake", "bounce", "spin"}
+_VALID_MOTIONS = {"shake", "bounce", "spin", "flash"}
 
 
 def _load_keyword_motions(song_id: str) -> dict[str, str]:

@@ -1507,6 +1507,7 @@ def _heads_already_posed(
 _KEYWORD_ACCENT_DURATION_MS: dict[str, int] = {
     "shake": 250,
     "bounce": 900,
+    "flash": 900,
 }
 # Small buffer left between two consecutive same-keyword pulses so they
 # read as distinct quick hits rather than one continuous blur.
@@ -1627,7 +1628,7 @@ def place_moving_head_keyword_accents(
     (see the module comment above for the design/validation caveats).
 
     ``keyword_motions`` maps each searched lyric word to one of the three
-    supported motions ("shake"/"bounce"/"spin") -- decoupling the word
+    supported motions ("shake"/"bounce"/"spin"/"flash") -- decoupling the word
     being searched for from the physical motion it triggers (user request
     2026-07-28: let users add their OWN custom trigger words from a song's
     lyrics, each assigned one of the existing motions, rather than only
@@ -1752,6 +1753,19 @@ def place_moving_head_keyword_accents(
                 )
                 params["E_VALUECURVE_MHTilt"] = _tilt_vc_descriptor(
                     _BOUNCE_TILT_LO_DEG, _BOUNCE_TILT_HI_DEG, _BOUNCE_TILT_LO_DEG,
+                )
+            elif motion == "flash":
+                # All heads straight up (tilt 0), full white, full dimmer --
+                # the same pose place_moving_head_ending_punches uses for the
+                # song-ending flash, reused here as a user-triggerable
+                # keyword motion (2026-07-29 user request: "all the lights up
+                # in the air" as a Moving Head Trigger option).
+                settings = _build_ending_punch_head_settings(head_count)
+                warmup_pan, warmup_tilt = 0.0, 0.0
+                params = _build_parameters(
+                    {i: settings for i in range(1, head_count + 1)},
+                    slider_pan=_slider_pan(0.0),
+                    slider_tilt=_slider_tilt(0.0),
                 )
             else:
                 continue  # unrecognized/invalid motion -- no mapping, skip silently

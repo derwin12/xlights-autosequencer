@@ -36,8 +36,8 @@ interface PicturesScreenProps {
   onContinue: () => void;
 }
 
-type MotionType = 'shake' | 'bounce' | 'spin';
-const MOTIONS: MotionType[] = ['shake', 'bounce', 'spin'];
+type MotionType = 'shake' | 'bounce' | 'spin' | 'flash';
+const MOTIONS: MotionType[] = ['shake', 'bounce', 'spin', 'flash'];
 
 // Candidate words for the "add from lyrics" picker -- distinct real words,
 // no noun-only bias (unlike Pictures' find_unmatched_topics, action words
@@ -411,8 +411,8 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
         <h3 className={styles.sectionTitle}>Moving Head Triggers</h3>
         <p className={styles.sectionHint}>
           These lyric words trigger a Moving Head accent when sung. Uncheck a built-in to disable it
-          for this song, or add your own word from the lyrics below and assign it one of the three
-          existing motions.
+          for this song, or add your own word from the lyrics below and assign it one of the
+          existing motions ("flash" points every head straight up at full white).
         </p>
         {Object.keys(keywordMotions).length === 0 ? (
           <p className={styles.empty}>No active triggers for this song.</p>

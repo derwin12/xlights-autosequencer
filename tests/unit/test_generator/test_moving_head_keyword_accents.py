@@ -210,6 +210,22 @@ class TestPlaceMovingHeadKeywordAccents:
         assert "Id=ID_VALUECURVE_MHTilt" in punch.parameters["E_VALUECURVE_MHTilt"]
         assert "Type=Ramp Up/Down" in punch.parameters["E_VALUECURVE_MHTilt"]
 
+    def test_flash_places_group_level_straight_up_full_white_accent(self):
+        # "flash" reuses the song-ending-punch pose (all heads pointed
+        # straight up, full white, full dimmer) as a user-triggerable
+        # keyword motion (2026-07-29 user request).
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        words = [_word("flash", 10_000, 10_300)]
+        result = place_moving_head_keyword_accents(
+            layout, words, {"flash": "flash"}, 200_000,
+        )
+        assert set(result) == {"MH GRP"}
+        punch = next(p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"])
+        assert "Pan: 0.0;Tilt: 0.0;" in punch.parameters["E_TEXTCTRL_MH1_Settings"]
+        assert punch.parameters["E_SLIDER_MHPan"] == "0"
+        assert punch.parameters["E_SLIDER_MHTilt"] == "0"
+        assert punch.end_ms - punch.start_ms == _KEYWORD_ACCENT_DURATION_MS["flash"]
+
     def test_spin_places_per_head_pattern_circle_on_every_head(self):
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         words = [_word("spin", 10_000, 10_300)]

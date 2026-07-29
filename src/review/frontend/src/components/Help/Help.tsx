@@ -104,8 +104,9 @@ const FAQ: FaqEntry[] = [
         The Extras screen also lists <strong>shake</strong>, <strong>bounce</strong>, and <strong>spin</strong> —
         three built-in lyric words that trigger a Moving Head accent when sung. Uncheck any of them to
         disable it for this song, or add your own custom word from the song's lyrics and assign it one
-        of the three existing motions. Motions are fixed (there's no way to invent a new physical
-        movement) — a custom word just maps onto one of shake/bounce/spin's behavior.
+        of the existing motions — including <strong>flash</strong>, which points every head straight up
+        at full white. Motions are fixed (there's no way to invent a new physical movement) — a custom
+        word just maps onto one of shake/bounce/spin/flash's behavior.
       </p>
     ),
   },

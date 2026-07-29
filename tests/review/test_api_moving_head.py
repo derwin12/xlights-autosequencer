@@ -25,6 +25,14 @@ class TestMovingHeadKeywords:
         listed = client.get(f"/api/v1/songs/{self.SONG}/moving-head-keywords").get_json()
         assert listed["keywords"]["explode"] == "bounce"
 
+    def test_add_custom_word_with_flash_motion(self, client):
+        resp = client.post(
+            f"/api/v1/songs/{self.SONG}/moving-head-keywords",
+            json={"word": "sky", "motion": "flash"},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["keywords"]["sky"] == "flash"
+
     def test_add_rejects_invalid_motion(self, client):
         resp = client.post(
             f"/api/v1/songs/{self.SONG}/moving-head-keywords",
