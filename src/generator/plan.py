@@ -21,6 +21,7 @@ from src.generator.effect_placer import (
     _place_floodlight_pulses,
     _place_lyric_text,
     _place_picture_effects,
+    _place_shadow_text_effects,
     _place_singing_faces,
     _place_star_bursts,
     _place_video_effect,
@@ -520,30 +521,33 @@ def build_plan(
             crash_effects.setdefault(gname, []).extend(placements)
 
     # 5e. Library images on Matrix/Mega Tree props, timed to lyric matches
-    # (config.picture_effects). Song-scoped, same rationale as
-    # vocal_effects/video_effects/crash_effects. No generic filler rotation —
-    # only fires where a lyric word actually matches a library image.
+    # (config.picture_effects), and 5e-2. Shadow Text word effects
+    # (config.shadow_text_words). Song-scoped, same rationale as
+    # vocal_effects/video_effects/crash_effects. Both target the same
+    # Matrix/Mega Tree props and share the same layer-reservation rule, so
+    # ``existing_layers`` is computed once for both.
+    #
+    # Bug-243 follow-up: an overlay must render above whatever the
+    # per-section theme/rotation content already occupies on its target
+    # group. xsq_writer serializes <EffectLayer> children in ascending
+    # layer-index order and xLights renders the *first* child on top -- so
+    # "above" means one layer *below* the lowest index currently in use, not
+    # above the highest (confirmed by inspecting a real generated .xsq:
+    # placing it at the highest index put it last in the file and visually
+    # at the bottom of the stack, hidden behind an opaque "On" layer).
+    existing_layers: dict[str, int] = {}
+    for a in assignments:
+        for gname, placements in a.group_effects.items():
+            for p in placements:
+                if gname not in existing_layers or p.layer < existing_layers[gname]:
+                    existing_layers[gname] = p.layer
+
     picture_effects: dict[str, list] = {}
     if config.picture_effects and config.vocal_words:
         word_image_matches = suggest_images_for_words(
             config.vocal_words, ignored_words=config.ignored_image_words,
         )
         if word_image_matches:
-            # Bug-243 follow-up: Pictures must render above whatever the
-            # per-section theme/rotation content already occupies on its
-            # target group. xsq_writer serializes <EffectLayer> children in
-            # ascending layer-index order and xLights renders the *first*
-            # child on top -- so "above" means one layer *below* the lowest
-            # index currently in use, not above the highest (confirmed by
-            # inspecting a real generated .xsq: placing it at the highest
-            # index put it last in the file and visually at the bottom of
-            # the stack, hidden behind an opaque "On" layer).
-            existing_layers: dict[str, int] = {}
-            for a in assignments:
-                for gname, placements in a.group_effects.items():
-                    for p in placements:
-                        if gname not in existing_layers or p.layer < existing_layers[gname]:
-                            existing_layers[gname] = p.layer
             picture_effects = _place_picture_effects(
                 props=effect_props,
                 groups=groups,
@@ -553,6 +557,19 @@ def build_plan(
                 word_image_matches=word_image_matches,
                 existing_layers=existing_layers,
             )
+
+    shadow_text_effects: dict[str, list] = {}
+    if config.shadow_text_words and config.vocal_words:
+        shadow_text_effects = _place_shadow_text_effects(
+            props=effect_props,
+            groups=groups,
+            duration_ms=hierarchy.duration_ms,
+            variation_seed=config.variation_seed,
+            vocal_words=config.vocal_words,
+            shadow_words=config.shadow_text_words,
+            anchor_palette=_anchor,
+            existing_layers=existing_layers,
+        )
 
     # 5. Value curves — generate for each placement when curves are enabled
     if config.curves_mode != "none":
@@ -606,6 +623,7 @@ def build_plan(
         video_effects=video_effects,
         crash_effects=crash_effects,
         picture_effects=picture_effects,
+        shadow_text_effects=shadow_text_effects,
         moving_head_effects=moving_head_effects,
     )
 

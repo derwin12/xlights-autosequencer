@@ -4687,6 +4687,43 @@ _PICTURE_MOTION_WEIGHTS = (60, 13, 13, 13)
 _MEGATREE_NAME_TOKENS = ("megatree", "mega_tree", "mega tree")
 
 
+def _matrix_megatree_targets(props: list[Any], groups: list[PowerGroup]) -> dict[str, str]:
+    """Resolve each Matrix/Mega Tree prop (excluding lyric-display matrices)
+    to its target group name for a song-scoped overlay burst (Pictures,
+    Shadow Text).
+
+    Each eligible prop is redirected to its most specific enclosing tier
+    group (looked up in ``groups`` by membership) rather than placed on its
+    own raw model row -- see ``_place_picture_effects``'s docstring for the
+    bug-184 rationale (group and direct-model content don't blend) and the
+    bug-243 rationale for excluding tier-1 whole-house canvas groups. A prop
+    with no such enclosing group falls back to its own row directly.
+
+    Returns ``{}`` when no Matrix/Mega Tree prop is eligible.
+    """
+    eligible = [
+        p for p in props
+        if (
+            getattr(p, "display_as", "") == "Matrix"
+            or any(tok in getattr(p, "name", "").lower() for tok in _MEGATREE_NAME_TOKENS)
+        )
+        and "lyric" not in getattr(p, "name", "").lower()
+    ]
+    if not eligible:
+        return {}
+
+    targets: dict[str, str] = {}
+    for prop in eligible:
+        name = getattr(prop, "name", "")
+        candidates = [
+            g for g in groups
+            if name in g.members and g.tier > 1 and not g.name.endswith("_FADES")
+        ]
+        group = min(candidates, key=lambda g: (len(g.members), g.name), default=None)
+        targets[name] = group.name if group is not None else name
+    return targets
+
+
 def _place_picture_effects(
     props: list[Any],
     groups: list[PowerGroup],
@@ -4770,26 +4807,9 @@ def _place_picture_effects(
     if pictures_def is None:
         return {}
 
-    eligible = [
-        p for p in props
-        if (
-            getattr(p, "display_as", "") == "Matrix"
-            or any(tok in getattr(p, "name", "").lower() for tok in _MEGATREE_NAME_TOKENS)
-        )
-        and "lyric" not in getattr(p, "name", "").lower()
-    ]
-    if not eligible:
+    targets = _matrix_megatree_targets(props, groups)
+    if not targets:
         return {}
-
-    targets: dict[str, str] = {}
-    for prop in eligible:
-        name = getattr(prop, "name", "")
-        candidates = [
-            g for g in groups
-            if name in g.members and g.tier > 1 and not g.name.endswith("_FADES")
-        ]
-        group = min(candidates, key=lambda g: (len(g.members), g.name), default=None)
-        targets[name] = group.name if group is not None else name
 
     picture_layer_by_target: dict[str, int] = {
         target_name: (existing_layers or {}).get(target_name, 1) - 1
@@ -4885,6 +4905,182 @@ def _place_picture_effects(
     logger.info(
         "picture_effects: %d target(s), %d lyric-matched burst(s) scheduled",
         len(result), sum(len(v) for v in result.values()),
+    )
+    return result
+
+
+# Shadow Text word effect (user request, 2026-07-29): a two-layer Text
+# effect -- the word in the song's anchor-palette color 1 on top, an offset
+# copy in color 2 directly behind it -- fired wherever a user-tagged word
+# (review UI's per-word "Shadow" toggle, GenerationConfig.shadow_text_words)
+# is sung, on the same Matrix/Mega Tree targets _place_picture_effects uses.
+# The offset is a fixed sub-buffer nudge copied verbatim from a user-
+# confirmed working xLights clipboard sample, which is what produces the
+# drop-shadow look; the front layer uses the effect's full default buffer
+# (no B_CUSTOM_SubBuffer entry). Matrix gets a flat 2%,2% position shift +
+# 1% grow. Mega Tree props are narrow and tall, so per a second confirmed
+# sample (2026-07-29) they render differently: vertical text ("vert text
+# down"), a taller/narrower bitmap font, a fixed (non-animating) Y start
+# position via "End Position" notebook mode, and a shadow offset weighted
+# toward X (3%,1% shift + 3%/1% grow) rather than matrix's even X/Y split
+# -- matches how the text itself reads top-to-bottom on a tree instead of
+# left-to-right on a matrix.
+_SHADOW_TEXT_MATRIX_SUBBUFFER = "2.00x2.00x101.00x102.00x0.00x0.00"
+_SHADOW_TEXT_TREE_SUBBUFFER = "3.00x1.00x103.00x101.00x0.00x0.00"
+_SHADOW_TEXT_MATRIX_PARAMS: dict[str, str] = {
+    "E_CHOICE_Text_Effect": "normal",
+}
+_SHADOW_TEXT_TREE_PARAMS: dict[str, str] = {
+    "E_CHOICE_Text_Effect": "vert text down",
+    "E_CHOICE_Text_Font": "7-7x9 Bold",
+    "E_NOTEBOOK": "End Position",
+    "E_SLIDER_Text_YStart": "25",
+    "E_SLIDER_Text_YEnd": "25",
+}
+_SHADOW_TEXT_MIN_BURST_MS = 1_200
+_SHADOW_TEXT_FADE_MS = 200
+
+
+def _is_shadow_text_tree_target(target_name: str) -> bool:
+    return any(tok in target_name.lower() for tok in _MEGATREE_NAME_TOKENS)
+
+
+def _place_shadow_text_effects(
+    props: list[Any],
+    groups: list[PowerGroup],
+    duration_ms: int,
+    variation_seed: int,
+    vocal_words: Optional[list[dict]],
+    shadow_words: Optional[list[str]],
+    anchor_palette: Optional[list[str]] = None,
+    existing_layers: dict[str, int] | None = None,
+) -> dict[str, list[EffectPlacement]]:
+    """Place a two-layer "Shadow" Text effect on every occurrence of a
+    user-tagged word (``shadow_words``) in ``vocal_words``, on the same
+    Matrix/Mega Tree targets as ``_place_picture_effects``
+    (``_matrix_megatree_targets``).
+
+    Each occurrence produces two ``EffectPlacement``s on the same target and
+    time window: a front layer (the word, anchor palette color 1, full
+    buffer) and a shadow layer one index below it (same word, anchor
+    palette color 2, with a family-specific ``B_CUSTOM_SubBuffer`` offset)
+    -- ascending ``EffectLayer`` index renders on top (bug-243), so the
+    front layer must get the smaller index. Both layers reuse
+    ``_PICTURE_MOTIONS`` unchanged (a generic per-``EffectLayer``
+    buffer-transform overlay, not Pictures-specific) for an occasional
+    zoom/rotation accent, seeded so a given occurrence's two layers share
+    the same motion pick.
+
+    Mega Tree targets (``_is_shadow_text_tree_target``) render with
+    ``_SHADOW_TEXT_TREE_PARAMS``/``_SHADOW_TEXT_TREE_SUBBUFFER`` instead of
+    the matrix defaults -- see the constants' comment for why.
+
+    Returns ``{}`` when there are no eligible targets, no words, or no
+    tagged word ever occurs.
+    """
+    if duration_ms <= 0 or not vocal_words or not shadow_words:
+        return {}
+    targets = _matrix_megatree_targets(props, groups)
+    if not targets:
+        return {}
+
+    shadow_word_set = {re.sub(r"[^a-z]", "", w.lower()) for w in shadow_words}
+    shadow_word_set.discard("")
+    if not shadow_word_set:
+        return {}
+
+    spans = [
+        (start, end, text) for start, end, text in _word_spans(vocal_words)
+        if re.sub(r"[^a-z]", "", text.lower()) in shadow_word_set
+    ]
+    if not spans:
+        return {}
+
+    palette = anchor_palette or ["#FFFFFF"]
+    # Front/main text uses the same contrast pick as the lyric Text matrix
+    # (_place_lyric_text) -- the lightest palette entry, for legibility
+    # against the small bitmap font. The shadow layer takes a different
+    # palette entry so it reads as a distinct color behind the main text.
+    color1 = _lightest_color(palette)
+    remaining = [c for c in palette if c != color1]
+    color2 = remaining[0] if remaining else color1
+
+    front_layer_by_target: dict[str, int] = {
+        target_name: (existing_layers or {}).get(target_name, 1) - 2
+        for target_name in set(targets.values())
+    }
+    shadow_layer_by_target: dict[str, int] = {
+        target_name: (existing_layers or {}).get(target_name, 1) - 1
+        for target_name in set(targets.values())
+    }
+
+    result: dict[str, list[EffectPlacement]] = {}
+    scheduled_end_by_target: dict[str, int] = {}
+    for word_start, word_end, text in spans:
+        burst_ms = max(_SHADOW_TEXT_MIN_BURST_MS, word_end - word_start)
+        end = min(word_start + burst_ms, duration_ms)
+        if end <= word_start:
+            continue
+        motion = random.Random(
+            f"{variation_seed}:shadow:motion:{text}:{word_start}"
+        ).choices(_PICTURE_MOTION_NAMES, weights=_PICTURE_MOTION_WEIGHTS)[0]
+        for target_name in set(targets.values()):
+            last_end = scheduled_end_by_target.get(target_name)
+            if last_end is not None and word_start < last_end:
+                continue
+            scheduled_end_by_target[target_name] = end
+            is_tree = _is_shadow_text_tree_target(target_name)
+            family_params = _SHADOW_TEXT_TREE_PARAMS if is_tree else _SHADOW_TEXT_MATRIX_PARAMS
+            subbuffer = _SHADOW_TEXT_TREE_SUBBUFFER if is_tree else _SHADOW_TEXT_MATRIX_SUBBUFFER
+            font_params = (
+                {"E_CHOICE_Text_Font": _LYRIC_TEXT_SMALL_FONT}
+                if not is_tree and "small" in target_name.lower() else {}
+            )
+            result.setdefault(target_name, []).append(EffectPlacement(
+                effect_name="Text",
+                xlights_id="Text",
+                model_or_group=target_name,
+                start_ms=word_start,
+                end_ms=end,
+                parameters={
+                    "E_TEXTCTRL_Text": text,
+                    "E_CHECKBOX_Text_PixelOffsets": "1",
+                    **font_params,
+                    **family_params,
+                    **_PICTURE_MOTIONS[motion],
+                },
+                color_palette=[color1],
+                layer=front_layer_by_target[target_name],
+                fade_in_ms=_SHADOW_TEXT_FADE_MS,
+                fade_out_ms=_SHADOW_TEXT_FADE_MS,
+            ))
+            result[target_name].append(EffectPlacement(
+                effect_name="Text",
+                xlights_id="Text",
+                model_or_group=target_name,
+                start_ms=word_start,
+                end_ms=end,
+                parameters={
+                    "E_TEXTCTRL_Text": text,
+                    "E_CHECKBOX_Text_PixelOffsets": "1",
+                    "B_CUSTOM_SubBuffer": subbuffer,
+                    **font_params,
+                    **family_params,
+                    **_PICTURE_MOTIONS[motion],
+                },
+                color_palette=[color2],
+                layer=shadow_layer_by_target[target_name],
+                fade_in_ms=_SHADOW_TEXT_FADE_MS,
+                fade_out_ms=_SHADOW_TEXT_FADE_MS,
+            ))
+            logger.debug(
+                "shadow_text: %s burst %d-%d -> %r (motion=%s)",
+                target_name, word_start, end, text, motion,
+            )
+
+    logger.info(
+        "shadow_text: %d target(s), %d tagged word occurrence(s) scheduled",
+        len(result), sum(len(v) for v in result.values()) // 2,
     )
     return result
 

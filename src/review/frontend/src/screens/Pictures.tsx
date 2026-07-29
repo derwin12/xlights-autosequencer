@@ -91,6 +91,7 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
   const [promptWord, setPromptWord] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
+  const [shadowWords, setShadowWords] = useState<Set<string>>(new Set());
   const [keywordMotions, setKeywordMotions] = useState<Record<string, string>>({});
   const [candidateMotions, setCandidateMotions] = useState<Record<string, MotionType>>({});
   const [newWord, setNewWord] = useState('');
@@ -109,6 +110,39 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
       .then((body) => setKeywordMotions(body.keywords ?? {}))
       .catch(() => {});
   }, [song.song_id]);
+
+  useEffect(() => {
+    fetch(`/api/v1/songs/${song.song_id}/shadow-words`)
+      .then((r) => (r.ok ? r.json() : { words: [] }))
+      .then((body) => setShadowWords(new Set<string>(body.words ?? [])))
+      .catch(() => {});
+  }, [song.song_id]);
+
+  async function toggleShadowWord(word: string) {
+    const token = word.toLowerCase();
+    setError(null);
+    const isShadow = shadowWords.has(token);
+    try {
+      const res = await fetch(
+        `/api/v1/songs/${song.song_id}/shadow-words${isShadow ? `/${encodeURIComponent(token)}` : ''}`,
+        isShadow
+          ? { method: 'DELETE' }
+          : {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ word: token }),
+            },
+      );
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Failed to update shadow word');
+        return;
+      }
+      setShadowWords(new Set<string>(body.words ?? []));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
 
   async function addKeyword(word: string, motion: MotionType) {
     const token = word.trim().toLowerCase();
@@ -280,6 +314,14 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 >
                   Create image
                 </button>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  aria-pressed={shadowWords.has(s.word.toLowerCase())}
+                  onClick={() => toggleShadowWord(s.word)}
+                >
+                  {shadowWords.has(s.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
+                </button>
                 <label className={styles.uploadLabel}>
                   {uploading === s.word ? 'Uploading…' : 'Choose image'}
                   <input
@@ -313,6 +355,14 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                   onClick={() => openCreateImage(t.word)}
                 >
                   Create image
+                </button>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  aria-pressed={shadowWords.has(t.word.toLowerCase())}
+                  onClick={() => toggleShadowWord(t.word)}
+                >
+                  {shadowWords.has(t.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
                 </button>
                 <label className={styles.uploadLabel}>
                   {uploading === t.word ? 'Uploading…' : 'Choose image'}
@@ -351,6 +401,14 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 >
                   Create image
                 </button>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  aria-pressed={shadowWords.has(s.word.toLowerCase())}
+                  onClick={() => toggleShadowWord(s.word)}
+                >
+                  {shadowWords.has(s.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
+                </button>
                 <label className={styles.uploadLabel}>
                   {uploading === s.word ? 'Uploading…' : 'Choose image'}
                   <input
@@ -386,6 +444,14 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                   onClick={() => openCreateImage(t.word)}
                 >
                   Create image
+                </button>
+                <button
+                  type="button"
+                  className={styles.createImageBtn}
+                  aria-pressed={shadowWords.has(t.word.toLowerCase())}
+                  onClick={() => toggleShadowWord(t.word)}
+                >
+                  {shadowWords.has(t.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
                 </button>
                 <label className={styles.uploadLabel}>
                   {uploading === t.word ? 'Uploading…' : 'Choose image'}

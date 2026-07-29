@@ -38,6 +38,7 @@ def run(
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
+    shadow_text_words: Optional[list[str]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -80,6 +81,10 @@ def run(
                     triggers with the user's own per-song additions/removals
                     from the review UI's Extras screen
                     (GenerationConfig.moving_head_keyword_motions).
+        shadow_text_words: Optional lyric words the user tagged "Shadow" on
+                    the Pictures screen — fires a two-layer Shadow Text
+                    effect wherever each word is sung
+                    (GenerationConfig.shadow_text_words).
         include_extra_timing: When False, the Chords and per-stem Onsets (...)
                     timing tracks are omitted from the .xsq (display-only
                     tracks; effect placement is unaffected).
@@ -143,6 +148,7 @@ def run(
                               genre=genre, occasion=occasion, video_path=video_path,
                               ignored_image_words=ignored_image_words,
                               moving_head_keyword_motions=moving_head_keyword_motions,
+                              shadow_text_words=shadow_text_words,
                               include_extra_timing=include_extra_timing,
                               title_override=title_override, artist_override=artist_override,
                               vocal_diarization=vocal_diarization,
@@ -168,6 +174,7 @@ def _run_pipeline(
     video_path: Optional[Path | str] = None,
     ignored_image_words: Optional[list[str]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
+    shadow_text_words: Optional[list[str]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -231,6 +238,7 @@ def _run_pipeline(
                 if moving_head_keyword_motions is not None
                 else {"shake": "shake", "spin": "spin", "bounce": "bounce"}
             ),
+            shadow_text_words=shadow_text_words,
             title_override=title_override,
             artist_override=artist_override,
         )

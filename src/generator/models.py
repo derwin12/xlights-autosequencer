@@ -234,6 +234,10 @@ class SequencePlan:
     # Song-scoped Pictures placements (catalog images cycling on matrix/tree
     # props), keyed by model name. Same rationale as vocal_effects/video_effects.
     picture_effects: dict[str, list[EffectPlacement]] = field(default_factory=dict)
+    # Song-scoped Shadow Text placements (two-layer word-in-shadow Text
+    # effect on user-tagged words), keyed by model/group name. Same
+    # rationale as vocal_effects/video_effects/picture_effects.
+    shadow_text_effects: dict[str, list[EffectPlacement]] = field(default_factory=dict)
     # Song-scoped Moving Head color-wash placements, keyed by moving-head
     # modelGroup name. Same rationale as vocal_effects/video_effects: these
     # groups aren't part of layout_groups at all (see grouper.generate_groups),
@@ -396,6 +400,12 @@ class GenerationConfig:
     # Suppresses lyric-matched Pictures bursts for these words without
     # removing the image from the shared library. Case-insensitive.
     ignored_image_words: Optional[list[str]] = None
+    # User-curated lyric words (review UI's Extras section) that trigger a
+    # two-layer "Shadow" Text effect -- the word rendered in the song's
+    # anchor palette color 1, plus an offset copy in color 2 behind it --
+    # wherever sung, on the same Matrix/Mega Tree targets picture_effects
+    # uses. Case-insensitive. See effect_placer._place_shadow_text_effects.
+    shadow_text_words: Optional[list[str]] = None
     # Caller-supplied title/artist (e.g. the review library's corrected
     # values) that win over read_song_metadata()'s raw ID3/filename-stem
     # result — written into the .xsq's <song>/<artist> Meta Data fields.

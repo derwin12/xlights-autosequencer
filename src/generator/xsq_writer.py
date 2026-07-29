@@ -75,7 +75,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
     "Shimmer": {
         "E_CHECKBOX_Shimmer_Use_All_Colors": "0",
         "E_SLIDER_Shimmer_Duty_Factor": "50",
-        "E_TEXTCTRL_Shimmer_Cycles": "1.0",
+        "E_TEXTCTRL_Shimmer_Cycles": "0.4",
     },
     "Strobe": {
         "E_SLIDER_Number_Strobes": "3",
@@ -412,6 +412,13 @@ def write_xsq(
             _used_dest_names.add(dest_name)
             _copied_pictures[src] = dest_name
             placement.parameters["E_TEXTCTRL_Pictures_Filename"] = dest_name
+
+    # Song-scoped Shadow Text placements (two-layer word-in-shadow Text
+    # effect on user-tagged words) -- same rationale as vocal_effects. No
+    # file copying needed, unlike Pictures above: E_TEXTCTRL_Text carries
+    # the literal word, not a filesystem path.
+    for group_name, placements in plan.shadow_text_effects.items():
+        unordered.setdefault(group_name, []).extend(placements)
 
     # Song-scoped Moving Head color-wash placements (DMX fixture groups) --
     # same rationale as vocal_effects.
