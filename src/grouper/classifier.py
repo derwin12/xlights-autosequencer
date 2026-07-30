@@ -44,13 +44,20 @@ def classify_props(props: list[Prop]) -> None:
     For Custom models, pixel_count is the number of non-empty cells in the
     CustomModel grid (parm1*parm2 is just the grid dimensions, mostly empty).
 
-    For Matrix models, pixel_count is NumStrings * NodesPerString. Matrix
-    models don't carry parm1/parm2 in xLights XML at all (that attribute
-    pair is the Custom/Single-Line convention) -- parm1*parm2 silently
-    defaulted to 1*1=1 for every Matrix prop, tying them all at pixel_count=1
-    regardless of real size (bug-266-style: a 7200-pixel Matrix and a
-    50-pixel Pixel Forest stake looked identical to any pixel_count-based
-    selection, e.g. the "largest matrix" pick in _place_video_effect).
+    For every other model, pixel_count is max(parm1*parm2, NumStrings *
+    NodesPerString). Modern xLights XML doesn't carry parm1/parm2 at all for
+    most display types (Matrix, Single Line, Icicles, Star, Tree all size
+    themselves via NumStrings/NodesPerString instead) -- parm1*parm2 silently
+    defaulted to 1*1=1 for all of them, tying every non-Custom prop at
+    pixel_count=1 regardless of real size. That was invisible until a
+    Matrix-only fix (bug-266) made Matrix pixel counts correct while
+    everything else stayed wrong: a handful of 50-pixel Pixel Forest stakes
+    then looked like dramatic outliers against a sea of incorrectly-tied
+    "1"s and got auto-promoted to individual 08_HERO_* groups on top of
+    their existing 06_PROP_Pixel_Forest placement (bug-266 round 2). Taking
+    the max of both formulas fixes every display type at once while leaving
+    parm1/parm2-based test fixtures (which don't set NumStrings/
+    NodesPerString) unaffected.
 
     For Single Line / Poly Line models, aspect_ratio is derived from X2/Y2
     endpoint offsets rather than ScaleX/ScaleY (which are always 1.0 on lines).
@@ -63,10 +70,8 @@ def classify_props(props: list[Prop]) -> None:
                 for cell in row.split(",")
                 if cell.strip()
             )
-        elif p.display_as == "Matrix":
-            p.pixel_count = p.num_strings * p.nodes_per_string
         else:
-            p.pixel_count = p.parm1 * p.parm2
+            p.pixel_count = max(p.parm1 * p.parm2, p.num_strings * p.nodes_per_string)
 
         # Aspect ratio — use X2/Y2 for line-based models
         if p.x2 != 0.0 or p.y2 != 0.0:
