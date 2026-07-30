@@ -45,6 +45,8 @@ const MOTIONS: MotionType[] = ['shake', 'bounce', 'spin', 'flash'];
 const MH_STOPWORDS = new Set([
   'the', 'and', 'a', 'an', 'to', 'of', 'in', 'on', 'is', 'it', 'you', 'i',
   'me', 'my', 'we', 'us', 'our', 'that', 'this', 'for', 'with', 'your',
+  'all', 'these', 'its', 'nobody', 'what', 'where', 'how', 'from', 'until',
+  'will', 'just', 'maybe',
 ]);
 
 function lyricWordCandidates(words: VocalWord[]): { word: string; start_ms: number }[] {
@@ -506,7 +508,7 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
               Add from this song&apos;s lyrics:
             </p>
             <ul className={styles.topicList}>
-              {lyricCandidates.slice(0, 30).map((c) => (
+              {lyricCandidates.map((c) => (
                 <li key={c.word} className={styles.topicItem}>
                   <span className={styles.topicTime}>{formatTimestamp(c.start_ms)}</span>
                   <span className={styles.topicWord}>&ldquo;{c.word}&rdquo;</span>
