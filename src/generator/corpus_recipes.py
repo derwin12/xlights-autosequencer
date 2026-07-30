@@ -466,6 +466,70 @@ _SHOCKWAVE_MATRIX_MID: tuple[tuple[str, str], ...] = (
 )
 
 
+# Pixel Forest — re-mined 2026-07-30 against the real prop family: the
+# original "Forest" modelGroup token match only ever found 2 songs
+# (F:\ShowFolderAI), an unreliably thin sample. The real corpus lives under
+# a different literal model name, "Group - PixStakes" (E:\2023\ShowFolder3D
+# + the rest of the combined corpus, 393 songs, 28,879 placements) — same
+# family, vendor just named the stakes/pixel-forest prop differently.
+# Shockwave (24.3% of placements, but only 5.6% of lit duration — short
+# bursts) and Single Strand (21.2% of placements, 16.7% of duration, the
+# largest single duration share of any effect on this family) are the two
+# real leaders; every other effect (Color Wash, Wave, VU Meter, Spirals,
+# Pinwheel, ...) is real but secondary. Preset below is the single most
+# common Shockwave combo (1584/7012 placements): Blend_Edges/Scale on,
+# Cycles=1, center-out burst to End_Radius 85/Width 60.
+#
+# Unlike the 2-song sample, the real corpus's "On" layer is NOT a color-mask
+# idiom here — only 154/4052 (3.8%) On placements use LayerMethod
+# "2 is Unmask"; 91.5% carry no LayerMethod at all (plain color fill, not a
+# mask over a lower motion layer). Shockwave/Single Strand instead carry
+# their own direct palette per placement (white dominant — 4009/7012 on
+# Shockwave, 1070/6135 on Single Strand — with real per-song saturated-color
+# variety beneath that). So this family does NOT get color_over_mask/
+# color_cycle_bars, unlike megatree/matrix/star/topper/icicle.
+#
+# Off backdrop also NOT added, unlike icicle's explicit override: icicle's
+# thin Off signal was still shaped like the real backdrop idiom (12-15s
+# repeating tiles). PixStakes' Off signal (806 placements, but 88% under 2s,
+# median 0.45s) looks like quick blackout/flicker cuts concentrated in a
+# handful of songs, not a repeating background layer — the data actively
+# contradicts the backdrop shape rather than just being sparse.
+_SHOCKWAVE_PIXSTAKES: tuple[tuple[str, str], ...] = (
+    ("E_NOTEBOOK_Shockwave", "Position"),
+    ("E_CHECKBOX_Shockwave_Blend_Edges", "1"),
+    ("E_CHECKBOX_Shockwave_Scale", "1"),
+    ("E_SLIDER_Shockwave_Accel", "0"),
+    ("E_SLIDER_Shockwave_CenterX", "50"),
+    ("E_SLIDER_Shockwave_CenterY", "50"),
+    ("E_SLIDER_Shockwave_Cycles", "1"),
+    ("E_SLIDER_Shockwave_Start_Radius", "1"),
+    ("E_SLIDER_Shockwave_Start_Width", "5"),
+    ("E_SLIDER_Shockwave_End_Radius", "85"),
+    ("E_SLIDER_Shockwave_End_Width", "60"),
+)
+
+# Single Strand alt — the dominant "comet" combo among the Fireworks-1D-FX
+# family of presets (From Head fade beat Left-Right/Right-Left ~evenly,
+# 374 vs 178 placements — real ping-pong idiom, wired via alt_direction_field
+# below rather than a fixed direction, same mechanism snowflake already uses).
+# Color_Mix1=40 picked as the representative value (92+92=184 placements
+# tied against Color_Mix1=50's 91+99=190 — effectively a coin flip; 40 kept
+# for consistency with no strong reason to prefer either).
+_SINGLESTRAND_PIXSTAKES: tuple[tuple[str, str], ...] = (
+    ("E_CHECKBOX_Chase_Group_All", "1"),
+    ("E_CHOICE_Chase_Type1", "Left-Right"),
+    ("E_CHOICE_Fade_Type", "From Head"),
+    ("E_CHOICE_SingleStrand_Colors", "Palette"),
+    ("E_CHOICE_SingleStrand_FX", "Fireworks 1D"),
+    ("E_CHOICE_SingleStrand_FX_Palette", "* Colors Only"),
+    ("E_SLIDER_Color_Mix1", "40"),
+    ("E_SLIDER_Number_Chases", "1"),
+    ("E_TEXTCTRL_Chase_Offset", "0.0"),
+    ("E_TEXTCTRL_Chase_Rotations", "1.0"),
+)
+
+
 # Matrix Ripple preset — mined from 442 Ripple placements on matrix
 # elements, unanimous: imploding circles (Implode 100%, Circle 100%, Old
 # draw style 100%), thin rings (Thickness 12 at 99.5%), slow collapse
@@ -1750,6 +1814,22 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         color_cycle_bars=True,
         beats_per_placement=2,
         off_backdrop=True,
+    ),
+    # Pixel Forest — see _SHOCKWAVE_PIXSTAKES/_SINGLESTRAND_PIXSTAKES above
+    # for the full mining provenance (393-song real corpus, re-mined
+    # 2026-07-30 after the original 2-song "Forest" token match proved too
+    # thin). Shockwave primary / Single Strand alt, matching the icicle
+    # recipe's shape (single preset each, no motion_rotation).
+    PropFamilyRecipe(
+        family="pixel_forest",
+        match_tokens=("forest",),
+        effect_name="Shockwave",
+        alt_effect_name="Single Strand",
+        parameter_overrides=_SHOCKWAVE_PIXSTAKES,
+        alt_parameter_overrides=_SINGLESTRAND_PIXSTAKES,
+        alt_direction_field="E_CHOICE_Chase_Type1",
+        alt_direction_ping_pong_values=("Left-Right", "Right-Left"),
+        palette=("#FFFFFF",),
     ),
 )
 
