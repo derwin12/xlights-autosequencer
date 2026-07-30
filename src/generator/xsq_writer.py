@@ -270,6 +270,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_TEXTCTRL_Video_CropTop": "100",
         "E_TEXTCTRL_Video_Starttime": "0.0",
         "E_TEXTCTRL_Video_TransparentBlack": "0",
+        "C_SLIDER_Brightness": "200",
         "T_CHECKBOX_LayerMorph": "0",
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
