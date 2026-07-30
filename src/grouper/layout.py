@@ -101,6 +101,13 @@ class Prop:
     custom_model: str = ""  # raw CustomModel grid CSV (empty for non-Custom models)
     x2: float = 0.0  # endpoint offset X (Single Line / Poly Line models)
     y2: float = 0.0  # endpoint offset Y (Single Line / Poly Line models)
+    # Matrix-display models size themselves via NumStrings x NodesPerString
+    # instead of parm1/parm2 (which Matrix models don't carry in xLights XML
+    # at all -- that's the Custom/Single-Line convention). Defaults of 1
+    # match the "no attribute present" case for non-Matrix models, where
+    # they're simply unused.
+    num_strings: int = 1
+    nodes_per_string: int = 1
     # computed by classifier
     pixel_count: int = 0
     norm_x: float = 0.0
@@ -228,6 +235,8 @@ def parse_layout(path: str | Path) -> Layout:
             custom_model=model.get("CustomModel", ""),
             x2=float(model.get("X2", "0.0")),
             y2=float(model.get("Y2", "0.0")),
+            num_strings=int(model.get("NumStrings", "1")),
+            nodes_per_string=int(model.get("NodesPerString", "1")),
             face_definitions=face_definitions,
         )
         props.append(prop)

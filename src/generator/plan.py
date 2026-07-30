@@ -26,6 +26,7 @@ from src.generator.effect_placer import (
     _place_star_bursts,
     _place_video_effect,
     _place_whole_house_composite,
+    _select_video_target_matrix,
     _whole_house_layer_count,
     compute_duration_target,
     place_effects,
@@ -292,10 +293,9 @@ def build_plan(
     effect_props = props
     if config.video_path is not None:
         video_matrix_props = [p for p in props if getattr(p, "display_as", "") == "Matrix"]
-        if video_matrix_props:
-            video_target_name = max(
-                video_matrix_props, key=lambda p: (getattr(p, "pixel_count", 0), p.name)
-            ).name
+        video_target = _select_video_target_matrix(video_matrix_props)
+        if video_target is not None:
+            video_target_name = video_target.name
             effect_props = [p for p in props if p.name != video_target_name]
             for group in groups:
                 group.members = [m for m in group.members if m != video_target_name]

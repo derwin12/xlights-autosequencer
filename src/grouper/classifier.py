@@ -44,6 +44,14 @@ def classify_props(props: list[Prop]) -> None:
     For Custom models, pixel_count is the number of non-empty cells in the
     CustomModel grid (parm1*parm2 is just the grid dimensions, mostly empty).
 
+    For Matrix models, pixel_count is NumStrings * NodesPerString. Matrix
+    models don't carry parm1/parm2 in xLights XML at all (that attribute
+    pair is the Custom/Single-Line convention) -- parm1*parm2 silently
+    defaulted to 1*1=1 for every Matrix prop, tying them all at pixel_count=1
+    regardless of real size (bug-266-style: a 7200-pixel Matrix and a
+    50-pixel Pixel Forest stake looked identical to any pixel_count-based
+    selection, e.g. the "largest matrix" pick in _place_video_effect).
+
     For Single Line / Poly Line models, aspect_ratio is derived from X2/Y2
     endpoint offsets rather than ScaleX/ScaleY (which are always 1.0 on lines).
     """
@@ -55,6 +63,8 @@ def classify_props(props: list[Prop]) -> None:
                 for cell in row.split(",")
                 if cell.strip()
             )
+        elif p.display_as == "Matrix":
+            p.pixel_count = p.num_strings * p.nodes_per_string
         else:
             p.pixel_count = p.parm1 * p.parm2
 

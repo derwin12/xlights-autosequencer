@@ -4494,18 +4494,39 @@ def _format_video_duration(duration_ms: int) -> str:
     return f"{minutes}:{seconds:02d}.{ms:03d}"
 
 
+def _select_video_target_matrix(matrix_props: list[Any]) -> Any | None:
+    """Pick the Matrix prop reserved for full-song Video placement, by name.
+
+    Selection is name-based, not size-based (2026-07-30): a matrix's pixel
+    count says nothing about whether it's meant for video -- a layout can
+    have a large Matrix used for regular effects and a smaller one the user
+    has specifically named/reserved for video (e.g. "Matrix Video"). Picking
+    "largest matrix" previously misfired the moment a same-DisplayAs prop
+    happened to sort later alphabetically at a tied pixel count (bug: video
+    landed on a 50-pixel "Pixel Forest 5" stake instead of the intended
+    matrix). Returns ``None`` when no Matrix prop's name signals a video
+    role, rather than guessing via size.
+    """
+    named = sorted(
+        (p for p in matrix_props if "video" in p.name.lower()),
+        key=lambda p: p.name,
+    )
+    return named[0] if named else None
+
+
 def _place_video_effect(
     props: list[Any],
     video_path: Any,
     duration_ms: int,
 ) -> dict[str, list[EffectPlacement]]:
-    """Place a Video effect spanning the whole song on the largest matrix prop.
+    """Place a Video effect spanning the whole song on the matrix named for it.
 
     Explicit opt-in only: fires when the song has a ``video_path`` (from a
     video-file import), never selected as part of the general effect pool —
     corpus-mined matrix recipes deliberately don't replicate Video content
-    (see ``corpus_recipes.py``). Returns ``{}`` when there's no video or no
-    Matrix props in the layout.
+    (see ``corpus_recipes.py``). Returns ``{}`` when there's no video, no
+    Matrix props in the layout, or no Matrix prop's name signals a video
+    role (see ``_select_video_target_matrix``).
     """
     if video_path is None:
         return {}
@@ -4513,7 +4534,9 @@ def _place_video_effect(
     if not matrix_props:
         return {}
 
-    target = max(matrix_props, key=lambda p: (getattr(p, "pixel_count", 0), p.name))
+    target = _select_video_target_matrix(matrix_props)
+    if target is None:
+        return {}
     placement = EffectPlacement(
         effect_name="Video",
         xlights_id="Video",

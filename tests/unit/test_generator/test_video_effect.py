@@ -26,15 +26,24 @@ class TestPlaceVideoEffect:
         props = [_prop("Arch1", display_as="Arch")]
         assert _place_video_effect(props, "/tmp/video.mp4", 60000) == {}
 
-    def test_places_on_largest_matrix(self):
+    def test_no_video_named_matrix_returns_empty(self):
+        # Even with Matrix props present, absent a name signaling a video
+        # role, no target is guessed by size -- see 2026-07-30 fix.
         props = [
             _prop("Small Matrix", display_as="Matrix", pixels=256),
+            _prop("Big Matrix", display_as="Matrix", pixels=4096),
+        ]
+        assert _place_video_effect(props, "/tmp/video.mp4", 90000) == {}
+
+    def test_places_on_matrix_named_for_video_regardless_of_size(self):
+        props = [
+            _prop("Matrix Video", display_as="Matrix", pixels=256),
             _prop("Big Matrix", display_as="Matrix", pixels=4096),
             _prop("Arch1", display_as="Arch"),
         ]
         result = _place_video_effect(props, "/tmp/video.mp4", 90000)
-        assert set(result) == {"Big Matrix"}
-        placements = result["Big Matrix"]
+        assert set(result) == {"Matrix Video"}
+        placements = result["Matrix Video"]
         assert len(placements) == 1
         p = placements[0]
         assert p.effect_name == "Video"
