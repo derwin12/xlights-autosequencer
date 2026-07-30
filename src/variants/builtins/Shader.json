@@ -280,6 +280,246 @@
         "requires_color_mask": true,
         "companion_base_effect": "Butterfly"
       }
+    },
+    {
+      "name": "Shader Inner Dimensional Matrix",
+      "base_effect": "Shader",
+      "description": "Mined InnerDimensionalMatrix shader preset -- the single most-used shader in a real 392-song corpus scan (381 placements, 13 songs; see docs/shader_corpus/INDEX.md, aggregated stats only, no per-song data). A fast strobing/flashing generative matrix pattern. Not live-tested this session (xLights automation service unreachable) -- verify before relying on it in production.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/InnerDimensionalMatrix.fs",
+        "E_CHECKBOX_SHADERXYZZY_color": false,
+        "E_CHECKBOX_SHADERXYZZY_mirror": false,
+        "E_SLIDER_SHADERXYZZY_cycle": 100,
+        "E_SLIDER_SHADERXYZZY_flash": 750,
+        "E_SLIDER_SHADERXYZZY_line": 36,
+        "E_SLIDER_SHADERXYZZY_rate": 100,
+        "E_SLIDER_SHADERXYZZY_scale": 100,
+        "E_SLIDER_SHADERXYZZY_seed1": 15500,
+        "E_SLIDER_SHADERXYZZY_seed2": 64900,
+        "E_SLIDER_SHADERXYZZY_zoom": 17,
+        "E_SLIDER_Shader_Speed": 400,
+        "E_TEXTCTRL_Shader_Zoom": 85
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Hex Vortex",
+      "base_effect": "Shader",
+      "description": "Mined Hex Vortex shader preset -- second most-used shader across the corpus (263 placements, 19 songs, the broadest song coverage of any shader outside the existing top picks). A rotating hexagonal vortex, matrix-oriented like Hex 3D Spiral. Not live-tested this session (xLights automation service unreachable).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Hex Vortex.fs",
+        "E_SLIDER_SHADERXYZZY_R": 5,
+        "E_SLIDER_SHADERXYZZY_G": 0,
+        "E_SLIDER_SHADERXYZZY_B": 0,
+        "E_SLIDER_SHADERXYZZY_centerX": 50,
+        "E_SLIDER_SHADERXYZZY_centerY": 50,
+        "E_SLIDER_SHADERXYZZY_rotation": 5,
+        "E_SLIDER_SHADERXYZZY_shapeX": 200,
+        "E_SLIDER_SHADERXYZZY_shapeY": 225,
+        "E_SLIDER_SHADERXYZZY_speed": 50,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Liquid Fire",
+      "base_effect": "Shader",
+      "description": "Mined LiquidFire shader preset (192 placements, 8 songs). A flowing molten/fire texture, most often layered with a Bottom-Top or reveal-style blend rather than plain Normal (58/192 masked placements) -- treat as an accent layer over a colored base rather than a standalone wash. Not live-tested this session (xLights automation service unreachable).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/LiquidFire.fs",
+        "E_SLIDER_SHADERXYZZY_offsetX": -100,
+        "E_SLIDER_SHADERXYZZY_offsetY": -100,
+        "E_SLIDER_SHADERXYZZY_rate": 500,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any",
+        "requires_color_mask": true
+      }
+    },
+    {
+      "name": "Shader Great Ball of Fire",
+      "base_effect": "Shader",
+      "description": "Mined Great Ball of Fire shader preset (143 placements, 7 songs). A dense, fast-rotating fireball texture; short median placement duration (0.9s) suggests it's used as a quick accent rather than a sustained wash. Frequently blended with True Unmask (21/143) -- pair with a colored base for best results. Not live-tested this session (xLights automation service unreachable).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Great Ball of Fire.fs",
+        "E_SLIDER_SHADERXYZZY_density": 250,
+        "E_SLIDER_SHADERXYZZY_depth": 10,
+        "E_SLIDER_SHADERXYZZY_offsetX": 0,
+        "E_SLIDER_SHADERXYZZY_offsetY": 0,
+        "E_SLIDER_SHADERXYZZY_rateX": -660,
+        "E_SLIDER_SHADERXYZZY_rateY": -50,
+        "E_SLIDER_SHADERXYZZY_rateZ": 300,
+        "E_SLIDER_SHADERXYZZY_rotation": 200,
+        "E_SLIDER_SHADERXYZZY_size": 400,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any",
+        "requires_color_mask": true
+      }
+    },
+    {
+      "name": "Shader Tie Die",
+      "base_effect": "Shader",
+      "description": "Mined Tie Die shader preset (265 placements, but concentrated in only 5 songs -- weigh this one's popularity lower than its raw count suggests). A slow-rotating psychedelic swirl. Not live-tested this session (xLights automation service unreachable).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Tie Die.fs",
+        "E_CHECKBOX_SHADERXYZZY_uContRot": true,
+        "E_CHOICE_SHADERXYZZY_uColMode": "Shader Defaults",
+        "E_SLIDER_SHADERXYZZY_uIntensity": 100,
+        "E_SLIDER_SHADERXYZZY_uOffsetX": 0,
+        "E_SLIDER_SHADERXYZZY_uOffsetY": 0,
+        "E_SLIDER_SHADERXYZZY_uRotate": 0,
+        "E_SLIDER_SHADERXYZZY_uZoom": 100,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Draw Line",
+      "base_effect": "Shader",
+      "description": "Mined Draw Line shader preset (348 placements, but concentrated in only 6 songs -- weigh this one's popularity lower than its raw count suggests). Draws a single animated line; the corpus's real placements drive both endpoints through per-placement value curves (point1X/Y, point2X/Y), which our generator does not currently emit (value curves are disabled -- see the 'Value Curves Integration' TODO in CLAUDE.md). Without them this preset renders as a static line at a fixed position rather than the sweeping motion the corpus shows -- confirm this looks acceptable before shipping it into a rotation pool, or hold it until value curves are wired up. Not live-tested this session (xLights automation service unreachable).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Draw Line.fs",
+        "E_SLIDER_SHADERXYZZY_lineWidth": 90,
+        "E_SLIDER_SHADERXYZZY_point1X": 25,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Zoom Loop",
+      "base_effect": "Shader",
+      "description": "Mined Zoom Loop shader preset (163 placements, 14 songs). A forward-tunnel/starfield loop similar in feel to Fly Through but self-contained (generates its own pattern rather than distorting a base layer). Not live-tested this session (xLights automation service unreachable).",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Zoom Loop.fs",
+        "E_SLIDER_SHADERXYZZY_fieldOfView": 1250,
+        "E_SLIDER_SHADERXYZZY_horizonDistance": 10000,
+        "E_SLIDER_SHADERXYZZY_peaks": 1000,
+        "E_SLIDER_SHADERXYZZY_rotationSpeed": 100,
+        "E_SLIDER_SHADERXYZZY_smoothStep1X": 20,
+        "E_SLIDER_SHADERXYZZY_smoothStep1Y": 36,
+        "E_SLIDER_SHADERXYZZY_smoothStep2X": 89,
+        "E_SLIDER_SHADERXYZZY_smoothStep2Y": 100,
+        "E_SLIDER_SHADERXYZZY_zoomSpeed": 10,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "medium",
+        "speed_feel": "moderate",
+        "direction": null,
+        "section_roles": ["verse", "chorus", "build"],
+        "scope": "group",
+        "genre_affinity": "any"
+      }
+    },
+    {
+      "name": "Shader Warp Parallax",
+      "base_effect": "Shader",
+      "description": "Mined Warp Parallax shader preset (190 placements, 16 songs). Distorts/tiles whatever base effect renders beneath it, like the other Warp-family entries in this file -- does not carry its own color. Must be layered above (layer 0) a base effect with at least 2 (ideally 3) active palette colors, per the Warp Kaleidoscope Tile / Warp Vincent'sStorm precedent (a 0-1 color base renders the whole stack flat white). NOT live-tested this session (xLights automation service unreachable) -- Warp-family shaders have previously rendered blank on a first attempt due to an undercolored base, so verify live before shipping.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Warp Parallax.fs",
+        "E_SLIDER_SHADERXYZZY_angle": 0,
+        "E_SLIDER_SHADERXYZZY_luma": 80,
+        "E_SLIDER_SHADERXYZZY_patternmod": 100,
+        "E_SLIDER_SHADERXYZZY_perspective": 93,
+        "E_SLIDER_SHADERXYZZY_rotation": 0,
+        "E_SLIDER_SHADERXYZZY_shiftX": 0,
+        "E_SLIDER_SHADERXYZZY_shiftY": 0,
+        "E_SLIDER_SHADERXYZZY_sides": 50,
+        "E_SLIDER_SHADERXYZZY_size": 50,
+        "E_SLIDER_SHADERXYZZY_speed": 0,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0,
+        "T_CHECKBOX_Canvas": true
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any",
+        "requires_color_mask": true,
+        "companion_base_effect": "Butterfly"
+      }
+    },
+    {
+      "name": "Shader Warp Shenzhen",
+      "base_effect": "Shader",
+      "description": "Mined Warp Shenzhen shader preset (137 placements, 15 songs). Tiles/distorts whatever base effect renders beneath it, like the other Warp-family entries in this file -- does not carry its own color. Must be layered above (layer 0) a base effect with at least 2 (ideally 3) active palette colors, per the Warp Kaleidoscope Tile / Warp Vincent'sStorm precedent (a 0-1 color base renders the whole stack flat white). NOT live-tested this session (xLights automation service unreachable) -- Warp-family shaders have previously rendered blank on a first attempt due to an undercolored base, so verify live before shipping.",
+      "parameter_overrides": {
+        "E_0FILEPICKERCTRL_IFS": "Shaders/Warp Shenzhen.fs",
+        "E_SLIDER_SHADERXYZZY_powa": 151,
+        "E_SLIDER_SHADERXYZZY_tiles": 400,
+        "E_SLIDER_Shader_Speed": 100,
+        "E_TEXTCTRL_Shader_Zoom": 0,
+        "T_CHECKBOX_Canvas": true
+      },
+      "tags": {
+        "tier_affinity": "hero",
+        "energy_level": "high",
+        "speed_feel": "fast",
+        "direction": null,
+        "section_roles": ["chorus", "drop", "build"],
+        "scope": "group",
+        "genre_affinity": "any",
+        "requires_color_mask": true,
+        "companion_base_effect": "Single Strand"
+      }
     }
   ]
 }
