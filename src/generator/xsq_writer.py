@@ -7,10 +7,25 @@ import zlib
 from pathlib import Path
 
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
+from src.generator.effect_placer import _WHOLE_HOUSE_HIGH_ENERGY_GATE, _WHOLE_HOUSE_LOW_ENERGY_GATE
 from src.generator.image_catalog import load_image_library
 from src.generator.models import EffectPlacement, SequencePlan, XsqDocument, FRAME_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
+
+# Pinwheel speed-by-energy buckets (user request, 2026-08-03: "tailor the
+# speed of the pinwheel based on the tempo or speed of the music... at 13s
+# the song seems slow so the speed should be slow"). This codebase only
+# tracks a single song-wide estimated_bpm, not a per-section/local tempo
+# curve, so per-section energy_score (already computed for every section and
+# already used to gate whole-house Shader bucket selection, same
+# LOW/HIGH thresholds) is used as the available proxy for "feels slow/fast".
+# Values chosen to track the mined Pinwheel variant library's own
+# speed_feel-tagged Speed values (src/variants/builtins/Pinwheel.json:
+# slow ~1-10, moderate ~15-20).
+_PINWHEEL_SPEED_LOW_ENERGY = 6
+_PINWHEEL_SPEED_MEDIUM_ENERGY = 13
+_PINWHEEL_SPEED_HIGH_ENERGY = 22
 
 # Complete xLights default parameters per effect.
 # Without these, xLights may not render effects correctly.
@@ -124,7 +139,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_SLIDER_Pinwheel_Arms": "3",
         "E_SLIDER_Pinwheel_ArmSize": "100",
         "E_SLIDER_Pinwheel_Speed": "10",
-        "E_SLIDER_Pinwheel_Thickness": "0",
+        "E_SLIDER_Pinwheel_Thickness": "5",
         "E_SLIDER_Pinwheel_Twist": "0",
     },
     "Plasma": {
@@ -351,6 +366,16 @@ def write_xsq(
     for section in plan.sections:
         for group_name, placements in section.group_effects.items():
             unordered.setdefault(group_name, []).extend(placements)
+
+    # start_ms/end_ms/energy_score per section, for the Pinwheel speed-by-
+    # energy lookup below. Built once here (not per-placement) since this is
+    # the same list regardless of which producer created a given placement —
+    # covers song-scoped placements (e.g. star-burst Pinwheel) too, not just
+    # per-section ones, by looking up whichever section's time range a
+    # placement's own start_ms falls within.
+    section_energy_ranges = [
+        (a.section.start_ms, a.section.end_ms, a.section.energy_score) for a in plan.sections
+    ]
 
     # Song-scoped vocal placements (Faces / lyric Text) live on the plan, not
     # on section assignments, so they survive a 0-section analysis (bug-159).
@@ -595,7 +620,10 @@ def write_xsq(
                 p.color_palette, palette_index, palette_list, p.music_sparkles, hue_adjust,
                 p.sparkle_color,
             )
-            eff_idx = _ensure_effect_entry(p, effect_db_index, effect_db_list, buffer_style)
+            energy_score = _energy_score_at_ms(p.start_ms, section_energy_ranges)
+            eff_idx = _ensure_effect_entry(
+                p, effect_db_index, effect_db_list, buffer_style, energy_score,
+            )
             placement_cache[id(p)] = (eff_idx, pal_idx)
 
     # Build XML tree
@@ -1014,8 +1042,21 @@ def _fire_hue_shift_for_hue(hue_degrees: float) -> int:
     return round(best_shift)
 
 
+def _energy_score_at_ms(ms: int, section_energy_ranges: list[tuple[int, int, int]]) -> int | None:
+    """The energy_score of whichever section's [start_ms, end_ms) range contains ms.
+
+    None when ms falls outside every section (e.g. a song-scoped placement
+    starting before the first section or after the last, or a 0-section
+    analysis).
+    """
+    for start_ms, end_ms, energy_score in section_energy_ranges:
+        if start_ms <= ms < end_ms:
+            return energy_score
+    return None
+
+
 def _serialize_effect_params(
-    placement: EffectPlacement, buffer_style: str | None = None,
+    placement: EffectPlacement, buffer_style: str | None = None, energy_score: int | None = None,
 ) -> str:
     """Serialize effect parameters to xLights comma-separated format.
 
@@ -1023,7 +1064,8 @@ def _serialize_effect_params(
     Theme/user overrides take precedence over defaults. ``buffer_style``, when
     given, is folded in as B_CHOICE_BufferStyle -- this is the value xLights
     actually applies (see _buffer_style_for_group); a group-level EffectLayer
-    "settings" attribute alone has no effect on rendering.
+    "settings" attribute alone has no effect on rendering. ``energy_score``,
+    when given, drives the Pinwheel speed-by-energy override below.
     """
     # Start with xLights defaults for this effect
     defaults = dict(_XLIGHTS_EFFECT_DEFAULTS.get(placement.effect_name, {}))
@@ -1080,6 +1122,39 @@ def _serialize_effect_params(
         # generation pick a different option on every run.
         style_seed = zlib.crc32(f"{placement.model_or_group}:{placement.start_ms}".encode("utf-8"))
         defaults["E_CHOICE_Pinwheel_3D"] = _PINWHEEL_3D_OPTIONS[style_seed % len(_PINWHEEL_3D_OPTIONS)]
+
+    # Pinwheel thickness floor (user request, 2026-08-03, found via a real
+    # exported .xsq: "Pinwheel 4-Arm Twist" and 3 other built-in variants
+    # never set E_SLIDER_Pinwheel_Thickness, so it fell through to the
+    # xLights-defaults 0 -- a flat/invisible pinwheel). Enforced here so it
+    # guards every producer (mined presets, defaults, future callers), not
+    # just the ones known today -- same precedent as the Wave floor and
+    # flat-Pinwheel-3D ban above. 01_BASE_All(_FADES) is the whole-house
+    # canvas every prop belongs to, so a too-thin pinwheel there is far more
+    # visible than on a single prop and gets a stricter floor.
+    if placement.effect_name == "Pinwheel":
+        min_thickness = 40 if placement.model_or_group in ("01_BASE_All", "01_BASE_All_FADES") else 5
+        try:
+            if float(defaults.get("E_SLIDER_Pinwheel_Thickness", 0)) < min_thickness:
+                defaults["E_SLIDER_Pinwheel_Thickness"] = str(min_thickness)
+        except ValueError:
+            defaults["E_SLIDER_Pinwheel_Thickness"] = str(min_thickness)
+
+    # Pinwheel speed-by-energy (user request, 2026-08-03: see module-level
+    # comment on _PINWHEEL_SPEED_* above). Overrides even a variant's own
+    # baked Speed value, same "guards every producer" precedent as the
+    # thickness floor -- deliberate per user choice, since the alternative
+    # (leave curated per-variant speeds alone) would miss the exact case
+    # that prompted this: a "moderate" 15-speed variant firing during a
+    # genuinely slow/quiet section. No-op when energy_score is unavailable
+    # (placement's start_ms falls outside every section's range).
+    if placement.effect_name == "Pinwheel" and energy_score is not None:
+        if energy_score < _WHOLE_HOUSE_LOW_ENERGY_GATE:
+            defaults["E_SLIDER_Pinwheel_Speed"] = str(_PINWHEEL_SPEED_LOW_ENERGY)
+        elif energy_score < _WHOLE_HOUSE_HIGH_ENERGY_GATE:
+            defaults["E_SLIDER_Pinwheel_Speed"] = str(_PINWHEEL_SPEED_MEDIUM_ENERGY)
+        else:
+            defaults["E_SLIDER_Pinwheel_Speed"] = str(_PINWHEEL_SPEED_HIGH_ENERGY)
 
     if buffer_style is not None:
         defaults["B_CHOICE_BufferStyle"] = buffer_style
@@ -1192,6 +1267,7 @@ def _ensure_effect_entry(
     index: dict[str, int],
     effect_list: list[str],
     buffer_style: str | None = None,
+    energy_score: int | None = None,
 ) -> int:
     """Add effect params to dedup index if not already present. Return index.
 
@@ -1210,7 +1286,7 @@ def _ensure_effect_entry(
     conflate them; a dedicated entry per placement removes that path
     entirely, regardless of the exact internal xLights mechanism.
     """
-    key = _serialize_effect_params(placement, buffer_style)
+    key = _serialize_effect_params(placement, buffer_style, energy_score)
     if placement.effect_name == "Moving Head":
         effect_list.append(key)
         return len(effect_list) - 1

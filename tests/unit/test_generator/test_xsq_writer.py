@@ -16,6 +16,7 @@ from src.generator.models import (
 )
 from src.generator.xsq_writer import (
     _collect_timing_tracks,
+    _energy_score_at_ms,
     _serialize_effect_params,
     _serialize_palette,
     _shader_hue_adjust_for_hue,
@@ -965,6 +966,153 @@ class TestPinwheelNeverFlat:
         )
         params = _serialize_effect_params(p)
         assert "E_CHOICE_Pinwheel_3D" not in params
+
+
+class TestPinwheelThicknessFloor:
+    """A Pinwheel below a visible Thickness floor renders as flat/invisible
+    (user request, 2026-08-03, found via a real exported .xsq: the
+    "Pinwheel 4-Arm Twist" built-in variant and 3 others never set
+    E_SLIDER_Pinwheel_Thickness at all, falling through to xLights' own
+    0 default). 01_BASE_All(_FADES) is the whole-house canvas every prop
+    belongs to, so it gets a stricter floor than a single prop/group."""
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def test_missing_thickness_on_ordinary_group_floors_to_5(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Arms": "4"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "5"
+
+    def test_zero_thickness_on_ordinary_group_floors_to_5(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="Star 1",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Thickness": "0"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "5"
+
+    def test_thickness_above_floor_on_ordinary_group_is_untouched(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Thickness": "32"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "32"
+
+    def test_missing_thickness_on_all_group_floors_to_40(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="01_BASE_All",
+            start_ms=13000, end_ms=35400, parameters={
+                "E_SLIDER_Pinwheel_Arms": "4", "E_SLIDER_Pinwheel_Speed": "15",
+                "E_SLIDER_Pinwheel_Twist": "20",
+            },
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "40"
+
+    def test_thickness_below_40_on_all_fades_group_is_raised(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="01_BASE_All_FADES",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Thickness": "10"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "40"
+
+    def test_thickness_above_40_on_all_group_is_untouched(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="01_BASE_All",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Thickness": "62"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "62"
+
+    def test_floor_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Wave", xlights_id="Wave", model_or_group="01_BASE_All",
+            start_ms=0, end_ms=1000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_SLIDER_Pinwheel_Thickness" not in params
+
+
+class TestPinwheelSpeedByEnergy:
+    """Pinwheel Speed is overridden by the section's energy_score (user
+    request, 2026-08-03: "tailor the speed of the pinwheel based on the
+    tempo... at 13s the song seems slow so the speed should be slow").
+    Only a song-wide BPM is tracked, not per-section tempo, so energy_score
+    (already computed per section, same LOW/HIGH gates used for the
+    whole-house Shader bucket) is the available proxy."""
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def _placement(self, **params) -> EffectPlacement:
+        return EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="01_BASE_All",
+            start_ms=13000, end_ms=35400, parameters=params,
+        )
+
+    def test_low_energy_forces_slow_speed(self):
+        p = self._placement(E_SLIDER_Pinwheel_Speed="15")
+        params = _serialize_effect_params(p, energy_score=20)
+        assert self._param(params, "E_SLIDER_Pinwheel_Speed") == "6"
+
+    def test_medium_energy_forces_moderate_speed(self):
+        p = self._placement(E_SLIDER_Pinwheel_Speed="15")
+        params = _serialize_effect_params(p, energy_score=60)
+        assert self._param(params, "E_SLIDER_Pinwheel_Speed") == "13"
+
+    def test_high_energy_forces_fast_speed(self):
+        p = self._placement(E_SLIDER_Pinwheel_Speed="10")
+        params = _serialize_effect_params(p, energy_score=90)
+        assert self._param(params, "E_SLIDER_Pinwheel_Speed") == "22"
+
+    def test_no_energy_score_leaves_speed_untouched(self):
+        p = self._placement(E_SLIDER_Pinwheel_Speed="15")
+        params = _serialize_effect_params(p, energy_score=None)
+        assert self._param(params, "E_SLIDER_Pinwheel_Speed") == "15"
+
+    def test_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Wave", xlights_id="Wave", model_or_group="01_BASE_All",
+            start_ms=0, end_ms=1000,
+        )
+        params = _serialize_effect_params(p, energy_score=20)
+        assert "E_SLIDER_Pinwheel_Speed" not in params
+
+
+class TestEnergyScoreAtMs:
+    """Looks up which section's [start_ms, end_ms) range a placement's own
+    start_ms falls within, for the Pinwheel speed-by-energy override."""
+
+    def test_finds_containing_section(self):
+        ranges = [(0, 10000, 30), (10000, 20000, 70), (20000, 30000, 95)]
+        assert _energy_score_at_ms(13000, ranges) == 70
+
+    def test_start_boundary_is_inclusive(self):
+        ranges = [(0, 10000, 30), (10000, 20000, 70)]
+        assert _energy_score_at_ms(10000, ranges) == 70
+
+    def test_end_boundary_belongs_to_next_section(self):
+        ranges = [(0, 10000, 30), (10000, 20000, 70)]
+        assert _energy_score_at_ms(20000, ranges) is None
+
+    def test_ms_outside_every_range_returns_none(self):
+        ranges = [(10000, 20000, 70)]
+        assert _energy_score_at_ms(5000, ranges) is None
+
+    def test_empty_ranges_returns_none(self):
+        assert _energy_score_at_ms(1000, []) is None
 
 
 class TestVideoEffectPortability:
