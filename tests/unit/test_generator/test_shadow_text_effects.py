@@ -6,6 +6,7 @@ from src.generator.effect_placer import (
     _SHADOW_TEXT_MATRIX_SUBBUFFER,
     _SHADOW_TEXT_MIN_BURST_MS,
     _SHADOW_TEXT_TREE_SUBBUFFER,
+    _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN,
     _place_shadow_text_effects,
 )
 from src.grouper.grouper import PowerGroup
@@ -150,6 +151,40 @@ class TestPlaceShadowTextEffects:
         front = result["Matrix1"][0]
         assert front.end_ms - front.start_ms >= _SHADOW_TEXT_MIN_BURST_MS
 
+    def test_burst_is_centered_on_the_sung_word_not_starting_there(self):
+        # 2026-08-03: the burst's MIDPOINT, not its start, must land on
+        # word_start -- so the effect starts burst_ms/2 earlier than the
+        # word actually begins.
+        result = _place_shadow_text_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            duration_ms=60_000,
+            variation_seed=0,
+            vocal_words=[_word("fireworks", 10_000, duration_ms=1_600)],
+            shadow_occurrences=[{"word": "fireworks", "start_ms": 10_000}],
+        )
+        front = result["Matrix1"][0]
+        burst_ms = front.end_ms - front.start_ms
+        assert burst_ms == 1_600
+        assert front.start_ms == 10_000 - 800
+        assert front.end_ms == 10_000 + 800
+        midpoint = (front.start_ms + front.end_ms) / 2
+        assert midpoint == 10_000
+
+    def test_centered_burst_start_clamps_at_zero(self):
+        # word_start near the very beginning of the song -- centering
+        # would otherwise push start negative.
+        result = _place_shadow_text_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            duration_ms=60_000,
+            variation_seed=0,
+            vocal_words=[_word("fireworks", 100, duration_ms=1_600)],
+            shadow_occurrences=[{"word": "fireworks", "start_ms": 100}],
+        )
+        front = result["Matrix1"][0]
+        assert front.start_ms == 0
+
     def test_burst_clipped_to_song_duration(self):
         result = _place_shadow_text_effects(
             props=[_prop("Matrix1", "Matrix")],
@@ -239,6 +274,23 @@ class TestPlaceShadowTextEffects:
         assert "B_CUSTOM_SubBuffer" not in front.parameters
         assert shadow.parameters["B_CUSTOM_SubBuffer"] == _SHADOW_TEXT_TREE_SUBBUFFER
 
+    def test_mega_tree_text_is_x_centered_for_the_narrow_font(self):
+        # 2026-08-03: half the "7-7x9 Bold" font's own 7px width, negative,
+        # so the vertical text column centers on the tree instead of
+        # sitting flush against one edge.
+        result = _place_shadow_text_effects(
+            props=[_prop("Mega Tree", "Custom")],
+            groups=[],
+            duration_ms=60_000,
+            variation_seed=0,
+            vocal_words=[_word("fireworks", 5_000)],
+            shadow_occurrences=[{"word": "fireworks", "start_ms": 5_000}],
+        )
+        front, shadow = sorted(result["Mega Tree"], key=lambda p: p.layer)
+        for placement in (front, shadow):
+            assert placement.parameters["E_SLIDER_Text_XStart"] == "-3"
+            assert placement.parameters["E_SLIDER_Text_XEnd"] == "-3"
+
     def test_mega_tree_short_word_uses_larger_bold_font(self):
         # 2026-08-02: a word of 5 characters or fewer renders at the tree's
         # default bold font instead of the narrower 7-7x9 Bold.
@@ -253,6 +305,24 @@ class TestPlaceShadowTextEffects:
         front, shadow = sorted(result["Mega Tree"], key=lambda p: p.layer)
         for placement in (front, shadow):
             assert placement.parameters["E_CHOICE_Text_Font"] == "10-12x12 Bold"
+
+    def test_mega_tree_short_word_x_offset_matches_its_wider_font(self):
+        # 2026-08-03: "10-12x12 Bold" is 12px wide, so its own half-width
+        # (-6) must override the narrow font's -3, not inherit it.
+        word = "hi"
+        assert len(word) <= _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN
+        result = _place_shadow_text_effects(
+            props=[_prop("Mega Tree", "Custom")],
+            groups=[],
+            duration_ms=60_000,
+            variation_seed=0,
+            vocal_words=[_word(word, 5_000)],
+            shadow_occurrences=[{"word": word, "start_ms": 5_000}],
+        )
+        front, shadow = sorted(result["Mega Tree"], key=lambda p: p.layer)
+        for placement in (front, shadow):
+            assert placement.parameters["E_SLIDER_Text_XStart"] == "-6"
+            assert placement.parameters["E_SLIDER_Text_XEnd"] == "-6"
 
     def test_mega_tree_shadow_text_never_rotates(self):
         # 2026-08-02: Mega Tree shadow text must never carry a rotation

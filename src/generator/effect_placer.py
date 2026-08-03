@@ -5035,6 +5035,11 @@ _SHADOW_TEXT_TREE_PARAMS: dict[str, str] = {
     "E_NOTEBOOK": "End Position",
     "E_SLIDER_Text_YStart": "25",
     "E_SLIDER_Text_YEnd": "25",
+    # X-centers the vertical text column on the tree (user request,
+    # 2026-08-03) -- half the font's own pixel width, negative. "7-7x9
+    # Bold" is 7px wide, so -3 (half of 7, rounded toward zero).
+    "E_SLIDER_Text_XStart": "-3",
+    "E_SLIDER_Text_XEnd": "-3",
 }
 _SHADOW_TEXT_MIN_BURST_MS = 1_200
 _SHADOW_TEXT_FADE_MS = 200
@@ -5128,15 +5133,19 @@ def _place_shadow_text_effects(
     scheduled_end_by_target: dict[str, int] = {}
     for word_start, word_end, text in spans:
         burst_ms = max(_SHADOW_TEXT_MIN_BURST_MS, word_end - word_start)
-        end = min(word_start + burst_ms, duration_ms)
-        if end <= word_start:
+        # The burst is centered ON word_start (user request, 2026-08-03)
+        # rather than starting there -- the effect's midpoint, not its
+        # start, lands on the moment the word is actually sung.
+        start = max(0, word_start - burst_ms // 2)
+        end = min(start + burst_ms, duration_ms)
+        if end <= start:
             continue
         motion = random.Random(
             f"{variation_seed}:shadow:motion:{text}:{word_start}"
         ).choices(_PICTURE_MOTION_NAMES, weights=_PICTURE_MOTION_WEIGHTS)[0]
         for target_name in set(targets.values()):
             last_end = scheduled_end_by_target.get(target_name)
-            if last_end is not None and word_start < last_end:
+            if last_end is not None and start < last_end:
                 continue
             scheduled_end_by_target[target_name] = end
             is_tree = _is_shadow_text_tree_target(target_name)
@@ -5147,7 +5156,14 @@ def _place_shadow_text_effects(
                 if not is_tree and "small" in target_name.lower() else {}
             )
             short_word_font_params = (
-                {"E_CHOICE_Text_Font": _SHADOW_TEXT_TREE_SHORT_WORD_FONT}
+                {
+                    "E_CHOICE_Text_Font": _SHADOW_TEXT_TREE_SHORT_WORD_FONT,
+                    # "10-12x12 Bold" is 12px wide, vs. the default "7-7x9
+                    # Bold"'s 7px -- overrides family_params' -3 X-center
+                    # with the wider font's own half-width.
+                    "E_SLIDER_Text_XStart": "-6",
+                    "E_SLIDER_Text_XEnd": "-6",
+                }
                 if is_tree and len(text) <= _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN else {}
             )
             motion_params = _PICTURE_MOTIONS[motion]
@@ -5160,7 +5176,7 @@ def _place_shadow_text_effects(
                 effect_name="Text",
                 xlights_id="Text",
                 model_or_group=target_name,
-                start_ms=word_start,
+                start_ms=start,
                 end_ms=end,
                 parameters={
                     "E_TEXTCTRL_Text": text,
@@ -5179,7 +5195,7 @@ def _place_shadow_text_effects(
                 effect_name="Text",
                 xlights_id="Text",
                 model_or_group=target_name,
-                start_ms=word_start,
+                start_ms=start,
                 end_ms=end,
                 parameters={
                     "E_TEXTCTRL_Text": text,
@@ -5197,7 +5213,7 @@ def _place_shadow_text_effects(
             ))
             logger.debug(
                 "shadow_text: %s burst %d-%d -> %r (motion=%s)",
-                target_name, word_start, end, text, motion,
+                target_name, start, end, text, motion,
             )
 
     logger.info(
