@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design: per-occurrence Unmap/Shadow scope</title>
+<link rel="stylesheet" href="../_design.css">
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Sections</h2>
+  <ol>
+    <li><a href="#goal">Goal</a></li>
+    <li><a href="#problem">The problem</a></li>
+    <li><a href="#approach">Approach</a></li>
+    <li><a href="#nochange">What does NOT change</a></li>
+    <li><a href="#alternatives">Alternatives considered</a></li>
+    <li><a href="#files">Files touched</a></li>
+    <li><a href="#regression">Regression surface</a></li>
+    <li><a href="#validation">Validation</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="doc-header">
+  <p class="kicker">OpenSpec design &middot; per-occurrence-image-shadow-scope</p>
+  <h1>Design: scope Unmap/Shadow to a single lyric occurrence</h1>
+  <div class="goal" id="goal">
+    Make the Pictures screen's <strong>Unmap</strong> and <strong>Shadow</strong> actions apply
+    to the one lyric occurrence clicked &mdash; not every occurrence of that word in the whole
+    song &mdash; matching the granularity the UI already displays (each row has its own
+    timestamp) but the action never respected.
+  </div>
+</header>
+
+<section class="block" id="problem">
+  <h2>The problem</h2>
+  <p>
+    A real song ("Dream On") shows 9 separate "DREAM" rows at distinct timestamps (3:02
+    through 3:18), each independently matched to <code>dream2.png</code>. Clicking
+    <strong>Unmap</strong> or <strong>Shadow</strong> on any one of them acts on the word
+    <em>text</em>, not that row &mdash; every occurrence changes at once.
+  </p>
+  <p class="tight">
+    Root cause: <code>ignored_image_words</code> / <code>shadow_text_words</code>
+    (<code>GenerationConfig</code>, session JSON, and the matching logic in
+    <code>image_catalog.suggest_images_for_words</code> /
+    <code>effect_placer._place_shadow_text_effects</code>) have always been flat
+    <code>list[str]</code> word tokens. The display data
+    (<code>image_topics</code>/<code>imageSuggestions</code>) was already per-occurrence
+    &mdash; only the action layer collapsed everything to word-level.
+  </p>
+</section>
+
+<section class="block" id="approach">
+  <h2>Approach</h2>
+  <p class="tight">
+    Rename and reshape both fields &mdash; a genuine shape change, not additive. Renaming
+    (rather than keeping the old name with a new meaning) forces every caller to be touched
+    deliberately instead of silently misinterpreting the new shape.
+  </p>
+  <table>
+    <thead><tr><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td><code>ignored_image_words: list[str]</code></td>
+        <td><code>ignored_image_occurrences: list[dict]</code> &mdash; each <code>{"word", "start_ms"}</code></td></tr>
+      <tr><td><code>shadow_text_words: list[str]</code></td>
+        <td><code>shadow_text_occurrences: list[dict]</code> &mdash; same shape</td></tr>
+    </tbody>
+  </table>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">Backend</span>
+      <h4>Storage + API</h4>
+    </div>
+    <ul class="tight">
+      <li><code>POST /songs/&lt;id&gt;/ignored-images</code> body gains <code>start_ms</code></li>
+      <li><code>DELETE /songs/&lt;id&gt;/ignored-images/&lt;word&gt;/&lt;start_ms&gt;</code> &mdash; path gains a segment (a compound key needs both parts)</li>
+      <li>Same two changes mirrored for <code>/shadow-words</code></li>
+      <li>Session JSON key renamed to match</li>
+    </ul>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">Generator</span>
+      <h4>Occurrence-aware matching</h4>
+    </div>
+    <pre><code># before: token-only set
+ignored = {w.lower() for w in (ignored_words or [])}
+...
+if token in ignored: continue
+
+# after: (token, start_ms) tuple set
+ignored_pairs = {(o["word"].lower(), o["start_ms"]) for o in (ignored_occurrences or [])}
+...
+if (token, word.get("start_ms")) in ignored_pairs: continue</code></pre>
+    <p class="tight">Same shape of change in <code>_place_shadow_text_effects</code>'s <code>spans</code>
+      filter. <code>GenerationConfig</code>, <code>plan.py</code>'s two call sites,
+      <code>generator_runner.py</code>, and <code>export.py</code> get mechanical renames.</p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">Frontend</span>
+      <h4><code>Pictures.tsx</code> &mdash; composite key</h4>
+    </div>
+    <p class="tight">
+      <code>ignored</code>/<code>shadowWords</code> state becomes <code>Set&lt;string&gt;</code>
+      keyed by <code>`${word.toLowerCase()}|${start_ms}`</code> instead of plain word &mdash;
+      6 call sites across 3 sections (Already matched, Suggested topics, uploaded) updated to
+      build/check that key. <code>ignoreMatch</code>/<code>toggleShadowWord</code> both gain a
+      <code>start_ms</code> parameter. <code>activeSuggestions</code>' filter keys off the
+      composite identifier so unmapping one row only moves <em>that</em> row, leaving siblings
+      mapped.
+    </p>
+  </article>
+</section>
+
+<section class="block" id="nochange">
+  <h2>What does NOT change</h2>
+  <ul class="tight">
+    <li><code>lyricWordCandidates</code>'s word-level dedup (the "Suggested topics" empty-state
+      list) &mdash; unrelated, stays as-is.</li>
+    <li>"Choose image"/upload-per-word behavior &mdash; not requested; a materially different
+      feature (the library tag is shared, not per-occurrence).</li>
+    <li>How <code>image_topics</code>/<code>imageSuggestions</code> are computed &mdash; already
+      per-occurrence; only the action layer changes.</li>
+  </ul>
+</section>
+
+<section class="block" id="alternatives">
+  <h2>Alternatives considered</h2>
+  <table>
+    <thead><tr><th>Option</th><th>Rejected because</th></tr></thead>
+    <tbody>
+      <tr><td>Keep old field names, just reshape their contents</td>
+        <td>A <code>list[str]</code> silently becoming a <code>list[dict]</code> under the same
+          name produces confusing failures far from the mistake (e.g. a stale
+          <code>"word" in old_list</code> check silently always-False). Renaming forces every
+          caller to be touched deliberately.</td></tr>
+      <tr><td>Auto-migrate old word-level ignores into per-occurrence entries at load time</td>
+        <td>The old data was itself a symptom of this bug &mdash; the user never wanted
+          "ignore everywhere," the tool only offered that granularity. Auto-expanding it forward
+          would reproduce today's wrong scope one more time. Per-song state resets once instead.</td></tr>
+      <tr><td>Add a new parallel per-occurrence field, keep the old one for back-compat</td>
+        <td>Two overlapping mechanisms for nearly the same thing &mdash; exactly what CLAUDE.md's
+          "don't over-engineer" / no-shims principle warns against.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="files">
+  <h2>Files touched</h2>
+  <table>
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/generator/models.py</code></td><td>field renames on <code>GenerationConfig</code></td></tr>
+      <tr><td><code>src/generator/image_catalog.py</code></td><td><code>suggest_images_for_words</code> param rename + tuple-set matching</td></tr>
+      <tr><td><code>src/generator/effect_placer.py</code></td><td><code>_place_shadow_text_effects</code> param rename + tuple-set matching</td></tr>
+      <tr><td><code>src/generator/plan.py</code></td><td>both call sites renamed</td></tr>
+      <tr><td><code>src/evaluation/generator_runner.py</code></td><td><code>run()</code>/<code>_run_pipeline()</code> param renames</td></tr>
+      <tr><td><code>src/review/api/v1/export.py</code></td><td>kwarg renames</td></tr>
+      <tr><td><code>src/review/api/v1/images.py</code></td><td>POST/DELETE gain <code>start_ms</code>; session key renamed</td></tr>
+      <tr><td><code>src/review/api/v1/shadow_words.py</code></td><td>same as images.py</td></tr>
+      <tr><td><code>Pictures.tsx</code></td><td>composite-key state, updated handlers/parsing</td></tr>
+      <tr><td>various test files</td><td>updated for renames + occurrence-scoped filtering (see proposal.md)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="regression">
+  <h2>Regression surface</h2>
+  <ul class="tight">
+    <li><strong>Verified</strong>: <code>suggest_images_for_words</code> has two other call
+      sites (<code>image_catalog.py</code>'s own <code>find_unmatched_topics</code>,
+      <code>analysis.py</code>'s analyze-phase suggestion computation) &mdash; neither passes
+      <code>ignored_words</code> at all, so the rename doesn't touch their behavior. Only
+      <code>plan.py</code> (generation time) passes it.</li>
+    <li><code>_place_shadow_text_effects</code> is private with a single call site
+      (<code>plan.py</code>), already covered.</li>
+    <li><code>GenerationConfig</code>'s two renamed fields: grep confirms writers
+      (<code>export.py</code>, <code>generator_runner.py</code>) and the one reader
+      (<code>plan.py</code>) are all in the files-touched table &mdash; nothing else
+      constructs <code>GenerationConfig</code> with the old names.</li>
+  </ul>
+</section>
+
+<section class="block" id="validation">
+  <h2>Validation</h2>
+  <ol class="tight">
+    <li>Unit: updated tests per the files-touched table; full
+      <code>pytest tests/unit/test_generator tests/review -v</code>.</li>
+    <li>Frontend: new test &mdash; unmap one "DREAM" occurrence, assert the other 8 rows are
+      unaffected and the unmapped one moves to "Suggested topics."</li>
+    <li>Manual: reproduce the exact reported scenario against the real song, confirm one Unmap
+      only removes that timestamp's mapping.</li>
+  </ol>
+</section>
+
+</main>
+</div>
+</body>
+</html>

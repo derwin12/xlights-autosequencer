@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design: pre-write plan variety validator</title>
+<link rel="stylesheet" href="../_design.css">
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Sections</h2>
+  <ol>
+    <li><a href="#goal">Goal</a></li>
+    <li><a href="#why">Why now</a></li>
+    <li><a href="#approach">Approach</a></li>
+    <li><a href="#alternatives">Alternatives considered</a></li>
+    <li><a href="#files">Files touched</a></li>
+    <li><a href="#regression">Regression surface</a></li>
+    <li><a href="#echoes">Historical echoes</a></li>
+    <li><a href="#validation">Validation</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="doc-header">
+  <p class="kicker">OpenSpec design &middot; plan-variety-validator</p>
+  <h1>Design: pre-write plan variety validator</h1>
+  <div class="goal" id="goal">
+    Catch the recurring &ldquo;one effect the whole song&rdquo; bug class
+    <strong>inside the generation pipeline</strong>, before a <code>.xsq</code> is written &mdash;
+    complementing <code>xlight-evaluate microscope</code>, which only runs after the fact, well
+    after generation, and only when a developer remembers to run it.
+  </div>
+</header>
+
+<section class="block" id="why">
+  <h2>Why now</h2>
+  <p>
+    Prompted by reviewing a comparable open-source xLights sequencer (<code>Sacx83/sequencer</code>),
+    which validates and scores its generated plan <em>before</em> writing the sequence file. We
+    only check quality <em>after</em>. This specific failure shape &mdash; one effect
+    monopolizing an entire song for a group that's supposed to show two &mdash; has recurred
+    multiple times, always caught by a human noticing a bad render:
+  </p>
+  <table>
+    <thead><tr><th>Incident</th><th>Root cause</th></tr></thead>
+    <tbody>
+      <tr><td>bug-197</td><td>Arch direction/size locked for a whole song</td></tr>
+      <tr><td>2026-07-28 bounce reroll</td><td>Bounce computed once per occurrence, not per beat-block &mdash; a 65s occurrence froze on one look</td></tr>
+      <tr><td>Mirror-overlay aliasing</td><td><code>(seed // 2) % pool_len</code> aliased with section stride &mdash; Lightning unreachable on a real song</td></tr>
+      <tr><td>This session&rsquo;s minitree finding</td><td>Fixed parity meant every song showed the <em>same</em> alternation rhythm, not zero variety but identical variety</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="approach">
+  <h2>Approach</h2>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">New module</span>
+      <h4><code>src/generator/plan_validator.py</code></h4>
+    </div>
+    <pre><code>@dataclass(frozen=True)
+class PlanWarning:
+    severity: str        # "info" | "warning"
+    code: str             # e.g. "corpus_recipe_monotony"
+    group_name: str
+    message: str
+
+def validate_plan(assignments: list[SectionAssignment],
+                   groups: list[PowerGroup]) -> list[PlanWarning]:
+    ...</code></pre>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">V1 check</span>
+      <h4><code>corpus_recipe_monotony</code> &mdash; the one proven failure shape</h4>
+    </div>
+    <p>
+      For every tier-6/8 group matched by <code>recipe_for_group()</code> whose recipe sets
+      <code>alt_effect_name</code>: collect every placement across the whole song's
+      <code>SectionAssignment.group_effects[group_name]</code> whose <code>effect_name</code> is
+      either <code>recipe.effect_name</code> or <code>recipe.alt_effect_name</code> (ignores
+      On-mask/secondary/overlay layers deliberately &mdash; this is about the primary/alt choice
+      only). If the group has <strong>&ge;2 qualifying occurrences</strong> and
+      <strong>100% share one effect</strong>, emit a <code>warning</code>.
+    </p>
+    <p class="tight">
+      Deliberately narrow: one specific, already-proven bug shape, not a general variety-score
+      heuristic that would need its own calibration before being trustworthy.
+      <code>motion_rotation</code> families (megatree, matrix) are out of scope for V1 &mdash;
+      they already have their own reachability-guaranteed occurrence counter and would need a
+      differently-shaped check.
+    </p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-warning">Wiring</span>
+      <h4>Informational only &mdash; logged, not blocking</h4>
+    </div>
+    <p>
+      <code>build_plan()</code> calls <code>validate_plan()</code> right before constructing the
+      returned <code>SequencePlan</code>, storing the result in a new
+      <code>warnings: list[PlanWarning]</code> field (default <code>[]</code>) and logging each
+      one via the existing module logger. No caller is required to change &mdash; purely
+      additive. Blocking generation, UI surfacing, and gate integration are explicit
+      <a href="#scope">follow-ups</a>, not part of this change: let the check run
+      silently-logged first and confirm no false positives before anything depends on it.
+    </p>
+  </article>
+</section>
+
+<section class="block" id="alternatives">
+  <h2>Alternatives considered</h2>
+  <table>
+    <thead><tr><th>Option</th><th>Rejected because</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>General variety-score / entropy heuristic across the whole plan</td>
+        <td>Needs calibration against real output before trustworthy &mdash; risk of flagging
+          legitimately low-variety songs (e.g. a family that only qualifies once). The narrow
+          check needs no calibration: 100% one effect across 2+ occurrences is unambiguous.</td>
+      </tr>
+      <tr>
+        <td>Block generation on a warning</td>
+        <td>Could break existing consumers on a false positive. Let it run informationally
+          first.</td>
+      </tr>
+      <tr>
+        <td>Extend to <code>motion_rotation</code> families now</td>
+        <td>Different mechanism, different failure shape (aliasing/reachability, not fixed
+          parity) &mdash; needs its own check design, not a copy-paste of this one.</td>
+      </tr>
+      <tr>
+        <td>Separate post-hoc script (like microscope) instead of inside <code>build_plan()</code></td>
+        <td>Defeats the purpose &mdash; catching this before a <code>.xsq</code> reaches disk, at
+          zero extra cost since the data already exists in <code>assignments</code>/<code>groups</code>
+          at that point.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="files">
+  <h2>Files touched</h2>
+  <table>
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/generator/plan_validator.py</code></td><td>new &mdash; <code>PlanWarning</code>, <code>validate_plan()</code></td></tr>
+      <tr><td><code>src/generator/models.py</code></td><td>new <code>SequencePlan.warnings</code> field, default <code>[]</code></td></tr>
+      <tr><td><code>src/generator/plan.py</code></td><td>calls <code>validate_plan()</code> before constructing <code>SequencePlan</code>; logs each warning</td></tr>
+      <tr><td><code>tests/unit/test_generator/test_plan_validator.py</code></td><td>new &mdash; detection, non-flagging cases, scope boundaries</td></tr>
+      <tr><td><code>tests/unit/test_generator/test_plan.py</code></td><td>assert <code>warnings</code> attribute exists on the returned plan</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="regression">
+  <h2>Regression surface</h2>
+  <ul class="tight">
+    <li><strong><code>SequencePlan</code></strong> &mdash; new field, default <code>[]</code>.
+      Constructed only in <code>plan.py</code>'s single <code>return SequencePlan(...)</code>
+      site plus test fixtures using keyword args &mdash; nothing breaks.</li>
+    <li><strong><code>build_plan()</code></strong> &mdash; verified single return point, no
+      signature change, no new required parameter.</li>
+    <li>No existing test changes behavior: the field defaults empty and nothing reads it outside
+      the new test file.</li>
+  </ul>
+</section>
+
+<section class="block" id="echoes">
+  <h2>Historical echoes</h2>
+  <ul class="tight">
+    <li><strong>bug-197 / 2026-07-28 bounce reroll / mirror-overlay aliasing</strong> &mdash; all
+      the same underlying problem family (a selection mechanism silently collapsing to one
+      branch), different mechanisms. This check targets the simplest, most direct form of it.</li>
+    <li><strong>This session's minitree song-seeded-variety change</strong> &mdash; a natural
+      complement: that change fixed cross-song sameness for one family; this validator is a
+      safety net catching within-song monotony across any family with <code>alt_effect_name</code>
+      set, including future recipe changes that might reintroduce it.</li>
+    <li>No matching buglog/cerebrum entries found for <code>plan_validator</code> or pre-write
+      validation gates beyond the above.</li>
+  </ul>
+</section>
+
+<section class="block" id="validation">
+  <h2>Validation</h2>
+  <ol class="tight">
+    <li>Unit: new <code>test_plan_validator.py</code>; full
+      <code>pytest tests/unit/test_generator -v</code>.</li>
+    <li>Construct a deliberately-monotone plan and confirm it's flagged; confirm the
+      already-fixed arch/cane/etc. recipes (genuine two-effect variety via the old parity
+      mechanism) do NOT spuriously flag.</li>
+    <li>Run a real generation and confirm <code>plan.warnings</code> populates as expected, with
+      zero warnings on a healthy song.</li>
+  </ol>
+</section>
+
+<section class="block" id="scope">
+  <h2>Out of scope (explicit follow-ups)</h2>
+  <p class="tight">
+    Blocking generation on a warning; surfacing warnings in the review UI; failing the
+    acceptance gate on a warning; extending the check to <code>motion_rotation</code> families.
+    All deferred until the V1 check has run informationally for a while with no false positives.
+  </p>
+</section>
+
+</main>
+</div>
+</body>
+</html>

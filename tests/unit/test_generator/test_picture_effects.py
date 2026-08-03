@@ -627,25 +627,40 @@ class TestSuggestImagesForWords:
         assert len(result) == 1
         assert result[0]["matched_file"] == "snowman.gif"
 
-    def test_ignored_word_suppressed(self):
+    def test_ignored_occurrence_suppressed(self):
         words = [
             {"label": "snowman", "start_ms": 0, "end_ms": 500},
             {"label": "rocker", "start_ms": 1000, "end_ms": 1500},
         ]
         library = [_library_entry("snowman"), _library_entry("rocker", filename="rocker.gif")]
-        result = suggest_images_for_words(words, library, ignored_words=["snowman"])
+        result = suggest_images_for_words(
+            words, library, ignored_occurrences=[{"word": "snowman", "start_ms": 0}],
+        )
         assert [s["word"] for s in result] == ["rocker"]
 
-    def test_ignored_word_is_case_insensitive(self):
+    def test_ignoring_one_occurrence_leaves_other_occurrences_of_same_word(self):
+        words = [
+            {"label": "snowman", "start_ms": 0, "end_ms": 500},
+            {"label": "snowman", "start_ms": 1000, "end_ms": 1500},
+        ]
+        library = [_library_entry("snowman")]
+        result = suggest_images_for_words(
+            words, library, ignored_occurrences=[{"word": "snowman", "start_ms": 0}],
+        )
+        assert [s["start_ms"] for s in result] == [1000]
+
+    def test_ignored_occurrence_is_case_insensitive_on_word(self):
         words = [{"label": "Snowman", "start_ms": 0, "end_ms": 500}]
         library = [_library_entry("snowman")]
-        assert suggest_images_for_words(words, library, ignored_words=["SNOWMAN"]) == []
+        assert suggest_images_for_words(
+            words, library, ignored_occurrences=[{"word": "SNOWMAN", "start_ms": 0}],
+        ) == []
 
-    def test_no_ignored_words_matches_everything(self):
+    def test_no_ignored_occurrences_matches_everything(self):
         words = [{"label": "snowman", "start_ms": 0, "end_ms": 500}]
         library = [_library_entry("snowman")]
-        assert len(suggest_images_for_words(words, library, ignored_words=None)) == 1
-        assert len(suggest_images_for_words(words, library, ignored_words=[])) == 1
+        assert len(suggest_images_for_words(words, library, ignored_occurrences=None)) == 1
+        assert len(suggest_images_for_words(words, library, ignored_occurrences=[])) == 1
 
 
 class TestFindUnmatchedTopics:

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design: AI-suggested palette in the theme editor</title>
+<link rel="stylesheet" href="../_design.css">
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Sections</h2>
+  <ol>
+    <li><a href="#goal">Goal</a></li>
+    <li><a href="#findings">Session findings</a></li>
+    <li><a href="#approach">Approach</a></li>
+    <li><a href="#alternatives">Alternatives considered</a></li>
+    <li><a href="#files">Files touched</a></li>
+    <li><a href="#regression">Regression surface</a></li>
+    <li><a href="#network">Network reachability by deployment mode</a></li>
+    <li><a href="#validation">Validation</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="doc-header">
+  <p class="kicker">OpenSpec design &middot; theme-ai-palette-suggest</p>
+  <h1>Design: AI-suggested palette in the theme editor</h1>
+  <div class="goal" id="goal">
+    Add a &ldquo;Suggest with AI&rdquo; button to the <strong>existing</strong> custom-theme
+    editor that calls a local Ollama model to propose a starting 4-color palette for the
+    current song &mdash; a human-in-the-loop assist, not an unattended generation-pipeline
+    decision.
+  </div>
+</header>
+
+<section class="block" id="findings">
+  <h2>Session findings (manual testing, 2026-08-02)</h2>
+  <table>
+    <thead><tr><th>Approach</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td><code>format: "json"</code> (string)</td><td class="diff-same">Unreliable &mdash; valid-but-inconsistent shapes: <code>{"colors":[...]}</code>, <code>{"colorPalette":...}</code>, <code>{"$colorPalette":...}</code>, malformed duplicate keys, once a literal echoed JSON Schema instead of data</td></tr>
+      <tr><td><code>format: &lt;JSON Schema&gt;</code> (structured output)</td><td class="diff-add">10/10 clean bare 4-item hex arrays across 2 runs &times; 5 songs, 1.2&ndash;3.6s/call, zero malformed output, zero timeouts</td></tr>
+      <tr><td>Longer, guideline-heavy prompt</td><td class="diff-same">Made output <em>worse</em> on an 8B model &mdash; degenerate repetition, broken JSON</td></tr>
+      <tr><td><code>llamusic/llamusic:3b</code> (music-specialized)</td><td class="diff-same">Unreliable JSON despite domain specialization</td></tr>
+      <tr><td><code>gpt-oss:20b</code> (reasoning model)</td><td class="diff-same">Too slow / only emitted reasoning preamble, even with <code>think: false</code></td></tr>
+      <tr><td><code>qwen3:8b</code> + schema format</td><td class="diff-add">Winner &mdash; fast, reliable, plausible (not always highly differentiated) palettes</td></tr>
+    </tbody>
+  </table>
+  <p class="tight">
+    Quality caveat: outputs lean on a handful of go-to colors (gold <code>#FFD700</code>,
+    purple <code>#8A2BE2</code>) across many genres rather than deeply differentiating every
+    song. Decent starting point, not a finished always-novel palette &mdash; the reason this
+    belongs in the existing manual editor, reviewed by a human, not an unattended pipeline step.
+  </p>
+</section>
+
+<section class="block" id="approach">
+  <h2>Approach</h2>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">Backend</span>
+      <h4><code>src/review/ai_palette.py::suggest_palette()</code></h4>
+    </div>
+    <pre><code>def suggest_palette(
+    title: str, artist: str, genre: str, occasion: str,
+    ollama_host: str, ollama_model: str, timeout_s: float = 10.0,
+) -> list[str] | None:
+    ...</code></pre>
+    <p class="tight">
+      stdlib <code>urllib.request</code> only (no new dependency). Short validated prompt +
+      JSON-Schema <code>format</code> (array, exactly 4 items, <code>^#[0-9A-Fa-f]{6}$</code>
+      pattern). Defensive re-validation of the response even though schema-constrained. Returns
+      <code>None</code> on any failure &mdash; connection refused, timeout, malformed JSON,
+      wrong shape &mdash; never raises.
+    </p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">Backend</span>
+      <h4>New route + settings keys</h4>
+    </div>
+    <p><code>POST /api/v1/songs/&lt;song_id&gt;/theme-suggest-palette</code> in
+      <code>src/review/api/v1/themes.py</code> &mdash; looks up title/artist via
+      <code>load_library()</code> (same pattern as <code>export.py</code>), reads
+      <code>genre</code>/<code>occasion</code> from the request body (the dialog's current
+      in-progress values, not necessarily the song's saved genre). Returns
+      <code>{"palette": [...]}</code> or a graceful
+      <code>{"error": {"code": "ai_unavailable", ...}}</code> (200, not 4xx &mdash; an expected
+      outcome, not a request error).</p>
+    <p class="tight">New <code>ollama_host</code> / <code>ollama_model</code> keys in the
+      existing flat <code>~/.xlight/settings.json</code> store (<code>src/settings.py</code>,
+      no code change needed, no schema version). No new settings UI screen in v1 &mdash; hand-edit
+      the JSON file for now.</p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">Frontend</span>
+      <h4><code>Theme.tsx</code> &mdash; button in the existing dialog</h4>
+    </div>
+    <p class="tight">
+      New <code>suggesting: boolean</code> on <code>EditState</code>; new
+      <code>handleSuggestPalette()</code> in <code>Theme</code> (has <code>song.song_id</code>
+      in scope); new &ldquo;&#10024; Suggest with AI&rdquo; button in <code>EditDialog</code>
+      above the Palette textarea, disabled + &ldquo;Suggesting&hellip;&rdquo; while in flight
+      (mirrors the existing Save button's <code>saving</code> pattern). On success replaces
+      <code>state.palette</code> only &mdash; <code>accent_palette</code> is v1-out-of-scope,
+      not validated this session. On failure, sets <code>state.error</code> without closing the
+      dialog or discarding manual edits.
+    </p>
+  </article>
+</section>
+
+<section class="block" id="alternatives">
+  <h2>Alternatives considered</h2>
+  <table>
+    <thead><tr><th>Option</th><th>Rejected because</th></tr></thead>
+    <tbody>
+      <tr><td>Auto-apply during generation (original scoping)</td>
+        <td>Needs a whole fallback-on-failure design inside <code>build_plan()</code>, breaks
+          pipeline determinism when enabled, and validated quality (decent but same-y) isn't
+          strong enough to trust unattended. The manual editor already has a human review step
+          built in.</td></tr>
+      <tr><td>Suggest <code>accent_palette</code> too</td>
+        <td>Only the 4-color main palette prompt was actually tested this session &mdash; small
+          follow-up, not bundled here.</td></tr>
+      <tr><td><code>format: "json"</code> string instead of JSON Schema</td>
+        <td>Proven unreliable this session &mdash; inconsistent wrapper keys, occasional
+          garbage, vs. schema mode's 10/10 clean results.</td></tr>
+      <tr><td>Dedicated settings screen for Ollama config</td>
+        <td>No existing settings-screen infrastructure to build on; hand-editing
+          <code>settings.json</code> is sufficient for v1.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="files">
+  <h2>Files touched</h2>
+  <table>
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/review/ai_palette.py</code></td><td>new &mdash; <code>suggest_palette()</code></td></tr>
+      <tr><td><code>src/review/api/v1/themes.py</code></td><td>new route</td></tr>
+      <tr><td><code>src/review/frontend/src/screens/Theme.tsx</code></td><td><code>EditState.suggesting</code>, handler, button</td></tr>
+      <tr><td><code>tests/unit/test_ai_palette.py</code></td><td>new &mdash; all failure modes mocked, no real network calls</td></tr>
+      <tr><td><code>tests/review/test_api_themes.py</code></td><td>new/modified endpoint tests</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="regression">
+  <h2>Regression surface</h2>
+  <ul class="tight">
+    <li><strong><code>src/settings.py</code></strong> &mdash; no code change; two new keys by
+      convention only, no existing collision.</li>
+    <li><strong><code>themes.py</code></strong> &mdash; new route, fully additive.</li>
+    <li><strong><code>Theme.tsx</code></strong> &mdash; one new <code>EditState</code> field
+      (TypeScript catches incomplete call sites at compile time), one new prop on
+      <code>EditDialog</code>, single render site updated.</li>
+  </ul>
+</section>
+
+<section class="block" id="network">
+  <h2>Network reachability by deployment mode</h2>
+  <table>
+    <thead><tr><th>Target</th><th>Confidence</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Tauri <code>.exe</code></strong><br><span class="tight">real end-user deployment</span></td>
+        <td class="diff-add">High</td>
+        <td><code>tauri.conf.json</code>: <code>"security": {"csp": null}</code> &mdash; no CSP
+          blocking outbound <code>fetch()</code>. The bundled backend is a PyInstaller sidecar
+          running as a native Windows process on the <em>same machine</em> as the user's Ollama
+          install &mdash; exactly the native-host-to-native-host path this session's live
+          testing already exercised successfully. Not yet verified against the actual compiled
+          <code>.exe</code> + sidecar (config-only inspection so far), but this is the path that
+          actually matters for users.</td>
+      </tr>
+      <tr>
+        <td><strong>Docker (<code>xlight-dev</code>)</strong><br><span class="tight">dev-only</span></td>
+        <td class="diff-same">Likely blocked</td>
+        <td>Default-deny egress firewall (<code>.devcontainer/init-firewall.sh</code>,
+          <code>ipset</code>-based domain allowlist). <code>host.docker.internal</code> is a
+          Docker-internal address, not a resolvable public domain &mdash; doesn't fit the
+          mechanism as-is. Would likely fail into the graceful "AI suggestion unavailable" path
+          rather than crash anything. <strong>A developer-experience gap, not a user-facing
+          blocker</strong> &mdash; end users get the <code>.exe</code>, not the devcontainer.
+          Worth fixing for contributor convenience, but does not gate shipping.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="validation">
+  <h2>Validation</h2>
+  <ol class="tight">
+    <li>Unit: all failure modes mocked in <code>test_ai_palette.py</code>, no real network calls
+      in the suite.</li>
+    <li>Manual, native host (primary target): click the button against the real local Ollama
+      instance, confirm population and graceful error display when Ollama is stopped.</li>
+    <li>Manual, packaged <code>.exe</code> (before considering this "done" for real users):
+      repeat against an actual built <code>.exe</code> + PyInstaller sidecar, confirming the
+      config-level analysis above holds in the real packaged artifact.</li>
+    <li>Dev-convenience only, not a ship blocker: check whether the <code>xlight-dev</code>
+      firewall needs an allowlist fix so contributors don't hit a silent failure every time
+      while developing this feature inside the container.</li>
+  </ol>
+</section>
+
+</main>
+</div>
+</body>
+</html>

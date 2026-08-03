@@ -59,6 +59,16 @@ function lyricWordCandidates(words: VocalWord[]): { word: string; start_ms: numb
   return Array.from(seen.entries()).map(([word, start_ms]) => ({ word, start_ms }));
 }
 
+// Unmap/Shadow act on ONE lyric occurrence, not every occurrence of a
+// word — ignored/shadowWords are keyed by (word, start_ms), not word alone.
+function occKey(word: string, startMs: number): string {
+  return `${word.toLowerCase()}|${startMs}`;
+}
+
+function occKeysFromOccurrences(occurrences: { word: string; start_ms: number }[]): Set<string> {
+  return new Set(occurrences.map((o) => occKey(o.word, o.start_ms)));
+}
+
 function formatTimestamp(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -101,8 +111,8 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
 
   useEffect(() => {
     fetch(`/api/v1/songs/${song.song_id}/ignored-images`)
-      .then((r) => (r.ok ? r.json() : { words: [] }))
-      .then((body) => setIgnored(new Set<string>(body.words ?? [])))
+      .then((r) => (r.ok ? r.json() : { occurrences: [] }))
+      .then((body) => setIgnored(occKeysFromOccurrences(body.occurrences ?? [])))
       .catch(() => {});
   }, [song.song_id]);
 
@@ -115,24 +125,26 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
 
   useEffect(() => {
     fetch(`/api/v1/songs/${song.song_id}/shadow-words`)
-      .then((r) => (r.ok ? r.json() : { words: [] }))
-      .then((body) => setShadowWords(new Set<string>(body.words ?? [])))
+      .then((r) => (r.ok ? r.json() : { occurrences: [] }))
+      .then((body) => setShadowWords(occKeysFromOccurrences(body.occurrences ?? [])))
       .catch(() => {});
   }, [song.song_id]);
 
-  async function toggleShadowWord(word: string) {
+  async function toggleShadowWord(word: string, startMs: number) {
     const token = word.toLowerCase();
     setError(null);
-    const isShadow = shadowWords.has(token);
+    const isShadow = shadowWords.has(occKey(token, startMs));
     try {
       const res = await fetch(
-        `/api/v1/songs/${song.song_id}/shadow-words${isShadow ? `/${encodeURIComponent(token)}` : ''}`,
+        `/api/v1/songs/${song.song_id}/shadow-words${
+          isShadow ? `/${encodeURIComponent(token)}/${startMs}` : ''
+        }`,
         isShadow
           ? { method: 'DELETE' }
           : {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ word: token }),
+              body: JSON.stringify({ word: token, start_ms: startMs }),
             },
       );
       const body = await res.json();
@@ -140,7 +152,7 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
         setError(body?.error?.message ?? 'Failed to update shadow word');
         return;
       }
-      setShadowWords(new Set<string>(body.words ?? []));
+      setShadowWords(occKeysFromOccurrences(body.occurrences ?? []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     }
@@ -189,32 +201,32 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
   const lyricCandidates = lyricWordCandidates(vocalWords ?? [])
     .filter((c) => !(c.word in keywordMotions));
 
-  async function ignoreMatch(word: string) {
+  async function ignoreMatch(word: string, startMs: number) {
     const token = word.toLowerCase();
     setError(null);
     try {
       const res = await fetch(`/api/v1/songs/${song.song_id}/ignored-images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: token }),
+        body: JSON.stringify({ word: token, start_ms: startMs }),
       });
       if (!res.ok) {
         const body = await res.json();
         setError(body?.error?.message ?? 'Failed to unmap');
         return;
       }
-      setIgnored((prev) => new Set(prev).add(token));
+      setIgnored((prev) => new Set(prev).add(occKey(token, startMs)));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     }
   }
 
-  async function restoreMatch(word: string) {
+  async function restoreMatch(word: string, startMs: number) {
     const token = word.toLowerCase();
     setError(null);
     try {
       const res = await fetch(
-        `/api/v1/songs/${song.song_id}/ignored-images/${encodeURIComponent(token)}`,
+        `/api/v1/songs/${song.song_id}/ignored-images/${encodeURIComponent(token)}/${startMs}`,
         { method: 'DELETE' },
       );
       if (!res.ok) {
@@ -224,7 +236,7 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
       }
       setIgnored((prev) => {
         const next = new Set(prev);
-        next.delete(token);
+        next.delete(occKey(token, startMs));
         return next;
       });
     } catch (err) {
@@ -260,9 +272,9 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
         return;
       }
       setUploaded((prev) => new Set(prev).add(topic.word));
-      // Re-uploading an image for an unmapped word means the user wants it
-      // matched again — lift the per-song ignore automatically.
-      if (ignored.has(topic.word.toLowerCase())) restoreMatch(topic.word);
+      // Re-uploading an image for an unmapped occurrence means the user
+      // wants it matched again — lift the per-occurrence ignore automatically.
+      if (ignored.has(occKey(topic.word, topic.start_ms))) restoreMatch(topic.word, topic.start_ms);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     } finally {
@@ -271,11 +283,16 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
   }
 
   const remainingTopics = imageTopics.filter((t) => !uploaded.has(t.word));
-  const activeSuggestions = imageSuggestions.filter((s) => !ignored.has(s.word.toLowerCase()));
-  // Unmapped words go back to "Suggested topics" (first occurrence per word).
-  const ignoredTopics = imageSuggestions
-    .filter((s) => ignored.has(s.word.toLowerCase()) && !uploaded.has(s.word))
-    .filter((s, i, arr) => arr.findIndex((x) => x.word.toLowerCase() === s.word.toLowerCase()) === i);
+  const activeSuggestions = imageSuggestions.filter(
+    (s) => !ignored.has(occKey(s.word, s.start_ms)),
+  );
+  // Unmapped occurrences go back to "Suggested topics" — one row per
+  // unmapped occurrence, not deduped by word (each occurrence is unmapped
+  // independently now, so other occurrences of the same word may still be
+  // mapped and appear in "Already matched").
+  const ignoredTopics = imageSuggestions.filter(
+    (s) => ignored.has(occKey(s.word, s.start_ms)) && !uploaded.has(s.word),
+  );
 
   return (
     <div className={styles.root}>
@@ -319,10 +336,10 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  aria-pressed={shadowWords.has(s.word.toLowerCase())}
-                  onClick={() => toggleShadowWord(s.word)}
+                  aria-pressed={shadowWords.has(occKey(s.word, s.start_ms))}
+                  onClick={() => toggleShadowWord(s.word, s.start_ms)}
                 >
-                  {shadowWords.has(s.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
+                  {shadowWords.has(occKey(s.word, s.start_ms)) ? 'Shadow ✓' : 'Shadow'}
                 </button>
                 <label className={styles.uploadLabel}>
                   {uploading === s.word ? 'Uploading…' : 'Choose image'}
@@ -341,7 +358,7 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  onClick={() => restoreMatch(s.word)}
+                  onClick={() => restoreMatch(s.word, s.start_ms)}
                 >
                   Restore match
                 </button>
@@ -361,10 +378,10 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  aria-pressed={shadowWords.has(t.word.toLowerCase())}
-                  onClick={() => toggleShadowWord(t.word)}
+                  aria-pressed={shadowWords.has(occKey(t.word, t.start_ms))}
+                  onClick={() => toggleShadowWord(t.word, t.start_ms)}
                 >
-                  {shadowWords.has(t.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
+                  {shadowWords.has(occKey(t.word, t.start_ms)) ? 'Shadow ✓' : 'Shadow'}
                 </button>
                 <label className={styles.uploadLabel}>
                   {uploading === t.word ? 'Uploading…' : 'Choose image'}
@@ -406,10 +423,10 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  aria-pressed={shadowWords.has(s.word.toLowerCase())}
-                  onClick={() => toggleShadowWord(s.word)}
+                  aria-pressed={shadowWords.has(occKey(s.word, s.start_ms))}
+                  onClick={() => toggleShadowWord(s.word, s.start_ms)}
                 >
-                  {shadowWords.has(s.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
+                  {shadowWords.has(occKey(s.word, s.start_ms)) ? 'Shadow ✓' : 'Shadow'}
                 </button>
                 <label className={styles.uploadLabel}>
                   {uploading === s.word ? 'Uploading…' : 'Choose image'}
@@ -428,7 +445,7 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  onClick={() => ignoreMatch(s.word)}
+                  onClick={() => ignoreMatch(s.word, s.start_ms)}
                 >
                   Unmap
                 </button>
@@ -450,10 +467,10 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 <button
                   type="button"
                   className={styles.createImageBtn}
-                  aria-pressed={shadowWords.has(t.word.toLowerCase())}
-                  onClick={() => toggleShadowWord(t.word)}
+                  aria-pressed={shadowWords.has(occKey(t.word, t.start_ms))}
+                  onClick={() => toggleShadowWord(t.word, t.start_ms)}
                 >
-                  {shadowWords.has(t.word.toLowerCase()) ? 'Shadow ✓' : 'Shadow'}
+                  {shadowWords.has(occKey(t.word, t.start_ms)) ? 'Shadow ✓' : 'Shadow'}
                 </button>
                 <label className={styles.uploadLabel}>
                   {uploading === t.word ? 'Uploading…' : 'Choose image'}

@@ -55,6 +55,7 @@ const DEFAULT_OVERRIDES: ParameterOverrides = {
 
 interface EditState {
   theme: Theme;
+  isNew: boolean;
   name: string;
   description: string;
   mood: string;
@@ -63,25 +64,38 @@ interface EditState {
   palette: string[];
   accent_palette: string[];
   saving: boolean;
+  suggesting: boolean;
   error: string | null;
 }
+
+const BLANK_THEME: Theme = {
+  theme_id: '',
+  name: '',
+  description: '',
+  accent: '#ffffff',
+  swatches: [],
+  default_for_kinds: [],
+  editable: true,
+};
 
 function EditDialog({
   state,
   onChange,
   onSave,
+  onSuggest,
   onClose,
 }: {
   state: EditState;
   onChange: (patch: Partial<EditState>) => void;
   onSave: () => void;
+  onSuggest: () => void;
   onClose: () => void;
 }) {
   return (
     <div className={styles.dialogOverlay} onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div className={styles.dialogHeader}>
-          <span className={styles.dialogTitle}>Edit Theme</span>
+          <span className={styles.dialogTitle}>{state.isNew ? 'New Theme' : 'Edit Theme'}</span>
           <button className={styles.dialogClose} onClick={onClose}>✕</button>
         </div>
 
@@ -137,7 +151,17 @@ function EditDialog({
           </div>
         </div>
 
-        <label className={styles.fieldLabel}>Palette (one hex per line)</label>
+        <div className={styles.fieldLabelRow}>
+          <label className={styles.fieldLabel}>Palette (one hex per line)</label>
+          <button
+            type="button"
+            className={styles.suggestBtn}
+            onClick={onSuggest}
+            disabled={state.suggesting}
+          >
+            {state.suggesting ? 'Suggesting…' : '✨ Suggest with AI'}
+          </button>
+        </div>
         <textarea
           className={styles.fieldTextarea}
           value={state.palette.join('\n')}
@@ -160,7 +184,7 @@ function EditDialog({
         <div className={styles.dialogActions}>
           <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
           <button className={styles.saveBtn} onClick={onSave} disabled={state.saving}>
-            {state.saving ? 'Saving…' : 'Save'}
+            {state.saving ? (state.isNew ? 'Creating…' : 'Saving…') : (state.isNew ? 'Create' : 'Save')}
           </button>
         </div>
       </div>
@@ -393,6 +417,7 @@ export function Theme({
   function openEdit(theme: Theme) {
     setEditState({
       theme,
+      isNew: false,
       name: theme.name,
       description: theme.description,
       mood: theme.mood ?? 'structural',
@@ -401,16 +426,67 @@ export function Theme({
       palette: theme.swatches.slice(0, 4),
       accent_palette: [theme.accent],
       saving: false,
+      suggesting: false,
       error: null,
     });
   }
 
+  function openCreate() {
+    setEditState({
+      theme: BLANK_THEME,
+      isNew: true,
+      name: '',
+      description: '',
+      mood: 'structural',
+      occasion: 'general',
+      genre: 'any',
+      palette: [],
+      accent_palette: [],
+      saving: false,
+      suggesting: false,
+      error: null,
+    });
+  }
+
+  async function handleSuggestPalette() {
+    if (!editState) return;
+    setEditState((s) => s ? { ...s, suggesting: true, error: null } : s);
+    try {
+      const res = await fetch(`/api/v1/songs/${song.song_id}/theme-suggest-palette`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ genre: editState.genre, occasion: editState.occasion }),
+      });
+      const body = await res.json();
+      if (!res.ok || body?.error) {
+        setEditState((s) => s ? {
+          ...s, suggesting: false,
+          error: body?.error?.message ?? 'AI suggestion unavailable',
+        } : s);
+        return;
+      }
+      setEditState((s) => s ? { ...s, suggesting: false, palette: body.palette } : s);
+    } catch (err) {
+      setEditState((s) => s ? {
+        ...s, suggesting: false,
+        error: err instanceof Error ? err.message : 'AI suggestion unavailable',
+      } : s);
+    }
+  }
+
   async function handleSaveEdit() {
     if (!editState) return;
+    if (editState.isNew && !editState.name.trim()) {
+      setEditState((s) => s ? { ...s, error: 'Name is required' } : s);
+      return;
+    }
     setEditState((s) => s ? { ...s, saving: true, error: null } : s);
     try {
-      const res = await fetch(`/api/v1/themes/${editState.theme.theme_id}`, {
-        method: 'PUT',
+      const url = editState.isNew
+        ? '/api/v1/themes'
+        : `/api/v1/themes/${editState.theme.theme_id}`;
+      const res = await fetch(url, {
+        method: editState.isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editState.name,
@@ -439,6 +515,9 @@ export function Theme({
       <div className={styles.header}>
         <h2 className={styles.title}>{song.title}</h2>
         <div className={styles.headerActions}>
+          <button className={styles.resetBtn} onClick={openCreate}>
+            + New Theme
+          </button>
           <button className={styles.resetBtn} onClick={handleExportAssignments}>
             Save Mappings
           </button>
@@ -555,6 +634,7 @@ export function Theme({
           state={editState}
           onChange={(patch) => setEditState((s) => s ? { ...s, ...patch } : s)}
           onSave={handleSaveEdit}
+          onSuggest={handleSuggestPalette}
           onClose={() => setEditState(null)}
         />
       )}

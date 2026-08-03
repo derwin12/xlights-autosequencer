@@ -209,6 +209,21 @@ class SectionAssignment:
     color_shift: float = 0.0     # 0.0-1.0: hue rotation applied to the section's palette
 
 
+@dataclass(frozen=True)
+class PlanWarning:
+    """A pre-write diagnostic surfaced by plan_validator.validate_plan().
+
+    Informational only (see openspec/changes/plan-variety-validator) — no
+    caller currently blocks on these; they're logged and attached to
+    SequencePlan.warnings for future UI/gate surfacing.
+    """
+
+    severity: str  # "info" | "warning"
+    code: str
+    group_name: str
+    message: str
+
+
 @dataclass
 class SequencePlan:
     """The complete blueprint for generating a sequence."""
@@ -243,6 +258,10 @@ class SequencePlan:
     # groups aren't part of layout_groups at all (see grouper.generate_groups),
     # so there's no per-section tier for them to ride on.
     moving_head_effects: dict[str, list[EffectPlacement]] = field(default_factory=dict)
+    # Pre-write diagnostics from plan_validator.validate_plan(), populated by
+    # build_plan() just before this SequencePlan is constructed. See
+    # PlanWarning's docstring — informational only in V1.
+    warnings: list[PlanWarning] = field(default_factory=list)
 
 
 @dataclass
@@ -396,16 +415,19 @@ class GenerationConfig:
     # songs; the conservative accept-gate in vocal_diarization.py means a
     # solo song is unaffected (no confident second voice -> no-op).
     vocal_diarization: bool = True
-    # Lyric words the user unmapped on the Pictures screen (per-song ignore).
-    # Suppresses lyric-matched Pictures bursts for these words without
-    # removing the image from the shared library. Case-insensitive.
-    ignored_image_words: Optional[list[str]] = None
-    # User-curated lyric words (review UI's Extras section) that trigger a
-    # two-layer "Shadow" Text effect -- the word rendered in the song's
-    # anchor palette color 1, plus an offset copy in color 2 behind it --
-    # wherever sung, on the same Matrix/Mega Tree targets picture_effects
-    # uses. Case-insensitive. See effect_placer._place_shadow_text_effects.
-    shadow_text_words: Optional[list[str]] = None
+    # Specific lyric occurrences the user unmapped on the Pictures screen
+    # (per-song ignore), each {"word": str, "start_ms": int}. Suppresses
+    # the lyric-matched Pictures burst for that ONE occurrence without
+    # removing the image from the shared library or affecting any other
+    # occurrence of the same word. Case-insensitive on "word".
+    ignored_image_occurrences: Optional[list[dict]] = None
+    # User-curated lyric occurrences (review UI's Extras section), each
+    # {"word": str, "start_ms": int}, that trigger a two-layer "Shadow"
+    # Text effect for that ONE occurrence -- the word rendered in the
+    # song's anchor palette color 1, plus an offset copy in color 2 behind
+    # it -- on the same Matrix/Mega Tree targets picture_effects uses.
+    # Case-insensitive on "word". See effect_placer._place_shadow_text_effects.
+    shadow_text_occurrences: Optional[list[dict]] = None
     # Caller-supplied title/artist (e.g. the review library's corrected
     # values) that win over read_song_metadata()'s raw ID3/filename-stem
     # result — written into the .xsq's <song>/<artist> Meta Data fields.

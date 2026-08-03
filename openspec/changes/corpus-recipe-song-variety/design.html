@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design: corpus-recipe song variety (minitree pilot)</title>
+<link rel="stylesheet" href="../_design.css">
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Sections</h2>
+  <ol>
+    <li><a href="#goal">Goal</a></li>
+    <li><a href="#problem">The problem</a></li>
+    <li><a href="#approach">Approach</a></li>
+    <li><a href="#alternatives">Alternatives considered</a></li>
+    <li><a href="#files">Files touched</a></li>
+    <li><a href="#regression">Regression surface</a></li>
+    <li><a href="#echoes">Historical echoes</a></li>
+    <li><a href="#validation">Validation</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="doc-header">
+  <p class="kicker">OpenSpec design &middot; corpus-recipe-song-variety</p>
+  <h1>Design: song-seeded corpus-recipe variety</h1>
+  <div class="goal" id="goal">
+    Make a prop family's primary/alt effect choice vary <strong>song to song</strong>,
+    not just occurrence to occurrence within one song &mdash; piloted on
+    <strong>minitree</strong>, where fresh mining data shows real vendor songs commit to
+    genuinely different dominant looks, which today's fixed alternation pattern flattens
+    into one identical rhythm for every song.
+  </div>
+</header>
+
+<section class="block" id="problem">
+  <h2>The problem</h2>
+  <p>
+    Every non-rotation family's alt-effect decision is
+    <code>(variation_seed // 2) % 2 == 1</code>, where <code>variation_seed = config.variation_seed
+    (per-song) + section_index</code>. Because the arithmetic is the same for every song, the
+    <em>pattern</em> of primary/alt across a song's qualifying occurrences is identical for every
+    song: occurrence 0 primary, occurrence 1 alt, occurrence 2 primary &hellip; This varies effect
+    choice <em>within</em> a song but never varies it <em>across</em> songs &mdash; every generated
+    song walks the same lockstep rhythm.
+  </p>
+  <table>
+    <thead><tr><th>Song</th><th>Minitree Shockwave</th><th>Minitree SingleStrand</th></tr></thead>
+    <tbody>
+      <tr><td>Original 12-song corpus</td><td class="diff-same">3%</td><td class="diff-same">73%</td></tr>
+      <tr><td>Believer (new)</td><td class="diff-add">54%</td><td class="diff-same">10%</td></tr>
+      <tr><td>Magic (new)</td><td class="diff-add">54%</td><td class="diff-same">0%</td></tr>
+      <tr><td>Sounding Joy (new)</td><td class="diff-add">38%</td><td class="diff-same">8%</td></tr>
+      <tr><td>Uptown Funk (new)</td><td class="diff-add">59%</td><td class="diff-same">10%</td></tr>
+      <tr><td><strong>17-song aggregate</strong></td><td><strong>31%</strong></td><td><strong>29%</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="tight">
+    This isn't "which number is right" &mdash; it's confirmation that real songs each commit to
+    their own dominant look. Averaging into one fixed winner (old approach) or one fixed
+    alternation rhythm (current approach) both throw away that variety.
+  </p>
+</section>
+
+<section class="block" id="approach">
+  <h2>Approach</h2>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">New field</span>
+      <h4><code>PropFamilyRecipe.song_seeded_alt_share</code></h4>
+    </div>
+    <p>
+      <code>tuple[int, int] | None = None</code> &mdash; a (min, max) range, out of a fixed
+      8-slot pool, for how many of a song's qualifying occurrences use
+      <code>alt_effect_name</code>. Default <code>None</code> preserves today's fixed parity for
+      every family except the one that opts in.
+    </p>
+    <p>Minitree: <code>song_seeded_alt_share=(2, 6)</code> &mdash; 25%&ndash;75% Shockwave share,
+      centered on the ~50/50 mined aggregate, bounded so a song can never land on 0/8 or 8/8
+      (the exact "one effect the whole song" bug class already fixed elsewhere).</p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-info">Mechanism</span>
+      <h4>Per-song shuffle, reusing the mirror-overlay pattern</h4>
+    </div>
+    <pre><code>elif recipe.alt_effect_name is not None:
+    if recipe.song_seeded_alt_share is not None and occurrence_index is not None:
+        pool_size = 8
+        alt_min, alt_max = recipe.song_seeded_alt_share
+        rng = random.Random(f"song_alt_share:{song_seed}:{recipe.family}:{group.name}")
+        alt_count = rng.randint(alt_min, alt_max)
+        seq = [True] * alt_count + [False] * (pool_size - alt_count)
+        rng.shuffle(seq)
+        use_alt = seq[occurrence_index % pool_size]
+    else:
+        use_alt = (variation_seed // 2) % 2 == 1
+    if use_alt:
+        effect_name = recipe.alt_effect_name
+        ...  # existing alt_rotation_effect_name / bounce logic, unchanged</code></pre>
+    <p class="tight">
+      Same idea already shipped for megatree's mirror overlay (2026-07-23,
+      <code>random.Random(f"mirror_overlay:{variation_seed}").sample(...)</code>) &mdash; corrected
+      here to key off a genuinely song-constant seed instead of the per-section one (see
+      <a href="#echoes">Historical echoes</a>).
+    </p>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="pill pill-warning">New parameter</span>
+      <h4><code>song_seed</code> &mdash; recovered, not newly stored</h4>
+    </div>
+    <p>
+      <code>variation_seed = config.variation_seed (per-song base) + section_index</code> is
+      already the documented formula. <code>song_seed</code> is just
+      <code>assignment.variation_seed - assignment.section_index</code>, computed at the 4
+      call sites in <code>effect_placer.py</code> &mdash; no new field on
+      <code>SectionAssignment</code>, no config plumbing.
+    </p>
+  </article>
+</section>
+
+<section class="block" id="alternatives">
+  <h2>Alternatives considered</h2>
+  <table>
+    <thead><tr><th>Option</th><th>Rejected because</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Fully switch minitree to <code>motion_rotation</code> (megatree/matrix's mechanism)</td>
+        <td>The per-beat-block bounce reroll (2026-07-28 fix for "shockwaves don't change for 65s")
+          is wired to the <code>alt_effect_name</code> branch specifically, not
+          <code>motion_rotation</code>. Switching silently drops that fix.</td>
+      </tr>
+      <tr>
+        <td>Unweighted 50/50 coin flip per occurrence, no per-song bias</td>
+        <td>Doesn't match the data &mdash; real songs commit to a dominant look with occasional
+          variation, they don't alternate randomly. Would just be a differently-random version
+          of "every song looks statistically identical."</td>
+      </tr>
+      <tr>
+        <td>Unbounded per-song share (0&ndash;8 of 8)</td>
+        <td>Lets a song land on 0/8 or 8/8 &mdash; literally the monotony bug this change exists
+          to fix.</td>
+      </tr>
+      <tr>
+        <td>Apply to all primary/alt families in one change</td>
+        <td>Explicit user direction: pilot on minitree, which has concrete new data showing the
+          problem, before generalizing.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="files">
+  <h2>Files touched</h2>
+  <table>
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/generator/corpus_recipes.py</code></td>
+        <td>new <code>song_seeded_alt_share</code> field (default <code>None</code>); minitree
+          sets <code>(2, 6)</code></td></tr>
+      <tr><td><code>src/generator/effect_placer.py</code></td>
+        <td><code>_place_corpus_recipe</code> gains <code>song_seed: int = 0</code>; new branch
+          in the alt-selection <code>elif</code>; 4 call sites pass
+          <code>song_seed=assignment.variation_seed - assignment.section_index</code></td></tr>
+      <tr><td><code>tests/unit/test_generator/test_corpus_recipes.py</code></td>
+        <td>new song-variety tests; existing parity-dependent minitree tests updated to pin a
+          <code>song_seed</code> that reproduces the intended occurrence</td></tr>
+      <tr><td><code>docs/segment-classification-changelog.md</code></td>
+        <td>not touched &mdash; no segment/classification change</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block" id="regression">
+  <h2>Regression surface</h2>
+  <ul class="tight">
+    <li><strong><code>PropFamilyRecipe</code></strong> &mdash; new field, default
+      <code>None</code>. Only constructed in <code>CORPUS_RECIPES</code>; every family except
+      minitree stays on the old codepath, bit-for-bit unchanged.</li>
+    <li><strong><code>_place_corpus_recipe</code></strong> &mdash; private, 4 call sites, all
+      updated together; no test calls it with bare positional args that would break from an
+      added keyword-only parameter.</li>
+    <li><strong>Existing minitree parity tests</strong> &mdash;
+      <code>test_minitree_alternate_is_shockwave_burst</code> and
+      <code>test_minitree_bounce_occurrence_implodes</code> currently assume the old parity rule
+      picks Shockwave at <code>corpus_occurrence=1</code>; they need a pinned <code>song_seed</code>
+      once the selection rule changes. Flagged so it isn't missed.</li>
+    <li><strong>Golden/microscope baselines</strong> &mdash; minitree output changes by design;
+      re-run <code>microscope panel</code>, review, re-promote only after
+      <code>microscope sensitivity</code> passes.</li>
+  </ul>
+</section>
+
+<section class="block" id="echoes">
+  <h2>Historical echoes</h2>
+  <ul class="tight">
+    <li><strong>2026-07-28 Shockwave bounce reroll</strong> &mdash; a long occurrence must keep
+      varying, not freeze on one look. Preserved: this change only touches which occurrences
+      pick <code>alt_effect_name</code>, not what happens once they do.</li>
+    <li><strong>bug-182 / "variation_seed is the global section index"</strong> &mdash; raw
+      section-index arithmetic aliases with regular section strides. <code>song_seed</code> is
+      deliberately the song-constant component, not the raw per-section value, to avoid this
+      recurring in a new form.</li>
+    <li><strong>2026-07-23 mirror-overlay shuffle</strong> &mdash; direct precedent for
+      "shuffle a pool's walk order per song." Noted deviation: that existing mechanism keys off
+      the raw per-section <code>variation_seed</code>, so it likely reshuffles across a song's
+      multiple qualifying sections rather than staying stable &mdash; not fixed here (out of
+      scope, different family), but deliberately not copied into this new mechanism.</li>
+    <li><strong>tier-layering-policy / prior "one effect the whole song" fixes</strong> &mdash;
+      recurring pattern across several past incidents (arch direction rotation, Single Strand
+      render-style freeze, Shockwave bounce reroll). The <code>(2, 6)</code>-of-8 bound directly
+      applies that lesson: never let a per-song draw reach the 0-variety extremes.</li>
+    <li>No matching buglog/cerebrum entries found for <code>song_seeded_alt_share</code> or
+      cross-song-variety regressions beyond the above.</li>
+  </ul>
+</section>
+
+<section class="block" id="validation">
+  <h2>Validation</h2>
+  <ol class="tight">
+    <li>Unit: new song-seed-variety tests (different <code>song_seed</code> &rarr; different but
+      bounded alt-shares); updated parity tests; full
+      <code>pytest tests/unit/test_generator -v</code>.</li>
+    <li>Regenerate several new corpus songs (Believer, Magic, Sounding Joy, Uptown Funk) plus a
+      couple from the original 12-song corpus; confirm minitree's Shockwave/SingleStrand ratio
+      visibly differs song to song, never 100% one effect.</li>
+    <li><code>xlight-evaluate microscope panel</code> against current baselines; review the diff,
+      re-run <code>microscope sensitivity</code>, re-promote only after it passes.</li>
+  </ol>
+</section>
+
+<section class="block" id="scope">
+  <h2>Out of scope</h2>
+  <p class="tight">
+    Generalizing <code>song_seeded_alt_share</code> to other primary/alt families (arch, cane,
+    snowflake, horizontal, vertical, spiraltree, star) &mdash; deliberately deferred until the
+    minitree pilot is validated against real rendered output. Also out of scope: any change to
+    <code>motion_rotation</code>-based families (megatree, matrix), which already have their own
+    rotation/shuffle mechanisms and are not part of this "fixed parity" problem.
+  </p>
+</section>
+
+</main>
+</div>
+</body>
+</html>

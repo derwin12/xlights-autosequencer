@@ -36,9 +36,9 @@ def run(
     genre: str = "pop",
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
-    ignored_image_words: Optional[list[str]] = None,
+    ignored_image_occurrences: Optional[list[dict]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
-    shadow_text_words: Optional[list[str]] = None,
+    shadow_text_occurrences: Optional[list[dict]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -72,19 +72,21 @@ def run(
         occasion: Theme-selection occasion hint (GenerationConfig.occasion).
         video_path: Optional path to an imported video file — placed as a
                     Video effect on the largest matrix prop (GenerationConfig.video_path).
-        ignored_image_words: Optional lyric words whose image-library matches
-                    the user unmapped on the Pictures screen — suppresses
-                    lyric-matched Pictures bursts for those words
-                    (GenerationConfig.ignored_image_words).
+        ignored_image_occurrences: Optional lyric occurrences
+                    ({"word", "start_ms"}) whose image-library match the
+                    user unmapped on the Pictures screen — suppresses the
+                    lyric-matched Pictures burst for that one occurrence
+                    (GenerationConfig.ignored_image_occurrences).
         moving_head_keyword_motions: Optional {word: motion} map overriding
                     the default shake/spin/bounce Moving Head keyword
                     triggers with the user's own per-song additions/removals
                     from the review UI's Extras screen
                     (GenerationConfig.moving_head_keyword_motions).
-        shadow_text_words: Optional lyric words the user tagged "Shadow" on
-                    the Pictures screen — fires a two-layer Shadow Text
-                    effect wherever each word is sung
-                    (GenerationConfig.shadow_text_words).
+        shadow_text_occurrences: Optional lyric occurrences
+                    ({"word", "start_ms"}) the user tagged "Shadow" on the
+                    Pictures screen — fires a two-layer Shadow Text effect
+                    for that one occurrence
+                    (GenerationConfig.shadow_text_occurrences).
         include_extra_timing: When False, the Chords and per-stem Onsets (...)
                     timing tracks are omitted from the .xsq (display-only
                     tracks; effect placement is unaffected).
@@ -146,9 +148,9 @@ def run(
                               section_overrides=section_overrides,
                               lyrics=lyrics, words=words, phonemes=phonemes,
                               genre=genre, occasion=occasion, video_path=video_path,
-                              ignored_image_words=ignored_image_words,
+                              ignored_image_occurrences=ignored_image_occurrences,
                               moving_head_keyword_motions=moving_head_keyword_motions,
-                              shadow_text_words=shadow_text_words,
+                              shadow_text_occurrences=shadow_text_occurrences,
                               include_extra_timing=include_extra_timing,
                               title_override=title_override, artist_override=artist_override,
                               vocal_diarization=vocal_diarization,
@@ -172,9 +174,9 @@ def _run_pipeline(
     genre: str = "pop",
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
-    ignored_image_words: Optional[list[str]] = None,
+    ignored_image_occurrences: Optional[list[dict]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
-    shadow_text_words: Optional[list[str]] = None,
+    shadow_text_occurrences: Optional[list[dict]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -232,13 +234,13 @@ def _run_pipeline(
             vocal_diarization=vocal_diarization,
             story_path=story_path,
             video_path=video_path,
-            ignored_image_words=ignored_image_words,
+            ignored_image_occurrences=ignored_image_occurrences,
             moving_head_keyword_motions=(
                 moving_head_keyword_motions
                 if moving_head_keyword_motions is not None
                 else {"shake": "shake", "spin": "spin", "bounce": "bounce"}
             ),
-            shadow_text_words=shadow_text_words,
+            shadow_text_occurrences=shadow_text_occurrences,
             title_override=title_override,
             artist_override=artist_override,
         )

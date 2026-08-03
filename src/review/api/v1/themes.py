@@ -7,7 +7,14 @@ import re
 
 from flask import jsonify, request
 
+from src.review.ai_palette import suggest_palette
+from src.review.storage.library import load_library
+from src.settings import load_settings
+
 from . import api_v1
+
+_DEFAULT_OLLAMA_HOST = "http://localhost:11434"
+_DEFAULT_OLLAMA_MODEL = "qwen3:8b"
 
 _BUILTIN_THEMES_PATH = pathlib.Path(__file__).parents[3] / "themes" / "builtin_themes.json"
 _CUSTOM_THEMES_DIR = pathlib.Path.home() / ".xlight" / "custom_themes"
@@ -159,3 +166,39 @@ def create_theme():
     }
     path.write_text(json.dumps(entry, indent=2, ensure_ascii=False), encoding="utf-8")
     return jsonify({"theme": _theme_to_api(entry, theme_id, editable=True)}), 201
+
+
+@api_v1.route("/songs/<song_id>/theme-suggest-palette", methods=["POST"])
+def suggest_theme_palette(song_id: str):
+    """AI-suggest a 4-color palette for a song, via a local Ollama model.
+
+    See openspec/changes/theme-ai-palette-suggest. Genre/occasion come from
+    the request body (the theme editor's current in-progress values, not
+    necessarily the song's saved genre) so a suggestion reflects whatever
+    the user is actively editing. Returns 200 with an error payload (not a
+    4xx) when the AI call fails -- this is an expected, non-exceptional
+    outcome the frontend handles gracefully, not a request error.
+    """
+    lib = load_library()
+    song = next((s for s in lib["songs"] if s["song_id"] == song_id), None)
+    if song is None:
+        return jsonify({"error": {"code": "song_not_found", "message": "Song not found"}}), 404
+
+    body = request.get_json(silent=True) or {}
+    settings = load_settings()
+
+    palette = suggest_palette(
+        title=song.get("title") or "",
+        artist=song.get("artist") or "",
+        genre=body.get("genre") or "",
+        occasion=body.get("occasion") or "general",
+        ollama_host=settings.get("ollama_host", _DEFAULT_OLLAMA_HOST),
+        ollama_model=settings.get("ollama_model", _DEFAULT_OLLAMA_MODEL),
+    )
+    if palette is None:
+        return jsonify({"error": {
+            "code": "ai_unavailable",
+            "message": "AI suggestion unavailable — check Ollama is running",
+        }}), 200
+
+    return jsonify({"palette": palette}), 200

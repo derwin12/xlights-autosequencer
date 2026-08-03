@@ -117,7 +117,7 @@ describe('Theme screen', () => {
       />
     );
 
-    const acceptBtn = screen.getByRole('button', { name: /accept all/i });
+    const acceptBtn = screen.getByRole('button', { name: /^accept$/i });
     fireEvent.click(acceptBtn);
 
     await waitFor(() => {
@@ -241,6 +241,69 @@ describe('Theme screen', () => {
       await waitFor(() => {
         expect(screen.getByText(/not valid json/i)).toBeTruthy();
       });
+    });
+  });
+
+  describe('New Theme', () => {
+    it('opens a blank create dialog and POSTs a new theme on save', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ theme: { theme_id: 'my-new-theme', name: 'My New Theme' } }),
+      });
+
+      render(
+        <Theme
+          song={song}
+          themes={themes}
+          sections={sections}
+          assignments={assignments}
+          onThemed={() => {}}
+          onAssignmentChange={() => {}}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /new theme/i }));
+      const dialogTitle = screen.getByText('New Theme');
+      const dialog = dialogTitle.closest('div')?.parentElement as HTMLElement;
+
+      // The Name field is the dialog's first non-file <input> (Mood/
+      // Occasion are <select>, Genre is a later <input>). Scoped to the
+      // dialog specifically — the page also has unrelated <input>s outside
+      // it (a hidden file input for Load Mappings, ParameterSliders'
+      // range inputs) that a page-wide query would match first.
+      const nameInput = Array.from(dialog.querySelectorAll('input'))
+        .find((el) => el.type !== 'file') as HTMLInputElement;
+      fireEvent.change(nameInput, { target: { value: 'My New Theme' } });
+      fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/v1/themes',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('My New Theme'),
+          }),
+        );
+      });
+    });
+
+    it('shows an error instead of saving when the name is blank', () => {
+      render(
+        <Theme
+          song={song}
+          themes={themes}
+          sections={sections}
+          assignments={assignments}
+          onThemed={() => {}}
+          onAssignmentChange={() => {}}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /new theme/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
+
+      expect(screen.getByText(/name is required/i)).toBeTruthy();
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 });

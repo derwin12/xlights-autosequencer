@@ -89,6 +89,46 @@
       "tags": ["indie-pop", "dance", "upbeat"],
       "notes_ref": "notes/shut-up-and-dance.md",
       "master_may_differ": false
+    },
+    {
+      "song_id": "believer",
+      "pro_id": "xatw",
+      "xsq_path": "/home/node/xlights/baseline-sequences/XATW Believer.xsqz",
+      "mp3_path": "/home/node/xlights/baseline-sequences/xatw believer.mp3",
+      "audio_hash": "md5:f5b4c08e85b0b0a3d44a142feda7ab4f",
+      "tags": ["rock", "pop", "epic"],
+      "notes_ref": "notes/believer.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "magic",
+      "pro_id": "xatw",
+      "xsq_path": "/home/node/xlights/baseline-sequences/XATW Magic.xsqz",
+      "mp3_path": "/home/node/xlights/baseline-sequences/xatw magic.mp3",
+      "audio_hash": "md5:d4ba7ceacf634d16ef5ecad3785481da",
+      "tags": ["instrumental", "electronic-violin", "orchestral"],
+      "notes_ref": "notes/magic.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "sounding-joy",
+      "pro_id": "xatw",
+      "xsq_path": "/home/node/xlights/baseline-sequences/XATW Sounding Joy.xsqz",
+      "mp3_path": "/home/node/xlights/baseline-sequences/xatw-sounding-joy-2024.mp3",
+      "audio_hash": "md5:42989f5747ad04be8f7b8306acedfe5b",
+      "tags": ["christmas", "worship", "pop"],
+      "notes_ref": "notes/sounding-joy.md",
+      "master_may_differ": false
+    },
+    {
+      "song_id": "uptown-funk",
+      "pro_id": "xatw",
+      "xsq_path": "/home/node/xlights/baseline-sequences/xatw Uptown Funk.xsqz",
+      "mp3_path": "/home/node/xlights/baseline-sequences/xatw uptown-funk.mp3",
+      "audio_hash": "md5:cbf6f5d91616e46918333c5f88f2c924",
+      "tags": ["funk", "pop", "dance", "upbeat"],
+      "notes_ref": "notes/uptown-funk.md",
+      "master_may_differ": false
     }
   ]
 }

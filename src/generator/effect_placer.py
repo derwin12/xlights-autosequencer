@@ -1212,6 +1212,8 @@ def place_effects(
                             occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                             theme_occasion=theme.occasion,
                             vocal_words=vocal_words,
+                            song_seed=assignment.variation_seed - assignment.section_index,
+                            base_palette=effective_base,
                         )
                         if recipe_placements:
                             corpus_recipe_done.add(group.name)
@@ -1379,6 +1381,8 @@ def place_effects(
                                 occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                                 theme_occasion=theme.occasion,
                                 vocal_words=vocal_words,
+                                song_seed=assignment.variation_seed - assignment.section_index,
+                                base_palette=effective_base,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1460,6 +1464,8 @@ def place_effects(
                                 occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                                 theme_occasion=theme.occasion,
                                 vocal_words=vocal_words,
+                                song_seed=assignment.variation_seed - assignment.section_index,
+                                base_palette=effective_base,
                             )
                             if recipe_placements:
                                 corpus_recipe_done.add(group.name)
@@ -1592,6 +1598,8 @@ def place_effects(
                         occurrence_index=assignment.corpus_occurrence.get(recipe.family),
                         theme_occasion=theme.occasion,
                         vocal_words=vocal_words,
+                        song_seed=assignment.variation_seed - assignment.section_index,
+                        base_palette=effective_base,
                     )
                     if recipe_placements:
                         corpus_recipe_done.add(group.name)
@@ -2623,6 +2631,37 @@ def _matched_shape_preset_for_lyrics(
     return None
 
 
+def _use_alt_effect(
+    recipe: PropFamilyRecipe,
+    variation_seed: int,
+    occurrence_index: int | None,
+    song_seed: int,
+    group_name: str,
+) -> bool:
+    """Decide whether this occurrence uses recipe.alt_effect_name.
+
+    Default: (variation_seed // 2) % 2 -- the same primary/alt rhythm for
+    every song, since variation_seed's parity is section-index-derived and
+    doesn't vary by song identity. When recipe.song_seeded_alt_share is set,
+    picks a per-SONG (not per-section) alt share out of a fixed 8-slot pool,
+    shuffled once for the whole song via song_seed -- so different songs
+    land on different, but still bounded and idiomatic, ratios instead of
+    all following the identical alternation pattern (see the
+    corpus-recipe-song-variety design for why: re-mining showed real songs
+    commit to genuinely different dominant looks, which the old fixed
+    parity flattened away).
+    """
+    if recipe.song_seeded_alt_share is None or occurrence_index is None:
+        return (variation_seed // 2) % 2 == 1
+    pool_size = 8
+    alt_min, alt_max = recipe.song_seeded_alt_share
+    rng = random.Random(f"song_alt_share:{song_seed}:{recipe.family}:{group_name}")
+    alt_count = rng.randint(alt_min, alt_max)
+    slots = [True] * alt_count + [False] * (pool_size - alt_count)
+    rng.shuffle(slots)
+    return slots[occurrence_index % pool_size]
+
+
 def _place_corpus_recipe(
     group: PowerGroup,
     recipe: PropFamilyRecipe,
@@ -2635,6 +2674,8 @@ def _place_corpus_recipe(
     occurrence_index: int | None = None,
     theme_occasion: str | None = None,
     vocal_words: list[dict] | None = None,
+    song_seed: int = 0,
+    base_palette: list[str] | None = None,
 ) -> list[EffectPlacement] | None:
     """Place a corpus-mined prop-family idiom: solid-palette segments spanning
     consecutive beats, back-to-back across the section (the mined shows place
@@ -2711,7 +2752,9 @@ def _place_corpus_recipe(
                 # as a rotation effect missing from the catalog.
                 effect_name = recipe.effect_name
                 rotation_params = None
-    elif recipe.alt_effect_name is not None and (variation_seed // 2) % 2 == 1:
+    elif recipe.alt_effect_name is not None and _use_alt_effect(
+        recipe, variation_seed, occurrence_index, song_seed, group.name,
+    ):
         effect_name = recipe.alt_effect_name
         # 1-in-3 alt occurrences render a DIFFERENT effect entirely (e.g.
         # spiral trees' Color Wash) instead of alt_effect_name -- decided
@@ -2741,7 +2784,12 @@ def _place_corpus_recipe(
     # goes beneath the sustained Spirals layer (a full-buffer "Pulse Color"
     # flash on top would blot Spirals out entirely, confirmed against a
     # real generated .xsq).
-    bypass_color_over_mask = effect_name in ("Shape", "VU Meter")
+    alt_rotation_fired = (
+        rotation_params is not None
+        and effect_name == recipe.alt_rotation_effect_name
+        and recipe.alt_rotation_bypass_color_over_mask
+    )
+    bypass_color_over_mask = effect_name in ("Shape", "VU Meter") or alt_rotation_fired
     effect_def = effect_library.effects.get(effect_name)
     if effect_def is None:
         return None
@@ -2759,7 +2807,19 @@ def _place_corpus_recipe(
     # recipe's flat white mask color — theme_palette is the tier's actual
     # accent colors, the closest thing we have to the vendor's own
     # hardcoded multi-color palettes for these two effects.
-    if bypass_color_over_mask and theme_palette:
+    if alt_rotation_fired and theme_palette and base_palette:
+        # Star 5-arm Pinwheel: alternate arms between the tier's accent
+        # color and the theme's own base color, so the arms read as two
+        # deliberately contrasting colors instead of the family's usual
+        # flat On-mask look (user request 2026-08-02). Same vivid/spread
+        # pick as _vivid_mask_color's other callers, just drawing the two
+        # colors from the accent and base palettes respectively rather
+        # than both from the same list.
+        palette = [
+            _vivid_mask_color(theme_palette, variation_seed, group.name),
+            _vivid_mask_color(base_palette, variation_seed, group.name, offset=1),
+        ]
+    elif bypass_color_over_mask and theme_palette:
         palette = list(theme_palette)
     else:
         palette = list(recipe.palette)
@@ -2986,6 +3046,16 @@ def _place_corpus_recipe(
                 _jitter_shockwave_radius_width(
                     beat_params, f"shockwave_bounce:{group.name}:{start}",
                 )
+            if effect_name == "Pinwheel" and effect_name == recipe.alt_rotation_effect_name:
+                # Vary Thickness per beat within 50-100 (user request
+                # 2026-08-02) -- the mined star preset's fixed Thickness=50
+                # rendered identically every time this rotation slot fires,
+                # same staleness Color Wash's Cycles variation below fixes.
+                if beat_params is params:
+                    beat_params = dict(params)
+                beat_params["E_SLIDER_Pinwheel_Thickness"] = str(random.Random(
+                    f"pinwheel_thickness:{group.name}:{start}"
+                ).randint(_PINWHEEL_STAR_THICKNESS_MIN, _PINWHEEL_STAR_THICKNESS_MAX))
             if effect_name == "Color Wash" and effect_name == recipe.alt_rotation_effect_name:
                 # Vary Cycles per beat (user request 2026-07-28) -- the
                 # mined _COLOR_WASH_SPIRAL preset's Cycles=2 was the single
@@ -4635,6 +4705,11 @@ def _randomized_lightning_fields(seed_key: str) -> dict[str, str]:
 # Provisional -- 4 beats (~1 bar at 4/4) is a starting guess, may need
 # retuning after real playback.
 _SHOCKWAVE_BOUNCE_REROLL_BEATS = 4
+# Star 5-arm Pinwheel Thickness varies per beat within this range (user
+# request 2026-08-02, tightened from the original fixed 50 after checking
+# a real generated sequence) instead of staying fixed at one value.
+_PINWHEEL_STAR_THICKNESS_MIN = 50
+_PINWHEEL_STAR_THICKNESS_MAX = 100
 _SHOCKWAVE_JITTER_FIELDS = (
     "E_SLIDER_Shockwave_Start_Radius",
     "E_SLIDER_Shockwave_End_Radius",
@@ -4932,11 +5007,12 @@ def _place_picture_effects(
     return result
 
 
-# Shadow Text word effect (user request, 2026-07-29): a two-layer Text
-# effect -- the word in the song's anchor-palette color 1 on top, an offset
-# copy in color 2 directly behind it -- fired wherever a user-tagged word
-# (review UI's per-word "Shadow" toggle, GenerationConfig.shadow_text_words)
-# is sung, on the same Matrix/Mega Tree targets _place_picture_effects uses.
+# Shadow Text word effect (user request, 2026-07-29; scoped to a single
+# occurrence 2026-08-02): a two-layer Text effect -- the word in the song's
+# anchor-palette color 1 on top, an offset copy in color 2 directly behind
+# it -- fired for a user-tagged lyric occurrence (review UI's per-row
+# "Shadow" toggle, GenerationConfig.shadow_text_occurrences) on the same
+# Matrix/Mega Tree targets _place_picture_effects uses.
 # The offset is a fixed sub-buffer nudge copied verbatim from a user-
 # confirmed working xLights clipboard sample, which is what produces the
 # drop-shadow look; the front layer uses the effect's full default buffer
@@ -4962,6 +5038,18 @@ _SHADOW_TEXT_TREE_PARAMS: dict[str, str] = {
 }
 _SHADOW_TEXT_MIN_BURST_MS = 1_200
 _SHADOW_TEXT_FADE_MS = 200
+# Mega Tree shadow text must never rotate (user request, 2026-08-02) --
+# "shake"/"explode_spin" are the only _PICTURE_MOTIONS entries carrying a
+# rotation param; stripped for tree targets so a rotation-carrying motion
+# pick degrades to its non-rotating remainder (shake -> no-op, explode_spin
+# -> zoom-only, matching "explode") instead of being excluded from the
+# random pick outright, which would have skewed the weighting.
+_SHADOW_TEXT_ROTATION_KEYS = ("B_SLIDER_Rotations", "B_VALUECURVE_Rotation")
+# Short words render at the tree's default bold font instead of the
+# narrower 7-7x9 Bold -- a 5-character-or-fewer word fits fine at the
+# larger size and reads more clearly (user request, 2026-08-02).
+_SHADOW_TEXT_TREE_SHORT_WORD_FONT = "10-12x12 Bold"
+_SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN = 5
 
 
 def _is_shadow_text_tree_target(target_name: str) -> bool:
@@ -4974,14 +5062,14 @@ def _place_shadow_text_effects(
     duration_ms: int,
     variation_seed: int,
     vocal_words: Optional[list[dict]],
-    shadow_words: Optional[list[str]],
+    shadow_occurrences: Optional[list[dict]],
     anchor_palette: Optional[list[str]] = None,
     existing_layers: dict[str, int] | None = None,
 ) -> dict[str, list[EffectPlacement]]:
-    """Place a two-layer "Shadow" Text effect on every occurrence of a
-    user-tagged word (``shadow_words``) in ``vocal_words``, on the same
-    Matrix/Mega Tree targets as ``_place_picture_effects``
-    (``_matrix_megatree_targets``).
+    """Place a two-layer "Shadow" Text effect on each user-tagged lyric
+    occurrence (``shadow_occurrences``, each ``{"word", "start_ms"}``) in
+    ``vocal_words``, on the same Matrix/Mega Tree targets as
+    ``_place_picture_effects`` (``_matrix_megatree_targets``).
 
     Each occurrence produces two ``EffectPlacement``s on the same target and
     time window: a front layer (the word, anchor palette color 1, full
@@ -4999,22 +5087,25 @@ def _place_shadow_text_effects(
     the matrix defaults -- see the constants' comment for why.
 
     Returns ``{}`` when there are no eligible targets, no words, or no
-    tagged word ever occurs.
+    tagged occurrence ever matches.
     """
-    if duration_ms <= 0 or not vocal_words or not shadow_words:
+    if duration_ms <= 0 or not vocal_words or not shadow_occurrences:
         return {}
     targets = _matrix_megatree_targets(props, groups)
     if not targets:
         return {}
 
-    shadow_word_set = {re.sub(r"[^a-z]", "", w.lower()) for w in shadow_words}
-    shadow_word_set.discard("")
-    if not shadow_word_set:
+    shadow_pairs = {
+        (re.sub(r"[^a-z]", "", str(o.get("word", "")).lower()), o.get("start_ms"))
+        for o in shadow_occurrences
+    }
+    shadow_pairs = {(w, s) for w, s in shadow_pairs if w}
+    if not shadow_pairs:
         return {}
 
     spans = [
         (start, end, text) for start, end, text in _word_spans(vocal_words)
-        if re.sub(r"[^a-z]", "", text.lower()) in shadow_word_set
+        if (re.sub(r"[^a-z]", "", text.lower()), start) in shadow_pairs
     ]
     if not spans:
         return {}
@@ -5059,6 +5150,16 @@ def _place_shadow_text_effects(
                 {"E_CHOICE_Text_Font": _LYRIC_TEXT_SMALL_FONT}
                 if not is_tree and "small" in target_name.lower() else {}
             )
+            short_word_font_params = (
+                {"E_CHOICE_Text_Font": _SHADOW_TEXT_TREE_SHORT_WORD_FONT}
+                if is_tree and len(text) <= _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN else {}
+            )
+            motion_params = _PICTURE_MOTIONS[motion]
+            if is_tree:
+                motion_params = {
+                    k: v for k, v in motion_params.items()
+                    if k not in _SHADOW_TEXT_ROTATION_KEYS
+                }
             result.setdefault(target_name, []).append(EffectPlacement(
                 effect_name="Text",
                 xlights_id="Text",
@@ -5070,7 +5171,8 @@ def _place_shadow_text_effects(
                     "E_CHECKBOX_Text_PixelOffsets": "1",
                     **font_params,
                     **family_params,
-                    **_PICTURE_MOTIONS[motion],
+                    **short_word_font_params,
+                    **motion_params,
                 },
                 color_palette=[color1],
                 layer=front_layer_by_target[target_name],
@@ -5089,7 +5191,8 @@ def _place_shadow_text_effects(
                     "B_CUSTOM_SubBuffer": subbuffer,
                     **font_params,
                     **family_params,
-                    **_PICTURE_MOTIONS[motion],
+                    **short_word_font_params,
+                    **motion_params,
                 },
                 color_palette=[color2],
                 layer=shadow_layer_by_target[target_name],

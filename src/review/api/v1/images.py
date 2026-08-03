@@ -6,11 +6,12 @@ to every song's Pictures placement and every future song's suggested-topics
 matching, not just the song it was uploaded against.
 
 Also hosts the per-song ignore list (``/songs/<song_id>/ignored-images``):
-unmapping a word→image match on the Pictures screen suppresses that word's
-lyric-matched Pictures bursts for this song only — the library entry itself
-stays available to every other song. Stored as ``ignored_image_words`` in
-the song's session JSON and consumed at export time
-(``GenerationConfig.ignored_image_words``).
+unmapping a word→image match on the Pictures screen suppresses that ONE
+lyric occurrence's Pictures burst for this song only — other occurrences of
+the same word, and the library entry itself, stay available. Stored as
+``ignored_image_occurrences`` (each ``{"word", "start_ms"}``) in the song's
+session JSON and consumed at export time
+(``GenerationConfig.ignored_image_occurrences``).
 """
 from __future__ import annotations
 
@@ -61,47 +62,53 @@ def upload_image():
     return jsonify({"created": True, "image": entry}), 201
 
 
-def _load_ignored_words(song_id: str) -> list[str]:
+def _load_ignored_occurrences(song_id: str) -> list[dict]:
     from src.review.storage.assignments import load_session
 
     session = load_session(song_id) or {}
-    return [str(w) for w in session.get("ignored_image_words", [])]
+    return [
+        {"word": str(o.get("word", "")), "start_ms": o.get("start_ms")}
+        for o in session.get("ignored_image_occurrences", [])
+    ]
 
 
-def _save_ignored_words(song_id: str, words: list[str]) -> None:
+def _save_ignored_occurrences(song_id: str, occurrences: list[dict]) -> None:
     from src.review.storage.assignments import load_session, save_full_session
 
     session = load_session(song_id) or {}
-    session["ignored_image_words"] = words
+    session["ignored_image_occurrences"] = occurrences
     save_full_session(song_id, session)
 
 
 @api_v1.route("/songs/<song_id>/ignored-images", methods=["GET"])
 def list_ignored_images(song_id: str):
-    return jsonify({"words": _load_ignored_words(song_id)}), 200
+    return jsonify({"occurrences": _load_ignored_occurrences(song_id)}), 200
 
 
 @api_v1.route("/songs/<song_id>/ignored-images", methods=["POST"])
 def ignore_image_word(song_id: str):
     body = request.get_json(silent=True) or {}
     word = str(body.get("word") or "").strip().lower()
+    start_ms = body.get("start_ms")
     if not word:
         return jsonify({"error": {"code": "missing_word", "message": "A word is required"}}), 400
+    if start_ms is None:
+        return jsonify({"error": {"code": "missing_start_ms", "message": "start_ms is required"}}), 400
 
-    words = _load_ignored_words(song_id)
-    if word not in words:
-        words.append(word)
-        _save_ignored_words(song_id, words)
-    return jsonify({"ignored": True, "words": words}), 200
+    occurrences = _load_ignored_occurrences(song_id)
+    if not any(o["word"] == word and o["start_ms"] == start_ms for o in occurrences):
+        occurrences.append({"word": word, "start_ms": start_ms})
+        _save_ignored_occurrences(song_id, occurrences)
+    return jsonify({"ignored": True, "occurrences": occurrences}), 200
 
 
-@api_v1.route("/songs/<song_id>/ignored-images/<word>", methods=["DELETE"])
-def restore_image_word(song_id: str, word: str):
+@api_v1.route("/songs/<song_id>/ignored-images/<word>/<int:start_ms>", methods=["DELETE"])
+def restore_image_word(song_id: str, word: str, start_ms: int):
     token = word.strip().lower()
-    words = _load_ignored_words(song_id)
-    if token not in words:
+    occurrences = _load_ignored_occurrences(song_id)
+    if not any(o["word"] == token and o["start_ms"] == start_ms for o in occurrences):
         return jsonify({"error": {"code": "not_ignored",
-                                   "message": f"'{token}' is not in this song's ignore list"}}), 404
-    words = [w for w in words if w != token]
-    _save_ignored_words(song_id, words)
-    return jsonify({"restored": True, "words": words}), 200
+                                   "message": f"'{token}' at {start_ms}ms is not in this song's ignore list"}}), 404
+    occurrences = [o for o in occurrences if not (o["word"] == token and o["start_ms"] == start_ms)]
+    _save_ignored_occurrences(song_id, occurrences)
+    return jsonify({"restored": True, "occurrences": occurrences}), 200

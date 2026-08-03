@@ -121,6 +121,11 @@ class TestBuildPlan:
         for assignment in plan.sections:
             assert assignment.theme is not None
             assert assignment.section.label in ("intro", "verse", "chorus", "outro")
+        # plan_validator.validate_plan() output (see
+        # openspec/changes/plan-variety-validator) -- this short fixture
+        # doesn't have enough qualifying occurrences to trip the monotony
+        # check, but the attribute must exist and be a list.
+        assert isinstance(plan.warnings, list)
 
     def test_plan_has_group_placements(self, tmp_path: Path):
         hierarchy = _make_hierarchy()

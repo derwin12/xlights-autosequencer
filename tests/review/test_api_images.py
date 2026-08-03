@@ -78,44 +78,59 @@ class TestIgnoredImages:
     def test_empty_by_default(self, client):
         resp = client.get(f"/api/v1/songs/{self.SONG}/ignored-images")
         assert resp.status_code == 200
-        assert resp.get_json()["words"] == []
+        assert resp.get_json()["occurrences"] == []
 
-    def test_ignore_adds_word_lowercased(self, client):
+    def test_ignore_adds_occurrence_word_lowercased(self, client):
         resp = client.post(
-            f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "Snowman"}
+            f"/api/v1/songs/{self.SONG}/ignored-images",
+            json={"word": "Snowman", "start_ms": 1000},
         )
         assert resp.status_code == 200
-        assert resp.get_json()["words"] == ["snowman"]
+        assert resp.get_json()["occurrences"] == [{"word": "snowman", "start_ms": 1000}]
         listed = client.get(f"/api/v1/songs/{self.SONG}/ignored-images").get_json()
-        assert listed["words"] == ["snowman"]
+        assert listed["occurrences"] == [{"word": "snowman", "start_ms": 1000}]
 
     def test_ignore_is_idempotent(self, client):
-        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman"})
-        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman"})
+        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman", "start_ms": 1000})
+        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman", "start_ms": 1000})
         listed = client.get(f"/api/v1/songs/{self.SONG}/ignored-images").get_json()
-        assert listed["words"] == ["snowman"]
+        assert listed["occurrences"] == [{"word": "snowman", "start_ms": 1000}]
+
+    def test_ignoring_one_occurrence_leaves_other_occurrences_of_same_word(self, client):
+        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman", "start_ms": 1000})
+        resp = client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman", "start_ms": 2000})
+        occurrences = resp.get_json()["occurrences"]
+        assert {"word": "snowman", "start_ms": 1000} in occurrences
+        assert {"word": "snowman", "start_ms": 2000} in occurrences
+        assert len(occurrences) == 2
 
     def test_missing_word_returns_400(self, client):
-        resp = client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={})
+        resp = client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"start_ms": 1000})
         assert resp.status_code == 400
         assert resp.get_json()["error"]["code"] == "missing_word"
 
-    def test_restore_removes_word(self, client):
-        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman"})
-        resp = client.delete(f"/api/v1/songs/{self.SONG}/ignored-images/snowman")
+    def test_missing_start_ms_returns_400(self, client):
+        resp = client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman"})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_start_ms"
+
+    def test_restore_removes_only_that_occurrence(self, client):
+        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman", "start_ms": 1000})
+        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman", "start_ms": 2000})
+        resp = client.delete(f"/api/v1/songs/{self.SONG}/ignored-images/snowman/1000")
         assert resp.status_code == 200
         listed = client.get(f"/api/v1/songs/{self.SONG}/ignored-images").get_json()
-        assert listed["words"] == []
+        assert listed["occurrences"] == [{"word": "snowman", "start_ms": 2000}]
 
-    def test_restore_unknown_word_returns_404(self, client):
-        resp = client.delete(f"/api/v1/songs/{self.SONG}/ignored-images/nothere")
+    def test_restore_unknown_occurrence_returns_404(self, client):
+        resp = client.delete(f"/api/v1/songs/{self.SONG}/ignored-images/nothere/1000")
         assert resp.status_code == 404
 
     def test_ignore_preserves_existing_session_fields(self, client):
         from src.review.storage.assignments import load_session, save_full_session
 
         save_full_session(self.SONG, {"sections": [{"label": "verse"}], "words": []})
-        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman"})
+        client.post(f"/api/v1/songs/{self.SONG}/ignored-images", json={"word": "snowman", "start_ms": 1000})
         session = load_session(self.SONG)
         assert session["sections"] == [{"label": "verse"}]
-        assert session["ignored_image_words"] == ["snowman"]
+        assert session["ignored_image_occurrences"] == [{"word": "snowman", "start_ms": 1000}]

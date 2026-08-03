@@ -33,7 +33,7 @@ Multiple entries may share the same `song_id` (different pro sequences for the s
 md5sum <mp3_path> | awk '{print "md5:" $1}'
 ```
 
-## Current corpus (9 sequences, 6 songs)
+## Current corpus (13 sequences, 10 songs)
 
 | song_id | pro_id | notes |
 |---|---|---|
@@ -46,15 +46,18 @@ md5sum <mp3_path> | awk '{print "md5:" $1}'
 | light-of-christmas | xatw-alt | |
 | kid-on-christmas | xatw | |
 | shut-up-and-dance | jeremy-poling | |
+| believer | xatw | |
+| magic | xatw | instrumental (no vocals) |
+| sounding-joy | xatw | |
+| uptown-funk | xatw | |
 
-## Missing MP3s (3 songs not yet in corpus)
+## Missing MP3s (2 songs not yet in corpus)
 
 The following `.xsq` files exist on disk but have no matching MP3:
 
 | XSQ filename | Expected MP3 basename convention |
 |---|---|
 | `The Weeknd AG - Save Your Tears HD.xsq` | `## - Save Your Tears.mp3` |
-| `Uptown Funk (Radio Edit) Updated 11.25.xsqz` | `## - Uptown Funk.mp3` |
 | `Idina Menzel - Christmas Just Ain't Christmas.xsq` | `## - Christmas Just Ain't Christmas.mp3` |
 
 Acquire the MP3s manually (purchase/rip from a legitimate source), place them in `/home/node/xlights/baseline-sequences/` following the `NN - Title.mp3` naming convention used by the existing files, then add entries to `manifest.json` with the computed `audio_hash`.

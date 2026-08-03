@@ -169,6 +169,37 @@
   gap: 10px;
 }
 
+.fieldLabelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.fieldLabelRow .fieldLabel {
+  margin-top: 0;
+}
+
+.suggestBtn {
+  background: transparent;
+  border: 1px solid var(--color-accent, #4ade80);
+  color: var(--color-accent, #4ade80);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.suggestBtn:hover:not(:disabled) {
+  background: var(--color-accent, #4ade80);
+  color: #000;
+}
+
+.suggestBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .fieldCol {
   flex: 1;
   display: flex;

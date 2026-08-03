@@ -1,8 +1,30 @@
 """Tests for GET /api/v1/themes — T040."""
+from unittest.mock import patch
+
 import pytest
+
+from src.review.storage.library import save_library
 
 
 SECTION_KINDS = {"intro", "verse", "chorus", "bridge", "outro", "drop"}
+
+
+def _seed_song(song_id: str, title: str = "Believer", artist: str = "Imagine Dragons"):
+    save_library({
+        "schema_version": 1,
+        "songs": [{
+            "song_id": song_id,
+            "title": title,
+            "artist": artist,
+            "status": "analyzed",
+            "source_paths": [],
+            "folder_id": "unfiled",
+            "imported_at": "2026-04-21T00:00:00Z",
+        }],
+        "folders": [{"id": "unfiled", "name": "Unfiled", "created_at": "2026-04-21T00:00:00Z"}],
+        "preferences": {},
+        "layout": None,
+    })
 
 
 def test_themes_returns_200(client):
@@ -83,3 +105,56 @@ def test_themes_swatches_include_every_accent_color(client):
             assert accent_color in swatches, (
                 f"{name}: accent color {accent_color} missing from swatches"
             )
+
+
+# ── POST /songs/<song_id>/theme-suggest-palette ───────────────────────────────
+# See openspec/changes/theme-ai-palette-suggest. suggest_palette() itself is
+# unit-tested against every failure mode in tests/unit/test_ai_palette.py;
+# these tests cover the endpoint's own routing/lookup/response-shape logic
+# only, with suggest_palette monkeypatched so no real network call happens.
+
+
+class TestSuggestThemePalette:
+    def test_song_not_found_returns_404(self, client):
+        resp = client.post("/api/v1/songs/does-not-exist/theme-suggest-palette", json={})
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "song_not_found"
+
+    def test_success_returns_palette(self, client):
+        _seed_song("themesong0000001")
+        with patch(
+            "src.review.api.v1.themes.suggest_palette",
+            return_value=["#FF6B6B", "#FFD6A8", "#88B04B", "#4ECDC4"],
+        ) as mocked:
+            resp = client.post(
+                "/api/v1/songs/themesong0000001/theme-suggest-palette",
+                json={"genre": "rock", "occasion": "general"},
+            )
+        assert resp.status_code == 200
+        assert resp.get_json()["palette"] == ["#FF6B6B", "#FFD6A8", "#88B04B", "#4ECDC4"]
+        # Title/artist looked up from the library entry, not the request body.
+        _, kwargs = mocked.call_args
+        assert kwargs["title"] == "Believer"
+        assert kwargs["artist"] == "Imagine Dragons"
+        assert kwargs["genre"] == "rock"
+        assert kwargs["occasion"] == "general"
+
+    def test_ollama_unavailable_returns_graceful_error_not_4xx(self, client):
+        _seed_song("themesong0000002")
+        with patch("src.review.api.v1.themes.suggest_palette", return_value=None):
+            resp = client.post(
+                "/api/v1/songs/themesong0000002/theme-suggest-palette", json={},
+            )
+        # Expected, non-exceptional outcome — 200 with an error payload, not
+        # a 4xx/5xx (see the route's own docstring for why).
+        assert resp.status_code == 200
+        assert resp.get_json()["error"]["code"] == "ai_unavailable"
+
+    def test_missing_body_defaults_occasion_to_general(self, client):
+        _seed_song("themesong0000003")
+        with patch(
+            "src.review.api.v1.themes.suggest_palette", return_value=["#111111"] * 4,
+        ) as mocked:
+            client.post("/api/v1/songs/themesong0000003/theme-suggest-palette")
+        _, kwargs = mocked.call_args
+        assert kwargs["occasion"] == "general"

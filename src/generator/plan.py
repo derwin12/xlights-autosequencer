@@ -34,6 +34,7 @@ from src.generator.effect_placer import (
 )
 from src.generator.corpus_recipes import CORPUS_RECIPES, section_qualifies
 from src.generator.image_catalog import suggest_images_for_words
+from src.generator.plan_validator import validate_plan
 from src.generator.energy import derive_section_energies
 from src.generator.moving_head import (
     place_moving_head_beat_bursts,
@@ -522,7 +523,7 @@ def build_plan(
 
     # 5e. Library images on Matrix/Mega Tree props, timed to lyric matches
     # (config.picture_effects), and 5e-2. Shadow Text word effects
-    # (config.shadow_text_words). Song-scoped, same rationale as
+    # (config.shadow_text_occurrences). Song-scoped, same rationale as
     # vocal_effects/video_effects/crash_effects. Both target the same
     # Matrix/Mega Tree props and share the same layer-reservation rule, so
     # ``existing_layers`` is computed once for both.
@@ -545,7 +546,7 @@ def build_plan(
     picture_effects: dict[str, list] = {}
     if config.picture_effects and config.vocal_words:
         word_image_matches = suggest_images_for_words(
-            config.vocal_words, ignored_words=config.ignored_image_words,
+            config.vocal_words, ignored_occurrences=config.ignored_image_occurrences,
         )
         if word_image_matches:
             picture_effects = _place_picture_effects(
@@ -559,14 +560,14 @@ def build_plan(
             )
 
     shadow_text_effects: dict[str, list] = {}
-    if config.shadow_text_words and config.vocal_words:
+    if config.shadow_text_occurrences and config.vocal_words:
         shadow_text_effects = _place_shadow_text_effects(
             props=effect_props,
             groups=groups,
             duration_ms=hierarchy.duration_ms,
             variation_seed=config.variation_seed,
             vocal_words=config.vocal_words,
-            shadow_words=config.shadow_text_words,
+            shadow_occurrences=config.shadow_text_occurrences,
             anchor_palette=_anchor,
             existing_layers=existing_layers,
         )
@@ -612,7 +613,14 @@ def build_plan(
     # ahead of the beat.
     _place_start_of_song_fade(assignments, groups, effect_library, hierarchy)
 
-    # 7. Assemble plan
+    # 7. Pre-write diagnostics (informational only — see
+    # openspec/changes/plan-variety-validator). Logged here so they surface
+    # in server/CLI logs without any caller needing to read plan.warnings.
+    plan_warnings = validate_plan(assignments, groups)
+    for warning in plan_warnings:
+        logger.warning("[%s] %s", warning.code, warning.message)
+
+    # 8. Assemble plan
     return SequencePlan(
         song_profile=profile,
         sections=assignments,
@@ -622,6 +630,7 @@ def build_plan(
         vocal_effects=vocal_effects,
         video_effects=video_effects,
         crash_effects=crash_effects,
+        warnings=plan_warnings,
         picture_effects=picture_effects,
         shadow_text_effects=shadow_text_effects,
         moving_head_effects=moving_head_effects,

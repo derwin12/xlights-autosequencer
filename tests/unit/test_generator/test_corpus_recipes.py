@@ -10,7 +10,11 @@ from src.generator.corpus_recipes import (
     recipe_for_group,
     section_qualifies,
 )
-from src.generator.effect_placer import _SHOCKWAVE_BOUNCE_REROLL_BEATS, place_effects
+from src.generator.effect_placer import (
+    _SHOCKWAVE_BOUNCE_REROLL_BEATS,
+    _use_alt_effect,
+    place_effects,
+)
 from src.generator.models import SectionAssignment, SectionEnergy
 from src.grouper.grouper import PowerGroup
 from src.themes.models import EffectLayer, Theme
@@ -1238,6 +1242,61 @@ class TestMinitreeRecipe:
         layer0_names = {p.effect_name for p in placements if p.layer == 0}
         assert layer0_names == {"On"}
 
+    def test_song_seeded_alt_share_varies_by_song(self) -> None:
+        # 2026-08-02: minitree opted into song_seeded_alt_share so the
+        # Shockwave-vs-SingleStrand split differs song to song instead of
+        # every song following the identical (variation_seed // 2) % 2
+        # rhythm. Different song_seed values must not all produce the same
+        # occurrence-0..7 alt pattern.
+        minitree = next(r for r in CORPUS_RECIPES if r.family == "minitree")
+        patterns = {
+            tuple(
+                _use_alt_effect(minitree, variation_seed=0, occurrence_index=i,
+                                 song_seed=song_seed, group_name="06_PROP_Tree")
+                for i in range(8)
+            )
+            for song_seed in range(10)
+        }
+        assert len(patterns) > 1, "every song_seed produced the identical alt pattern"
+
+    def test_song_seeded_alt_share_never_reaches_zero_or_eight(self) -> None:
+        # The (2, 6)-of-8 bound must hold for every song -- a song landing
+        # on 0/8 (never alt) or 8/8 (always alt) is the exact "one effect
+        # the whole song" monotony bug this mechanism exists to avoid.
+        minitree = next(r for r in CORPUS_RECIPES if r.family == "minitree")
+        for song_seed in range(50):
+            alt_count = sum(
+                _use_alt_effect(minitree, variation_seed=0, occurrence_index=i,
+                                 song_seed=song_seed, group_name="06_PROP_Tree")
+                for i in range(8)
+            )
+            assert 2 <= alt_count <= 6, f"song_seed={song_seed} produced alt_count={alt_count}"
+
+    def test_song_seeded_alt_share_stable_within_one_song(self) -> None:
+        # The same song_seed must reproduce the identical occurrence pattern
+        # on regeneration (determinism), and other families without
+        # song_seeded_alt_share must keep the old plain parity behavior.
+        minitree = next(r for r in CORPUS_RECIPES if r.family == "minitree")
+        pattern_a = [
+            _use_alt_effect(minitree, variation_seed=0, occurrence_index=i,
+                             song_seed=5, group_name="06_PROP_Tree")
+            for i in range(8)
+        ]
+        pattern_b = [
+            _use_alt_effect(minitree, variation_seed=0, occurrence_index=i,
+                             song_seed=5, group_name="06_PROP_Tree")
+            for i in range(8)
+        ]
+        assert pattern_a == pattern_b
+
+        arch = next(r for r in CORPUS_RECIPES if r.family == "arch")
+        assert arch.song_seeded_alt_share is None
+        for variation_seed in range(6):
+            assert _use_alt_effect(
+                arch, variation_seed=variation_seed, occurrence_index=0,
+                song_seed=999, group_name="06_PROP_Arch",
+            ) == ((variation_seed // 2) % 2 == 1)
+
 
 _SPIRAL_TREE_GROUP = PowerGroup(
     name="06_PROP_Spiral_Tree", tier=6, members=["Spiral Tree 1", "Spiral Tree 2"],
@@ -1307,14 +1366,20 @@ class TestSpiralTreeRecipe:
             assert p.parameters["E_CHECKBOX_Chase_Group_All"] == "1"
 
     def test_minitree_alternate_is_shockwave_burst(self) -> None:
-        # corpus_occurrence=0 (even) forces the explode preset on the first
-        # beat-block, regardless of the +/-10 jitter now applied on top
-        # (2026-07-28) -- End_Radius lands within 10 of the mined 100
-        # baseline, not exactly 100. Only the first block (beats 0-3 of the
-        # 8-beat fixture) is checked here -- see
+        # Minitree opted into song_seeded_alt_share (2026-08-02): alt
+        # selection is now keyed by song_seed (= variation_seed here, since
+        # the test assignment's section_index defaults to 0), not plain
+        # variation_seed parity. variation_seed=2 is pinned because it
+        # happens to land both occurrence 0 and 1 on the alt (Shockwave)
+        # slot in the shuffled 8-slot pool -- verified against the same RNG
+        # the implementation uses. corpus_occurrence=0 forces the explode
+        # preset on the first beat-block, regardless of the +/-10 jitter now
+        # applied on top (2026-07-28) -- End_Radius lands within 10 of the
+        # mined 100 baseline, not exactly 100. Only the first block (beats
+        # 0-3 of the 8-beat fixture) is checked here -- see
         # test_shockwave_bounce_rerolls_within_one_occurrence for the
         # within-occurrence alternation itself.
-        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
+        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=2,
                          corpus_occurrence={"minitree": 0})
         placements = result["06_PROP_Tree"]
         assert placements
@@ -1325,10 +1390,13 @@ class TestSpiralTreeRecipe:
             assert "E_CHOICE_Chase_Type1" not in p.parameters
 
     def test_minitree_bounce_occurrence_implodes(self) -> None:
-        # corpus_occurrence=1 (odd) selects the implode "bounce" preset for
+        # variation_seed=2 pinned for the same song_seed reason as
+        # test_minitree_alternate_is_shockwave_burst -- occurrence 1 also
+        # lands on the alt (Shockwave) slot at this song_seed. corpus_
+        # occurrence=1 (odd) then selects the implode "bounce" preset for
         # the first beat-block -- Start/End Radius roles swapped from the
         # explode baseline.
-        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
+        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=2,
                          corpus_occurrence={"minitree": 1})
         placements = result["06_PROP_Tree"]
         assert placements
@@ -1345,7 +1413,9 @@ class TestSpiralTreeRecipe:
         # The 8-beat fixture spans two _SHOCKWAVE_BOUNCE_REROLL_BEATS blocks
         # (4 beats each); block 1 must flip explode<->implode relative to
         # block 0 within this SAME occurrence (no corpus_occurrence change).
-        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=3,
+        # variation_seed=2 pinned so occurrence 0 lands on the alt
+        # (Shockwave) slot -- see test_minitree_alternate_is_shockwave_burst.
+        result = _place(_make_section(label="chorus"), _MINITREE_GROUP, variation_seed=2,
                          corpus_occurrence={"minitree": 0})
         placements = result["06_PROP_Tree"]
         assert len(placements) == 8
@@ -1601,6 +1671,66 @@ class TestFlipTransformAlternation:
         placements = result["06_PROP_Snowflake"]
         assert placements
         assert all("B_CHOICE_BufferTransform" not in p.parameters for p in placements)
+
+    def test_star_alt_rotation_includes_5arm_pinwheel(self) -> None:
+        # 2026-08-02: 1-in-3 alt occurrences (occurrence % 3 == 2) render a
+        # 5-arm Pinwheel instead of Single Strand -- 5 arms matching the
+        # star model's 5 points, straight (untwisted) and thick.
+        chase = _place(_make_section(label="chorus"), _STAR_GROUP, variation_seed=3,
+                       library_names=_LIBRARY_STAR_WITH_PINWHEEL,
+                       corpus_occurrence={"star": 0})
+        pinwheel = _place(_make_section(label="chorus"), _STAR_GROUP, variation_seed=3,
+                          library_names=_LIBRARY_STAR_WITH_PINWHEEL,
+                          corpus_occurrence={"star": 2})
+        chase_placements = [p for p in chase["06_PROP_Star"] if p.effect_name == "Single Strand"]
+        assert chase_placements
+        placements = pinwheel["06_PROP_Star"]
+        assert placements
+        assert all(p.effect_name == "Pinwheel" for p in placements)
+        params = dict(placements[0].parameters)
+        assert params["E_SLIDER_Pinwheel_Arms"] == "5"
+        assert params["E_SLIDER_Pinwheel_Twist"] == "0"
+        assert 50 <= int(params["E_SLIDER_Pinwheel_Thickness"]) <= 100
+        # 2026-08-02 follow-up: xLights was rendering these at "Per Model
+        # Default" against the whole group, not each star individually.
+        assert params["B_CHOICE_BufferStyle"] == "Per Model Per Preview"
+
+    def test_star_pinwheel_thickness_varies_per_beat(self) -> None:
+        # 2026-08-02 follow-up: Thickness must vary within 50-100 per beat
+        # rather than staying fixed at the mined default of 50, same
+        # staleness fix as test_color_wash_cycles_varies_per_beat.
+        result = _place(_make_section(label="chorus"), _STAR_GROUP, variation_seed=3,
+                        library_names=_LIBRARY_STAR_WITH_PINWHEEL,
+                        corpus_occurrence={"star": 2})
+        placements = result["06_PROP_Star"]
+        assert placements
+        thicknesses = {int(p.parameters["E_SLIDER_Pinwheel_Thickness"]) for p in placements}
+        assert all(50 <= t <= 100 for t in thicknesses)
+        assert len(thicknesses) >= 2
+
+    def test_star_pinwheel_rotation_uses_contrasting_colors_not_mask(self) -> None:
+        # The Pinwheel rotation supplies its own two-color arm palette
+        # (accent vs. base theme color) instead of the family's usual flat
+        # On "2 is Unmask" overlay color -- no On layer should accompany it.
+        result = _place(_make_section(label="chorus"), _STAR_GROUP, variation_seed=3,
+                        library_names=_LIBRARY_STAR_WITH_PINWHEEL,
+                        corpus_occurrence={"star": 2})
+        placements = result["06_PROP_Star"]
+        assert placements
+        assert all(p.effect_name != "On" for p in placements)
+        for p in placements:
+            assert len(p.color_palette) == 2
+            assert p.color_palette[0] != p.color_palette[1]
+
+    def test_star_falls_back_to_chase_without_pinwheel(self) -> None:
+        # If Pinwheel isn't in the effect library, the occurrence that would
+        # have picked it falls back to the ordinary Single Strand alt (same
+        # fallback shape as spiraltree's missing-Color-Wash fallback).
+        result = _place(_make_section(label="chorus"), _STAR_GROUP, variation_seed=3,
+                        library_names=_LIBRARY_STAR,
+                        corpus_occurrence={"star": 2})
+        placements = [p for p in result["06_PROP_Star"] if p.effect_name == "Single Strand"]
+        assert placements
 
 
 # ── vivid unmask color selection ─────────────────────────────────────────────
@@ -2053,6 +2183,7 @@ _STAR_GROUP = PowerGroup(
 )
 _LIBRARY_STAR = ("Color Wash", "Shockwave", "On", "Ripple",
                  "Single Strand", "Spirals")
+_LIBRARY_STAR_WITH_PINWHEEL = _LIBRARY_STAR + ("Pinwheel",)
 
 
 class TestStarRecipe:

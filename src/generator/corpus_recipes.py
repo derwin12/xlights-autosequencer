@@ -113,6 +113,14 @@ class PropFamilyRecipe:
     # is missing from the effect library.
     alt_rotation_effect_name: str | None = None
     alt_rotation_parameter_overrides: tuple[tuple[str, str], ...] = ()
+    # When True, the alt-rotation effect supplies its own multi-color look
+    # instead of the usual On "2 is Unmask" single-color overlay (same idiom
+    # as Shape/VU Meter's bypass_color_over_mask in effect_placer.py) -- e.g.
+    # stars' 5-arm Pinwheel rotation (user request 2026-08-02), whose arms
+    # should show two contrasting theme colors rather than one flat mask
+    # color. False for every existing alt-rotation effect (Color Wash), so
+    # this is opt-in and doesn't change their current On-mask coloring.
+    alt_rotation_bypass_color_over_mask: bool = False
     # Optional secondary alternate keyed by section label rather than
     # variation_seed parity -- some families have a section label whose mined
     # idiom genuinely differs from both the primary and the seed-alternated
@@ -299,6 +307,25 @@ class PropFamilyRecipe:
     # ~1-in-3 occurrences) brings megatree in line with that typical range
     # instead of the outlier.
     mirror_overlay_frequency: int = 1
+    # Per-SONG (not per-occurrence) alt-effect share, as (min, max) out of a
+    # fixed 8-slot pool. The plain alt_effect_name path below alternates
+    # primary/alt with the exact same (variation_seed // 2) % 2 parity for
+    # every song -- fine for within-song variety, but it means every
+    # generated song walks the identical primary/alt rhythm regardless of
+    # which song it is. Re-mining after 4 new songs (2026-08-02) showed this
+    # actually erases real signal: minitree's original 12-song corpus was
+    # SingleStrand-dominant (73%), but all 4 new songs independently favor
+    # Shockwave (54/54/38/59%) -- different real songs commit to different
+    # dominant looks, and one fixed alternation pattern flattens that into
+    # one identical rhythm for every generated song. When set, a per-song
+    # (not per-section) seed picks how many of every 8 occurrences use
+    # alt_effect_name, shuffled once for the whole song -- so different
+    # songs land on different but still-idiomatic ratios. Bounded away from
+    # 0 and 8 deliberately: a song landing on the 0/8 or 8/8 extreme is the
+    # exact "one effect the whole song" monotony bug already fixed elsewhere
+    # (see effect_placer._place_corpus_recipe's song_seed handling).
+    # None -> unaffected, existing (variation_seed // 2) % 2 parity applies.
+    song_seeded_alt_share: tuple[int, int] | None = None
 
 
 # Mined presets — near-unanimous across all 12 reference packages:
@@ -430,6 +457,25 @@ _PINWHEEL_MATRIX_8ARM: tuple[tuple[str, str], ...] = (
     ("E_SLIDER_Pinwheel_Speed", "10"),
     ("E_SLIDER_Pinwheel_Thickness", "15"),
     ("E_SLIDER_Pinwheel_Twist", "20"),
+)
+
+
+# Star 5-arm Pinwheel — user request 2026-08-02: a Pinwheel with 5 thick
+# arms matching a star model's 5 points, in place of the family's usual
+# Shockwave/Single Strand idiom. No twist so the arms read as straight
+# points radiating from the center (a spiral twist would blur the star
+# shape) -- untwisted, plain 3D (matching the family's other flat props,
+# not the matrix presets' 3D Inverted). Thickness 50 -- thick enough that
+# each arm reads solidly at a star prop's low pixel density, still leaving
+# visible gaps between the 5 points.
+_PINWHEEL_STAR_5ARM: tuple[tuple[str, str], ...] = (
+    ("B_CHOICE_BufferStyle", "Per Model Per Preview"),
+    ("E_CHOICE_Pinwheel_Style", "New Render Method"),
+    ("E_CHOICE_Pinwheel_3D", "None"),
+    ("E_SLIDER_Pinwheel_Arms", "5"),
+    ("E_SLIDER_Pinwheel_Speed", "12"),
+    ("E_SLIDER_Pinwheel_Thickness", "50"),
+    ("E_SLIDER_Pinwheel_Twist", "0"),
 )
 
 
@@ -1735,6 +1781,15 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         # vertical/spiraltree/megatopper/icicle (user request 2026-07-22,
         # spotted on a real generated sequence's 06_PROP_Tree).
         off_backdrop=True,
+        # Song-seeded alt share (2026-08-02 pilot, see corpus-recipe-song-
+        # variety design): re-mining after 4 new songs showed Shockwave
+        # out-scoring SingleStrand 31%/29% in the fresh 17-song aggregate,
+        # driven consistently by all 4 new songs (54/54/38/59% Shockwave
+        # each), vs. the original 12-song corpus's 73% SingleStrand. Real
+        # songs commit to different dominant looks; (2, 6) of 8 lets
+        # per-song Shockwave share range 25%-75%, bounded away from the 0/8
+        # and 8/8 "one effect the whole song" extremes.
+        song_seeded_alt_share=(2, 6),
     ),
     # Stars — mined from the same 12 packages (docs/star_sequencing_corpus/,
     # 15.2k placements over 12 songs, the largest family). One idiom across
@@ -1760,6 +1815,13 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
         # vertical/spiraltree/megatopper/icicle (user request 2026-07-22,
         # spotted on a real generated sequence's Star/TreeStar groups).
         off_backdrop=True,
+        # 1-in-3 alt occurrences render a 5-arm Pinwheel instead of Single
+        # Strand -- the model's 5 points rendered as 5 thick spinning arms,
+        # in two contrasting theme colors instead of the family's usual flat
+        # On-mask color (user request 2026-08-02).
+        alt_rotation_effect_name="Pinwheel",
+        alt_rotation_parameter_overrides=_PINWHEEL_STAR_5ARM,
+        alt_rotation_bypass_color_over_mask=True,
     ),
     # Mega toppers — mined from the same 12 packages (docs/topper_sequencing_
     # corpus/, 3.8k placements over 12 songs). The topper is the tree's

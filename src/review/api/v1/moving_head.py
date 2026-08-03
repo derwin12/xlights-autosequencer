@@ -9,7 +9,8 @@ pose used for the song-ending flash), or remove any word (built-in or
 custom) to disable it for this song. Stored as
 ``moving_head_keyword_motions`` in the song's session JSON, consumed at
 export time (``GenerationConfig.moving_head_keyword_motions``) -- same
-per-song-override pattern as ``ignored_image_words`` in images.py.
+per-song-override pattern as ``ignored_image_occurrences`` in images.py
+(though this one is still word-level, not per-occurrence).
 """
 from __future__ import annotations
 
