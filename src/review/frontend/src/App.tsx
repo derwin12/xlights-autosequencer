@@ -409,6 +409,24 @@ export default function App() {
     });
   }
 
+  // Themes are only fetched once on mount (below), so a create/update/delete
+  // in the Theme editor updates this list directly from the API response
+  // instead of relying on a refetch that never happens -- otherwise a saved
+  // theme stays invisible in the grid until a full page reload.
+  function handleThemeSaved(theme: ThemeDef) {
+    setData((d) => {
+      const exists = d.themes.some((t) => t.theme_id === theme.theme_id);
+      const next = exists
+        ? d.themes.map((t) => (t.theme_id === theme.theme_id ? theme : t))
+        : [...d.themes, theme];
+      return { ...d, themes: next };
+    });
+  }
+
+  function handleThemeDeleted(themeId: string) {
+    setData((d) => ({ ...d, themes: d.themes.filter((t) => t.theme_id !== themeId) }));
+  }
+
   // ── screen handlers ──
 
   // T087: DROP → ANALYZE
@@ -648,6 +666,8 @@ export default function App() {
             assignments={assignments}
             onThemed={handleThemed}
             onAssignmentChange={handleAssignmentChange}
+            onThemeSaved={handleThemeSaved}
+            onThemeDeleted={handleThemeDeleted}
           />
         );
 

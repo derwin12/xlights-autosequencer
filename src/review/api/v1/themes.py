@@ -7,14 +7,9 @@ import re
 
 from flask import jsonify, request
 
-from src.review.ai_palette import suggest_palette
-from src.review.storage.library import load_library
-from src.settings import load_settings
-
 from . import api_v1
-
-_DEFAULT_OLLAMA_HOST = "http://localhost:11434"
-_DEFAULT_OLLAMA_MODEL = "qwen3:8b"
+from src.review.storage.assignments import load_session
+from src.review.storage.library import load_library
 
 _BUILTIN_THEMES_PATH = pathlib.Path(__file__).parents[3] / "themes" / "builtin_themes.json"
 _CUSTOM_THEMES_DIR = pathlib.Path.home() / ".xlight" / "custom_themes"
@@ -36,6 +31,16 @@ _OCCASION_KINDS: dict[str, list[str]] = {
 
 def _slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def _is_builtin_theme_id(theme_id: str) -> bool:
+    if not _BUILTIN_THEMES_PATH.exists():
+        return False
+    try:
+        raw = json.loads(_BUILTIN_THEMES_PATH.read_text(encoding="utf-8"))
+        return theme_id in {_slugify(n) for n in raw.get("themes", {})}
+    except Exception:
+        return False
 
 
 def _theme_to_api(raw: dict, theme_id: str, editable: bool = False) -> dict:
@@ -109,15 +114,8 @@ def get_themes():
 @api_v1.route("/themes/<theme_id>", methods=["PUT"])
 def update_theme(theme_id: str):
     """Update a custom theme. Built-in themes are read-only."""
-    # Verify it's not a built-in
-    if _BUILTIN_THEMES_PATH.exists():
-        try:
-            raw = json.loads(_BUILTIN_THEMES_PATH.read_text(encoding="utf-8"))
-            builtin_ids = {_slugify(n) for n in raw.get("themes", {})}
-            if theme_id in builtin_ids:
-                return jsonify({"error": {"message": "Built-in themes are read-only"}}), 403
-        except Exception:
-            pass
+    if _is_builtin_theme_id(theme_id):
+        return jsonify({"error": {"message": "Built-in themes are read-only"}}), 403
 
     _CUSTOM_THEMES_DIR.mkdir(parents=True, exist_ok=True)
     path = _CUSTOM_THEMES_DIR / f"{theme_id}.json"
@@ -168,37 +166,38 @@ def create_theme():
     return jsonify({"theme": _theme_to_api(entry, theme_id, editable=True)}), 201
 
 
-@api_v1.route("/songs/<song_id>/theme-suggest-palette", methods=["POST"])
-def suggest_theme_palette(song_id: str):
-    """AI-suggest a 4-color palette for a song, via a local Ollama model.
-
-    See openspec/changes/theme-ai-palette-suggest. Genre/occasion come from
-    the request body (the theme editor's current in-progress values, not
-    necessarily the song's saved genre) so a suggestion reflects whatever
-    the user is actively editing. Returns 200 with an error payload (not a
-    4xx) when the AI call fails -- this is an expected, non-exceptional
-    outcome the frontend handles gracefully, not a request error.
-    """
+def _songs_using_theme(theme_id: str) -> list[str]:
+    """Titles of songs whose saved section assignments still reference theme_id."""
     lib = load_library()
-    song = next((s for s in lib["songs"] if s["song_id"] == song_id), None)
-    if song is None:
-        return jsonify({"error": {"code": "song_not_found", "message": "Song not found"}}), 404
+    titles = []
+    for song in lib["songs"]:
+        session = load_session(song["song_id"])
+        if not session:
+            continue
+        if any(a.get("theme_id") == theme_id for a in session.get("assignments", [])):
+            titles.append(song.get("title") or song["song_id"])
+    return titles
 
-    body = request.get_json(silent=True) or {}
-    settings = load_settings()
 
-    palette = suggest_palette(
-        title=song.get("title") or "",
-        artist=song.get("artist") or "",
-        genre=body.get("genre") or "",
-        occasion=body.get("occasion") or "general",
-        ollama_host=settings.get("ollama_host", _DEFAULT_OLLAMA_HOST),
-        ollama_model=settings.get("ollama_model", _DEFAULT_OLLAMA_MODEL),
-    )
-    if palette is None:
+@api_v1.route("/themes/<theme_id>", methods=["DELETE"])
+def delete_theme(theme_id: str):
+    """Delete a custom theme. Built-in themes are read-only; a theme still
+    assigned to any song's sections can't be deleted (would leave a dangling
+    theme_id reference) until it's unassigned there first.
+    """
+    if _is_builtin_theme_id(theme_id):
+        return jsonify({"error": {"message": "Built-in themes are read-only"}}), 403
+
+    path = _CUSTOM_THEMES_DIR / f"{theme_id}.json"
+    if not path.exists():
+        return jsonify({"error": {"message": "Theme not found"}}), 404
+
+    in_use = _songs_using_theme(theme_id)
+    if in_use:
         return jsonify({"error": {
-            "code": "ai_unavailable",
-            "message": "AI suggestion unavailable — check Ollama is running",
-        }}), 200
+            "code": "theme_in_use",
+            "message": f"Theme is still assigned in: {', '.join(in_use)}. Unassign it there first.",
+        }}), 409
 
-    return jsonify({"palette": palette}), 200
+    path.unlink()
+    return jsonify({"theme_id": theme_id}), 200

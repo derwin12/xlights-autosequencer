@@ -33,6 +33,7 @@ interface Section {
 interface Song {
   song_id: string;
   title: string;
+  artist?: string | null;
   status: string;
   duration_ms: number;
 }
@@ -44,6 +45,63 @@ interface ThemeScreenProps {
   assignments: Assignment[];
   onThemed: () => void;
   onAssignmentChange: (assignment: Assignment) => void;
+  onThemeSaved: (theme: Theme) => void;
+  onThemeDeleted: (themeId: string) => void;
+}
+
+function buildPalettePrompt(title: string, artist: string, genre: string, occasion: string): string {
+  return `You are a color designer for a holiday/Christmas outdoor LED light show synced to music.
+Given a song, propose a color scheme for the light display in TWO parts:
+1. A "base" palette of 4 hex colors from ONE cohesive hue family — these are the background/wash colors that stay on screen for most of the song.
+2. An "accent" palette of 4 hex colors from a CONTRASTING or complementary hue family — these are punchy highlight colors used sparingly for hits and accents, and should read as clearly distinct from the base family, not just lighter/darker shades of it.
+Capture the song's mood, energy, and genre/artist identity. Avoid plain primary colors like #FF0000, #00FF00, #0000FF, #FFFF00 unless the song truly calls for them.
+
+Song: "${title}"
+Artist: ${artist || 'unknown'}
+Genre: ${genre || 'unknown'}
+Occasion: ${occasion}
+
+Respond with ONLY a JSON object of this exact shape, e.g. {"base":["#RRGGBB","#RRGGBB","#RRGGBB","#RRGGBB"],"accent":["#RRGGBB","#RRGGBB","#RRGGBB","#RRGGBB"]}. No explanation, no markdown, no extra text.`;
+}
+
+// Gemini doesn't accept a prompt in the URL either, so the popup keeps the
+// copy/paste flow: copy the prompt, then paste it on the Gemini page.
+const GEMINI_CREATE_URL = 'https://gemini.google.com/app';
+
+async function openExternal(url: string) {
+  try {
+    const { open } = await import('@tauri-apps/plugin-shell');
+    await open(url);
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
+// Extracts hex color tokens regardless of how the AI wrapped them --
+// JSON array/object syntax, quotes, commas, brackets, newlines, or a mix --
+// so pasting the raw AI response always works, not just a clean one-per-line list.
+const HEX_TOKEN_RE = /#[0-9a-fA-F]{6}/g;
+
+function parseHexList(text: string): string[] {
+  return (text.match(HEX_TOKEN_RE) ?? []).map((h) => h.toUpperCase());
+}
+
+// Pasting the AI's full {"base":[...],"accent":[...]} response into either
+// field pulls out just that field's own group, instead of dumping both
+// groups' colors into whichever textarea happened to receive the paste.
+// Falls back to a flat token grab for plain lists / older single-array
+// responses / anything that isn't the expected JSON shape.
+function extractHexGroup(text: string, groupKey: 'base' | 'accent'): string[] {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed[groupKey])) {
+      const hexes = parseHexList((parsed[groupKey] as unknown[]).filter((v) => typeof v === 'string').join('\n'));
+      if (hexes.length > 0) return hexes;
+    }
+  } catch {
+    // Not JSON — fall through to flat extraction.
+  }
+  return parseHexList(text);
 }
 
 const DEFAULT_OVERRIDES: ParameterOverrides = {
@@ -64,7 +122,9 @@ interface EditState {
   palette: string[];
   accent_palette: string[];
   saving: boolean;
-  suggesting: boolean;
+  deleting: boolean;
+  promptOpen: boolean;
+  promptCopied: boolean;
   error: string | null;
 }
 
@@ -80,19 +140,41 @@ const BLANK_THEME: Theme = {
 
 function EditDialog({
   state,
+  songTitle,
+  songArtist,
   onChange,
   onSave,
-  onSuggest,
+  onDelete,
+  onCopyPrompt,
   onClose,
 }: {
   state: EditState;
+  songTitle: string;
+  songArtist: string;
   onChange: (patch: Partial<EditState>) => void;
   onSave: () => void;
-  onSuggest: () => void;
+  onDelete: () => void;
+  onCopyPrompt: (text: string) => void;
   onClose: () => void;
 }) {
+  const palettePrompt = buildPalettePrompt(songTitle, songArtist, state.genre, state.occasion);
+  // Selecting text in a field (Description/Palette/etc.) is a mousedown+drag
+  // that can release outside the dialog's bounds -- the resulting click's
+  // target is the backdrop itself, so a plain onClick={onClose} closes the
+  // dialog mid-edit even though the user never intended to dismiss it. Only
+  // close when BOTH the mousedown and the mouseup land directly on the
+  // backdrop (not a drag that merely ends there).
+  const dialogBackdropDown = React.useRef(false);
+  const promptBackdropDown = React.useRef(false);
   return (
-    <div className={styles.dialogOverlay} onClick={onClose}>
+    <div
+      className={styles.dialogOverlay}
+      onMouseDown={(e) => { dialogBackdropDown.current = e.target === e.currentTarget; }}
+      onMouseUp={(e) => {
+        if (dialogBackdropDown.current && e.target === e.currentTarget) onClose();
+        dialogBackdropDown.current = false;
+      }}
+    >
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div className={styles.dialogHeader}>
           <span className={styles.dialogTitle}>{state.isNew ? 'New Theme' : 'Edit Theme'}</span>
@@ -156,10 +238,9 @@ function EditDialog({
           <button
             type="button"
             className={styles.suggestBtn}
-            onClick={onSuggest}
-            disabled={state.suggesting}
+            onClick={() => onChange({ promptOpen: true, promptCopied: false })}
           >
-            {state.suggesting ? 'Suggesting…' : '✨ Suggest with AI'}
+            ✨ Suggest with AI
           </button>
         </div>
         <textarea
@@ -169,6 +250,13 @@ function EditDialog({
           onChange={(e) =>
             onChange({ palette: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })
           }
+          onPaste={(e) => {
+            const hexes = extractHexGroup(e.clipboardData.getData('text'), 'base');
+            if (hexes.length > 0) {
+              e.preventDefault();
+              onChange({ palette: hexes });
+            }
+          }}
         />
 
         <label className={styles.fieldLabel}>Accent Palette (one hex per line)</label>
@@ -179,15 +267,88 @@ function EditDialog({
           onChange={(e) =>
             onChange({ accent_palette: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })
           }
+          onPaste={(e) => {
+            const hexes = extractHexGroup(e.clipboardData.getData('text'), 'accent');
+            if (hexes.length > 0) {
+              e.preventDefault();
+              onChange({ accent_palette: hexes });
+            }
+          }}
         />
 
         <div className={styles.dialogActions}>
+          {!state.isNew && state.theme.editable && (
+            <button
+              type="button"
+              className={styles.deleteBtn}
+              onClick={onDelete}
+              disabled={state.deleting || state.saving}
+            >
+              {state.deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          )}
           <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
           <button className={styles.saveBtn} onClick={onSave} disabled={state.saving}>
             {state.saving ? (state.isNew ? 'Creating…' : 'Saving…') : (state.isNew ? 'Create' : 'Save')}
           </button>
         </div>
       </div>
+
+      {state.promptOpen && (
+        <div
+          className={styles.promptOverlay}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            promptBackdropDown.current = e.target === e.currentTarget;
+          }}
+          onMouseUp={(e) => {
+            e.stopPropagation();
+            if (promptBackdropDown.current && e.target === e.currentTarget) {
+              onChange({ promptOpen: false });
+            }
+            promptBackdropDown.current = false;
+          }}
+        >
+          <div className={styles.promptDialog} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.promptTitle}>Palette prompt for &ldquo;{songTitle}&rdquo;</h3>
+            <textarea
+              className={styles.promptText}
+              readOnly
+              value={palettePrompt}
+              onFocus={(e) => e.target.select()}
+            />
+            <p className={styles.promptHint}>
+              Gemini doesn&apos;t accept the prompt in the link — copy it, paste it into the
+              prompt box on the Gemini page, then paste Gemini&apos;s whole reply directly into
+              the Palette field (it&apos;ll pull out the base colors) and again into the Accent
+              Palette field (it&apos;ll pull out the accent colors).
+            </p>
+            <div className={styles.promptActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => onCopyPrompt(palettePrompt)}
+              >
+                {state.promptCopied ? 'Copied ✓' : 'Copy prompt'}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => openExternal(GEMINI_CREATE_URL)}
+              >
+                Open Gemini
+              </button>
+              <button
+                type="button"
+                className={styles.saveBtn}
+                onClick={() => onChange({ promptOpen: false })}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -199,6 +360,8 @@ export function Theme({
   assignments,
   onThemed,
   onAssignmentChange,
+  onThemeSaved,
+  onThemeDeleted,
 }: ThemeScreenProps) {
   const [selectedSectionIdx, setSelectedSectionIdx] = useState(0);
   const [localAssignments, setLocalAssignments] = useState(assignments);
@@ -426,7 +589,9 @@ export function Theme({
       palette: theme.swatches.slice(0, 4),
       accent_palette: [theme.accent],
       saving: false,
-      suggesting: false,
+      deleting: false,
+      promptOpen: false,
+      promptCopied: false,
       error: null,
     });
   }
@@ -443,33 +608,20 @@ export function Theme({
       palette: [],
       accent_palette: [],
       saving: false,
-      suggesting: false,
+      deleting: false,
+      promptOpen: false,
+      promptCopied: false,
       error: null,
     });
   }
 
-  async function handleSuggestPalette() {
-    if (!editState) return;
-    setEditState((s) => s ? { ...s, suggesting: true, error: null } : s);
+  async function handleCopyPrompt(prompt: string) {
     try {
-      const res = await fetch(`/api/v1/songs/${song.song_id}/theme-suggest-palette`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ genre: editState.genre, occasion: editState.occasion }),
-      });
-      const body = await res.json();
-      if (!res.ok || body?.error) {
-        setEditState((s) => s ? {
-          ...s, suggesting: false,
-          error: body?.error?.message ?? 'AI suggestion unavailable',
-        } : s);
-        return;
-      }
-      setEditState((s) => s ? { ...s, suggesting: false, palette: body.palette } : s);
-    } catch (err) {
+      await navigator.clipboard.writeText(prompt);
+      setEditState((s) => s ? { ...s, promptCopied: true } : s);
+    } catch {
       setEditState((s) => s ? {
-        ...s, suggesting: false,
-        error: err instanceof Error ? err.message : 'AI suggestion unavailable',
+        ...s, error: 'Could not copy to clipboard — select the text and copy manually.',
       } : s);
     }
   }
@@ -503,10 +655,31 @@ export function Theme({
         setEditState((s) => s ? { ...s, saving: false, error: body?.error?.message ?? 'Save failed' } : s);
         return;
       }
-      // Theme saved — close dialog (parent will re-fetch themes on next load)
+      // Update the theme list directly from the response instead of relying
+      // on a refetch — nothing else triggers one, so a saved theme used to
+      // stay invisible in the grid until a full page reload.
+      onThemeSaved(body.theme);
       setEditState(null);
     } catch (err) {
       setEditState((s) => s ? { ...s, saving: false, error: err instanceof Error ? err.message : 'Error' } : s);
+    }
+  }
+
+  async function handleDeleteTheme() {
+    if (!editState || editState.isNew) return;
+    if (!window.confirm(`Delete theme "${editState.theme.name}"? This cannot be undone.`)) return;
+    setEditState((s) => s ? { ...s, deleting: true, error: null } : s);
+    try {
+      const res = await fetch(`/api/v1/themes/${editState.theme.theme_id}`, { method: 'DELETE' });
+      const body = await res.json();
+      if (!res.ok) {
+        setEditState((s) => s ? { ...s, deleting: false, error: body?.error?.message ?? 'Delete failed' } : s);
+        return;
+      }
+      onThemeDeleted(editState.theme.theme_id);
+      setEditState(null);
+    } catch (err) {
+      setEditState((s) => s ? { ...s, deleting: false, error: err instanceof Error ? err.message : 'Error' } : s);
     }
   }
 
@@ -632,9 +805,12 @@ export function Theme({
       {editState && (
         <EditDialog
           state={editState}
+          songTitle={song.title}
+          songArtist={song.artist ?? ''}
           onChange={(patch) => setEditState((s) => s ? { ...s, ...patch } : s)}
           onSave={handleSaveEdit}
-          onSuggest={handleSuggestPalette}
+          onDelete={handleDeleteTheme}
+          onCopyPrompt={handleCopyPrompt}
           onClose={() => setEditState(null)}
         />
       )}

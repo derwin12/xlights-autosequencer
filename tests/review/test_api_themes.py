@@ -1,8 +1,9 @@
 """Tests for GET /api/v1/themes — T040."""
-from unittest.mock import patch
+import json
 
 import pytest
 
+from src.review.storage.assignments import save_session
 from src.review.storage.library import save_library
 
 
@@ -107,54 +108,61 @@ def test_themes_swatches_include_every_accent_color(client):
             )
 
 
-# ── POST /songs/<song_id>/theme-suggest-palette ───────────────────────────────
-# See openspec/changes/theme-ai-palette-suggest. suggest_palette() itself is
-# unit-tested against every failure mode in tests/unit/test_ai_palette.py;
-# these tests cover the endpoint's own routing/lookup/response-shape logic
-# only, with suggest_palette monkeypatched so no real network call happens.
+# ── DELETE /api/v1/themes/<theme_id> ───────────────────────────────────────
+
+@pytest.fixture()
+def custom_themes_dir(tmp_path, monkeypatch):
+    """Isolate custom-theme file I/O to a temp dir instead of the real
+    ~/.xlight/custom_themes/ (module-level constant, unlike the library/
+    session storage which already reads XLIGHT_STATE_HOME)."""
+    import src.review.api.v1.themes as themes_module
+
+    d = tmp_path / "custom_themes"
+    d.mkdir()
+    monkeypatch.setattr(themes_module, "_CUSTOM_THEMES_DIR", d)
+    return d
 
 
-class TestSuggestThemePalette:
-    def test_song_not_found_returns_404(self, client):
-        resp = client.post("/api/v1/songs/does-not-exist/theme-suggest-palette", json={})
-        assert resp.status_code == 404
-        assert resp.get_json()["error"]["code"] == "song_not_found"
+def _write_custom_theme(custom_themes_dir, theme_id: str, name: str = "Test Theme"):
+    (custom_themes_dir / f"{theme_id}.json").write_text(
+        json.dumps({"name": name, "mood": "structural", "occasion": "general",
+                    "genre": "any", "intent": "", "palette": ["#111111"] * 4,
+                    "accent_palette": []}),
+        encoding="utf-8",
+    )
 
-    def test_success_returns_palette(self, client):
-        _seed_song("themesong0000001")
-        with patch(
-            "src.review.api.v1.themes.suggest_palette",
-            return_value=["#FF6B6B", "#FFD6A8", "#88B04B", "#4ECDC4"],
-        ) as mocked:
-            resp = client.post(
-                "/api/v1/songs/themesong0000001/theme-suggest-palette",
-                json={"genre": "rock", "occasion": "general"},
-            )
-        assert resp.status_code == 200
-        assert resp.get_json()["palette"] == ["#FF6B6B", "#FFD6A8", "#88B04B", "#4ECDC4"]
-        # Title/artist looked up from the library entry, not the request body.
-        _, kwargs = mocked.call_args
-        assert kwargs["title"] == "Believer"
-        assert kwargs["artist"] == "Imagine Dragons"
-        assert kwargs["genre"] == "rock"
-        assert kwargs["occasion"] == "general"
 
-    def test_ollama_unavailable_returns_graceful_error_not_4xx(self, client):
-        _seed_song("themesong0000002")
-        with patch("src.review.api.v1.themes.suggest_palette", return_value=None):
-            resp = client.post(
-                "/api/v1/songs/themesong0000002/theme-suggest-palette", json={},
-            )
-        # Expected, non-exceptional outcome — 200 with an error payload, not
-        # a 4xx/5xx (see the route's own docstring for why).
-        assert resp.status_code == 200
-        assert resp.get_json()["error"]["code"] == "ai_unavailable"
+def test_delete_builtin_theme_returns_403(client, custom_themes_dir):
+    data = client.get("/api/v1/themes").get_json()
+    builtin_id = next(t["theme_id"] for t in data["themes"] if not t["editable"])
+    resp = client.delete(f"/api/v1/themes/{builtin_id}")
+    assert resp.status_code == 403
 
-    def test_missing_body_defaults_occasion_to_general(self, client):
-        _seed_song("themesong0000003")
-        with patch(
-            "src.review.api.v1.themes.suggest_palette", return_value=["#111111"] * 4,
-        ) as mocked:
-            client.post("/api/v1/songs/themesong0000003/theme-suggest-palette")
-        _, kwargs = mocked.call_args
-        assert kwargs["occasion"] == "general"
+
+def test_delete_nonexistent_theme_returns_404(client, custom_themes_dir):
+    resp = client.delete("/api/v1/themes/does-not-exist")
+    assert resp.status_code == 404
+
+
+def test_delete_unused_custom_theme_removes_it(client, custom_themes_dir):
+    _write_custom_theme(custom_themes_dir, "my-test-theme")
+    resp = client.delete("/api/v1/themes/my-test-theme")
+    assert resp.status_code == 200
+    assert not (custom_themes_dir / "my-test-theme.json").exists()
+    data = client.get("/api/v1/themes").get_json()
+    assert not any(t["theme_id"] == "my-test-theme" for t in data["themes"])
+
+
+def test_delete_theme_still_assigned_to_a_song_returns_409(client, custom_themes_dir):
+    _write_custom_theme(custom_themes_dir, "my-test-theme")
+    _seed_song("themesong0000004")
+    save_session(
+        "themesong0000004",
+        sections=[{"index": 0, "start_ms": 0, "end_ms": 1000, "kind": "verse", "label": "Verse"}],
+        assignments=[{"section_index": 0, "theme_id": "my-test-theme", "overrides": {}}],
+    )
+    resp = client.delete("/api/v1/themes/my-test-theme")
+    assert resp.status_code == 409
+    assert resp.get_json()["error"]["code"] == "theme_in_use"
+    # File must survive — the delete must not have happened.
+    assert (custom_themes_dir / "my-test-theme.json").exists()
