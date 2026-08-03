@@ -905,8 +905,10 @@ def _serialize_palette(
 # A flat/plain Pinwheel (E_CHOICE_Pinwheel_3D="None") reads as dull on real
 # hardware (user request, 2026-07-23) -- every Pinwheel placement must pick
 # one of these instead. Order matters only in that it's the rotation table
-# _serialize_effect_params indexes into.
-_PINWHEEL_3D_OPTIONS = ("3D", "3D Inverted", "Sweep")
+# _serialize_effect_params indexes into. "3D Inverted" excluded entirely
+# (user request, 2026-08-03) -- never use it, on top of it never being a
+# valid flat-Pinwheel replacement pick.
+_PINWHEEL_3D_OPTIONS = ("3D", "Sweep")
 
 # Fire_HueShift calibration (user request, 2026-07-26): xLights' Fire effect
 # always renders from a fixed red/orange gradient unless E_SLIDER_Fire_HueShift
@@ -1100,10 +1102,16 @@ def _serialize_effect_params(
     # prop rotation pool, the star-burst preset) either omit
     # E_CHOICE_Pinwheel_3D entirely or bake in "None", both of which fall
     # back to xLights' own flat default. Enforced here so it guards every
-    # producer, not just the ones known today. The choice among the 3
+    # producer, not just the ones known today. The choice among the
     # non-flat options is deterministic per placement (same model+time
     # always picks the same one) rather than random, so re-running the
     # same generation reproduces identical output.
+    #
+    # "3D Inverted" is also never used (user request, 2026-08-03) -- not
+    # just excluded from this fallback pool, but replaced outright even
+    # when a producer bakes it in explicitly (e.g. corpus_recipes.py's
+    # mined "megatree twin-spiral" preset), so the membership check below
+    # covers any value other than the two allowed options, not just "None".
     # Match Fire's flame color to this placement's own theme color instead
     # of always rendering as plain red/yellow fire (user request, 2026-07-26).
     # Overrides any variant-baked HueShift too, since a fixed creative value
@@ -1116,7 +1124,10 @@ def _serialize_effect_params(
         if dominant_hue is not None:
             defaults["E_SLIDER_Fire_HueShift"] = str(_fire_hue_shift_for_hue(dominant_hue))
 
-    if placement.effect_name == "Pinwheel" and defaults.get("E_CHOICE_Pinwheel_3D", "None") == "None":
+    if (
+        placement.effect_name == "Pinwheel"
+        and defaults.get("E_CHOICE_Pinwheel_3D", "None") not in _PINWHEEL_3D_OPTIONS
+    ):
         # zlib.crc32, not Python's hash() -- string hashing is randomized
         # per-process (PYTHONHASHSEED), which would make the same
         # generation pick a different option on every run.
@@ -1155,6 +1166,13 @@ def _serialize_effect_params(
             defaults["E_SLIDER_Pinwheel_Speed"] = str(_PINWHEEL_SPEED_MEDIUM_ENERGY)
         else:
             defaults["E_SLIDER_Pinwheel_Speed"] = str(_PINWHEEL_SPEED_HIGH_ENERGY)
+
+    # Color Wash never renders with Shimmer (user request, 2026-08-03) --
+    # overrides even a mined variant's own baked value (e.g. the "Color
+    # Wash Shimmer"/"Color Wash Shimmer Cycles" builtin variants), same
+    # "guards every producer" precedent as the Pinwheel bans above.
+    if placement.effect_name == "Color Wash":
+        defaults["E_CHECKBOX_ColorWash_Shimmer"] = "0"
 
     if buffer_style is not None:
         defaults["B_CHOICE_BufferStyle"] = buffer_style

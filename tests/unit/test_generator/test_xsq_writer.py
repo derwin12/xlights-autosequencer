@@ -927,7 +927,7 @@ class TestPinwheelNeverFlat:
             start_ms=1000, end_ms=2000, parameters={"E_CHOICE_Pinwheel_3D": "None"},
         )
         params = _serialize_effect_params(p)
-        assert self._param(params, "E_CHOICE_Pinwheel_3D") in ("3D", "3D Inverted", "Sweep")
+        assert self._param(params, "E_CHOICE_Pinwheel_3D") in ("3D", "Sweep")
 
     def test_missing_key_gets_a_default_too(self):
         p = EffectPlacement(
@@ -935,15 +935,27 @@ class TestPinwheelNeverFlat:
             start_ms=5000, end_ms=6000,
         )
         params = _serialize_effect_params(p)
-        assert self._param(params, "E_CHOICE_Pinwheel_3D") in ("3D", "3D Inverted", "Sweep")
+        assert self._param(params, "E_CHOICE_Pinwheel_3D") in ("3D", "Sweep")
 
     def test_explicit_non_flat_choice_is_left_alone(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=5000, end_ms=6000, parameters={"E_CHOICE_Pinwheel_3D": "Sweep"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHOICE_Pinwheel_3D") == "Sweep"
+
+    def test_3d_inverted_is_never_used_even_when_explicitly_set(self):
+        # 2026-08-03: banned outright, not just excluded from the
+        # flat-Pinwheel fallback pool -- a producer baking it in explicitly
+        # (e.g. corpus_recipes.py's mined megatree twin-spiral preset) must
+        # still get replaced.
         p = EffectPlacement(
             effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
             start_ms=5000, end_ms=6000, parameters={"E_CHOICE_Pinwheel_3D": "3D Inverted"},
         )
         params = _serialize_effect_params(p)
-        assert self._param(params, "E_CHOICE_Pinwheel_3D") == "3D Inverted"
+        assert self._param(params, "E_CHOICE_Pinwheel_3D") in ("3D", "Sweep")
 
     def test_choice_is_deterministic_across_runs(self):
         p1 = EffectPlacement(
@@ -1089,6 +1101,42 @@ class TestPinwheelSpeedByEnergy:
         )
         params = _serialize_effect_params(p, energy_score=20)
         assert "E_SLIDER_Pinwheel_Speed" not in params
+
+
+class TestColorWashNeverShimmers:
+    """Color Wash never renders with Shimmer (user request, 2026-08-03) --
+    overrides even a mined variant's own baked value (e.g. the "Color Wash
+    Shimmer"/"Color Wash Shimmer Cycles" builtin variants)."""
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def test_explicit_shimmer_is_forced_off(self):
+        p = EffectPlacement(
+            effect_name="Color Wash", xlights_id="Color Wash", model_or_group="Model1",
+            start_ms=0, end_ms=1000, parameters={"E_CHECKBOX_ColorWash_Shimmer": "1"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHECKBOX_ColorWash_Shimmer") == "0"
+
+    def test_missing_shimmer_key_defaults_off(self):
+        p = EffectPlacement(
+            effect_name="Color Wash", xlights_id="Color Wash", model_or_group="Model1",
+            start_ms=0, end_ms=1000,
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHECKBOX_ColorWash_Shimmer") == "0"
+
+    def test_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Wave", xlights_id="Wave", model_or_group="Model1",
+            start_ms=0, end_ms=1000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_CHECKBOX_ColorWash_Shimmer" not in params
 
 
 class TestEnergyScoreAtMs:
