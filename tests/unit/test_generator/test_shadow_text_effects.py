@@ -275,10 +275,9 @@ class TestPlaceShadowTextEffects:
         assert "B_CUSTOM_SubBuffer" not in front.parameters
         assert shadow.parameters["B_CUSTOM_SubBuffer"] == _SHADOW_TEXT_TREE_SUBBUFFER
 
-    def test_mega_tree_text_is_x_centered_for_the_narrow_font(self):
-        # 2026-08-03: half the "7-7x9 Bold" font's own 7px width, negative,
-        # so the vertical text column centers on the tree instead of
-        # sitting flush against one edge.
+    def test_mega_tree_text_is_x_centered(self):
+        # 2026-08-03: -3 centers the vertical text column on the tree
+        # instead of sitting flush against one edge.
         result = _place_shadow_text_effects(
             props=[_prop("Mega Tree", "Custom")],
             groups=[],
@@ -307,9 +306,10 @@ class TestPlaceShadowTextEffects:
         for placement in (front, shadow):
             assert placement.parameters["E_CHOICE_Text_Font"] == "10-12x12 Bold"
 
-    def test_mega_tree_short_word_x_offset_matches_its_wider_font(self):
-        # 2026-08-03: "10-12x12 Bold" is 12px wide, so its own half-width
-        # (-6) must override the narrow font's -3, not inherit it.
+    def test_mega_tree_short_word_x_offset_is_the_same_fixed_value(self):
+        # 2026-08-03: confirmed a per-font dynamic X-offset isn't needed --
+        # the short-word font (wider than the default) still uses -3, not
+        # a value scaled to its own width.
         word = "hi"
         assert len(word) <= _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN
         result = _place_shadow_text_effects(
@@ -322,8 +322,8 @@ class TestPlaceShadowTextEffects:
         )
         front, shadow = sorted(result["Mega Tree"], key=lambda p: p.layer)
         for placement in (front, shadow):
-            assert placement.parameters["E_SLIDER_Text_XStart"] == "-6"
-            assert placement.parameters["E_SLIDER_Text_XEnd"] == "-6"
+            assert placement.parameters["E_SLIDER_Text_XStart"] == "-3"
+            assert placement.parameters["E_SLIDER_Text_XEnd"] == "-3"
 
     def test_mega_tree_shadow_text_never_rotates(self):
         # 2026-08-02: Mega Tree shadow text must never carry a rotation

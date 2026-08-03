@@ -5036,8 +5036,8 @@ _SHADOW_TEXT_TREE_PARAMS: dict[str, str] = {
     "E_SLIDER_Text_YStart": "25",
     "E_SLIDER_Text_YEnd": "25",
     # X-centers the vertical text column on the tree (user request,
-    # 2026-08-03) -- half the font's own pixel width, negative. "7-7x9
-    # Bold" is 7px wide, so -3 (half of 7, rounded toward zero).
+    # 2026-08-03). Fixed at -3 regardless of which tree font is in use --
+    # user confirmed a per-font dynamic value isn't needed.
     "E_SLIDER_Text_XStart": "-3",
     "E_SLIDER_Text_XEnd": "-3",
 }
@@ -5158,14 +5158,7 @@ def _place_shadow_text_effects(
                 if not is_tree and "small" in target_name.lower() else {}
             )
             short_word_font_params = (
-                {
-                    "E_CHOICE_Text_Font": _SHADOW_TEXT_TREE_SHORT_WORD_FONT,
-                    # "10-12x12 Bold" is 12px wide, vs. the default "7-7x9
-                    # Bold"'s 7px -- overrides family_params' -3 X-center
-                    # with the wider font's own half-width.
-                    "E_SLIDER_Text_XStart": "-6",
-                    "E_SLIDER_Text_XEnd": "-6",
-                }
+                {"E_CHOICE_Text_Font": _SHADOW_TEXT_TREE_SHORT_WORD_FONT}
                 if is_tree and len(text) <= _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN else {}
             )
             motion_params = _PICTURE_MOTIONS[motion]
