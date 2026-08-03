@@ -1,6 +1,6 @@
 [package]
 name = "xlight"
-version = "0.1.3"
+version = "0.1.4"
 description = "XLight AutoSequencer desktop shell"
 authors = ["XLight AutoSequencer"]
 edition = "2021"
