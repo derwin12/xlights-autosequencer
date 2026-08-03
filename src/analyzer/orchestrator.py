@@ -526,7 +526,7 @@ def run_orchestrator(
     beat_algo_names = {"qm_beats", "librosa_beats", "madmom_beats", "beatroot_beats"}
     beat_candidates = [t for t in analysis.timing_tracks if t.algorithm_name in beat_algo_names]
     beats, beat_losers = _select_beat_with_bpm_check(
-        beat_candidates, onset_times, estimated_bpm, meta.duration_ms,
+        beat_candidates, onset_times, estimated_bpm, meta.duration_ms, bars=bars,
     )
     if beats:
         print(f"L3 Beats: {beats.mark_count} marks ({beats.algorithm_name}, "
@@ -1543,25 +1543,79 @@ def _derive_eighth_notes(beats: "TimingTrack") -> "list":
     return result
 
 
+def _fold_doubled_track(
+    track: "TimingTrack", bars: "TimingTrack | None",
+) -> "TimingTrack":
+    """Fold a confidently double-time beat track down to the correct rate.
+
+    Keeps every other mark, choosing whichever of the two phase offsets
+    (starting at index 0 or index 1) has more marks landing within 100ms
+    of an L2 bar-track time -- bar tracking is generally more octave-stable
+    than beat tracking, so real downbeats should coincide with real beats.
+    Falls back to the index-0 phase when no bar track is available.
+    """
+    import bisect
+
+    from src.analyzer.result import TimingTrack
+
+    marks = track.marks  # __post_init__ already sorted these ascending
+    phase0 = marks[0::2]
+    phase1 = marks[1::2]
+
+    chosen = phase0
+    if bars is not None and bars.marks:
+        bar_times = sorted(m.time_ms for m in bars.marks)
+
+        def _alignment_score(subset: list) -> int:
+            score = 0
+            for m in subset:
+                idx = bisect.bisect_left(bar_times, m.time_ms)
+                for cand_idx in (idx - 1, idx):
+                    if 0 <= cand_idx < len(bar_times) and abs(bar_times[cand_idx] - m.time_ms) <= 100:
+                        score += 1
+                        break
+            return score
+
+        if _alignment_score(phase1) > _alignment_score(phase0):
+            chosen = phase1
+
+    return TimingTrack(
+        name=track.name,
+        algorithm_name=track.algorithm_name,
+        element_type=track.element_type,
+        marks=list(chosen),
+        quality_score=track.quality_score,
+        stem_source=track.stem_source,
+    )
+
+
 def _select_beat_with_bpm_check(
     candidates: list,
     onset_times: list[int],
     estimated_bpm: float,
     duration_ms: int,
     tolerance: float = 0.20,
+    bars: "TimingTrack | None" = None,
 ) -> "tuple[TimingTrack | None, list[TimingTrack]]":
     """Select best beat track plus the remaining (loser) candidates.
 
     After scoring all candidates by regularity + onset correlation, pick the
     highest-scoring one whose Hz is within *tolerance* (±20%) of estimated_bpm/60.
-    If no candidate passes the check, return the highest-scoring one anyway so we
-    always produce a beat track.
+    If no candidate matches at 1x but the winner matches at 2x (double-time),
+    the winner is folded down to the correct rate (see ``_fold_doubled_track``)
+    rather than returned unmodified -- some songs' beat trackers never produce
+    a candidate anywhere near the true tempo (e.g. a syncopated 8th-note
+    pattern reads as "the beat" to every tracker), so there's nothing at 1x
+    to select even after estimated_bpm itself is correct.
+    If no candidate passes any check, return the highest-scoring one anyway so
+    we always produce a beat track.
 
     Returns ``(winner, losers)`` where ``losers`` are the input candidates with
     the chosen winner removed (preserving input order). When the BPM-range
     fallback selects a non-rank-1 candidate, the loser list still excludes that
     chosen winner — so the agreement annotation downstream measures convergence
-    relative to whatever we actually picked.
+    relative to whatever we actually picked. A folded winner is not one of the
+    input ``candidates``, so it is never in its own losers list either.
     """
     from src.analyzer.selector import rank_tracks
 
@@ -1592,6 +1646,11 @@ def _select_beat_with_bpm_check(
             actual_hz = track.mark_count / duration_s if duration_s > 0 else 0
             ratio = actual_hz / expected_hz if expected_hz > 0 else 1.0
             if abs(ratio / multiplier - 1.0) <= tolerance:
+                if multiplier == 2.0:
+                    print(f"  L3 BPM check: {track.algorithm_name} matched only at "
+                          f"{actual_hz:.2f} Hz (2× of {expected_hz:.2f} Hz expected) — "
+                          f"folding down to correct rate")
+                    return _fold_doubled_track(track, bars), _losers(track)
                 if multiplier != 1.0:
                     print(f"  L3 BPM check: {track.algorithm_name} accepted at "
                           f"{actual_hz:.2f} Hz ({multiplier:.0f}× of {expected_hz:.2f} Hz expected)")

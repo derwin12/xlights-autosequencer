@@ -48,16 +48,62 @@ def test_exact_tempo_match_wins_over_higher_ranked_double_time_track():
     assert winner is true_tempo
 
 
-def test_falls_back_to_double_time_when_no_exact_match_exists():
+def test_folds_double_time_winner_down_when_no_exact_match_exists():
+    """No candidate matches 1x (only unrelated + double_time exist) -> the
+    2x match is folded down to the correct rate instead of returned as-is.
+
+    This is the real-world case behind Aerosmith "Dream On": every beat
+    tracker detects the syncopated 8th-note pattern as "the beat", so no
+    candidate is ever produced anywhere near the true tempo -- a correct
+    ``estimated_bpm`` alone can't fix beat selection when there's nothing
+    at 1x to select.
+    """
     duration_ms = 10_000
     estimated_bpm = 78.0  # 1.3 Hz
 
     double_time = _evenly_spaced_track("double_time", 26, duration_ms)
     unrelated = _evenly_spaced_track("unrelated", 40, duration_ms)  # 4.0 Hz, no multiplier matches
 
-    winner, _losers = _select_beat_with_bpm_check(
+    winner, losers = _select_beat_with_bpm_check(
         [unrelated, double_time], onset_times=[], estimated_bpm=estimated_bpm,
         duration_ms=duration_ms,
     )
 
-    assert winner is double_time
+    assert winner is not double_time  # folded into a new track, not returned as-is
+    assert winner.algorithm_name == "double_time"
+    assert winner.mark_count == 13
+    implied_hz = winner.mark_count / (duration_ms / 1000)
+    assert abs(implied_hz - 1.3) < 0.01
+    # The raw (un-folded) double_time candidate is excluded from both the
+    # returned winner (a new folded track) and the losers list (it's the
+    # candidate the winner was derived from, not a losing alternative).
+    assert double_time not in losers
+    assert unrelated in losers
+
+
+def test_fold_picks_phase_aligned_with_bar_track():
+    """When a bar track is available, folding picks whichever phase (even-
+    or odd-indexed marks) lands closer to real bar/downbeat times, rather
+    than blindly keeping the first mark of every pair.
+    """
+    duration_ms = 10_000
+    estimated_bpm = 78.0  # 1.3 Hz -> true beats should land near 769ms apart
+
+    # 26 evenly-spaced marks at 385ms intervals (2x the true ~769ms rate).
+    double_time = _evenly_spaced_track("double_time", 26, duration_ms)
+    # Bar track marks align with the ODD-indexed marks of double_time
+    # (index 1, 3, 5, ... at ~385, 1155, 1925ms), not the even-indexed ones.
+    odd_indexed_times = [m.time_ms for m in double_time.marks[1::2]]
+    bars = TimingTrack(
+        name="bars", algorithm_name="qm_bars", element_type="bar",
+        marks=[TimingMark(time_ms=t, confidence=None) for t in odd_indexed_times[::4]],
+        quality_score=0.0,
+    )
+
+    winner, _losers = _select_beat_with_bpm_check(
+        [double_time], onset_times=[], estimated_bpm=estimated_bpm,
+        duration_ms=duration_ms, bars=bars,
+    )
+
+    winner_times = [m.time_ms for m in winner.marks]
+    assert winner_times == odd_indexed_times
