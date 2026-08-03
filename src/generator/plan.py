@@ -568,7 +568,7 @@ def build_plan(
             variation_seed=config.variation_seed,
             vocal_words=config.vocal_words,
             shadow_occurrences=config.shadow_text_occurrences,
-            anchor_palette=_anchor,
+            accent_palette=_derive_anchor_accent_palette(assignments),
             existing_layers=existing_layers,
         )
 
@@ -915,6 +915,29 @@ def _derive_anchor_palette(assignments: list[SectionAssignment]) -> list[str]:
     if not anchor and assignments:
         anchor = list(assignments[0].theme.palette[:4])
     return anchor
+
+
+def _derive_anchor_accent_palette(assignments: list[SectionAssignment]) -> list[str]:
+    """Derive a song-level accent palette from the dominant section themes' accent colors.
+
+    Mirrors ``_derive_anchor_palette`` but weights each theme's
+    ``accent_palette`` instead of its base ``palette`` — used by features
+    (e.g. Shadow Text) that want the song's actual accent-color identity
+    rather than its background-wash colors. Custom themes can leave
+    ``accent_palette`` empty, so this falls back to the base anchor palette
+    when no assignment contributes an accent color.
+    """
+    weighted: dict[str, float] = {}
+    for a in assignments:
+        duration = a.section.end_ms - a.section.start_ms
+        for color in a.theme.accent_palette:
+            weighted[color] = weighted.get(color, 0.0) + duration
+
+    sorted_colors = sorted(weighted, key=lambda c: weighted[c], reverse=True)
+    accent = sorted_colors[:4]
+    if not accent:
+        accent = _derive_anchor_palette(assignments)
+    return accent
 
 
 def _section_energies_from_story(story: dict) -> list[SectionEnergy]:

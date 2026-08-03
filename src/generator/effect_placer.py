@@ -5063,7 +5063,7 @@ def _place_shadow_text_effects(
     variation_seed: int,
     vocal_words: Optional[list[dict]],
     shadow_occurrences: Optional[list[dict]],
-    anchor_palette: Optional[list[str]] = None,
+    accent_palette: Optional[list[str]] = None,
     existing_layers: dict[str, int] | None = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place a two-layer "Shadow" Text effect on each user-tagged lyric
@@ -5072,15 +5072,14 @@ def _place_shadow_text_effects(
     ``_place_picture_effects`` (``_matrix_megatree_targets``).
 
     Each occurrence produces two ``EffectPlacement``s on the same target and
-    time window: a front layer (the word, anchor palette color 1, full
-    buffer) and a shadow layer one index below it (same word, anchor
-    palette color 2, with a family-specific ``B_CUSTOM_SubBuffer`` offset)
-    -- ascending ``EffectLayer`` index renders on top (bug-243), so the
-    front layer must get the smaller index. Both layers reuse
-    ``_PICTURE_MOTIONS`` unchanged (a generic per-``EffectLayer``
-    buffer-transform overlay, not Pictures-specific) for an occasional
-    zoom/rotation accent, seeded so a given occurrence's two layers share
-    the same motion pick.
+    time window: a front layer (the word, always white, full buffer) and a
+    shadow layer one index below it (same word, the song's dominant accent
+    color, with a family-specific ``B_CUSTOM_SubBuffer`` offset) -- ascending
+    ``EffectLayer`` index renders on top (bug-243), so the front layer must
+    get the smaller index. Both layers reuse ``_PICTURE_MOTIONS`` unchanged
+    (a generic per-``EffectLayer`` buffer-transform overlay, not
+    Pictures-specific) for an occasional zoom/rotation accent, seeded so a
+    given occurrence's two layers share the same motion pick.
 
     Mega Tree targets (``_is_shadow_text_tree_target``) render with
     ``_SHADOW_TEXT_TREE_PARAMS``/``_SHADOW_TEXT_TREE_SUBBUFFER`` instead of
@@ -5110,14 +5109,11 @@ def _place_shadow_text_effects(
     if not spans:
         return {}
 
-    palette = anchor_palette or ["#FFFFFF"]
-    # Front/main text uses the same contrast pick as the lyric Text matrix
-    # (_place_lyric_text) -- the lightest palette entry, for legibility
-    # against the small bitmap font. The shadow layer takes a different
-    # palette entry so it reads as a distinct color behind the main text.
-    color1 = _lightest_color(palette)
-    remaining = [c for c in palette if c != color1]
-    color2 = remaining[0] if remaining else color1
+    # Front/main text is always white for maximum legibility against the
+    # small bitmap font. The shadow layer takes the song's dominant accent
+    # color so it reads as a colored drop-shadow behind plain white text.
+    color1 = "#FFFFFF"
+    color2 = accent_palette[0] if accent_palette else color1
 
     front_layer_by_target: dict[str, int] = {
         target_name: (existing_layers or {}).get(target_name, 1) - 2

@@ -87,14 +87,14 @@ class TestPlaceShadowTextEffects:
             variation_seed=0,
             vocal_words=[_word("fire", 5_000)],
             shadow_occurrences=[{"word": "fire", "start_ms": 5_000}],
-            anchor_palette=["#FF0000", "#00FF00"],
+            accent_palette=["#FF6B00", "#00FF00"],
         )
         placements = result["Matrix1"]
         assert len(placements) == 2
         front, shadow = sorted(placements, key=lambda p: p.layer)
         assert front.layer < shadow.layer
-        assert front.color_palette == ["#FF0000"]
-        assert shadow.color_palette == ["#00FF00"]
+        assert front.color_palette == ["#FFFFFF"]
+        assert shadow.color_palette == ["#FF6B00"]
         assert front.parameters["E_TEXTCTRL_Text"] == "fire"
         assert shadow.parameters["E_TEXTCTRL_Text"] == "fire"
         assert "B_CUSTOM_SubBuffer" not in front.parameters
@@ -112,7 +112,7 @@ class TestPlaceShadowTextEffects:
         )
         assert "Matrix1" in result
 
-    def test_single_color_palette_reuses_it_for_both_layers(self):
+    def test_single_accent_color_used_for_shadow_layer_only(self):
         result = _place_shadow_text_effects(
             props=[_prop("Matrix1", "Matrix")],
             groups=[],
@@ -120,12 +120,13 @@ class TestPlaceShadowTextEffects:
             variation_seed=0,
             vocal_words=[_word("fire", 5_000)],
             shadow_occurrences=[{"word": "fire", "start_ms": 5_000}],
-            anchor_palette=["#FF0000"],
+            accent_palette=["#FF6B00"],
         )
-        placements = result["Matrix1"]
-        assert {p.color_palette[0] for p in placements} == {"#FF0000"}
+        front, shadow = sorted(result["Matrix1"], key=lambda p: p.layer)
+        assert front.color_palette == ["#FFFFFF"]
+        assert shadow.color_palette == ["#FF6B00"]
 
-    def test_no_anchor_palette_falls_back_to_white(self):
+    def test_no_accent_palette_falls_back_to_white(self):
         result = _place_shadow_text_effects(
             props=[_prop("Matrix1", "Matrix")],
             groups=[],
@@ -203,10 +204,7 @@ class TestPlaceShadowTextEffects:
         assert "06_PROP_Matrix" in result
         assert "Matrix1" not in result
 
-    def test_front_text_uses_contrast_color_like_lyric_text(self):
-        # Black is never the lightest entry -- front/main text should pick
-        # the lighter palette color (matching _place_lyric_text's
-        # _lightest_color contrast choice), not simply palette[0].
+    def test_front_text_is_always_white_regardless_of_accent_palette(self):
         result = _place_shadow_text_effects(
             props=[_prop("Matrix1", "Matrix")],
             groups=[],
@@ -214,7 +212,7 @@ class TestPlaceShadowTextEffects:
             variation_seed=0,
             vocal_words=[_word("fire", 5_000)],
             shadow_occurrences=[{"word": "fire", "start_ms": 5_000}],
-            anchor_palette=["#000000", "#FFFFFF"],
+            accent_palette=["#000000", "#3355FF"],
         )
         front, shadow = sorted(result["Matrix1"], key=lambda p: p.layer)
         assert front.color_palette == ["#FFFFFF"]
