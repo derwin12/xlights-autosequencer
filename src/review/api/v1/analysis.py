@@ -988,6 +988,28 @@ def paste_lyrics():
     return jsonify(result), 200
 
 
+@api_v1.route("/songs/<song_id>/lyrics/xtiming", methods=["GET"])
+def get_xtiming(song_id: str):
+    """Report whether an uploaded .xtiming override is currently queued for
+    this song's next Analyze run. Same response shape as the POST route so
+    the frontend's "xTiming loaded" indicator can be re-hydrated on mount
+    instead of only appearing right after a fresh upload in the same
+    session (user report 2026-08-03: navigating back to Analyze after
+    uploading gave no way to tell whether the reference was still known).
+    """
+    with _xtiming_override_cache_lock:
+        cached = _xtiming_override_cache.get(song_id)
+    if cached is None:
+        return jsonify({"found": False, "word_count": 0, "phoneme_count": 0, "preview": []}), 200
+    words, phonemes, _lines = cached
+    return jsonify({
+        "found": True,
+        "word_count": len(words),
+        "phoneme_count": len(phonemes),
+        "preview": [w["label"] for w in words[:10]],
+    }), 200
+
+
 @api_v1.route("/songs/<song_id>/lyrics/xtiming", methods=["POST"])
 def upload_xtiming(song_id: str):
     """Accept a user-uploaded .xtiming file's Lyrics track as a WhisperX

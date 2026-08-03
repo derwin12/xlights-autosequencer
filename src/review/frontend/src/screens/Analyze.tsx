@@ -253,6 +253,23 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   const [showXTimingUpload, setShowXTimingUpload] = useState(false);
   const [xtimingResult, setXTimingResult] = useState<XTimingUploadResult | null>(null);
 
+  // Re-hydrate the "xTiming loaded" indicator on mount -- it used to only
+  // ever be set right after a fresh upload in the same session, so
+  // navigating away and back gave no way to tell whether the server still
+  // had a reference queued (user report 2026-08-03). The override itself
+  // lives in an in-memory-only server cache (not tied to analysis state),
+  // so this is a dedicated fetch rather than folding into fetchSections.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/v1/songs/${song.song_id}/lyrics/xtiming`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.found) setXTimingResult(data);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [song.song_id]);
+
   const esRef = useRef<EventSource | null>(null);
   // Seed forceRef with forceOnMount so the initial POST /analyze carries
   // force=true when the parent asked for a re-run (set on re-drop).

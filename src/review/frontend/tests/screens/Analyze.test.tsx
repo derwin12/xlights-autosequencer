@@ -22,6 +22,12 @@ const mockSong = {
 describe('Analyze screen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Safe baseline for the xtiming-status GET that now fires unconditionally
+    // on every mount (see the re-hydration useEffect) -- individual tests
+    // still override via mockResolvedValue/mockResolvedValueOnce for the
+    // specific calls they care about; this just keeps every OTHER call from
+    // resolving to undefined (mockFetch has no implementation otherwise).
+    mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) });
   });
 
   it('renders the song title', () => {
@@ -254,6 +260,30 @@ describe('Analyze screen', () => {
       expect(screen.getByTestId('analyze-screen')).toBeTruthy();
     });
     expect(screen.queryByText(/lyrics found/i)).toBeNull();
+  });
+
+  it('shows the xTiming loaded indicator on mount when the server already has one cached', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url === `/api/v1/songs/${mockSong.song_id}/lyrics/xtiming`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ found: true, word_count: 42, phoneme_count: 120, preview: ['hello'] }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: async () => ({}) });
+    });
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    await waitFor(() => {
+      expect(screen.getByText(/xtiming loaded \(42 words\)/i)).toBeTruthy();
+    });
+  });
+
+  it('does not show the xTiming indicator when nothing is cached server-side', async () => {
+    render(<Analyze song={mockSong} onComplete={() => {}} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('analyze-screen')).toBeTruthy();
+    });
+    expect(screen.queryByText(/xtiming loaded/i)).toBeNull();
   });
 
 });

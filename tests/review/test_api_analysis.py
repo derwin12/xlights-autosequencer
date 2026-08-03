@@ -501,6 +501,68 @@ class TestUploadXTiming:
         assert resp.get_json()["error"]["code"] == "invalid_xtiming"
 
 
+class TestGetXTiming:
+    """GET /songs/<id>/lyrics/xtiming — lets the Analyze screen re-hydrate
+    the "xTiming loaded" indicator on mount, since the override itself
+    lives only in an in-memory server cache with no other way to query it
+    (user report 2026-08-03: navigating back to Analyze after uploading
+    gave no indication the reference was still known)."""
+
+    def test_nothing_cached_returns_found_false(self, client):
+        # A distinct duration -> distinct content hash -> a fresh song_id no
+        # other test's xtiming upload could have populated the (module-level,
+        # never reset between tests) _xtiming_override_cache for.
+        wav = _make_wav_bytes(duration_secs=8.0)
+        song_data = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav), "unrelated.wav")},
+            content_type="multipart/form-data",
+        ).get_json()
+        song_id = song_data["song"]["song_id"]
+
+        resp = client.get(f"/api/v1/songs/{song_id}/lyrics/xtiming")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data == {"found": False, "word_count": 0, "phoneme_count": 0, "preview": []}
+
+    def test_reports_a_previously_uploaded_override(self, client):
+        song_id = _import_wav(client)
+        client.post(
+            f"/api/v1/songs/{song_id}/lyrics/xtiming",
+            data={"file": (io.BytesIO(_XTIMING_LYRICS.encode()), "output.xtiming")},
+            content_type="multipart/form-data",
+        )
+        resp = client.get(f"/api/v1/songs/{song_id}/lyrics/xtiming")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["found"] is True
+        assert data["word_count"] == 2
+        assert data["phoneme_count"] == 4
+        assert data["preview"] == ["HELLO", "WORLD"]
+
+    def test_does_not_leak_across_songs(self, client):
+        song_a = _import_wav(client)
+        client.post(
+            f"/api/v1/songs/{song_a}/lyrics/xtiming",
+            data={"file": (io.BytesIO(_XTIMING_LYRICS.encode()), "output.xtiming")},
+            content_type="multipart/form-data",
+        )
+        # A distinct duration -> distinct content hash -> a genuinely
+        # different song_id from song_a (_import_wav's WAV bytes are
+        # deterministic, so calling it twice unmodified would collide).
+        other_wav = _make_wav_bytes(duration_secs=7.0)
+        other_data = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(other_wav), "other.wav")},
+            content_type="multipart/form-data",
+        ).get_json()
+        song_b = other_data["song"]["song_id"]
+        assert song_b != song_a
+
+        resp = client.get(f"/api/v1/songs/{song_b}/lyrics/xtiming")
+        assert resp.get_json()["found"] is False
+
+
 class TestCarryForwardField:
     """_carry_forward_field: analyze-commit's lyrics/words/phonemes carry-
     through must not resurrect stale session data when the fresh result
