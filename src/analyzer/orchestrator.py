@@ -1580,11 +1580,17 @@ def _select_beat_with_bpm_check(
     expected_hz = estimated_bpm / 60.0
     duration_s = duration_ms / 1000.0
 
-    for track in ranked:
-        actual_hz = track.mark_count / duration_s if duration_s > 0 else 0
-        ratio = actual_hz / expected_hz if expected_hz > 0 else 1.0
-        # Accept within ±tolerance, or at 2× (double-time) or 0.5× (half-time) within tolerance
-        for multiplier in (1.0, 2.0, 0.5):
+    # Multiplier is the OUTER loop: check every candidate for an exact (1.0×)
+    # match, in rank order, before considering any candidate's double/half-time
+    # (2.0×/0.5×) match. Nesting it the other way around let a top-ranked
+    # candidate win via an octave-tolerant 2×/0.5× match before a lower-ranked
+    # candidate's true 1.0× match was ever checked — e.g. a double-time
+    # beat track outscoring the correct half-rate track on regularity/onset
+    # correlation alone, even after estimated_bpm was corrected.
+    for multiplier in (1.0, 2.0, 0.5):
+        for track in ranked:
+            actual_hz = track.mark_count / duration_s if duration_s > 0 else 0
+            ratio = actual_hz / expected_hz if expected_hz > 0 else 1.0
             if abs(ratio / multiplier - 1.0) <= tolerance:
                 if multiplier != 1.0:
                     print(f"  L3 BPM check: {track.algorithm_name} accepted at "
