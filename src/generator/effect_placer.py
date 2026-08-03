@@ -5133,10 +5133,12 @@ def _place_shadow_text_effects(
     scheduled_end_by_target: dict[str, int] = {}
     for word_start, word_end, text in spans:
         burst_ms = max(_SHADOW_TEXT_MIN_BURST_MS, word_end - word_start)
-        # The burst is centered ON word_start (user request, 2026-08-03)
-        # rather than starting there -- the effect's midpoint, not its
-        # start, lands on the moment the word is actually sung.
-        start = max(0, word_start - burst_ms // 2)
+        # The burst is centered on the WORD's own midpoint (user request,
+        # 2026-08-03 -- centering on word_start alone read as slightly too
+        # early), not just its start -- so the effect's midpoint lands on
+        # the middle of when the word is actually sung.
+        word_mid = (word_start + word_end) // 2
+        start = max(0, word_mid - burst_ms // 2)
         end = min(start + burst_ms, duration_ms)
         if end <= start:
             continue

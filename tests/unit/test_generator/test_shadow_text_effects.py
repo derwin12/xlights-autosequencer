@@ -151,10 +151,10 @@ class TestPlaceShadowTextEffects:
         front = result["Matrix1"][0]
         assert front.end_ms - front.start_ms >= _SHADOW_TEXT_MIN_BURST_MS
 
-    def test_burst_is_centered_on_the_sung_word_not_starting_there(self):
-        # 2026-08-03: the burst's MIDPOINT, not its start, must land on
-        # word_start -- so the effect starts burst_ms/2 earlier than the
-        # word actually begins.
+    def test_burst_is_centered_on_the_word_midpoint_not_word_start(self):
+        # 2026-08-03 (refined same day -- centering on word_start alone
+        # read as slightly too early): the burst's MIDPOINT must land on
+        # the WORD's own midpoint (start+end)/2, not just its start_ms.
         result = _place_shadow_text_effects(
             props=[_prop("Matrix1", "Matrix")],
             groups=[],
@@ -166,10 +166,11 @@ class TestPlaceShadowTextEffects:
         front = result["Matrix1"][0]
         burst_ms = front.end_ms - front.start_ms
         assert burst_ms == 1_600
-        assert front.start_ms == 10_000 - 800
-        assert front.end_ms == 10_000 + 800
+        word_mid = 10_000 + 1_600 // 2  # (word_start + word_end) / 2
+        assert front.start_ms == word_mid - 800
+        assert front.end_ms == word_mid + 800
         midpoint = (front.start_ms + front.end_ms) / 2
-        assert midpoint == 10_000
+        assert midpoint == word_mid
 
     def test_centered_burst_start_clamps_at_zero(self):
         # word_start near the very beginning of the song -- centering
@@ -179,8 +180,8 @@ class TestPlaceShadowTextEffects:
             groups=[],
             duration_ms=60_000,
             variation_seed=0,
-            vocal_words=[_word("fireworks", 100, duration_ms=1_600)],
-            shadow_occurrences=[{"word": "fireworks", "start_ms": 100}],
+            vocal_words=[_word("fireworks", 0, duration_ms=1_600)],
+            shadow_occurrences=[{"word": "fireworks", "start_ms": 0}],
         )
         front = result["Matrix1"][0]
         assert front.start_ms == 0
