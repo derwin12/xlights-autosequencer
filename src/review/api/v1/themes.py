@@ -10,11 +10,17 @@ from flask import jsonify, request
 from . import api_v1
 from src.review.storage.assignments import load_session
 from src.review.storage.library import load_library
+from src.themes.library import DEFAULT_THEME_LAYERS
 
 _BUILTIN_THEMES_PATH = pathlib.Path(__file__).parents[3] / "themes" / "builtin_themes.json"
 _CUSTOM_THEMES_DIR = pathlib.Path.home() / ".xlight" / "custom_themes"
 
 _SCHEMA_VERSION = 1
+
+# See src.themes.library.DEFAULT_THEME_LAYERS for why: themes created via
+# this screen's dialog have no layer/effect picker, so a saved theme with no
+# layers would otherwise be silently dropped by the real generator.
+_DEFAULT_THEME_LAYERS = DEFAULT_THEME_LAYERS
 
 # mood → section kinds for default_for_kinds (FR-012a)
 _MOOD_KINDS: dict[str, list[str]] = {
@@ -43,7 +49,9 @@ def _is_builtin_theme_id(theme_id: str) -> bool:
         return False
 
 
-def _theme_to_api(raw: dict, theme_id: str, editable: bool = False) -> dict:
+def _theme_to_api(
+    raw: dict, theme_id: str, editable: bool = False, validation_errors: list[str] | None = None,
+) -> dict:
     """Map internal theme schema → frontend API shape."""
     mood = raw.get("mood", "structural")
     occasion = raw.get("occasion", "general")
@@ -74,14 +82,42 @@ def _theme_to_api(raw: dict, theme_id: str, editable: bool = False) -> dict:
         "occasion": occasion,
         "genre": raw.get("genre", "any"),
         "editable": editable,
+        "validation_errors": validation_errors or [],
     }
     return result
+
+
+def _validate_custom_theme(raw: dict) -> list[str]:
+    """Errors that would make the real generator silently drop this theme.
+
+    Runs the exact same check src.themes.library.load_theme_library() runs
+    before adding a custom theme to the generator's catalog -- a theme that
+    fails this looks completely normal in the Theme screen (assignable,
+    has swatches) but is silently skipped (a logger.warning, never surfaced
+    to the user) the moment a real export runs (user report 2026-08-03: a
+    theme assigned to a section didn't show up in the exported .xsq's
+    "Themes" diagnostic track at all). Applies the same layers backfill
+    load_theme_library() applies, so a theme this dialog can't add a real
+    layer to doesn't show a scary warning for something the generator will
+    actually heal transparently.
+    """
+    from src.effects.library import load_effect_library
+    from src.themes.validator import validate_theme
+    from src.variants.library import load_variant_library
+
+    if not raw.get("layers"):
+        raw = {**raw, "layers": _DEFAULT_THEME_LAYERS}
+
+    effect_library = load_effect_library()
+    variant_library = load_variant_library(effect_library=effect_library)
+    return validate_theme(raw, effect_library, variant_library)
 
 
 def _load_themes() -> list[dict]:
     themes: list[dict] = []
 
-    # Built-in themes (read-only)
+    # Built-in themes (read-only) -- assumed already valid (covered by the
+    # repo's own test suite), so skip the validation pass for these.
     if _BUILTIN_THEMES_PATH.exists():
         try:
             raw = json.loads(_BUILTIN_THEMES_PATH.read_text(encoding="utf-8"))
@@ -96,7 +132,8 @@ def _load_themes() -> list[dict]:
             try:
                 entry = json.loads(path.read_text(encoding="utf-8"))
                 theme_id = path.stem
-                themes.append(_theme_to_api(entry, theme_id, editable=True))
+                errors = _validate_custom_theme(entry)
+                themes.append(_theme_to_api(entry, theme_id, editable=True, validation_errors=errors))
             except Exception:
                 pass
 
@@ -133,6 +170,13 @@ def update_theme(theme_id: str):
         if field in body:
             existing[field] = body[field]
 
+    # Backfill a working default layer for themes saved before this dialog
+    # generated one automatically (see _DEFAULT_THEME_LAYERS above) -- an
+    # empty-layers theme edited and re-saved here should come out fixed,
+    # not still silently inert.
+    if not existing.get("layers"):
+        existing["layers"] = _DEFAULT_THEME_LAYERS
+
     path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
     return jsonify({"theme": _theme_to_api(existing, theme_id, editable=True)}), 200
 
@@ -157,7 +201,7 @@ def create_theme():
         "occasion": body.get("occasion", "general"),
         "genre": body.get("genre", "any"),
         "intent": body.get("intent", body.get("description", "")),
-        "layers": body.get("layers", []),
+        "layers": body.get("layers") or _DEFAULT_THEME_LAYERS,
         "alternates": body.get("alternates", []),
         "palette": body.get("palette", []),
         "accent_palette": body.get("accent_palette", []),

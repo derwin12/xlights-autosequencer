@@ -166,3 +166,67 @@ def test_delete_theme_still_assigned_to_a_song_returns_409(client, custom_themes
     assert resp.get_json()["error"]["code"] == "theme_in_use"
     # File must survive — the delete must not have happened.
     assert (custom_themes_dir / "my-test-theme.json").exists()
+
+
+# ── Layers-less custom themes get a working default (user report 2026-08-03) ─
+# The Theme screen's New Theme/Edit dialog has no layer/effect picker, so a
+# theme saved through it has no `layers` — validate_theme() rejects that,
+# and the real generator used to silently drop the theme from its catalog
+# entirely (an assigned theme never actually rendered). create_theme/
+# update_theme now backfill a working default layer so this can't happen.
+
+def test_create_theme_without_layers_gets_default_layer(client, custom_themes_dir):
+    resp = client.post("/api/v1/themes", json={
+        "name": "test2", "mood": "structural", "occasion": "general", "genre": "any",
+        "palette": ["#1E1B4B", "#7DD3FC"], "accent_palette": [],
+    })
+    assert resp.status_code == 201
+    saved = json.loads((custom_themes_dir / "test2.json").read_text(encoding="utf-8"))
+    assert saved["layers"] == [
+        {"variant": "Color Wash Smooth", "blend_mode": "Normal", "effect_pool": [], "stem": None},
+    ]
+
+
+def test_update_theme_backfills_default_layer_for_existing_layerless_theme(client, custom_themes_dir):
+    _write_custom_theme(custom_themes_dir, "my-test-theme")  # no "layers" key at all
+    resp = client.put("/api/v1/themes/my-test-theme", json={"intent": "updated"})
+    assert resp.status_code == 200
+    saved = json.loads((custom_themes_dir / "my-test-theme.json").read_text(encoding="utf-8"))
+    assert saved["layers"] == [
+        {"variant": "Color Wash Smooth", "blend_mode": "Normal", "effect_pool": [], "stem": None},
+    ]
+
+
+def test_theme_with_explicit_layers_are_not_overwritten_on_create(client, custom_themes_dir):
+    resp = client.post("/api/v1/themes", json={
+        "name": "Has Layers", "palette": ["#FFFFFF", "#000000"],
+        "layers": [{"variant": "Fire Tall", "blend_mode": "Normal"}],
+    })
+    assert resp.status_code == 201
+    saved = json.loads((custom_themes_dir / "has-layers.json").read_text(encoding="utf-8"))
+    assert saved["layers"] == [{"variant": "Fire Tall", "blend_mode": "Normal"}]
+
+
+def test_themes_list_includes_validation_errors_field(client, custom_themes_dir):
+    _write_custom_theme(custom_themes_dir, "my-test-theme")  # no "layers" key -- backfilled at load, should validate clean
+    data = client.get("/api/v1/themes").get_json()
+    theme = next(t for t in data["themes"] if t["theme_id"] == "my-test-theme")
+    assert theme["validation_errors"] == []
+
+
+def test_genuinely_broken_custom_theme_reports_validation_errors(client, custom_themes_dir):
+    # Missing "mood" — a real authoring error the layers backfill can't fix.
+    (custom_themes_dir / "broken.json").write_text(json.dumps({
+        "name": "Broken", "occasion": "general", "genre": "any", "intent": "",
+        "palette": ["#111111", "#222222"],
+    }), encoding="utf-8")
+    data = client.get("/api/v1/themes").get_json()
+    theme = next(t for t in data["themes"] if t["theme_id"] == "broken")
+    assert theme["validation_errors"]  # non-empty
+
+
+def test_builtin_themes_have_no_validation_errors(client, custom_themes_dir):
+    data = client.get("/api/v1/themes").get_json()
+    for theme in data["themes"]:
+        if not theme["editable"]:
+            assert theme["validation_errors"] == []

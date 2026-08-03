@@ -15,6 +15,21 @@ logger = logging.getLogger(__name__)
 _BUILTIN_PATH = Path(__file__).parent / "builtin_themes.json"
 _DEFAULT_CUSTOM_DIR = Path.home() / ".xlight" / "custom_themes"
 
+# Themes authored through the review UI's palette-only Theme editor (no
+# layer/effect picker exists there) have no `layers` at all -- validate_theme
+# rejects that ("Theme must have at least one layer"), which used to mean
+# load_theme_library() silently dropped the theme from its catalog with only
+# a logger.warning (user report 2026-08-03: assigned a theme to a section,
+# the exported .xsq's "Themes" diagnostic track showed the auto-selected
+# theme instead of the one actually chosen). "Color Wash Smooth" is a real
+# built-in bottom-layer variant (used by an actual shipped theme) that
+# renders using the theme's own palette, so a layers-less custom theme gets
+# a real, working default look transparently instead of being silently
+# inert.
+DEFAULT_THEME_LAYERS: list[dict] = [
+    {"variant": "Color Wash Smooth", "blend_mode": "Normal", "effect_pool": [], "stem": None},
+]
+
 
 @dataclass
 class ThemeLibrary:
@@ -108,6 +123,8 @@ def load_theme_library(
             try:
                 with open(custom_file, "r", encoding="utf-8") as f:
                     custom_data = json.load(f)
+                if not custom_data.get("layers"):
+                    custom_data = {**custom_data, "layers": DEFAULT_THEME_LAYERS}
                 errors = validate_theme(custom_data, effect_library, variant_library)
                 if errors:
                     logger.warning(

@@ -228,3 +228,68 @@ class TestVariantLibraryRequired:
                 effect_library=effect_lib,
                 variant_library=None,
             )
+
+
+class TestLayersLessCustomThemeBackfill:
+    """A custom theme saved with no `layers` (the review UI's palette-only
+    New Theme/Edit dialog has no layer/effect picker) used to fail
+    validate_theme() ("Theme must have at least one layer") and get silently
+    dropped from the catalog entirely (user report 2026-08-03: assigned a
+    theme to a section, the exported .xsq showed the auto-selected theme
+    instead of the one actually chosen). DEFAULT_THEME_LAYERS's "Color Wash
+    Smooth" is a real built-in variant, so these use the real production
+    effect/variant libraries (not the minimal test fixtures) to confirm it
+    actually resolves against the real catalog, not just a mocked one."""
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def real_effect_lib(cls):
+        return load_effect_library()
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def real_variant_lib(cls, real_effect_lib):
+        return load_variant_library(effect_library=real_effect_lib)
+
+    def test_empty_layers_list_is_backfilled_and_included(self, real_effect_lib, real_variant_lib):
+        with tempfile.TemporaryDirectory() as tmp:
+            custom_dir = Path(tmp)
+            (custom_dir / "test2.json").write_text(json.dumps({
+                "name": "test2", "mood": "structural", "occasion": "general",
+                "genre": "any", "intent": "", "palette": ["#1E1B4B", "#7DD3FC"],
+                "accent_palette": [], "layers": [],
+            }))
+            lib = load_theme_library(
+                effect_library=real_effect_lib, variant_library=real_variant_lib, custom_dir=custom_dir,
+            )
+            t = lib.get("test2")
+            assert t is not None
+            assert len(t.layers) == 1
+            assert t.layers[0].variant == "Color Wash Smooth"
+
+    def test_missing_layers_key_is_backfilled_and_included(self, real_effect_lib, real_variant_lib):
+        with tempfile.TemporaryDirectory() as tmp:
+            custom_dir = Path(tmp)
+            (custom_dir / "no-layers-key.json").write_text(json.dumps({
+                "name": "No Layers Key", "mood": "structural", "occasion": "general",
+                "genre": "any", "intent": "", "palette": ["#FFFFFF", "#000000"],
+            }))
+            lib = load_theme_library(
+                effect_library=real_effect_lib, variant_library=real_variant_lib, custom_dir=custom_dir,
+            )
+            assert lib.get("No Layers Key") is not None
+
+    def test_real_layers_are_left_untouched(self, real_effect_lib, real_variant_lib):
+        with tempfile.TemporaryDirectory() as tmp:
+            custom_dir = Path(tmp)
+            (custom_dir / "has-layers.json").write_text(json.dumps({
+                "name": "Has Layers", "mood": "structural", "occasion": "general",
+                "genre": "any", "intent": "", "palette": ["#FFFFFF", "#000000"],
+                "layers": [{"variant": "Fire Tall", "blend_mode": "Normal"}],
+            }))
+            lib = load_theme_library(
+                effect_library=real_effect_lib, variant_library=real_variant_lib, custom_dir=custom_dir,
+            )
+            t = lib.get("Has Layers")
+            assert t is not None
+            assert t.layers[0].variant == "Fire Tall"
