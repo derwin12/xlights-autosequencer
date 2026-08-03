@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.effects.library import EffectLibrary, load_effect_library
-from src.themes.models import Theme
+from src.themes.models import VALID_GENRES, Theme
 from src.themes.validator import validate_theme
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,35 @@ _DEFAULT_CUSTOM_DIR = Path.home() / ".xlight" / "custom_themes"
 DEFAULT_THEME_LAYERS: list[dict] = [
     {"variant": "Color Wash Smooth", "blend_mode": "Normal", "effect_pool": [], "stem": None},
 ]
+
+
+def heal_custom_theme_data(data: dict) -> dict:
+    """Fix common ways the review UI's free-text/paste-driven Theme editor
+    produces data validate_theme() would otherwise reject outright, dropping
+    the theme from the catalog entirely with only a logger.warning (found
+    2026-08-03 investigating a real user theme that hit all three at once):
+
+    - No `layers` (see DEFAULT_THEME_LAYERS above -- the dialog has no
+      layer/effect picker at all).
+    - `genre` in the wrong case ("Rock" instead of "rock") -- the Genre
+      field is free text, not a dropdown like Mood/Occasion.
+    - `accent_palette` with exactly 1 color -- validate_theme requires 0
+      (omitted entirely) or 2+ (a real contrasting family, see the
+      two-group AI palette prompt); a paste that only carried one color
+      through is dropped rather than treated as a fatal error, since an
+      accent palette is optional in the first place.
+    """
+    healed = dict(data)
+    if not healed.get("layers"):
+        healed["layers"] = DEFAULT_THEME_LAYERS
+    genre = str(healed.get("genre", "")).strip().lower()
+    if genre in VALID_GENRES:
+        healed["genre"] = genre
+    elif "genre" in healed:
+        healed["genre"] = "any"
+    if len(healed.get("accent_palette") or []) == 1:
+        healed["accent_palette"] = []
+    return healed
 
 
 @dataclass
@@ -115,7 +144,9 @@ def load_theme_library(
         if errors:
             logger.warning("Built-in theme '%s' has validation errors: %s", name, errors)
             continue
-        themes[name] = Theme.from_dict(data)
+        theme = Theme.from_dict(data)
+        theme.theme_id = _slugify(name)
+        themes[name] = theme
 
     # Load custom overrides
     if custom_dir.is_dir():
@@ -123,8 +154,7 @@ def load_theme_library(
             try:
                 with open(custom_file, "r", encoding="utf-8") as f:
                     custom_data = json.load(f)
-                if not custom_data.get("layers"):
-                    custom_data = {**custom_data, "layers": DEFAULT_THEME_LAYERS}
+                custom_data = heal_custom_theme_data(custom_data)
                 errors = validate_theme(custom_data, effect_library, variant_library)
                 if errors:
                     logger.warning(
@@ -133,6 +163,9 @@ def load_theme_library(
                     )
                     continue
                 custom_theme = Theme.from_dict(custom_data)
+                # The filename stem, not a slug of the (possibly since-
+                # renamed) current name -- see Theme.theme_id's docstring.
+                custom_theme.theme_id = custom_file.stem
                 themes[custom_theme.name] = custom_theme
             except (json.JSONDecodeError, KeyError, TypeError) as exc:
                 logger.warning("Skipping malformed custom file '%s': %s", custom_file.name, exc)

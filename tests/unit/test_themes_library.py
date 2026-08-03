@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from src.effects.library import load_effect_library
-from src.themes.library import ThemeLibrary, load_theme_library
+from src.themes.library import ThemeLibrary, heal_custom_theme_data, load_theme_library
 from src.themes.models import Theme
 from src.variants.library import load_variant_library
 
@@ -293,3 +293,128 @@ class TestLayersLessCustomThemeBackfill:
             t = lib.get("Has Layers")
             assert t is not None
             assert t.layers[0].variant == "Fire Tall"
+
+
+class TestHealCustomThemeData:
+    """Fixups load_theme_library() applies to every custom theme before
+    validation -- see the function's own docstring for the three real
+    failure modes this was built from (found 2026-08-03 investigating a
+    single real user theme that hit all three simultaneously)."""
+
+    def test_no_layers_key_gets_default(self):
+        healed = heal_custom_theme_data({"name": "X"})
+        assert healed["layers"] == [
+            {"variant": "Color Wash Smooth", "blend_mode": "Normal", "effect_pool": [], "stem": None},
+        ]
+
+    def test_empty_layers_list_gets_default(self):
+        healed = heal_custom_theme_data({"name": "X", "layers": []})
+        assert len(healed["layers"]) == 1
+
+    def test_real_layers_are_untouched(self):
+        original = [{"variant": "Fire Tall", "blend_mode": "Normal"}]
+        healed = heal_custom_theme_data({"name": "X", "layers": original})
+        assert healed["layers"] is original
+
+    def test_wrong_case_genre_is_lowercased(self):
+        healed = heal_custom_theme_data({"name": "X", "genre": "Rock"})
+        assert healed["genre"] == "rock"
+
+    def test_unrecognized_genre_falls_back_to_any(self):
+        healed = heal_custom_theme_data({"name": "X", "genre": "Country"})
+        assert healed["genre"] == "any"
+
+    def test_missing_genre_is_left_absent(self):
+        # Missing entirely is a validate_theme concern (defaults to "any"
+        # per _theme_to_api elsewhere) -- this only fixes up a genre that
+        # IS present but in the wrong form.
+        healed = heal_custom_theme_data({"name": "X"})
+        assert "genre" not in healed
+
+    def test_valid_lowercase_genre_is_untouched(self):
+        healed = heal_custom_theme_data({"name": "X", "genre": "pop"})
+        assert healed["genre"] == "pop"
+
+    def test_single_accent_color_is_dropped(self):
+        healed = heal_custom_theme_data({"name": "X", "accent_palette": ["#FF4500"]})
+        assert healed["accent_palette"] == []
+
+    def test_two_or_more_accent_colors_are_untouched(self):
+        original = ["#FF4500", "#00FF00"]
+        healed = heal_custom_theme_data({"name": "X", "accent_palette": original})
+        assert healed["accent_palette"] is original
+
+    def test_empty_accent_palette_is_untouched(self):
+        healed = heal_custom_theme_data({"name": "X", "accent_palette": []})
+        assert healed["accent_palette"] == []
+
+    def test_missing_accent_palette_is_left_absent(self):
+        healed = heal_custom_theme_data({"name": "X"})
+        assert "accent_palette" not in healed
+
+    def test_original_dict_is_not_mutated(self):
+        original = {"name": "X", "genre": "Rock", "accent_palette": ["#FF4500"]}
+        heal_custom_theme_data(original)
+        assert original == {"name": "X", "genre": "Rock", "accent_palette": ["#FF4500"]}
+
+    def test_the_real_user_theme_that_prompted_this_heals_cleanly(self):
+        # Dream On/Aerosmith investigation, 2026-08-03: a real custom theme
+        # hit all three healable problems simultaneously.
+        healed = heal_custom_theme_data({
+            "name": "Aerosmith DreamOn", "mood": "structural", "occasion": "general",
+            "genre": "Rock", "intent": "From the AI pull",
+            "palette": ["#0D1B2A", "#1B263B", "#22333B", "#415A77"],
+            "accent_palette": ["#FF4500"],
+            "layers": [],
+        })
+        assert healed["genre"] == "rock"
+        assert healed["accent_palette"] == []
+        assert len(healed["layers"]) == 1
+
+
+class TestThemeIdSurvivesRename:
+    """A custom theme's theme_id must stay pinned to its file's stable
+    identity (filename stem, fixed at creation) even after the theme's
+    display .name is edited -- otherwise plan.py's override resolution
+    (keyed by theme_id) silently orphans every existing section assignment
+    that references the theme by its original id (bug found 2026-08-03:
+    renamed a theme created as "test2" to "Aerosmith DreamOn"; assignments
+    still stored theme_id="test2", but the theme's own identity used to be
+    re-derived from its current .name, which no longer matched)."""
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def real_effect_lib(cls):
+        return load_effect_library()
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def real_variant_lib(cls, real_effect_lib):
+        return load_variant_library(effect_library=real_effect_lib)
+
+    def test_custom_theme_id_is_the_filename_stem_not_a_slug_of_current_name(
+        self, real_effect_lib, real_variant_lib,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            custom_dir = Path(tmp)
+            # Filename stem ("test2") deliberately does not match what
+            # slugifying the current .name would produce.
+            (custom_dir / "test2.json").write_text(json.dumps({
+                "name": "Aerosmith DreamOn", "mood": "structural", "occasion": "general",
+                "genre": "rock", "intent": "", "palette": ["#0D1B2A", "#1B263B"],
+                "layers": [{"variant": "Fire Tall", "blend_mode": "Normal"}],
+            }))
+            lib = load_theme_library(
+                effect_library=real_effect_lib, variant_library=real_variant_lib, custom_dir=custom_dir,
+            )
+            t = lib.get("Aerosmith DreamOn")
+            assert t is not None
+            assert t.theme_id == "test2"
+
+    def test_builtin_theme_id_is_slug_of_its_catalog_name(self, real_effect_lib, real_variant_lib):
+        lib = load_theme_library(effect_library=real_effect_lib, variant_library=real_variant_lib)
+        # Any real built-in theme works here -- confirms theme_id is set
+        # for the built-in path too, not just custom.
+        t = next(iter(lib.themes.values()))
+        assert t.theme_id
+        assert t.theme_id == t.theme_id.lower()

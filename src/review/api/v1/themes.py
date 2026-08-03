@@ -10,17 +10,12 @@ from flask import jsonify, request
 from . import api_v1
 from src.review.storage.assignments import load_session
 from src.review.storage.library import load_library
-from src.themes.library import DEFAULT_THEME_LAYERS
+from src.themes.library import heal_custom_theme_data
 
 _BUILTIN_THEMES_PATH = pathlib.Path(__file__).parents[3] / "themes" / "builtin_themes.json"
 _CUSTOM_THEMES_DIR = pathlib.Path.home() / ".xlight" / "custom_themes"
 
 _SCHEMA_VERSION = 1
-
-# See src.themes.library.DEFAULT_THEME_LAYERS for why: themes created via
-# this screen's dialog have no layer/effect picker, so a saved theme with no
-# layers would otherwise be silently dropped by the real generator.
-_DEFAULT_THEME_LAYERS = DEFAULT_THEME_LAYERS
 
 # mood → section kinds for default_for_kinds (FR-012a)
 _MOOD_KINDS: dict[str, list[str]] = {
@@ -96,17 +91,17 @@ def _validate_custom_theme(raw: dict) -> list[str]:
     has swatches) but is silently skipped (a logger.warning, never surfaced
     to the user) the moment a real export runs (user report 2026-08-03: a
     theme assigned to a section didn't show up in the exported .xsq's
-    "Themes" diagnostic track at all). Applies the same layers backfill
-    load_theme_library() applies, so a theme this dialog can't add a real
-    layer to doesn't show a scary warning for something the generator will
-    actually heal transparently.
+    "Themes" diagnostic track at all). Applies the same heal_custom_theme_data
+    fixups load_theme_library() applies, so a theme this dialog can't
+    directly produce correctly (no layer/effect picker, free-text Genre
+    field, paste-driven accent palette) doesn't show a scary warning for
+    something the generator will actually heal transparently.
     """
     from src.effects.library import load_effect_library
     from src.themes.validator import validate_theme
     from src.variants.library import load_variant_library
 
-    if not raw.get("layers"):
-        raw = {**raw, "layers": _DEFAULT_THEME_LAYERS}
+    raw = heal_custom_theme_data(raw)
 
     effect_library = load_effect_library()
     variant_library = load_variant_library(effect_library=effect_library)
@@ -170,12 +165,11 @@ def update_theme(theme_id: str):
         if field in body:
             existing[field] = body[field]
 
-    # Backfill a working default layer for themes saved before this dialog
-    # generated one automatically (see _DEFAULT_THEME_LAYERS above) -- an
-    # empty-layers theme edited and re-saved here should come out fixed,
-    # not still silently inert.
-    if not existing.get("layers"):
-        existing["layers"] = _DEFAULT_THEME_LAYERS
+    # Fix up anything this dialog can't reliably get right on its own
+    # (missing layers, wrong-case genre, a 1-color accent_palette) so a
+    # theme edited and re-saved here comes out fixed on disk, not still
+    # silently inert to the real generator.
+    existing = heal_custom_theme_data(existing)
 
     path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
     return jsonify({"theme": _theme_to_api(existing, theme_id, editable=True)}), 200
@@ -201,11 +195,12 @@ def create_theme():
         "occasion": body.get("occasion", "general"),
         "genre": body.get("genre", "any"),
         "intent": body.get("intent", body.get("description", "")),
-        "layers": body.get("layers") or _DEFAULT_THEME_LAYERS,
+        "layers": body.get("layers", []),
         "alternates": body.get("alternates", []),
         "palette": body.get("palette", []),
         "accent_palette": body.get("accent_palette", []),
     }
+    entry = heal_custom_theme_data(entry)
     path.write_text(json.dumps(entry, indent=2, ensure_ascii=False), encoding="utf-8")
     return jsonify({"theme": _theme_to_api(entry, theme_id, editable=True)}), 201
 

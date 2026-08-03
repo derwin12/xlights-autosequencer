@@ -212,18 +212,25 @@ def build_plan(
     # screen) silently no-op'd and fell through to the auto-selected theme
     # -- confirmed on a real export where NONE of a song's 4 confirmed
     # theme assignments' colors appeared anywhere in the output. Resolve
-    # against both a name-keyed and a slug-keyed index so either caller
+    # against both a name-keyed and an id-keyed index so either caller
     # format works.
+    #
+    # The id-keyed index uses each Theme's own stable theme_id (set by
+    # load_theme_library() from the file's slug/filename), NOT a slug
+    # re-derived from the theme's current .name -- doing that broke every
+    # assignment referencing a custom theme that had since been renamed
+    # (bug found 2026-08-03: renamed "test2" to "Aerosmith DreamOn",
+    # assignments still stored theme_id="test2", but the old code re-slugified
+    # the theme's now-current name to "aerosmith-dreamon" and never found it).
     if config.theme_overrides:
-        from src.themes.library import _slugify as _theme_slugify
-        _themes_by_slug = {
-            _theme_slugify(t.name): t for t in theme_library.themes.values()
+        _themes_by_id = {
+            t.theme_id: t for t in theme_library.themes.values() if t.theme_id
         }
         for idx, theme_name in config.theme_overrides.items():
             if 0 <= idx < len(assignments):
                 theme = (
                     theme_library.themes.get(theme_name)
-                    or _themes_by_slug.get(theme_name)
+                    or _themes_by_id.get(theme_name)
                 )
                 if theme is not None:
                     assignments[idx].theme = theme

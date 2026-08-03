@@ -244,6 +244,49 @@ class TestThemeOverrides:
 
         assert plan.sections[0].theme.name == "Stellar Wind"
 
+    def test_slug_override_resolves_after_theme_rename(self, tmp_path: Path):
+        # bug found 2026-08-03: a custom theme created as "test2" (theme_id
+        # = filename stem "test2") later renamed to "Aerosmith DreamOn" via
+        # the Edit dialog. The override index used to be built by
+        # re-slugifying each theme's CURRENT .name ("aerosmith-dreamon"),
+        # so an assignment still holding the original theme_id "test2"
+        # silently found nothing and fell through to auto-selection. The
+        # index must be built from each Theme's own stable .theme_id
+        # (set by load_theme_library from the file, unaffected by rename)
+        # instead.
+        import json as _json
+
+        custom_dir = tmp_path / "custom_themes"
+        custom_dir.mkdir()
+        (custom_dir / "test2.json").write_text(_json.dumps({
+            "name": "Aerosmith DreamOn", "mood": "structural", "occasion": "general",
+            "genre": "rock", "intent": "From the AI pull",
+            "palette": ["#0D1B2A", "#1B263B", "#22333B", "#415A77"],
+            "layers": [{"variant": "Color Wash Smooth", "blend_mode": "Normal"}],
+        }))
+
+        hierarchy = _make_hierarchy()
+        props = _make_props()
+        groups = _make_groups()
+        effect_lib = load_effect_library()
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(
+            effect_library=effect_lib, variant_library=variant_lib, custom_dir=custom_dir,
+        )
+        assert theme_lib.get("Aerosmith DreamOn").theme_id == "test2"
+
+        config = GenerationConfig(
+            audio_path=tmp_path / "test.mp3",
+            layout_path=tmp_path / "layout.xml",
+            genre="pop",
+            occasion="general",
+            theme_overrides={0: "test2"},
+        )
+
+        plan = build_plan(config, hierarchy, props, groups, effect_lib, theme_lib)
+
+        assert plan.sections[0].theme.name == "Aerosmith DreamOn"
+
     def test_display_name_theme_override_still_resolves(self, tmp_path: Path):
         # The CLI and test_phase1_metrics.py pass display names directly —
         # must keep working alongside the new slug path.

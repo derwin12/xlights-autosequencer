@@ -75,6 +75,15 @@ class Theme:
     # Driving Few" for Christmas themes.  None disables the overlay (the
     # default for non-winter themes like Halloween).
     background_accent_variant: str | None = None
+    # Stable identity, set by load_theme_library() at load time -- for
+    # built-ins, the slug of the original catalog name; for custom themes,
+    # the theme's filename stem (fixed at creation, unaffected by later
+    # renames). NOT part of the JSON schema (from_dict/to_dict don't touch
+    # it) -- deriving it from the CURRENT `.name` instead would silently
+    # break every existing assignment referencing a theme that's since been
+    # renamed (bug found 2026-08-03: renaming a custom theme orphaned every
+    # section assignment pointing at its original theme_id).
+    theme_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.transition_mode is not None:
