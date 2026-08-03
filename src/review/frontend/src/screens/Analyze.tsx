@@ -112,6 +112,7 @@ interface Findings {
   sections: Section[];
   waveformDecoded: boolean;
   themesAssigned: boolean;
+  estimatedBpm: number | null;
 }
 
 interface OverallState {
@@ -231,6 +232,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
     sections: [],
     waveformDecoded: false,
     themesAssigned: false,
+    estimatedBpm: null,
   });
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -274,6 +276,12 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   // Seed forceRef with forceOnMount so the initial POST /analyze carries
   // force=true when the parent asked for a re-run (set on re-drop).
   const forceRef = useRef(forceOnMount);
+  // Manual BPM correction, entered next to Re-analyze when auto-detected
+  // tempo is wrong (commonly an octave error — reports 2x/0.5x the true
+  // BPM, which makes the beat-track selector accept a double/half-time
+  // track). Empty string = no override, use auto-detection.
+  const [bpmOverrideInput, setBpmOverrideInput] = useState('');
+  const bpmOverrideRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
@@ -282,12 +290,14 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
     esRef.current?.close();
     if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
     forceRef.current = true;
+    const parsedBpm = parseFloat(bpmOverrideInput);
+    bpmOverrideRef.current = Number.isFinite(parsedBpm) && parsedBpm > 0 ? parsedBpm : null;
     setDetectors([]);
     setOverall(null);
     setError(null);
     setAnalysisComplete(false);
     setLogLines([]);
-    setFindings({ beats: 0, bars: 0, sections: [], waveformDecoded: false, themesAssigned: false });
+    setFindings({ beats: 0, bars: 0, sections: [], waveformDecoded: false, themesAssigned: false, estimatedBpm: null });
     setElapsedMs(0);
     startTimeRef.current = null;
   }
@@ -330,7 +340,7 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       setError(null);
       setAnalysisComplete(false);
       setLogLines([]);
-      setFindings({ beats: 0, bars: 0, sections: [], waveformDecoded: false, themesAssigned: false });
+      setFindings({ beats: 0, bars: 0, sections: [], waveformDecoded: false, themesAssigned: false, estimatedBpm: null });
       setElapsedMs(0);
       startTimeRef.current = null;
     } catch (e) {
@@ -430,8 +440,15 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
           } satisfies Section;
         }
       );
-      if (secs.length > 0) {
-        setFindings((prev) => ({ ...prev, sections: secs, themesAssigned: true }));
+      const estimatedBpm = typeof data?.estimated_bpm === 'number' && data.estimated_bpm > 0
+        ? data.estimated_bpm
+        : null;
+      if (secs.length > 0 || estimatedBpm != null) {
+        setFindings((prev) => ({
+          ...prev,
+          ...(secs.length > 0 ? { sections: secs, themesAssigned: true } : {}),
+          estimatedBpm,
+        }));
       }
 
       // Surface the persisted lyrics status (from a prior session's Check
@@ -466,12 +483,16 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
     async function startAnalysis() {
       try {
         const body: Record<string, unknown> = { force: forceRef.current };
+        if (bpmOverrideRef.current != null) {
+          body.bpm_override = bpmOverrideRef.current;
+        }
         const res = await fetch(`/api/v1/songs/${song.song_id}/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
         forceRef.current = false;
+        bpmOverrideRef.current = null;
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           setError(body?.error?.message ?? `Analysis failed (${res.status})`);
@@ -872,7 +893,22 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
           )}
         </div>
 
-        <div className={styles.reanalyzeRow}>
+        <div className={styles.reanalyzeRow} style={{ alignItems: 'center', gap: 8 }}>
+          <label htmlFor="bpm-override-input" style={{ fontSize: 12, color: 'var(--color-text-muted, #888)' }}>
+            BPM{findings.estimatedBpm != null ? ` (detected ${Math.round(findings.estimatedBpm)})` : ''}:
+          </label>
+          <input
+            id="bpm-override-input"
+            data-testid="bpm-override-input"
+            type="number"
+            min={1}
+            step="any"
+            placeholder={findings.estimatedBpm != null ? String(Math.round(findings.estimatedBpm)) : 'auto'}
+            value={bpmOverrideInput}
+            onChange={(e) => setBpmOverrideInput(e.target.value)}
+            style={{ width: 70 }}
+            title="Override the auto-detected BPM if beats look doubled/halved, then Re-analyze"
+          />
           <button className={styles.reanalyzeBtn} onClick={handleReanalyze}>
             Re-analyze
           </button>

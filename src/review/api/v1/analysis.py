@@ -63,7 +63,8 @@ _xtiming_override_cache_lock = threading.Lock()
 
 
 class _RunState:
-    def __init__(self, run_id: str, song_id: str, force: bool = False) -> None:
+    def __init__(self, run_id: str, song_id: str, force: bool = False,
+                 bpm_override: float | None = None) -> None:
         self.run_id = run_id
         self.song_id = song_id
         self.started_at = _now_iso()
@@ -71,6 +72,7 @@ class _RunState:
         self.events: list[dict] = []
         self.result: dict | None = None
         self.force = force  # True → do NOT persist to session until commit
+        self.bpm_override = bpm_override
         self.committed = False  # True after analyze/commit called
         self.pending_sections: list[dict] | None = None
         self.pending_assignments: list[dict] | None = None
@@ -504,6 +506,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             fresh=state.force,
             progress_callback=_progress,
             stem_progress_callback=_stem_progress,
+            bpm_override=state.bpm_override,
         )
 
         elapsed_ms = int((_time.monotonic() - _t0) * 1000)
@@ -1068,6 +1071,17 @@ def start_analyze(song_id: str):
 
     body = request.get_json(silent=True) or {}
     force = bool(body.get("force", False))
+    bpm_override_raw = body.get("bpm_override")
+    bpm_override = None
+    if bpm_override_raw not in (None, ""):
+        try:
+            bpm_override = float(bpm_override_raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": {"code": "invalid_bpm_override",
+                                       "message": "bpm_override must be a number"}}), 400
+        if bpm_override <= 0:
+            return jsonify({"error": {"code": "invalid_bpm_override",
+                                       "message": "bpm_override must be positive"}}), 400
 
     with _runs_lock:
         existing = _runs.get(song_id)
@@ -1075,11 +1089,13 @@ def start_analyze(song_id: str):
         # just "running" — otherwise a second immediate call (which can land
         # after the first has already finished, e.g. the fast test stub)
         # spawns a duplicate concurrent analysis with a different run_id.
-        if existing and not force and existing.status in ("running", "done"):
+        # A bpm_override always bypasses idempotency too — it's a deliberate
+        # request to re-derive with a different tempo, not a duplicate call.
+        if existing and not force and bpm_override is None and existing.status in ("running", "done"):
             return jsonify({"run_id": existing.run_id,
                             "started_at": existing.started_at}), 202
         # Start new run
-        state = _RunState(_run_id(), song_id, force=force)
+        state = _RunState(_run_id(), song_id, force=force, bpm_override=bpm_override)
         _runs[song_id] = state
 
     # Audio bytes not needed since we use the file path directly.

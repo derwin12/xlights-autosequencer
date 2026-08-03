@@ -23,11 +23,18 @@ from src.cli.helpers import _format_duration, _print_summary_table, _rich_error
     type=click.Choice(["quick", "standard", "full"], case_sensitive=False),
     help="Analysis preset: quick (librosa-only, fast), standard (auto-detect), full (all available)",
 )
+@click.option(
+    "--bpm", "bpm_override", default=None, type=float,
+    help="Manual BPM override — corrects octave errors in auto-detected tempo "
+         "(e.g. auto-detect reports double/half the true BPM), which otherwise "
+         "causes the wrong beat track to be selected. Implies --fresh.",
+)
 def analyze_cmd(
     path: str,
     fresh: bool,
     dry_run: bool,
     profile: str | None,
+    bpm_override: float | None,
 ) -> None:
     """Run hierarchical analysis on an MP3 file or directory of MP3s."""
 
@@ -46,7 +53,10 @@ def analyze_cmd(
         for i, mp3 in enumerate(mp3s, 1):
             click.echo(f"[{i}/{len(mp3s)}] {mp3.name}...", nl=False)
             try:
-                result = run_orchestrator(str(mp3), fresh=fresh, dry_run=dry_run, profile=profile)
+                result = run_orchestrator(
+                    str(mp3), fresh=fresh, dry_run=dry_run, profile=profile,
+                    bpm_override=bpm_override,
+                )
                 # Check if it was cached
                 click.echo(" done")
                 succeeded += 1
@@ -66,7 +76,10 @@ def analyze_cmd(
         click.echo(f"WARNING: {input_path.name} is not an MP3 — attempting analysis anyway", err=True)
 
     try:
-        run_orchestrator(str(input_path), fresh=fresh, dry_run=dry_run, profile=profile)
+        run_orchestrator(
+            str(input_path), fresh=fresh, dry_run=dry_run, profile=profile,
+            bpm_override=bpm_override,
+        )
     except SystemExit:
         raise
     except FileNotFoundError as exc:

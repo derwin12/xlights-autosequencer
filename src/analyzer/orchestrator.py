@@ -294,6 +294,7 @@ def run_orchestrator(
     progress_callback=None,
     profile: str | None = None,
     stem_progress_callback=None,
+    bpm_override: float | None = None,
 ) -> "HierarchyResult":
     """Run the full hierarchy analysis pipeline on a single MP3 file.
 
@@ -308,6 +309,13 @@ def run_orchestrator(
                  repeatedly during Demucs stem separation (a single blocking
                  call that otherwise reports nothing for 1-2 minutes -- see
                  src.analyzer.stems.StemSeparator.separate).
+        bpm_override: If set, replaces the auto-detected BPM used to pick the
+                 winning L3 beat track (see ``_select_beat_with_bpm_check``).
+                 librosa's tempo estimate occasionally has an octave error
+                 (reports 2x/0.5x the true tempo), which then makes the
+                 selector accept a double/half-time beat track as a "match".
+                 Implies ``fresh=True`` — a cached result predates the
+                 override and must be re-derived.
 
     Returns:
         HierarchyResult with all available hierarchy levels populated.
@@ -360,7 +368,7 @@ def run_orchestrator(
 
     # ── Stage 3: Cache check ──────────────────────────────────────────────────
     source_hash = _md5_file(src_path)
-    if not fresh:
+    if not fresh and bpm_override is None:
         cached = _load_cache(src_path, source_hash)
         if cached is not None:
             return cached
@@ -368,11 +376,14 @@ def run_orchestrator(
     # ── Stage 4: Load audio ───────────────────────────────────────────────────
     audio, sr, meta = load(str(src_path))
 
-    try:
-        tempo_arr, _ = librosa.beat.beat_track(y=audio, sr=sr, hop_length=512)
-        estimated_bpm = float(np.atleast_1d(tempo_arr)[0])
-    except Exception:
-        estimated_bpm = 0.0
+    if bpm_override is not None:
+        estimated_bpm = float(bpm_override)
+    else:
+        try:
+            tempo_arr, _ = librosa.beat.beat_track(y=audio, sr=sr, hop_length=512)
+            estimated_bpm = float(np.atleast_1d(tempo_arr)[0])
+        except Exception:
+            estimated_bpm = 0.0
 
     duration_str = _format_duration(meta.duration_ms)
     print(f"Analyzing: {src_path.name} ({duration_str}, ~{estimated_bpm:.0f} BPM)")
