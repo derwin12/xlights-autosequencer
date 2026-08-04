@@ -47,6 +47,40 @@ def _join_active_threads(timeout: float = 5.0) -> None:
     for th in threads:
         th.join(timeout=timeout)
 
+
+def _assign_bar_beat_numbers(
+    beat_times: list[int], bar_times: list[int],
+) -> list[tuple[int, int]]:
+    """Number each beat time as (bar, beat-within-bar) using the real bar
+    (downbeat) track, for the review UI's "bar N - beat M" display.
+
+    Beats are numbered 1, 2, 3, ... in order of occurrence since the last
+    bar-track boundary at or before them, so the numbering always tracks
+    the actual detected downbeats -- it can't desync the way blindly
+    grouping every 4 beats into a "bar" can (that assumption silently
+    breaks the moment the beat tracker's mark count doesn't divide evenly
+    by 4, e.g. a missed/extra beat mark anywhere in the song permanently
+    offsets every bar/beat number after it). Falls back to plain
+    index-based 4/4 grouping when no bar track is available at all.
+    """
+    import bisect
+
+    if not bar_times:
+        return [(i // 4 + 1, i % 4 + 1) for i in range(len(beat_times))]
+
+    sorted_bar_times = sorted(bar_times)
+    result: list[tuple[int, int]] = []
+    current_bar_idx = -1
+    beat_in_bar = 0
+    for t in beat_times:
+        bar_idx = max(0, bisect.bisect_right(sorted_bar_times, t) - 1)
+        if bar_idx != current_bar_idx:
+            current_bar_idx = bar_idx
+            beat_in_bar = 0
+        beat_in_bar += 1
+        result.append((current_bar_idx + 1, beat_in_bar))
+    return result
+
 # Caches a confirmed-good "Check Lyrics" result by (title, artist) so the
 # actual analyze pass can reuse it instead of re-fetching — a second
 # independent network round-trip against a flaky lyrics provider could land
@@ -628,16 +662,19 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
                          "agreement_score": 0, "low_confidence": True}]
 
         # ── Build beats list ─────────────────────────────────────────────────
+        bars_list = [m.time_ms for m in (hierarchy.bars.marks if hierarchy.bars else [])]
+
         beats_list: list[dict] = []
         if hierarchy.beats:
-            for i, mark in enumerate(hierarchy.beats.marks):
+            bar_beat_numbers = _assign_bar_beat_numbers(
+                [m.time_ms for m in hierarchy.beats.marks], bars_list,
+            )
+            for mark, (bar_num, beat_num) in zip(hierarchy.beats.marks, bar_beat_numbers):
                 beats_list.append({
                     "t_ms": mark.time_ms,
-                    "bar": i // 4 + 1,
-                    "beat": int(mark.label) if mark.label and mark.label.isdigit() else (i % 4 + 1),
+                    "bar": bar_num,
+                    "beat": beat_num,
                 })
-
-        bars_list = [m.time_ms for m in (hierarchy.bars.marks if hierarchy.bars else [])]
 
         # ── Waveform peaks from audio (8000 points for detail) ──────────────
         _PEAK_COUNT = 8000
@@ -1400,15 +1437,19 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
     hierarchy = HierarchyResult.from_dict(data)
 
     # Beats / bars / half-bars / eighth notes
+    bars_list = [m.time_ms for m in (hierarchy.bars.marks if hierarchy.bars else [])]
+
     beats_list: list[dict] = []
     if hierarchy.beats:
-        for i, mark in enumerate(hierarchy.beats.marks):
+        bar_beat_numbers = _assign_bar_beat_numbers(
+            [m.time_ms for m in hierarchy.beats.marks], bars_list,
+        )
+        for mark, (bar_num, beat_num) in zip(hierarchy.beats.marks, bar_beat_numbers):
             beats_list.append({
                 "t_ms": mark.time_ms,
-                "bar": i // 4 + 1,
-                "beat": int(mark.label) if mark.label and mark.label.isdigit() else (i % 4 + 1),
+                "bar": bar_num,
+                "beat": beat_num,
             })
-    bars_list = [m.time_ms for m in (hierarchy.bars.marks if hierarchy.bars else [])]
     half_bars_list = [m.time_ms for m in (hierarchy.half_bars.marks if hierarchy.half_bars else [])]
     eighth_notes_list = [m.time_ms for m in (hierarchy.eighth_notes.marks if hierarchy.eighth_notes else [])]
 
