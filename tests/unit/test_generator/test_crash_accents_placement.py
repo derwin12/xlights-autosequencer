@@ -77,6 +77,19 @@ class TestPlaceCrashAccents:
         )
         assert result == {}
 
+    def test_bogus_long_word_does_not_swallow_distant_crash(self):
+        # Regression for a real WhisperX misalignment (Dream On, "AWAY"
+        # timestamped 247,579-259,579ms -- a 12s span for one syllable)
+        # that blanked out an unrelated crash mark 12+ seconds away with
+        # no actual singing nearby. The word's span must be capped before
+        # it's used to build the vocal-exclusion window.
+        vocal_words = [{"start_ms": 247_579, "end_ms": 259_579}]
+        result = _place_crash_accents(
+            groups=[_fades_group()], hierarchy=_hierarchy([252_500], duration_ms=300_000),
+            vocal_words=vocal_words, variant_library=_variant_library(),
+        )
+        assert set(result) == {"01_BASE_All_FADES"}
+
     def test_keeps_crash_far_from_vocal_word(self):
         vocal_words = [{"start_ms": 10_000, "end_ms": 10_500}]
         far_time = 10_500 + _CRASH_VOCAL_EXCLUSION_MS + 1000

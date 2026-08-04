@@ -34,6 +34,7 @@ from src.generator.models import (
     SectionEnergy,
     WorkingSet,
     WorkingSetEntry,
+    capped_word_spans,
     frame_align,
     snap_fade_ms,
 )
@@ -5443,11 +5444,7 @@ def _place_crash_accents(
     if not any(g.name == "01_BASE_All_FADES" for g in groups):
         return result
 
-    word_spans = [
-        (int(w["start_ms"]), int(w["end_ms"]))
-        for w in (vocal_words or [])
-        if int(w["end_ms"]) > int(w["start_ms"])
-    ]
+    word_spans = capped_word_spans(vocal_words)
 
     def _near_vocal(time_ms: int) -> bool:
         return any(
@@ -5583,11 +5580,7 @@ def _place_star_bursts(
         member for g in star_groups for member in (g.members or [g.name])
     ]
 
-    word_spans = [
-        (int(w["start_ms"]), int(w["end_ms"]))
-        for w in (vocal_words or [])
-        if int(w["end_ms"]) > int(w["start_ms"])
-    ]
+    word_spans = capped_word_spans(vocal_words)
 
     def _near_vocal(time_ms: int) -> bool:
         return any(
@@ -5665,11 +5658,7 @@ def _place_floodlight_pulses(
         member for g in floodlight_groups for member in (g.members or [g.name])
     ]
 
-    word_spans = [
-        (int(w["start_ms"]), int(w["end_ms"]))
-        for w in (vocal_words or [])
-        if int(w["end_ms"]) > int(w["start_ms"])
-    ]
+    word_spans = capped_word_spans(vocal_words)
 
     def _near_vocal(time_ms: int) -> bool:
         return any(

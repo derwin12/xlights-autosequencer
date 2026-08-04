@@ -54,6 +54,30 @@ def frame_align(ms: int) -> int:
     return round(ms / FRAME_INTERVAL_MS) * FRAME_INTERVAL_MS
 
 
+# WhisperX forced alignment occasionally emits a wildly wrong word span
+# (e.g. a single syllable timestamped as 12s long) when it loses the
+# vocal line during a long instrumental gap. Every rare-accent placer that
+# excludes marks near vocal words builds its exclusion windows from raw
+# word start/end times, so one bad word can silently blank out several
+# seconds of an otherwise valid accent region (bug: Dream On's "AWAY" at
+# 247,579-259,579ms swallowed the real 4:12.5 crash accent). Cap each
+# word's span before it's used for exclusion-window math.
+MAX_VOCAL_WORD_SPAN_MS = 3000
+
+
+def capped_word_spans(vocal_words: Optional[list[dict]]) -> list[tuple[int, int]]:
+    """Return ``(start_ms, end_ms)`` for each vocal word, clamped to
+    ``MAX_VOCAL_WORD_SPAN_MS`` so a single bad alignment can't blow out an
+    exclusion window far beyond any real spoken/sung word's duration.
+    """
+    spans = []
+    for w in vocal_words or []:
+        start, end = int(w["start_ms"]), int(w["end_ms"])
+        if end > start:
+            spans.append((start, min(end, start + MAX_VOCAL_WORD_SPAN_MS)))
+    return spans
+
+
 @dataclass
 class SongProfile:
     """Song identity and characteristics for theme selection."""

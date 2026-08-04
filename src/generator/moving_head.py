@@ -58,7 +58,13 @@ from dataclasses import dataclass, replace
 from typing import Optional
 
 from src.analyzer.result import HierarchyResult, TimingTrack
-from src.generator.models import EffectPlacement, SectionAssignment, SectionEnergy, frame_align
+from src.generator.models import (
+    EffectPlacement,
+    SectionAssignment,
+    SectionEnergy,
+    capped_word_spans,
+    frame_align,
+)
 from src.grouper.layout import Layout, MovingHeadGroup, find_moving_head_groups
 
 # "Dimmer: x1,y1,x2,y2,..." is a value-curve point list, not an opaque bit
@@ -1839,11 +1845,7 @@ def place_moving_head_crash_accents(
         return {}
 
     existing_placements = existing_placements or {}
-    word_spans = [
-        (int(w["start_ms"]), int(w["end_ms"]))
-        for w in (vocal_words or [])
-        if int(w["end_ms"]) > int(w["start_ms"])
-    ]
+    word_spans = capped_word_spans(vocal_words)
 
     def _near_vocal(time_ms: int) -> bool:
         return any(
