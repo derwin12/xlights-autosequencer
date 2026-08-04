@@ -3789,6 +3789,21 @@ def _make_placement(
             chase_key = "E_CHOICE_Chase_Type1"
             resolved_params[chase_key] = ["Left-Right", "Right-Left"][instance_index % 2]
 
+        # Pinwheel: alternate rotation direction (CW/CCW) between instances
+        # (user request, 2026-08-04, spotted on Mega_Topper's bar-cadenced
+        # Pinwheel content: it held one fixed spin direction the whole
+        # section instead of varying). Unconditional, not gated on the key
+        # already being present in resolved_params -- E_CHECKBOX_Pinwheel_
+        # Rotation defaults to true (CCW) in builtin_effects.json when a
+        # variant never sets it at all, so gating on presence would miss
+        # most variants. Every-other-instance (bar, beat, or whatever this
+        # placement's own cadence is) mirrors the Single Strand/Wave/Chase
+        # alternation above -- same idiom, same instance_index.
+        if effect_def.name == "Pinwheel":
+            resolved_params["E_CHECKBOX_Pinwheel_Rotation"] = (
+                "1" if instance_index % 2 == 0 else "0"
+            )
+
     return EffectPlacement(
         effect_name=effect_def.name,
         xlights_id=effect_def.xlights_id,

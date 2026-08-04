@@ -172,6 +172,7 @@ def _make_groups() -> list[PowerGroup]:
 from src.generator.effect_placer import (
     _assign_layers_to_tiers,
     _force_floodlight_spirals_to_default_buffer_style,
+    _make_placement,
     place_effects,
 )
 
@@ -1596,3 +1597,54 @@ class TestTopperGetsOffBackdropOnRotationPlanPath:
         )
         names = [p.effect_name for p in result["08_HERO_Mega_Tree"]]
         assert "Off" not in names
+
+
+class TestPinwheelRotationAlternatesPerInstance:
+    """Pinwheel's E_CHECKBOX_Pinwheel_Rotation (CW/CCW) alternates by
+    instance_index, same idiom as Single Strand's chase-direction
+    alternation just above it in _make_placement (user request, 2026-08-04:
+    Mega_Topper's bar-cadenced Pinwheel content held one fixed spin
+    direction for the whole section instead of varying)."""
+
+    def test_even_instance_is_ccw(self) -> None:
+        p = _make_placement(
+            _make_effect(name="Pinwheel"), "group", 0, 1000,
+            {}, ["#ffffff"], "Normal", "bar", instance_index=0,
+        )
+        assert p.parameters["E_CHECKBOX_Pinwheel_Rotation"] == "1"
+
+    def test_odd_instance_is_cw(self) -> None:
+        p = _make_placement(
+            _make_effect(name="Pinwheel"), "group", 0, 1000,
+            {}, ["#ffffff"], "Normal", "bar", instance_index=1,
+        )
+        assert p.parameters["E_CHECKBOX_Pinwheel_Rotation"] == "0"
+
+    def test_overrides_an_explicitly_baked_value(self) -> None:
+        # Same "guards every producer" precedent as the Pinwheel thickness
+        # floor / speed-by-energy overrides -- a variant baking its own
+        # fixed value must not freeze the alternation.
+        p = _make_placement(
+            _make_effect(name="Pinwheel"), "group", 0, 1000,
+            {"E_CHECKBOX_Pinwheel_Rotation": "1"}, ["#ffffff"], "Normal",
+            "bar", instance_index=1,
+        )
+        assert p.parameters["E_CHECKBOX_Pinwheel_Rotation"] == "0"
+
+    def test_preserve_directions_skips_the_alternation(self) -> None:
+        # Corpus-recipe placements carry mined direction presets that must
+        # not be rewritten -- same contract as the Single Strand/Wave/Bars
+        # alternations sharing this code path.
+        p = _make_placement(
+            _make_effect(name="Pinwheel"), "group", 0, 1000,
+            {"E_CHECKBOX_Pinwheel_Rotation": "0"}, ["#ffffff"], "Normal",
+            "bar", instance_index=0, preserve_directions=True,
+        )
+        assert p.parameters["E_CHECKBOX_Pinwheel_Rotation"] == "0"
+
+    def test_does_not_apply_to_other_effects(self) -> None:
+        p = _make_placement(
+            _make_effect(name="Spirals"), "group", 0, 1000,
+            {}, ["#ffffff"], "Normal", "bar", instance_index=0,
+        )
+        assert "E_CHECKBOX_Pinwheel_Rotation" not in p.parameters
