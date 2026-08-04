@@ -27,6 +27,18 @@ _PINWHEEL_SPEED_LOW_ENERGY = 6
 _PINWHEEL_SPEED_MEDIUM_ENERGY = 13
 _PINWHEEL_SPEED_HIGH_ENERGY = 22
 
+# Shader speed-by-energy buckets (user request, 2026-08-04, same "tailor
+# speed to the tempo/pace of the music" complaint as the Pinwheel buckets
+# above, this time against a real xLights CopyFormat: Hex 3D Spiral at
+# E_SLIDER_Shader_Speed=14 -- which reads as 0.14 in the xLights UI, since
+# the slider control divides the stored int by 100 -- confirmed by the user
+# as the right feel for a slow ~78 BPM section of Dream On. User supplied
+# all three bucket values directly (0.14/0.25/0.50 UI-displayed -> 14/25/50
+# stored), not derived/guessed here.
+_SHADER_SPEED_LOW_ENERGY = 14
+_SHADER_SPEED_MEDIUM_ENERGY = 25
+_SHADER_SPEED_HIGH_ENERGY = 50
+
 # Complete xLights default parameters per effect.
 # Without these, xLights may not render effects correctly.
 _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
@@ -1075,7 +1087,7 @@ def _serialize_effect_params(
     given, is folded in as B_CHOICE_BufferStyle -- this is the value xLights
     actually applies (see _buffer_style_for_group); a group-level EffectLayer
     "settings" attribute alone has no effect on rendering. ``energy_score``,
-    when given, drives the Pinwheel speed-by-energy override below.
+    when given, drives the Pinwheel and Shader speed-by-energy overrides below.
     """
     # Start with xLights defaults for this effect
     defaults = dict(_XLIGHTS_EFFECT_DEFAULTS.get(placement.effect_name, {}))
@@ -1239,6 +1251,20 @@ def _serialize_effect_params(
             defaults["E_SLIDER_Pinwheel_Speed"] = str(_PINWHEEL_SPEED_MEDIUM_ENERGY)
         else:
             defaults["E_SLIDER_Pinwheel_Speed"] = str(_PINWHEEL_SPEED_HIGH_ENERGY)
+
+    # Shader speed-by-energy (user request, 2026-08-04: see module-level
+    # comment on _SHADER_SPEED_* above). Same "guards every producer,
+    # overrides even a variant's own baked Speed" precedent as the Pinwheel
+    # override above -- every builtin Shader variant bakes 100-1000
+    # (Hex 3D Spiral's own default is 200), which the user found far too
+    # fast against a real, slow-tempo section.
+    if placement.effect_name == "Shader" and energy_score is not None:
+        if energy_score < _WHOLE_HOUSE_LOW_ENERGY_GATE:
+            defaults["E_SLIDER_Shader_Speed"] = str(_SHADER_SPEED_LOW_ENERGY)
+        elif energy_score < _WHOLE_HOUSE_HIGH_ENERGY_GATE:
+            defaults["E_SLIDER_Shader_Speed"] = str(_SHADER_SPEED_MEDIUM_ENERGY)
+        else:
+            defaults["E_SLIDER_Shader_Speed"] = str(_SHADER_SPEED_HIGH_ENERGY)
 
     # Color Wash never renders with Shimmer (user request, 2026-08-03) --
     # overrides even a mined variant's own baked value (e.g. the "Color

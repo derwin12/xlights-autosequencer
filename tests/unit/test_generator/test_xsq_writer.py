@@ -1288,6 +1288,56 @@ class TestPinwheelSpeedByEnergy:
         assert "E_SLIDER_Pinwheel_Speed" not in params
 
 
+class TestShaderSpeedByEnergy:
+    """Shader Speed is overridden by the section's energy_score (user
+    request, 2026-08-04, same "tailor speed to the tempo/pace of the music"
+    complaint as TestPinwheelSpeedByEnergy above -- this time against a real
+    xLights CopyFormat: Hex 3D Spiral at E_SLIDER_Shader_Speed=14, which the
+    user confirmed as the right feel (displays as 0.14 in the xLights UI)
+    for a slow section of a ~78 BPM song. Bucket values (14/25/50) supplied
+    directly by the user, not derived here."""
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def _placement(self, **params) -> EffectPlacement:
+        return EffectPlacement(
+            effect_name="Shader", xlights_id="Shader", model_or_group="06_PROP_Matrix",
+            start_ms=99650, end_ms=143800, parameters=params,
+        )
+
+    def test_low_energy_forces_slow_speed(self):
+        p = self._placement(E_SLIDER_Shader_Speed="200")
+        params = _serialize_effect_params(p, energy_score=20)
+        assert self._param(params, "E_SLIDER_Shader_Speed") == "14"
+
+    def test_medium_energy_forces_moderate_speed(self):
+        p = self._placement(E_SLIDER_Shader_Speed="200")
+        params = _serialize_effect_params(p, energy_score=60)
+        assert self._param(params, "E_SLIDER_Shader_Speed") == "25"
+
+    def test_high_energy_forces_fast_speed(self):
+        p = self._placement(E_SLIDER_Shader_Speed="200")
+        params = _serialize_effect_params(p, energy_score=90)
+        assert self._param(params, "E_SLIDER_Shader_Speed") == "50"
+
+    def test_no_energy_score_leaves_speed_untouched(self):
+        p = self._placement(E_SLIDER_Shader_Speed="200")
+        params = _serialize_effect_params(p, energy_score=None)
+        assert self._param(params, "E_SLIDER_Shader_Speed") == "200"
+
+    def test_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Wave", xlights_id="Wave", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000,
+        )
+        params = _serialize_effect_params(p, energy_score=20)
+        assert "E_SLIDER_Shader_Speed" not in params
+
+
 class TestColorWashNeverShimmers:
     """Color Wash never renders with Shimmer (user request, 2026-08-03) --
     overrides even a mined variant's own baked value (e.g. the "Color Wash
