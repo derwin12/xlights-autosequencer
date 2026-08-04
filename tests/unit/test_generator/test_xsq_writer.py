@@ -1038,6 +1038,79 @@ class TestPinwheelThicknessFloor:
         assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "40"
 
 
+class TestPinwheelHorizontalSweep:
+    """A sustained Pinwheel rolls a per-occurrence chance to gain a
+    left-right or right-left PinwheelXC ramp (user request, 2026-08-04, real
+    xLights CopyFormat supplied as reference). Test cases below use
+    (model_or_group, start_ms) pairs pre-computed against the real
+    zlib.crc32 seed function to pin known fire/no-fire/direction outcomes."""
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def test_qualifying_occurrence_gets_left_to_right_sweep(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=3000,
+        )
+        params = _serialize_effect_params(p)
+        curve = self._param(params, "E_VALUECURVE_PinwheelXC")
+        assert "Type=Ramp" in curve
+        assert "P1=-50.00" in curve
+        assert "P2=50.00" in curve
+
+    def test_qualifying_occurrence_gets_right_to_left_sweep(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="08_HERO_Mega_Tree",
+            start_ms=5000, end_ms=8000,
+        )
+        params = _serialize_effect_params(p)
+        curve = self._param(params, "E_VALUECURVE_PinwheelXC")
+        assert "P1=50.00" in curve
+        assert "P2=-50.00" in curve
+
+    def test_non_qualifying_seed_gets_no_sweep(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=1000, end_ms=4000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_VALUECURVE_PinwheelXC" not in params
+
+    def test_short_punch_placement_never_sweeps_even_on_a_firing_seed(self):
+        # Same (group, start) as the left-to-right fire case above, but
+        # under the 2s minimum duration (e.g. the ~1s star-burst accent).
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1050,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_VALUECURVE_PinwheelXC" not in params
+
+    def test_producer_supplied_xc_is_never_overridden(self):
+        # Same (group, start) as the left-to-right fire case above, but the
+        # producer already set a static center (star-burst idiom) -- must
+        # not be replaced with a sweep.
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=3000, parameters={"E_SLIDER_PinwheelXC": "0"},
+        )
+        params = _serialize_effect_params(p)
+        assert "E_VALUECURVE_PinwheelXC" not in params
+        assert self._param(params, "E_SLIDER_PinwheelXC") == "0"
+
+    def test_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=3000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_VALUECURVE_PinwheelXC" not in params
+
+
 class TestSpiralsThicknessAndFlagsFloor:
     """A Spirals below Thickness=1 renders invisibly (user request,
     2026-08-04, found via a real exported .xsq: mined presets like

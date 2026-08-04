@@ -910,6 +910,14 @@ def _serialize_palette(
 # valid flat-Pinwheel replacement pick.
 _PINWHEEL_3D_OPTIONS = ("3D", "Sweep")
 
+# Minimum placement duration for the horizontal PinwheelXC sweep below --
+# below this a full -50..50 pan reads as a jerky glitch rather than a sweep
+# (user request, 2026-08-04). Chance is a judgment call ("roll a chance per
+# occurrence" -- exact fraction not specified): 50% keeps the look an even
+# mix of static-centered and sweeping rather than either extreme.
+_PINWHEEL_SWEEP_MIN_DURATION_MS = 2000
+_PINWHEEL_SWEEP_CHANCE_PERCENT = 50
+
 # Fire_HueShift calibration (user request, 2026-07-26): xLights' Fire effect
 # always renders from a fixed red/orange gradient unless E_SLIDER_Fire_HueShift
 # rotates it -- every Fire placement previously left this at its xLights
@@ -1182,6 +1190,39 @@ def _serialize_effect_params(
         if all(defaults.get(flag, "0") == "0" for flag in spirals_flags):
             for flag in spirals_flags:
                 defaults[flag] = "1"
+
+    # Horizontal drift on sustained Pinwheels only (user request, 2026-08-04,
+    # real xLights CopyFormat supplied as the reference: a Ramp value curve
+    # on E_VALUECURVE_PinwheelXC, -50->50 for left-to-right / 50->-50 for
+    # right-to-left, adds side-to-side movement instead of a fixed center).
+    # Skips short punch-style Pinwheel placements (e.g. the ~1s star-burst
+    # crash accent, _STAR_BURST_DURATION_MS=1050) -- a full pan in under 2s
+    # reads as a jerky glitch, not a sweep. Rolls a chance per occurrence
+    # (confirmed with user) rather than firing on every qualifying Pinwheel,
+    # so the look stays a mix of static-centered and sweeping. Direction is
+    # also randomized per occurrence (user request) rather than always one
+    # way. zlib.crc32, not hash(), for reproducibility across runs (same
+    # rationale as the flat-Pinwheel 3D-style pick above). Skipped entirely
+    # if a producer already set PinwheelXC itself, so this never overrides
+    # an intentional value.
+    if (
+        placement.effect_name == "Pinwheel"
+        and (placement.end_ms - placement.start_ms) >= _PINWHEEL_SWEEP_MIN_DURATION_MS
+        and "E_VALUECURVE_PinwheelXC" not in defaults
+        and "E_SLIDER_PinwheelXC" not in defaults
+    ):
+        sweep_seed = zlib.crc32(
+            f"{placement.model_or_group}:{placement.start_ms}:pinwheel_sweep".encode("utf-8")
+        )
+        if sweep_seed % 100 < _PINWHEEL_SWEEP_CHANCE_PERCENT:
+            direction_seed = zlib.crc32(
+                f"{placement.model_or_group}:{placement.start_ms}:pinwheel_sweep_dir".encode("utf-8")
+            )
+            p1, p2 = (-50.0, 50.0) if direction_seed % 2 == 0 else (50.0, -50.0)
+            defaults["E_VALUECURVE_PinwheelXC"] = (
+                "Active=TRUE|Id=ID_VALUECURVE_PinwheelXC|Type=Ramp|"
+                f"Min=-100.00|Max=100.00|P1={p1:.2f}|P2={p2:.2f}|RV=TRUE|"
+            )
 
     # Pinwheel speed-by-energy (user request, 2026-08-03: see module-level
     # comment on _PINWHEEL_SPEED_* above). Overrides even a variant's own
