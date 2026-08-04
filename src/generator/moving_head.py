@@ -1507,7 +1507,7 @@ def _heads_already_posed(
 _KEYWORD_ACCENT_DURATION_MS: dict[str, int] = {
     "shake": 250,
     "bounce": 900,
-    "flash": 900,
+    "flash": 500,  # user request 2026-08-04, was 900
 }
 # Small buffer left between two consecutive same-keyword pulses so they
 # read as distinct quick hits rather than one continuous blur.
