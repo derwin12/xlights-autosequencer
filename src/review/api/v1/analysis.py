@@ -48,38 +48,24 @@ def _join_active_threads(timeout: float = 5.0) -> None:
         th.join(timeout=timeout)
 
 
-def _assign_bar_beat_numbers(
-    beat_times: list[int], bar_times: list[int],
-) -> list[tuple[int, int]]:
-    """Number each beat time as (bar, beat-within-bar) using the real bar
-    (downbeat) track, for the review UI's "bar N - beat M" display.
+def _assign_bar_beat_numbers(beat_times: list[int]) -> list[tuple[int, int]]:
+    """Number each beat time as (bar, beat-within-bar) for the review UI's
+    "bar N - beat M" display, assuming plain 4/4 grouping (4 beats/bar).
 
-    Beats are numbered 1, 2, 3, ... in order of occurrence since the last
-    bar-track boundary at or before them, so the numbering always tracks
-    the actual detected downbeats -- it can't desync the way blindly
-    grouping every 4 beats into a "bar" can (that assumption silently
-    breaks the moment the beat tracker's mark count doesn't divide evenly
-    by 4, e.g. a missed/extra beat mark anywhere in the song permanently
-    offsets every bar/beat number after it). Falls back to plain
-    index-based 4/4 grouping when no bar track is available at all.
+    This intentionally does NOT use the separately-detected L2 bar/downbeat
+    track. An earlier version aligned numbering to that track instead, on
+    the theory that it would self-correct when the beat-mark count doesn't
+    divide evenly by 4 -- but on real material (Aerosmith "Dream On") the
+    bar track itself proved unreliable (near-empty for the first 71s of the
+    song, then firing at ~2x the correct rate), which is a worse failure
+    mode than plain grouping's own risk (a single missed/extra beat mark
+    permanently offsets the count for the rest of the song). The corrected
+    beat track (see bug-760's fold-down fix) is well-validated as evenly
+    spaced, so counting 4 beats at a time off it is the more trustworthy
+    source. Also simply correct music theory for the 4/4 songs this tool
+    targets almost exclusively.
     """
-    import bisect
-
-    if not bar_times:
-        return [(i // 4 + 1, i % 4 + 1) for i in range(len(beat_times))]
-
-    sorted_bar_times = sorted(bar_times)
-    result: list[tuple[int, int]] = []
-    current_bar_idx = -1
-    beat_in_bar = 0
-    for t in beat_times:
-        bar_idx = max(0, bisect.bisect_right(sorted_bar_times, t) - 1)
-        if bar_idx != current_bar_idx:
-            current_bar_idx = bar_idx
-            beat_in_bar = 0
-        beat_in_bar += 1
-        result.append((current_bar_idx + 1, beat_in_bar))
-    return result
+    return [(i // 4 + 1, i % 4 + 1) for i in range(len(beat_times))]
 
 # Caches a confirmed-good "Check Lyrics" result by (title, artist) so the
 # actual analyze pass can reuse it instead of re-fetching — a second
@@ -667,7 +653,7 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
         beats_list: list[dict] = []
         if hierarchy.beats:
             bar_beat_numbers = _assign_bar_beat_numbers(
-                [m.time_ms for m in hierarchy.beats.marks], bars_list,
+                [m.time_ms for m in hierarchy.beats.marks],
             )
             for mark, (bar_num, beat_num) in zip(hierarchy.beats.marks, bar_beat_numbers):
                 beats_list.append({
@@ -1442,7 +1428,7 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
     beats_list: list[dict] = []
     if hierarchy.beats:
         bar_beat_numbers = _assign_bar_beat_numbers(
-            [m.time_ms for m in hierarchy.beats.marks], bars_list,
+            [m.time_ms for m in hierarchy.beats.marks],
         )
         for mark, (bar_num, beat_num) in zip(hierarchy.beats.marks, bar_beat_numbers):
             beats_list.append({
@@ -1521,6 +1507,17 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
         # aubio_onset is the primary onset algo; name it per stem
         mark_counts_by_display[f"aubio_onset ({stem})"] = len(track.marks)
 
+    # Session-persisted fields (lyrics/words/phonemes/etc.) — loaded here,
+    # ahead of the detectors list below, since it needs lyrics_list's count.
+    session = load_session(song_id)
+    lyrics_list = list((session or {}).get("lyrics") or [])
+    lyrics_text_found = bool((session or {}).get("lyrics_text_found"))
+    words_list = list((session or {}).get("words") or [])
+    phonemes_list = list((session or {}).get("phonemes") or [])
+    lyrics_warnings = list((session or {}).get("lyrics_warnings") or [])
+    image_suggestions = list((session or {}).get("image_suggestions") or [])
+    image_topics = list((session or {}).get("image_topics") or [])
+
     # Detectors list
     _CURVE_DETECTORS = {"bbc_energy", "bbc_spectral_flux"}
     detectors: list[dict] = []
@@ -1565,15 +1562,8 @@ def _rebuild_analysis_from_cache(song_id: str, src: Path,
     # Both paths need to expose `agreement_score` + `low_confidence` so the
     # Analyze screen renders the same low-confidence indicator regardless of
     # whether sections came from a fresh story builder run, a persisted
-    # session, or a hierarchy fallback.
-    session = load_session(song_id)
-    lyrics_list = list((session or {}).get("lyrics") or [])
-    lyrics_text_found = bool((session or {}).get("lyrics_text_found"))
-    words_list = list((session or {}).get("words") or [])
-    phonemes_list = list((session or {}).get("phonemes") or [])
-    lyrics_warnings = list((session or {}).get("lyrics_warnings") or [])
-    image_suggestions = list((session or {}).get("image_suggestions") or [])
-    image_topics = list((session or {}).get("image_topics") or [])
+    # session, or a hierarchy fallback. (session/lyrics_list etc. loaded
+    # earlier, above the detectors list, since that needs lyrics_list too.)
     if session and "sections" in session:
         sections = []
         for sec in session["sections"]:

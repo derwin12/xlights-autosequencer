@@ -119,6 +119,57 @@ class TestGetAnalysis:
         assert "words" in data
         assert "image_suggestions" in data
 
+    def test_rebuild_from_cache_does_not_crash_on_a_real_hierarchy_file(self, client):
+        """_rebuild_analysis_from_cache must actually succeed (not silently
+        fall through to the empty-shell fallback via its bare except/pass)
+        when a real _hierarchy.json is on disk.
+
+        Regression test: lyrics_list was referenced in the detectors-list
+        loop before it was assigned (assignment lived further down, in the
+        sections-loading block) -- an UnboundLocalError on every single
+        call, swallowed by `except Exception: pass`, silently downgrading
+        every post-restart GET /analysis to an empty beats/bars/detectors
+        shell. The prior test above (test_rebuild_from_cache_carries_words...)
+        did not catch this: XLIGHT_STUB_ANALYSIS never writes a
+        _hierarchy.json file at all, so hierarchy_path.exists() was always
+        False and _rebuild_analysis_from_cache was never actually invoked --
+        it exercised the OTHER (session-only) fallback path the whole time.
+        """
+        from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack
+        from src.review.api.v1.analysis import _rebuild_analysis_from_cache
+        from src.review.storage.library import load_library
+
+        song_id = _import_wav(client)
+        lib = load_library()
+        song = next(s for s in lib["songs"] if s["song_id"] == song_id)
+        src = __import__("pathlib").Path(song["source_paths"][0])
+        assert src.exists()
+
+        beats = TimingTrack(
+            name="beats", algorithm_name="qm_beats", element_type="beat",
+            marks=[TimingMark(time_ms=i * 500, confidence=None) for i in range(8)],
+            quality_score=0.0,
+        )
+        hierarchy = HierarchyResult(
+            schema_version="2.4.0", source_file=str(src), source_hash="0" * 32,
+            duration_ms=6000, estimated_bpm=120.0, beats=beats,
+        )
+        hierarchy_path = src.parent / src.stem / f"{src.stem}_hierarchy.json"
+        hierarchy_path.parent.mkdir(parents=True, exist_ok=True)
+        hierarchy_path.write_text(json.dumps(hierarchy.to_dict()))
+
+        result = _rebuild_analysis_from_cache(song_id, src, hierarchy_path)
+
+        assert result is not None
+        # >= 8: _extrapolate_grid may add trailing beats to fill the gap to
+        # duration_ms, which is fine -- the real assertion here is that the
+        # rebuild succeeded at all instead of silently crashing.
+        assert len(result["beats"]) >= 8
+        assert result["beats"][:8] == [
+            {"t_ms": i * 500, "bar": i // 4 + 1, "beat": i % 4 + 1} for i in range(8)
+        ]
+        assert any(d["name"] == "lyrics" for d in result["detectors"])
+
 
 class TestAnalyzeSSE:
     def test_sse_endpoint_returns_event_stream(self, client):
