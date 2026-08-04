@@ -278,6 +278,18 @@ preconditions, and 16-song corpus results.
   now accept any 2.x (`src/analyzer/result.py::is_hierarchy_schema`).
   Marks also export as a `crash_accents` .xtiming layer (700ms fixed width).
   See `openspec/changes/crash-stem-impact-score/`.
+- **Cap raised 6 → 12 (2026-08-04)**: the "6" cap was calibrated against a
+  *truncated* ~202s cymbal stem cached under a different, older filename for
+  the same song (`dream-on-official-hd-video---aerosmith.mp4`, not the real
+  265.5s `Dream On--Aerosmith.mp4`) — so "6 confirmed crashes" was never the
+  song's real count. Re-run against the correct full-length audio (demucs +
+  drumsep, in-process, ~11 min on CPU): Dream On has **10** candidates
+  clearing the unchanged 7.0 score floor, not 6 — the cap was silently
+  dropping 4 real crashes (2:04.2, 2:22.4, 3:04.9, and a user-confirmed one
+  at 4:12.5, score 7.77). The score floor was always the actual rarity gate;
+  the cap is only a runaway-false-positive safety valve, so raising it to 12
+  changes nothing for any song that scored under the old cap of 6. See
+  `.wolf/buglog.json` for the investigation session.
 - Historical write-up of v1/v2 below, kept for context.
 
 ### Crash/Transient Detector — v2 history (2026-07-14/15, superseded)

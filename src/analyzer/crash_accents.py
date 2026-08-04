@@ -46,6 +46,21 @@ Third design (2026-07-16). History, because this module has been wrong twice:
    crash rides a tom fill and drumsep routes its energy to the toms/snare
    stems, so it never becomes a candidate on the platillos stem.
 
+4. **Cap raised 6 -> 12 (2026-08-04)**: the "6 = Dream On's confirmed crash
+   count" calibration above was itself wrong — it was run against a
+   truncated ~202s cymbal stem (an old cached separation keyed to a
+   different, shorter upload of the same song) instead of the real 265.5s
+   track. Re-run against the correct full-length audio: Dream On has 10
+   candidates clearing the unchanged 7.0 score floor, not 6 — including a
+   user-confirmed crash at 4:12.5 (score 7.77) that the old cap of 6 was
+   silently dropping along with 3 other genuine, floor-clearing crashes
+   (2:04.2, 2:22.4, 3:04.9). The score floor was always the real rarity
+   gate (validated per-song on the 6-song panel to yield 0-6 marks without
+   this fix); the cap was only ever meant as a runaway-false-positive
+   safety valve, not a second rarity control — 12 gives headroom above the
+   now-confirmed true count without changing behavior for any panel song
+   that scored under the old cap of 6.
+
 Rare by design: the absolute score floor means most songs emit zero marks.
 No cymbals stem available -> the orchestrator emits no marks at all; for
 this feature zero marks beats wrong marks.
@@ -102,9 +117,13 @@ _PRE_TRANSIENT_WINDOW_MS = 500
 # user-confirmed crashes at 122.0s and 125.0s are only 3s apart — a 10s gap
 # would drop real ground truth.
 _MIN_GAP_MS = 3_000
-# Hard cap regardless of how many candidates clear the score floor
-# (6 = the validated song's confirmed crash count; user decision 2026-07-16).
-_MAX_MARKS = 6
+# Hard cap regardless of how many candidates clear the score floor. NOT the
+# primary rarity control (the score floor is) -- this is a runaway-
+# false-positive safety valve. Raised 6 -> 12 (2026-08-04, see module
+# docstring history item 4): the original "6" was calibrated against a
+# truncated cymbal stem and silently dropped 4 of Dream On's real,
+# floor-clearing crashes, including a user-confirmed one at 4:12.5.
+_MAX_MARKS = 12
 
 
 def detect_crash_accents(
