@@ -1053,6 +1053,30 @@ class TestPinwheelThicknessFloor:
         params = _serialize_effect_params(p)
         assert "E_SLIDER_Pinwheel_Thickness" not in params
 
+    def test_missing_thickness_on_tree_group_floors_to_50(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Tree",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Arms": "4"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "50"
+
+    def test_thickness_below_50_on_spiral_tree_group_is_raised(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="06_PROP_Spiral_Tree",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Thickness": "30"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "50"
+
+    def test_thickness_above_50_on_mega_tree_group_is_untouched(self):
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="08_HERO_Mega_Tree",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Pinwheel_Thickness": "70"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "70"
+
 
 class TestPinwheelSpeedByEnergy:
     """Pinwheel Speed is overridden by the section's energy_score (user

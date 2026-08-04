@@ -1705,10 +1705,11 @@ def place_moving_head_keyword_accents(
                         _PREFERRED_WARMUP_DURATION_MS,
                         max(0, start_ms - max(prior_ends, default=0)),
                     )
-                    # Floor at _MIN_WARMUP_DURATION_MS -- see the matching
-                    # fix/comment in _place_random_head_accents.
-                    if warmup_duration_ms < _MIN_WARMUP_DURATION_MS:
-                        warmup_duration_ms = 0
+                    # No duration floor here (2026-08-04 user correction of
+                    # the 2026-07-23 fix below): a real, if short, available
+                    # gap (e.g. 575ms) is worth using rather than discarding
+                    # -- _heads_already_posed is the actual "nothing to do"
+                    # signal, not a duration guess.
                     if _heads_already_posed(head_existing, start_ms, warmup_params):
                         warmup_duration_ms = 0
                     placements = result.setdefault(head_name, [])
@@ -1781,10 +1782,11 @@ def place_moving_head_keyword_accents(
                 _PREFERRED_WARMUP_DURATION_MS,
                 max(0, start_ms - max(prior_ends, default=0)),
             )
-            # Floor at _MIN_WARMUP_DURATION_MS -- see the matching fix/comment
-            # in _place_random_head_accents.
-            if warmup_duration_ms < _MIN_WARMUP_DURATION_MS:
-                warmup_duration_ms = 0
+            # No duration floor here (2026-08-04 user correction of the
+            # 2026-07-23 fix in _place_random_head_accents below): a real,
+            # if short, available gap (e.g. 575ms) is worth using rather
+            # than discarding -- _heads_already_posed is the actual
+            # "nothing to do" signal, not a duration guess.
             if _heads_already_posed(channel_existing, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(mh_group.name, [])
@@ -2175,20 +2177,18 @@ def _place_random_head_accents(
                 _PREFERRED_WARMUP_DURATION_MS,
                 max(0, start_ms - max(prior_ends, default=0)),
             )
-            # Floor at _MIN_WARMUP_DURATION_MS like every other warmup path
-            # in this module (_resolve_warmup) -- this one had no such
-            # floor, so a head whose prior placement happened to end just
-            # under a beat mark (e.g. 25ms before the accent's start) got a
-            # degenerate near-instant "warmup" effect instead of either a
-            # real one or none at all (user-reported 2026-07-23 from a real
-            # generated .xsq: a 25ms warmup at 1:10.425). Unlike
-            # _resolve_warmup, this accent's start_ms is anchored to a beat
-            # mark by design, so delaying it to guarantee the minimum isn't
-            # an option here -- skip the warmup outright instead when the
-            # achievable gap can't reach the floor (the head was posed only
-            # moments before, so no slew is actually needed).
-            if warmup_duration_ms < _MIN_WARMUP_DURATION_MS:
-                warmup_duration_ms = 0
+            # No duration floor (2026-08-04 user correction): the
+            # 2026-07-23 fix below zeroed any gap under
+            # _MIN_WARMUP_DURATION_MS to avoid a degenerate near-instant
+            # warmup (e.g. 25ms), but that also discarded genuinely useful
+            # mid-size gaps (e.g. 575-600ms, real case from a keyword
+            # accent cluster) that are plenty long enough to see the head
+            # move. _heads_already_posed is the real "no slew needed"
+            # signal -- a duration floor was only ever a proxy for it, and
+            # a poor one once real short-but-nonzero gaps are involved.
+            # Unlike _resolve_warmup, this accent's start_ms is anchored to
+            # a beat mark by design, so delaying it to open more room isn't
+            # an option here -- use whatever gap actually exists.
             if _heads_already_posed(head_placements, start_ms, warmup_params):
                 warmup_duration_ms = 0
             placements = result.setdefault(head_name, [])

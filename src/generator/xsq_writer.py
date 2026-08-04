@@ -1142,9 +1142,16 @@ def _serialize_effect_params(
     # just the ones known today -- same precedent as the Wave floor and
     # flat-Pinwheel-3D ban above. 01_BASE_All(_FADES) is the whole-house
     # canvas every prop belongs to, so a too-thin pinwheel there is far more
-    # visible than on a single prop and gets a stricter floor.
+    # visible than on a single prop and gets a stricter floor. Tree groups
+    # (2026-08-04 user request) get their own floor -- thin arms read poorly
+    # against a tree's dense pixel/cone shape.
     if placement.effect_name == "Pinwheel":
-        min_thickness = 40 if placement.model_or_group in ("01_BASE_All", "01_BASE_All_FADES") else 5
+        if placement.model_or_group in ("01_BASE_All", "01_BASE_All_FADES"):
+            min_thickness = 40
+        elif "tree" in placement.model_or_group.lower():
+            min_thickness = 50
+        else:
+            min_thickness = 5
         try:
             if float(defaults.get("E_SLIDER_Pinwheel_Thickness", 0)) < min_thickness:
                 defaults["E_SLIDER_Pinwheel_Thickness"] = str(min_thickness)

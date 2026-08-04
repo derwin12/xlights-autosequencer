@@ -155,29 +155,33 @@ class TestPlaceMovingHeadBeatBursts:
             result = place_moving_head_beat_bursts(layout, assignments, _hierarchy(30_000))
             assert len(result) in (0, 2, 4)
 
-    def test_warmup_shorter_than_minimum_is_skipped_not_shortened(self):
-        # Regression (user-reported 2026-07-23 from a real generated .xsq):
-        # a prior placement ending only 25ms before the accent's beat-locked
-        # start produced a degenerate 25ms warmup instead of either a real
-        # one or none at all -- this warmup calc had no floor at
-        # _MIN_WARMUP_DURATION_MS, unlike every other warmup path in the
-        # module (_resolve_warmup). The accent's own start can't be delayed
-        # (it's anchored to a beat mark), so an unreachable minimum means
-        # skip the warmup outright, not shorten it below the floor.
+    def test_warmup_uses_whatever_short_gap_is_actually_available(self):
+        # A prior placement ending only 25ms before the accent's beat-locked
+        # start produces a real, if tiny, 25ms warmup rather than none at
+        # all. This reverses a 2026-07-23 fix that floored any gap under
+        # _MIN_WARMUP_DURATION_MS to zero to avoid a "degenerate" short
+        # warmup -- user correction 2026-08-04, from a real generated .xsq
+        # where legitimately useful mid-size gaps (575-600ms) were being
+        # discarded by the same floor: _heads_already_posed is the real
+        # "nothing to do" signal, not a duration guess, so any positive gap
+        # is now used as-is.
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("chorus", 4_000, 8_000, _STRONG_ENERGY_GATE, variation_seed=0)]
         # Section midpoint (6000) is itself a beat mark, so the accent
         # starts at exactly 6000ms; a prior placement ending 25ms earlier
-        # leaves an unreachable 25ms gap.
+        # leaves a 25ms gap.
         existing = {"MH1": [_fake_placement("MH1", 0, 5_975)], "MH2": [_fake_placement("MH2", 0, 5_975)]}
         result = place_moving_head_beat_bursts(
             layout, assignments, _hierarchy(30_000), existing_placements=existing,
         )
         assert result
         for placements in result.values():
-            # Only the burst itself -- no degenerate short warmup placement.
-            assert len(placements) == 1
-            assert placements[0].end_ms - placements[0].start_ms == _ACCENT_DURATION_MS
+            # Warmup (25ms) + the burst itself.
+            assert len(placements) == 2
+            warmup = min(placements, key=lambda p: p.start_ms)
+            assert warmup.end_ms - warmup.start_ms == 25
+            burst = max(placements, key=lambda p: p.start_ms)
+            assert burst.end_ms - burst.start_ms == _ACCENT_DURATION_MS
 
     def test_skips_when_group_level_placement_occupies_the_channel(self):
         # Regression: a group-targeted move (e.g. one of place_moving_head_moves'
@@ -206,9 +210,7 @@ class TestPlaceMovingHeadBeatBursts:
         layout = parse_layout(FIXTURES / "moving_head_layout.xml")
         assignments = [_assignment("chorus", 4_000, 8_000, _STRONG_ENERGY_GATE, variation_seed=0)]
         # Beat marks land on exact 500ms multiples; section midpoint (6000)
-        # is itself a mark, so the accent starts at exactly 6000ms. Gap must
-        # clear _MIN_WARMUP_DURATION_MS (750ms) or the warmup is skipped
-        # outright rather than shortened (see the floor added 2026-07-23).
+        # is itself a mark, so the accent starts at exactly 6000ms.
         group_end_ms = 5_000
         existing = {"MH GRP": [_fake_placement("MH GRP", 0, group_end_ms)]}
         result = place_moving_head_beat_bursts(

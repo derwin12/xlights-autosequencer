@@ -1584,14 +1584,28 @@ def _derive_bars_from_beats(beats: "TimingTrack") -> "TimingTrack":
     bars stay in lockstep with the beats they're meant to group, rather
     than two independently-tracked signals disagreeing on where the song's
     rhythm actually is.
+
+    Marks are copied (not aliased) and given their own sequential bar
+    number (1, 2, 3, ...) as label. Reusing the beat marks directly would
+    leave each bar mark's label to be overwritten by the later
+    ``_label_beats`` pass -- every derived bar mark is, by construction,
+    the first beat of its own bar, so it would always end up labelled "1".
     """
+    import copy as _copy
+
     from src.analyzer.result import TimingTrack
+
+    bar_marks = []
+    for i, m in enumerate(beats.marks[::4], start=1):
+        bar_mark = _copy.copy(m)
+        bar_mark.label = str(i)
+        bar_marks.append(bar_mark)
 
     return TimingTrack(
         name="bars_from_beats",
         algorithm_name="derived_from_beats",
         element_type="bar",
-        marks=list(beats.marks[::4]),
+        marks=bar_marks,
         quality_score=beats.quality_score,
     )
 

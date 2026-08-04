@@ -30,6 +30,28 @@ def test_derives_every_fourth_beat_as_a_bar():
     assert bars.algorithm_name == "derived_from_beats"
 
 
+def test_bar_marks_get_sequential_labels_not_the_shared_beat_label():
+    """Bar marks must be independent copies with their own bar number.
+
+    Reusing the beat TimingMark objects directly (pre-fix) meant every
+    derived bar mark's label got silently overwritten to "1" by the later
+    beat-position-labeling pass, since a bar mark's own timestamp is always
+    the first beat found within its own bar.
+    """
+    beats = TimingTrack(
+        name="beats", algorithm_name="qm_beats", element_type="beat",
+        marks=[TimingMark(time_ms=i * 750, confidence=None) for i in range(16)],
+        quality_score=0.9,
+    )
+
+    bars = _derive_bars_from_beats(beats)
+
+    assert [m.label for m in bars.marks] == ["1", "2", "3", "4"]
+    # Mutating a bar mark's label must not reach back into the beat track.
+    bars.marks[0].label = "mutated"
+    assert beats.marks[0].label is None
+
+
 def test_full_beat_coverage_produces_full_bar_coverage():
     """The whole point: a beat track with marks from song-start guarantees
     the derived bar track also starts at song-start, unlike a
