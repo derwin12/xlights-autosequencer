@@ -4736,6 +4736,14 @@ def _select_video_target_matrix(matrix_props: list[Any]) -> Any | None:
     return named[0] if named else None
 
 
+# The video's own opening frame used to cut in instantly at full brightness
+# (fade_in_ms defaulted to 0) while every other effect in the pipeline fades
+# in over some non-zero span -- user request (2026-08-04): give it the same
+# treatment, at least a full second so the fade is clearly visible rather
+# than a token nod.
+_VIDEO_FADE_IN_MS = 1000
+
+
 def _place_video_effect(
     props: list[Any],
     video_path: Any,
@@ -4770,6 +4778,7 @@ def _place_video_effect(
             "E_TEXTCTRL_Duration": _format_video_duration(duration_ms),
         },
         color_palette=["#FFFFFF"],
+        fade_in_ms=_VIDEO_FADE_IN_MS,
     )
 
     logger.info(

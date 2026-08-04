@@ -51,3 +51,11 @@ class TestPlaceVideoEffect:
         assert p.end_ms == 90000
         assert p.parameters["E_FILEPICKERCTRL_Video_Filename"] == "/tmp/video.mp4"
         assert p.parameters["E_TEXTCTRL_Duration"] == "1:30.000"
+
+    def test_fades_in_over_at_least_one_second(self):
+        # Previously fade_in_ms defaulted to 0 -- the video cut in instantly
+        # instead of fading in like other effects (user request, 2026-08-04).
+        props = [_prop("Matrix Video", display_as="Matrix", pixels=256)]
+        result = _place_video_effect(props, "/tmp/video.mp4", 90000)
+        p = result["Matrix Video"][0]
+        assert p.fade_in_ms >= 1000
