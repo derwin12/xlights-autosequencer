@@ -69,7 +69,8 @@ class TestPlaceStarBursts:
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000]), vocal_words=None,
         )
-        assert all(p.layer < 0 for p in result["Star 1"])
+        bursts = [p for p in result["Star 1"] if p.effect_name == "Pinwheel"]
+        assert all(p.layer < 0 for p in bursts)
 
     def test_vocal_word_near_mark_excludes_it(self):
         vocal_words = [{"start_ms": 32_900, "end_ms": 33_100}]
@@ -93,7 +94,7 @@ class TestPlaceStarBursts:
             groups=[_star_group()], hierarchy=_hierarchy([33_000, 190_000]),
             vocal_words=None, fade_exclusion_start_ms=180_000,
         )
-        marks = sorted(p.start_ms for p in result["Star 1"])
+        marks = sorted(p.start_ms for p in result["Star 1"] if p.effect_name == "Pinwheel")
         assert marks == [33_000]
 
     def test_multiple_star_groups_share_the_rotation(self):
@@ -106,3 +107,42 @@ class TestPlaceStarBursts:
         assert result["Star 1"][0].start_ms == 10_000
         assert result["Star 2"][0].start_ms == 33_000
         assert result["Star 3"][0].start_ms == 60_000
+
+
+class TestStarBurstOffBackdrop:
+    """A backdrop Off beneath the bursts keeps the star model black in the
+    gaps instead of picking up bleed from elsewhere (user request,
+    2026-08-04), same idiom as the corpus-recipe off_backdrop pattern."""
+
+    def test_member_with_a_burst_gets_an_off_backdrop(self):
+        result = _place_star_bursts(
+            groups=[_star_group()], hierarchy=_hierarchy([33_000], duration_ms=200_000),
+            vocal_words=None,
+        )
+        off = [p for p in result["Star 1"] if p.effect_name == "Off"]
+        assert len(off) == 1
+        assert off[0].start_ms == 0
+        assert off[0].end_ms == 200_000
+        assert off[0].model_or_group == "Star 1"
+
+    def test_off_backdrop_renders_below_the_bursts(self):
+        result = _place_star_bursts(
+            groups=[_star_group()], hierarchy=_hierarchy([33_000]), vocal_words=None,
+        )
+        burst = next(p for p in result["Star 1"] if p.effect_name == "Pinwheel")
+        off = next(p for p in result["Star 1"] if p.effect_name == "Off")
+        assert off.layer > burst.layer
+
+    def test_member_never_hit_gets_no_off_backdrop(self):
+        # Only "Star 1" receives the single mark, so "Star 2" (never a burst
+        # target) shouldn't appear in the result at all.
+        result = _place_star_bursts(
+            groups=[_star_group()], hierarchy=_hierarchy([33_000]), vocal_words=None,
+        )
+        assert "Star 2" not in result
+
+    def test_no_riff_marks_gets_no_off_backdrop_either(self):
+        result = _place_star_bursts(
+            groups=[_star_group()], hierarchy=_hierarchy([]), vocal_words=None,
+        )
+        assert result == {}

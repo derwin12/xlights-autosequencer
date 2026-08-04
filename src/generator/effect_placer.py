@@ -5623,6 +5623,26 @@ def _place_star_bursts(
         p.layer = -1
         result.setdefault(member, []).append(p)
 
+    # Corpus idiom for snowflakes/arches/toppers: a backdrop Off beneath the
+    # bursts keeps the model black in the gaps instead of picking up
+    # whatever's bleeding through from elsewhere (user request, 2026-08-04).
+    # One continuous Off spanning the whole song, not per-section like the
+    # corpus-recipe version -- these accents are song-scoped and rare, so a
+    # single backdrop per member covers every gap between bursts.
+    for member in list(result):
+        backdrop = EffectPlacement(
+            effect_name="Off",
+            xlights_id="Off",
+            model_or_group=member,
+            start_ms=0,
+            end_ms=hierarchy.duration_ms,
+            parameters={},
+            color_palette=["#000000"],
+        )
+        # Below the bursts (layer -1), above the recipe's own layers 0-2.
+        backdrop.layer = 0
+        result[member].append(backdrop)
+
     return result
 
 
