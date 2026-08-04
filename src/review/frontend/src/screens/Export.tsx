@@ -117,6 +117,22 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
     imported_at?: string;
   } | null>(null);
 
+  const [savingBundle, setSavingBundle] = useState(false);
+  const [saveBundleError, setSaveBundleError] = useState<string | null>(null);
+
+  async function handleSaveBundle() {
+    setSaveBundleError(null);
+    setSavingBundle(true);
+    try {
+      const safeName = song.title.replace(/[^a-z0-9]+/gi, '_').toLowerCase() || 'song';
+      await downloadPackage(`/api/v1/songs/${song.song_id}/save-bundle`, `${safeName}-bundle.json`);
+    } catch (err) {
+      setSaveBundleError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSavingBundle(false);
+    }
+  }
+
   const isThemed = song.status === 'themed';
   const hasLayout = layoutId != null && layoutXmlPath != null;
 
@@ -312,6 +328,20 @@ export function Export({ song, layoutId, layoutXmlPath, onExportComplete }: Expo
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
+      {saveBundleError && <p className={styles.error}>{saveBundleError}</p>}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <button
+          type="button"
+          className={styles.renderBtn}
+          data-testid="save-bundle-button"
+          onClick={handleSaveBundle}
+          disabled={savingBundle}
+          title="Save this song's title/artist, theme assignments, and every extra (lyrics, words, keyword motions, ...) as one downloadable JSON file — load it back on the Analyze tab to restore after data loss."
+        >
+          {savingBundle ? 'Saving…' : 'Save Bundle'}
+        </button>
+      </div>
 
       <label
         data-testid="include-extra-timing"

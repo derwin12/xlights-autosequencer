@@ -369,8 +369,6 @@ export function Theme({
   const [liveOverrides, setLiveOverrides] = useState<ParameterOverrides>(DEFAULT_OVERRIDES);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [resetting, setResetting] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const importInputRef = React.useRef<HTMLInputElement>(null);
 
   const currentAssignment = localAssignments.find((a) => a.section_index === selectedSectionIdx);
   const currentTheme = currentAssignment?.theme_id
@@ -489,94 +487,6 @@ export function Theme({
     }
   }
 
-  function handleExportAssignments() {
-    // User request 2026-07-28: theme assignments live only in the session
-    // JSON under the app's state dir, which some environments (e.g. this
-    // devcontainer's ephemeral home dir) wipe on restart -- a manual
-    // export/import round-trip is a user-controlled backup independent of
-    // that.
-    const payload = {
-      schema_version: 1,
-      exported_at: new Date().toISOString(),
-      song_id: song.song_id,
-      song_title: song.title,
-      assignments: localAssignments,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const safeName = song.title.replace(/[^a-z0-9]+/gi, '_').toLowerCase() || 'song';
-    link.download = `${safeName}-theme-assignments.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
-
-  async function handleImportAssignments(file: File) {
-    setError(null);
-    setImporting(true);
-    try {
-      const text = await file.text();
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        setError('That file is not valid JSON.');
-        return;
-      }
-      const imported: Assignment[] | undefined = Array.isArray(parsed)
-        ? (parsed as Assignment[])
-        : (parsed as { assignments?: Assignment[] })?.assignments;
-      if (!Array.isArray(imported)) {
-        setError('Invalid file: expected an "assignments" array.');
-        return;
-      }
-
-      let updated = localAssignments;
-      const existingIndices = new Set(updated.map((a) => a.section_index));
-      let applied = 0;
-      for (const a of imported) {
-        // Only apply to sections that actually exist in THIS song --
-        // a mapping exported from a differently-structured song shouldn't
-        // silently create phantom assignments.
-        if (typeof a?.section_index !== 'number' || !existingIndices.has(a.section_index)) {
-          continue;
-        }
-        const res = await fetch(
-          `/api/v1/songs/${song.song_id}/assignments/${a.section_index}`,
-          {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ theme_id: a.theme_id, overrides: a.overrides ?? {} }),
-          },
-        );
-        const body = await res.json();
-        if (!res.ok) {
-          setError(body?.error?.message ?? `Failed to apply section ${a.section_index}`);
-          continue;
-        }
-        applied += 1;
-        updated = updated.map((existing) =>
-          existing.section_index === a.section_index ? { ...body.assignment } : existing
-        );
-        onAssignmentChange(body.assignment);
-      }
-
-      setLocalAssignments(updated);
-      const current = updated.find((a) => a.section_index === selectedSectionIdx);
-      setLiveOverrides(current?.overrides ?? DEFAULT_OVERRIDES);
-      if (applied === 0) {
-        setError('No matching sections found in that file for this song.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error importing assignments');
-    } finally {
-      setImporting(false);
-    }
-  }
-
   function openEdit(theme: Theme) {
     setEditState({
       theme,
@@ -691,27 +601,6 @@ export function Theme({
           <button className={styles.resetBtn} onClick={openCreate}>
             + New Theme
           </button>
-          <button className={styles.resetBtn} onClick={handleExportAssignments}>
-            Save Mappings
-          </button>
-          <button
-            className={styles.resetBtn}
-            onClick={() => importInputRef.current?.click()}
-            disabled={importing}
-          >
-            {importing ? 'Loading…' : 'Load Mappings'}
-          </button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImportAssignments(file);
-              e.target.value = '';
-            }}
-          />
           <button
             className={styles.resetBtn}
             onClick={handleResetDefaults}

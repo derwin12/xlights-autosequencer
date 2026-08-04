@@ -58,4 +58,25 @@ describe('Export screen', () => {
     render(<Export song={{ ...song, status: 'analyzed' }} layoutId="layout_abc123" layoutXmlPath="/tmp/layout_abc123.xml" />);
     expect(screen.getByTestId('incomplete-theming')).toBeTruthy();
   });
+
+  describe('Save Bundle', () => {
+    // Consolidated save (user request 2026-08-04): replaces the old Theme
+    // screen's assignments-only Save Mappings with one button here that
+    // captures title/artist + theme assignments + every session extra.
+
+    it('triggers a download of the save-bundle endpoint', () => {
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      let hrefUsed: string | null = null;
+      vi.spyOn(HTMLAnchorElement.prototype, 'href', 'set').mockImplementation(function (this: HTMLAnchorElement, v: string) {
+        hrefUsed = v;
+      });
+
+      render(<Export song={song} layoutId="layout_abc123" layoutXmlPath="/tmp/layout_abc123.xml" />);
+      screen.getByTestId('save-bundle-button').click();
+
+      expect(clickSpy).toHaveBeenCalled();
+      expect(hrefUsed).toBe(`/api/v1/songs/${song.song_id}/save-bundle`);
+      clickSpy.mockRestore();
+    });
+  });
 });

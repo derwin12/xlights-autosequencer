@@ -644,3 +644,34 @@ class TestResolveVariationSeed:
         from src.review.api.v1.export import _resolve_variation_seed, InvalidVariationSeed
         with pytest.raises(InvalidVariationSeed):
             _resolve_variation_seed({"variation_seed": "abc"})
+
+
+class TestSaveBundle:
+    """GET /songs/<id>/save-bundle -- consolidated song save (user request
+    2026-08-04, replaces Theme screen's old assignments-only Save Mappings).
+    """
+
+    def test_unknown_song_404(self, client):
+        resp = client.get("/api/v1/songs/deadbeef00000000/save-bundle")
+        assert resp.status_code == 404
+
+    def test_returns_song_and_session(self, client):
+        song_id = _import_and_analyze(client)
+        _theme_song(client, song_id)
+        resp = client.get(f"/api/v1/songs/{song_id}/save-bundle")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["schema_version"] == 1
+        assert "saved_at" in data
+        assert "title" in data["song"]
+        assert "artist" in data["song"]
+        assert isinstance(data["session"]["assignments"], list)
+        assert len(data["session"]["assignments"]) >= 1
+
+    def test_reflects_current_metadata(self, client):
+        song_id = _import_and_analyze(client)
+        client.patch(f"/api/v1/songs/{song_id}/metadata", json={"title": "My Song", "artist": "My Artist"})
+        resp = client.get(f"/api/v1/songs/{song_id}/save-bundle")
+        data = resp.get_json()
+        assert data["song"]["title"] == "My Song"
+        assert data["song"]["artist"] == "My Artist"

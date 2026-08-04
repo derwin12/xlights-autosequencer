@@ -280,3 +280,89 @@ class TestResetDefaults:
 
         assert len(data["assignments"]) == len(sections)
         assert all(not a["user_confirmed"] for a in data["assignments"])
+
+
+class TestLoadBundle:
+    """POST /songs/<id>/load-bundle -- restores a previously-saved bundle
+    (user request 2026-08-04, replaces Theme screen's old assignments-only
+    Load Mappings)."""
+
+    def test_unknown_song_404(self, client):
+        resp = client.post(
+            "/api/v1/songs/deadbeef00000000/load-bundle",
+            json={"song": {}, "session": {}},
+        )
+        assert resp.status_code == 404
+
+    def test_missing_session_400(self, client):
+        song_id = _import_and_analyze(client)
+        resp = client.post(f"/api/v1/songs/{song_id}/load-bundle", json={"song": {}})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "invalid_bundle"
+
+    def test_draft_song_409(self, client):
+        wav = _make_wav_bytes()
+        song_id = client.post(
+            "/api/v1/import",
+            data={"audio": (io.BytesIO(wav), "test.wav")},
+            content_type="multipart/form-data",
+        ).get_json()["song"]["song_id"]
+        resp = client.post(
+            f"/api/v1/songs/{song_id}/load-bundle",
+            json={"song": {}, "session": {"assignments": []}},
+        )
+        assert resp.status_code == 409
+
+    def test_restores_title_and_artist(self, client):
+        song_id = _import_and_analyze(client)
+        resp = client.post(
+            f"/api/v1/songs/{song_id}/load-bundle",
+            json={"song": {"title": "Restored Title", "artist": "Restored Artist"}, "session": {"assignments": []}},
+        )
+        assert resp.status_code == 200
+        lib = client.get("/api/v1/library").get_json()
+        song = next(s for s in lib["songs"] if s["song_id"] == song_id)
+        assert song["title"] == "Restored Title"
+        assert song["artist"] == "Restored Artist"
+
+    def test_applies_assignments_to_matching_sections(self, client):
+        song_id = _import_and_analyze(client)
+        themes = client.get("/api/v1/themes").get_json()["themes"]
+        theme_id = themes[0]["theme_id"]
+        resp = client.post(
+            f"/api/v1/songs/{song_id}/load-bundle",
+            json={
+                "song": {},
+                "session": {"assignments": [{"section_index": 0, "theme_id": theme_id, "overrides": {}, "user_confirmed": True}]},
+            },
+        )
+        data = resp.get_json()
+        assert data["assignments_applied"] == 1
+        applied = next(a for a in data["assignments"] if a["section_index"] == 0)
+        assert applied["theme_id"] == theme_id
+        assert applied["user_confirmed"] is True
+
+    def test_skips_sections_not_present_in_this_song(self, client):
+        song_id = _import_and_analyze(client)
+        resp = client.post(
+            f"/api/v1/songs/{song_id}/load-bundle",
+            json={"song": {}, "session": {"assignments": [{"section_index": 999, "theme_id": "warm-glow"}]}},
+        )
+        data = resp.get_json()
+        assert data["assignments_applied"] == 0
+        assert data["assignments_skipped"] == 1
+
+    def test_merges_extras_into_session(self, client):
+        song_id = _import_and_analyze(client)
+        resp = client.post(
+            f"/api/v1/songs/{song_id}/load-bundle",
+            json={"song": {}, "session": {"assignments": [], "lyrics": "restored lyric text"}},
+        )
+        assert resp.status_code == 200
+        # assignments untouched (bundle sent an empty list, nothing matched)
+        session = client.get(f"/api/v1/songs/{song_id}/assignments").get_json()
+        assert session["assignments"]  # still the real analyzed sections, not wiped
+
+        from src.review.storage.assignments import load_session
+        stored = load_session(song_id)
+        assert stored["lyrics"] == "restored lyric text"

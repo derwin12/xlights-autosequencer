@@ -133,133 +133,6 @@ describe('Theme screen', () => {
     });
   });
 
-  describe('Save/Load theme mappings', () => {
-    // User request (2026-07-28): a manual export/import round-trip for
-    // theme assignments, since the session JSON they normally live in can
-    // be wiped by environment resets (e.g. an ephemeral devcontainer home
-    // dir) between visits.
-
-    it('Save Mappings triggers a JSON file download', () => {
-      const createObjectURL = vi.fn(() => 'blob:mock-url');
-      const revokeObjectURL = vi.fn();
-      vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
-      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-
-      render(
-        <Theme
-          song={song}
-          themes={themes}
-          sections={sections}
-          assignments={assignments}
-          onThemed={() => {}}
-          onAssignmentChange={() => {}}
-          onThemeSaved={() => {}}
-          onThemeDeleted={() => {}}
-        />
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /save mappings/i }));
-
-      expect(createObjectURL).toHaveBeenCalled();
-      expect(clickSpy).toHaveBeenCalled();
-      expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
-      clickSpy.mockRestore();
-    });
-
-    it('Load Mappings applies each section via PUT and calls onAssignmentChange', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          assignment: { section_index: 0, theme_id: 'peak-flash', overrides: {}, user_confirmed: true },
-        }),
-      });
-      const onAssignmentChange = vi.fn();
-
-      render(
-        <Theme
-          song={song}
-          themes={themes}
-          sections={sections}
-          assignments={assignments}
-          onThemed={() => {}}
-          onAssignmentChange={onAssignmentChange}
-          onThemeSaved={() => {}}
-          onThemeDeleted={() => {}}
-        />
-      );
-
-      const fileContents = JSON.stringify({
-        schema_version: 1,
-        assignments: [{ section_index: 0, theme_id: 'peak-flash', overrides: {} }],
-      });
-      const file = new File([fileContents], 'mappings.json', { type: 'application/json' });
-      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-      fireEvent.change(input, { target: { files: [file] } });
-
-      await waitFor(() => {
-        expect(onAssignmentChange).toHaveBeenCalledWith(
-          expect.objectContaining({ section_index: 0, theme_id: 'peak-flash' }),
-        );
-      });
-      expect(mockFetch).toHaveBeenCalledWith(
-        `/api/v1/songs/${song.song_id}/assignments/0`,
-        expect.objectContaining({ method: 'PUT' }),
-      );
-    });
-
-    it('Load Mappings skips sections not present in this song', async () => {
-      const onAssignmentChange = vi.fn();
-      render(
-        <Theme
-          song={song}
-          themes={themes}
-          sections={sections}
-          assignments={assignments}
-          onThemed={() => {}}
-          onAssignmentChange={onAssignmentChange}
-          onThemeSaved={() => {}}
-          onThemeDeleted={() => {}}
-        />
-      );
-
-      const fileContents = JSON.stringify({
-        assignments: [{ section_index: 99, theme_id: 'peak-flash', overrides: {} }],
-      });
-      const file = new File([fileContents], 'mappings.json', { type: 'application/json' });
-      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-      fireEvent.change(input, { target: { files: [file] } });
-
-      await waitFor(() => {
-        expect(screen.getByText(/no matching sections/i)).toBeTruthy();
-      });
-      expect(mockFetch).not.toHaveBeenCalled();
-      expect(onAssignmentChange).not.toHaveBeenCalled();
-    });
-
-    it('Load Mappings shows an error for invalid JSON', async () => {
-      render(
-        <Theme
-          song={song}
-          themes={themes}
-          sections={sections}
-          assignments={assignments}
-          onThemed={() => {}}
-          onAssignmentChange={() => {}}
-          onThemeSaved={() => {}}
-          onThemeDeleted={() => {}}
-        />
-      );
-
-      const file = new File(['not json'], 'mappings.json', { type: 'application/json' });
-      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-      fireEvent.change(input, { target: { files: [file] } });
-
-      await waitFor(() => {
-        expect(screen.getByText(/not valid json/i)).toBeTruthy();
-      });
-    });
-  });
-
   describe('New Theme', () => {
     it('opens a blank create dialog and POSTs a new theme on save', async () => {
       mockFetch.mockResolvedValue({
@@ -284,13 +157,12 @@ describe('Theme screen', () => {
       const dialogTitle = screen.getByText('New Theme');
       const dialog = dialogTitle.closest('div')?.parentElement as HTMLElement;
 
-      // The Name field is the dialog's first non-file <input> (Mood/
-      // Occasion are <select>, Genre is a later <input>). Scoped to the
-      // dialog specifically — the page also has unrelated <input>s outside
-      // it (a hidden file input for Load Mappings, ParameterSliders'
-      // range inputs) that a page-wide query would match first.
-      const nameInput = Array.from(dialog.querySelectorAll('input'))
-        .find((el) => el.type !== 'file') as HTMLInputElement;
+      // The Name field is the dialog's first <input> (Mood/Occasion are
+      // <select>, Genre is a later <input>). Scoped to the dialog
+      // specifically — the page also has unrelated <input>s outside it
+      // (ParameterSliders' range inputs) that a page-wide query would
+      // match first.
+      const nameInput = Array.from(dialog.querySelectorAll('input'))[0] as HTMLInputElement;
       fireEvent.change(nameInput, { target: { value: 'My New Theme' } });
       fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
 

@@ -431,3 +431,37 @@ def export_mapping(song_id: str):
         })
 
     return jsonify({"props": props}), 200
+
+
+_SONG_BUNDLE_SCHEMA_VERSION = 1
+
+
+@api_v1.route("/songs/<song_id>/save-bundle", methods=["GET"])
+def save_song_bundle(song_id: str):
+    """Build a single downloadable JSON bundle for this song: title/artist +
+    the full session (theme assignments, lyrics, words, phonemes, and every
+    other extra the session already carries).
+
+    Replaces the old Theme screen's assignments-only Save Mappings (user
+    request 2026-08-04: one consolidated save here on the Export screen
+    instead). Wraps the whole session dict as-is rather than hand-picking
+    fields, so newly added session fields are captured automatically
+    without this route needing to track them.
+    """
+    lib = load_library()
+    song = next((s for s in lib["songs"] if s["song_id"] == song_id), None)
+    if song is None:
+        return jsonify({"error": {"code": "song_not_found",
+                                   "message": "Song not found"}}), 404
+
+    session = load_session(song_id) or {}
+
+    return jsonify({
+        "schema_version": _SONG_BUNDLE_SCHEMA_VERSION,
+        "saved_at": _now_iso(),
+        "song": {
+            "title": song.get("title", ""),
+            "artist": song.get("artist", ""),
+        },
+        "session": session,
+    }), 200

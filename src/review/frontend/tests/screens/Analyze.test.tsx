@@ -286,6 +286,77 @@ describe('Analyze screen', () => {
     expect(screen.queryByText(/xtiming loaded/i)).toBeNull();
   });
 
+  describe('Load Bundle', () => {
+    // Consolidated load (user request 2026-08-04): replaces the old Theme
+    // screen's assignments-only Load Mappings with one button here that
+    // restores title/artist + theme assignments + every session extra
+    // from a bundle saved on the Export screen.
+
+    it('POSTs the parsed file to load-bundle and shows the applied count', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          song: { title: 'Restored Title', artist: 'Restored Artist' },
+          assignments: [],
+          assignments_applied: 2,
+          assignments_skipped: 0,
+        }),
+      });
+
+      render(<Analyze song={mockSong} onComplete={() => {}} />);
+
+      const fileContents = JSON.stringify({
+        schema_version: 1,
+        song: { title: 'Restored Title', artist: 'Restored Artist' },
+        session: { assignments: [{ section_index: 0, theme_id: 'warm-glow', overrides: {} }] },
+      });
+      const file = new File([fileContents], 'bundle.json', { type: 'application/json' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [file] } });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('load-bundle-success').textContent).toMatch(/applied 2/i);
+      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/v1/songs/${mockSong.song_id}/load-bundle`,
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(screen.getByLabelText('Title')).toHaveValue('Restored Title');
+      expect(screen.getByLabelText('Artist')).toHaveValue('Restored Artist');
+    });
+
+    it('shows an error for invalid JSON without calling the API', async () => {
+      render(<Analyze song={mockSong} onComplete={() => {}} />);
+
+      const file = new File(['not json'], 'bundle.json', { type: 'application/json' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [file] } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/not valid json/i)).toBeTruthy();
+      });
+      const loadBundleCalls = mockFetch.mock.calls.filter(([url]) => String(url).includes('load-bundle'));
+      expect(loadBundleCalls).toHaveLength(0);
+    });
+
+    it('surfaces a server error message', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: { code: 'invalid_bundle', message: 'Bundle is missing a session object' } }),
+      });
+
+      render(<Analyze song={mockSong} onComplete={() => {}} />);
+
+      const file = new File([JSON.stringify({ song: {} })], 'bundle.json', { type: 'application/json' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [file] } });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('load-bundle-error').textContent).toMatch(/missing a session/i);
+      });
+    });
+  });
+
 });
 
 // ──────────────────────────────────────────────────────────────────────

@@ -3,6 +3,8 @@
 GET  /api/v1/songs/<song_id>/assignments
 PUT  /api/v1/songs/<song_id>/assignments/<section_index>
 POST /api/v1/songs/<song_id>/assignments/accept-all
+POST /api/v1/songs/<song_id>/assignments/reset-defaults
+POST /api/v1/songs/<song_id>/load-bundle
 """
 from __future__ import annotations
 
@@ -11,7 +13,7 @@ from flask import jsonify, request
 from . import api_v1
 from .themes import _load_themes
 from src.review.storage.library import load_library, save_library
-from src.review.storage.assignments import load_session, save_session
+from src.review.storage.assignments import load_session, save_session, save_full_session
 
 _DEFAULT_OVERRIDES = {
     "brightness": 1.0,
@@ -224,3 +226,76 @@ def reset_assignments_to_defaults(song_id: str):
     save_library(lib)
 
     return jsonify({"assignments": assignments, "song_status": "analyzed"}), 200
+
+
+@api_v1.route("/songs/<song_id>/load-bundle", methods=["POST"])
+def load_song_bundle(song_id: str):
+    """Apply a previously-saved single-song bundle (see save_song_bundle in
+    export.py) onto the current song: restores title/artist and merges the
+    bundle's session (theme assignments + every extra it carried) into
+    this song's session.
+
+    User request 2026-08-04: recovers a song's theme work after the app
+    state gets wiped (e.g. this devcontainer's ephemeral home dir),
+    replacing the old Theme screen's assignments-only Load Mappings with
+    one bundle covering title/artist too. Assignment entries only apply to
+    section_index values that exist in THIS song's current session -- a
+    bundle saved from a differently-segmented analysis run shouldn't
+    create phantom assignments (same guard the old Theme.tsx importer
+    used). Every other session field (lyrics, words, phonemes, ignored
+    occurrences, keyword motions, shadow text, ...) merges over the
+    current session wholesale, since those are song-content-derived
+    rather than section-index-keyed.
+    """
+    song, lib, err = _get_song_or_error(song_id)
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    bundle_song = body.get("song") or {}
+    bundle_session = body.get("session")
+    if not isinstance(bundle_session, dict):
+        return jsonify({"error": {"code": "invalid_bundle",
+                                   "message": "Bundle is missing a session object"}}), 400
+
+    current_session = load_session(song_id)
+    if current_session is None:
+        return jsonify({"error": {"code": "not_analyzed",
+                                   "message": "Song must be analyzed before a bundle can be applied"}}), 409
+
+    title = str(bundle_song.get("title") or "").strip()
+    artist = str(bundle_song.get("artist") or "").strip()
+    if title:
+        song["title"] = title
+    if artist:
+        song["artist"] = artist
+    if title or artist:
+        save_library(lib)
+
+    current_assignments = current_session.get("assignments", [])
+    existing_indices = {a["section_index"] for a in current_assignments}
+    by_index = {a["section_index"]: a for a in current_assignments}
+    applied = 0
+    for a in bundle_session.get("assignments", []):
+        idx = a.get("section_index")
+        if not isinstance(idx, int) or idx not in existing_indices:
+            continue
+        target = by_index[idx]
+        target["theme_id"] = a.get("theme_id", target.get("theme_id"))
+        target["overrides"] = a.get("overrides", target.get("overrides", {}))
+        target["user_confirmed"] = a.get("user_confirmed", target.get("user_confirmed", False))
+        applied += 1
+
+    merged = {
+        **current_session,
+        **{k: v for k, v in bundle_session.items() if k not in ("sections", "assignments")},
+        "assignments": current_assignments,
+    }
+    save_full_session(song_id, merged)
+
+    return jsonify({
+        "song": song,
+        "assignments": current_assignments,
+        "assignments_applied": applied,
+        "assignments_skipped": len(bundle_session.get("assignments", [])) - applied,
+    }), 200

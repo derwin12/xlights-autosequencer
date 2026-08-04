@@ -255,6 +255,15 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
   const [showXTimingUpload, setShowXTimingUpload] = useState(false);
   const [xtimingResult, setXTimingResult] = useState<XTimingUploadResult | null>(null);
 
+  // Load a previously-saved song bundle (Export screen's "Save Bundle" —
+  // title/artist + theme assignments + every session extra) back onto this
+  // song. User request 2026-08-04: recovers a song's theme work after the
+  // app state gets wiped, without redoing manual assignment work.
+  const [loadingBundle, setLoadingBundle] = useState(false);
+  const [bundleMessage, setBundleMessage] = useState<string | null>(null);
+  const [bundleError, setBundleError] = useState<string | null>(null);
+  const bundleInputRef = useRef<HTMLInputElement>(null);
+
   // Re-hydrate the "xTiming loaded" indicator on mount -- it used to only
   // ever be set right after a fresh upload in the same session, so
   // navigating away and back gave no way to tell whether the server still
@@ -347,6 +356,45 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
       setMetadataError(e instanceof Error ? e.message : 'Failed to save metadata');
     } finally {
       setMetadataSaving(false);
+    }
+  }
+
+  async function handleLoadBundle(file: File) {
+    setBundleError(null);
+    setBundleMessage(null);
+    setLoadingBundle(true);
+    try {
+      const text = await file.text();
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        setBundleError('That file is not valid JSON.');
+        return;
+      }
+      const res = await fetch(`/api/v1/songs/${song.song_id}/load-bundle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setBundleError(body?.error?.message ?? 'Failed to load bundle');
+        return;
+      }
+      if (body.song) {
+        setTitleInput(body.song.title ?? titleInput);
+        setArtistInput(body.song.artist ?? artistInput);
+        onAnalysisComplete?.({ ...song, ...body.song });
+      }
+      setBundleMessage(
+        `Applied ${body.assignments_applied} theme assignment(s)`
+        + (body.assignments_skipped > 0 ? ` (${body.assignments_skipped} skipped — no matching section)` : ''),
+      );
+    } catch (err) {
+      setBundleError(err instanceof Error ? err.message : 'Error loading bundle');
+    } finally {
+      setLoadingBundle(false);
     }
   }
 
@@ -720,6 +768,26 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
         </button>
         <button
           className={styles.reanalyzeBtn}
+          data-testid="load-bundle-btn"
+          onClick={() => bundleInputRef.current?.click()}
+          disabled={loadingBundle}
+          title="Load a bundle saved from the Export screen — restores title/artist and theme assignments (and every other session extra) onto this song"
+        >
+          {loadingBundle ? 'Loading…' : 'Load Bundle'}
+        </button>
+        <input
+          ref={bundleInputRef}
+          type="file"
+          accept="application/json,.json"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleLoadBundle(file);
+            e.target.value = '';
+          }}
+        />
+        <button
+          className={styles.reanalyzeBtn}
           data-testid="metadata-save-btn"
           onClick={handleSaveMetadata}
           disabled={metadataSaving || (!titleInput.trim() && !artistInput.trim())}
@@ -730,6 +798,8 @@ export function Analyze({ song, forceOnMount = false, onAnalysisComplete, onComp
           <span className={styles.metadataWarning}>⚠ Artist is missing — lyrics lookup may fail or match the wrong song</span>
         )}
         {metadataError && <span className={styles.metadataError} data-testid="metadata-save-error">{metadataError}</span>}
+        {bundleMessage && <span className={styles.metadataSuccess} data-testid="load-bundle-success">✓ {bundleMessage}</span>}
+        {bundleError && <span className={styles.metadataError} data-testid="load-bundle-error">{bundleError}</span>}
         {lyricsCheckResult && (
           lyricsCheckResult.found
             ? <span className={styles.metadataSuccess}>
