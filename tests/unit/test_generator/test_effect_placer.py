@@ -1528,3 +1528,71 @@ class TestForceFloodlightSpiralsToDefaultBufferStyle:
         result = {"06_PROP_Floodlight": [p]}
         _force_floodlight_spirals_to_default_buffer_style(result)
         assert p.buffer_style_override == "Per Model Per Preview"
+
+
+class TestTopperGetsOffBackdropOnRotationPlanPath:
+    """The megatopper corpus recipe's own off_backdrop=True only fires on
+    qualifying/high-energy sections; every other section falls through to
+    the rotation-plan path instead (user request, 2026-08-04, found via a
+    real generated .xsq showing a topper's Pinwheel/Color Wash content with
+    nothing behind it on an ordinary verse section). place_effects must add
+    a matching Off backdrop itself when the rotation plan places something
+    on a topper group."""
+
+    def _rotation_plan(self, group_name: str, group_tier: int) -> "RotationPlan":
+        from src.generator.rotation import RotationEntry, RotationPlan
+        return RotationPlan(
+            entries=[
+                RotationEntry(
+                    section_index=0, section_label="verse", group_name=group_name,
+                    group_tier=group_tier, variant_name="Color Wash",
+                    base_effect="Color Wash", score=1.0,
+                )
+            ],
+        )
+
+    def test_topper_group_gets_off_backdrop_beneath_rotation_plan_effect(self) -> None:
+        group = PowerGroup(name="08_HERO_Mega_Topper", tier=8, members=["Mega Topper"])
+        lib = _make_library(_make_effect(name="Color Wash"), _make_effect(name="Off", xlights_id="Off"))
+        variant_lib = _make_variant_library("Color Wash")
+        assignment = _make_assignment(start_ms=0, end_ms=10000, active_tiers={8})
+        result = place_effects(
+            assignment=assignment, groups=[group], effect_library=lib,
+            hierarchy=_make_hierarchy(), variant_library=variant_lib,
+            rotation_plan=self._rotation_plan("08_HERO_Mega_Topper", 8),
+        )
+        names = [p.effect_name for p in result["08_HERO_Mega_Topper"]]
+        assert "Color Wash" in names
+        off_placements = [p for p in result["08_HERO_Mega_Topper"] if p.effect_name == "Off"]
+        assert len(off_placements) == 1
+        off = off_placements[0]
+        assert off.start_ms == 0
+        assert off.end_ms == 10000
+        assert off.color_palette == ["#000000"]
+
+    def test_off_backdrop_renders_below_the_rotation_plan_effect(self) -> None:
+        group = PowerGroup(name="08_HERO_Mega_Topper", tier=8, members=["Mega Topper"])
+        lib = _make_library(_make_effect(name="Color Wash"), _make_effect(name="Off", xlights_id="Off"))
+        variant_lib = _make_variant_library("Color Wash")
+        assignment = _make_assignment(start_ms=0, end_ms=10000, active_tiers={8})
+        result = place_effects(
+            assignment=assignment, groups=[group], effect_library=lib,
+            hierarchy=_make_hierarchy(), variant_library=variant_lib,
+            rotation_plan=self._rotation_plan("08_HERO_Mega_Topper", 8),
+        )
+        accent = next(p for p in result["08_HERO_Mega_Topper"] if p.effect_name == "Color Wash")
+        off = next(p for p in result["08_HERO_Mega_Topper"] if p.effect_name == "Off")
+        assert off.layer > accent.layer
+
+    def test_non_topper_group_gets_no_off_backdrop(self) -> None:
+        group = PowerGroup(name="08_HERO_Mega_Tree", tier=8, members=["Mega Tree"])
+        lib = _make_library(_make_effect(name="Color Wash"), _make_effect(name="Off", xlights_id="Off"))
+        variant_lib = _make_variant_library("Color Wash")
+        assignment = _make_assignment(start_ms=0, end_ms=10000, active_tiers={8})
+        result = place_effects(
+            assignment=assignment, groups=[group], effect_library=lib,
+            hierarchy=_make_hierarchy(), variant_library=variant_lib,
+            rotation_plan=self._rotation_plan("08_HERO_Mega_Tree", 8),
+        )
+        names = [p.effect_name for p in result["08_HERO_Mega_Tree"]]
+        assert "Off" not in names

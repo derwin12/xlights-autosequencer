@@ -1150,6 +1150,17 @@ def place_effects(
     # duplicate per-beat stacks when multiple theme layers target tier 6.
     corpus_recipe_done: set[str] = set()
 
+    # Topper groups already given a rotation-plan Off backdrop this section
+    # (user request, 2026-08-04, found via a real generated .xsq: the
+    # megatopper corpus recipe's own off_backdrop=True only fires on
+    # qualifying/high-energy sections -- see section_qualifies -- so every
+    # OTHER section falls through to this rotation-plan path instead, which
+    # has no backdrop concept at all, leaving the topper's Pinwheel/Color
+    # Wash content with nothing behind it). One-shot per group per section,
+    # same idiom as corpus_recipe_done above, so multiple theme layers
+    # targeting the same topper this section don't each add their own copy.
+    topper_off_done: set[str] = set()
+
     for layer_idx, layer in enumerate(layers):
         # Resolve variant → effect_def
         layer_variant = variant_library.get(layer.variant) if variant_library is not None else None
@@ -1328,6 +1339,26 @@ def place_effects(
                                     p.parameters[dc_param] = dc_values[pi % len(dc_values)]
                     if rot_placements:
                         result.setdefault(group.name, []).extend(rot_placements)
+                        if (
+                            "topper" in group.name.lower()
+                            and group.name not in topper_off_done
+                        ):
+                            topper_off_done.add(group.name)
+                            off_def = effect_library.effects.get("Off")
+                            if off_def is not None:
+                                backdrop = EffectPlacement(
+                                    effect_name="Off", xlights_id="Off",
+                                    model_or_group=group.name,
+                                    start_ms=assignment.section.start_ms,
+                                    end_ms=assignment.section.end_ms,
+                                    parameters={}, color_palette=["#000000"],
+                                )
+                                # rot_placements never override the
+                                # EffectPlacement.layer default (0); 1 sorts
+                                # below them (bug-248: first layer renders on
+                                # top).
+                                backdrop.layer = 1
+                                result[group.name].append(backdrop)
                         # Warp-type Shader variants (Kaleidoscope Tile,
                         # Vincent'sStorm) distort/tile whatever renders
                         # beneath them rather than carrying their own
