@@ -1620,29 +1620,52 @@ def place_effects(
                         variation_seed=assignment.variation_seed + gi,
                     )
                 substituted = placement_effect_def is not effect_def
-                placements = _place_effect_on_group(
-                    effect_def=placement_effect_def,
-                    layer=layer,
-                    group=group,
-                    section=assignment.section,
-                    hierarchy=hierarchy,
-                    palette=tier_palette,
-                    variation_seed=assignment.variation_seed,
-                    chord_marks=chord_marks,
-                    tension_curve=tension_curve,
-                    danceability=danceability,
-                    chord_weight=chord_weight,
-                    # When matrix substitution rewrote the effect, the theme
-                    # layer's own variant targets the original (pre-
-                    # substitution) effect and would scramble the
-                    # substitute's parameter space -- apply matrix_params
-                    # instead, below, rather than looking up a mismatched
-                    # variant here.
-                    variant_library=None if substituted else variant_library,
-                    bar_parity=None,
-                    duration_scaling=duration_scaling,
-                    bpm=bpm,
-                )
+                if tier == 1 and effective_tiers == frozenset({1, 8}):
+                    # Ethereal-only section: BASE is the entire visual (no
+                    # other active tier), so give it bar-cadenced palette
+                    # variation instead of one static section-long wash.
+                    # See _place_ethereal_base_variation's docstring for why
+                    # this doesn't reopen the general tier-1 "sustained"
+                    # rule used everywhere else.
+                    placements = _place_ethereal_base_variation(
+                        effect_def=placement_effect_def,
+                        layer=layer,
+                        group=group,
+                        section=assignment.section,
+                        hierarchy=hierarchy,
+                        palette=tier_palette,
+                        variation_seed=assignment.variation_seed,
+                        section_index=assignment.section_index,
+                        chord_marks=chord_marks,
+                        tension_curve=tension_curve,
+                        chord_weight=chord_weight,
+                        variant_library=None if substituted else variant_library,
+                        duration_scaling=duration_scaling,
+                    )
+                else:
+                    placements = _place_effect_on_group(
+                        effect_def=placement_effect_def,
+                        layer=layer,
+                        group=group,
+                        section=assignment.section,
+                        hierarchy=hierarchy,
+                        palette=tier_palette,
+                        variation_seed=assignment.variation_seed,
+                        chord_marks=chord_marks,
+                        tension_curve=tension_curve,
+                        danceability=danceability,
+                        chord_weight=chord_weight,
+                        # When matrix substitution rewrote the effect, the theme
+                        # layer's own variant targets the original (pre-
+                        # substitution) effect and would scramble the
+                        # substitute's parameter space -- apply matrix_params
+                        # instead, below, rather than looking up a mismatched
+                        # variant here.
+                        variant_library=None if substituted else variant_library,
+                        bar_parity=None,
+                        duration_scaling=duration_scaling,
+                        bpm=bpm,
+                    )
                 if substituted and matrix_params:
                     for p in placements:
                         p.parameters.update(matrix_params)
@@ -2467,6 +2490,134 @@ def _place_call_response(
             result.setdefault(group.name, []).append(placement)
 
     return result
+
+
+# Bar-segment length for _place_ethereal_base_variation. Deterministic per
+# song/section (variation_seed + section_index parity), not BPM-derived --
+# same "pick one of two established phrase lengths" idiom as
+# color_cycle_beats_alt (4 vs 8 bars is not tempo-dependent; it's a style
+# choice, and different sections of the same song legitimately alternate).
+_ETHEREAL_BASE_SEGMENT_BARS = (4, 8)
+
+# Minimum segment duration -- shorter trailing segments are absorbed into
+# their predecessor. Matches _snap_sections_to_bars' own minimum-duration
+# guard for consistency.
+_ETHEREAL_BASE_MIN_SEGMENT_MS = 2000
+
+
+def _place_ethereal_base_variation(
+    effect_def: EffectDefinition,
+    layer: EffectLayer,
+    group: PowerGroup,
+    section: SectionEnergy,
+    hierarchy: HierarchyResult,
+    palette: list[str],
+    variation_seed: int,
+    section_index: int,
+    chord_marks: list[TimingMark] | None = None,
+    tension_curve: list[tuple[int, int]] | None = None,
+    chord_weight: float = 0.4,
+    variant_library=None,
+    duration_scaling: bool = False,
+) -> list[EffectPlacement]:
+    """Place tier-1 BASE as bar-aligned segments with a rotating palette,
+    for sections where BASE is the ONLY active moving tier (ethereal mood,
+    active_tiers == {1, 8}).
+
+    The general tier-1 rule (_place_effect_on_group's `duration_behavior =
+    "sustained"` override, added 2026-05-06 per a real visual review, see
+    that commit's "reads as pulses instead of a constant backdrop" comment)
+    stays a single unbroken placement everywhere else, because there BASE
+    plays underneath other active tiers and pulsing competes visually with
+    the rest of the composite. Ethereal sections have no other composite —
+    BASE is the entire visual for the whole section, sometimes over a
+    minute — so a single unbroken placement reads as dead air rather than
+    restrained. This keeps the color moving on a musically real cadence
+    (4 or 8 bars) without reintroducing brightness/effect pulsing.
+
+    Falls back to one whole-section placement (matching the general tier-1
+    behavior) when there isn't enough bar data for at least one segment.
+    """
+    start_ms = section.start_ms
+    end_ms = section.end_ms
+
+    params: dict[str, Any] = {}
+    direction_cycle: dict | None = None
+    if variant_library is not None:
+        variant = variant_library.get(layer.variant)
+        if variant is not None:
+            params = dict(variant.parameter_overrides)
+            direction_cycle = variant.direction_cycle
+
+    bars = getattr(hierarchy, "bars", None)
+    bar_marks = (
+        _marks_in_range(bars.marks, start_ms, end_ms) if bars is not None else []
+    )
+
+    segment_bars = _ETHEREAL_BASE_SEGMENT_BARS[(variation_seed + section_index) % 2]
+
+    def _apply_scaled_fades(p: EffectPlacement) -> EffectPlacement:
+        # Matches _place_effect_on_group's sustained-branch behavior: each
+        # placement's fade scales to ITS OWN duration, not the whole
+        # section's -- required so apply_crossfades / end-of-song fadeout
+        # (which key off fade_in_ms/fade_out_ms already being duration-
+        # appropriate) behave identically whether BASE is one placement or
+        # several bar-aligned segments.
+        if duration_scaling:
+            fade_in, fade_out = compute_scaled_fades(p.end_ms - p.start_ms)
+            p.fade_in_ms = fade_in
+            p.fade_out_ms = fade_out
+        return p
+
+    if len(bar_marks) < segment_bars:
+        resolved_palette = _resolve_palette(
+            palette, chord_marks, tension_curve, start_ms, end_ms, chord_weight,
+            chroma_curve=getattr(hierarchy, "chroma_curve", None),
+        )
+        return [_apply_scaled_fades(_make_placement(
+            effect_def, group.name, start_ms, end_ms,
+            params, resolved_palette, layer.blend_mode, "section",
+            direction_cycle=direction_cycle,
+        ))]
+
+    placements: list[EffectPlacement] = []
+    for seg_idx, i in enumerate(range(0, len(bar_marks), segment_bars)):
+        seg_start = start_ms if i == 0 else bar_marks[i].time_ms
+        end_idx = i + segment_bars
+        seg_end = bar_marks[end_idx].time_ms if end_idx < len(bar_marks) else end_ms
+        if seg_end <= seg_start:
+            continue
+
+        seg_palette = _resolve_palette(
+            palette, chord_marks, tension_curve, seg_start, seg_end, chord_weight,
+            chroma_curve=getattr(hierarchy, "chroma_curve", None),
+        )
+        if len(seg_palette) > 1:
+            offset = seg_idx % len(seg_palette)
+            seg_palette = seg_palette[offset:] + seg_palette[:offset]
+
+        placements.append(_make_placement(
+            effect_def, group.name, seg_start, seg_end,
+            params, seg_palette, layer.blend_mode, "section",
+            instance_index=seg_idx, direction_cycle=direction_cycle,
+        ))
+
+    # Absorb a too-short trailing segment (leftover bars smaller than one
+    # full segment) into its predecessor instead of leaving a degenerate
+    # sliver -- same convention as _snap_sections_to_bars' minimum-duration
+    # guard. Without this, a short final segment on the song's last section
+    # gets end-of-song fadeout capped at its own (tiny) duration, i.e.
+    # fade_out == 100% of duration -- correct in effect (fades all the way
+    # to black by the end) but a degenerate-looking placement to carry.
+    if len(placements) >= 2 and (placements[-1].end_ms - placements[-1].start_ms) < _ETHEREAL_BASE_MIN_SEGMENT_MS:
+        last = placements.pop()
+        placements[-1].end_ms = last.end_ms
+
+    return [_apply_scaled_fades(p) for p in placements] or [_apply_scaled_fades(_make_placement(
+        effect_def, group.name, start_ms, end_ms,
+        params, palette, layer.blend_mode, "section",
+        direction_cycle=direction_cycle,
+    ))]
 
 
 def _resolve_palette(

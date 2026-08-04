@@ -1242,6 +1242,100 @@ class TestPlaceCallResponse:
         assert "02_GEO_Mid" not in result
 
 
+class TestPlaceEtherealBaseVariation:
+    """_place_ethereal_base_variation gives tier-1 BASE bar-cadenced palette
+    variation instead of one static section-long placement, for sections
+    where BASE is the only active moving tier (ethereal, active_tiers ==
+    {1, 8})."""
+
+    def _base_group(self) -> PowerGroup:
+        return PowerGroup(name="01_BASE_All", tier=1, members=["Model_A", "Model_B"])
+
+    def test_splits_into_bar_aligned_segments_with_enough_bar_data(self) -> None:
+        from src.generator.effect_placer import _place_ethereal_base_variation
+
+        # variation_seed + section_index even → 4-bar segments (see
+        # _ETHEREAL_BASE_SEGMENT_BARS). 8 bars = exactly two 4-bar segments.
+        bar_times = list(range(0, 4000, 500))
+        section = SectionEnergy(label="v", start_ms=0, end_ms=4000,
+                                energy_score=15, mood_tier="ethereal", impact_count=0)
+        hierarchy = _hierarchy_with_bars_and_curve(bar_times, duration_ms=4000)
+
+        placements = _place_ethereal_base_variation(
+            _make_effect("Color Wash"),
+            EffectLayer(variant="Color Wash"),
+            self._base_group(), section, hierarchy,
+            palette=["#ff0000", "#00ff00", "#0000ff"],
+            variation_seed=0, section_index=0,
+        )
+
+        assert len(placements) == 2
+        assert placements[0].start_ms == 0
+        assert placements[0].end_ms == 2000
+        assert placements[1].start_ms == 2000
+        assert placements[1].end_ms == 4000
+
+    def test_palette_rotates_between_segments(self) -> None:
+        from src.generator.effect_placer import _place_ethereal_base_variation
+
+        bar_times = list(range(0, 4000, 500))
+        section = SectionEnergy(label="v", start_ms=0, end_ms=4000,
+                                energy_score=15, mood_tier="ethereal", impact_count=0)
+        hierarchy = _hierarchy_with_bars_and_curve(bar_times, duration_ms=4000)
+
+        placements = _place_ethereal_base_variation(
+            _make_effect("Color Wash"),
+            EffectLayer(variant="Color Wash"),
+            self._base_group(), section, hierarchy,
+            palette=["#ff0000", "#00ff00", "#0000ff"],
+            variation_seed=0, section_index=0,
+        )
+
+        assert len(placements) == 2
+        assert placements[0].color_palette != placements[1].color_palette
+
+    def test_falls_back_to_single_placement_with_insufficient_bar_data(self) -> None:
+        from src.generator.effect_placer import _place_ethereal_base_variation
+
+        # Only 2 bar marks, fewer than either segment length (4 or 8).
+        bar_times = [0, 500]
+        section = SectionEnergy(label="v", start_ms=0, end_ms=4000,
+                                energy_score=15, mood_tier="ethereal", impact_count=0)
+        hierarchy = _hierarchy_with_bars_and_curve(bar_times, duration_ms=4000)
+
+        placements = _place_ethereal_base_variation(
+            _make_effect("Color Wash"),
+            EffectLayer(variant="Color Wash"),
+            self._base_group(), section, hierarchy,
+            palette=["#ff0000"],
+            variation_seed=0, section_index=0,
+        )
+
+        assert len(placements) == 1
+        assert placements[0].start_ms == 0
+        assert placements[0].end_ms == 4000
+
+    def test_no_bar_track_falls_back_to_single_placement(self) -> None:
+        from src.generator.effect_placer import _place_ethereal_base_variation
+
+        section = SectionEnergy(label="v", start_ms=0, end_ms=4000,
+                                energy_score=15, mood_tier="ethereal", impact_count=0)
+        hierarchy = HierarchyResult(
+            schema_version="2.4.0", source_file="x.mp3", source_hash="0" * 32,
+            duration_ms=4000, estimated_bpm=120.0,
+        )
+
+        placements = _place_ethereal_base_variation(
+            _make_effect("Color Wash"),
+            EffectLayer(variant="Color Wash"),
+            self._base_group(), section, hierarchy,
+            palette=["#ff0000"],
+            variation_seed=0, section_index=0,
+        )
+
+        assert len(placements) == 1
+
+
 class TestAssignLayersToTiers:
     """Iteration backlog A1: multi-layer BASE composition."""
 

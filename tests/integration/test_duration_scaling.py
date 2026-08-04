@@ -334,18 +334,54 @@ class TestUS5FadeScaling:
     def test_combined_fades_never_exceed_40_percent(self, tmp_path: Path):
         """Fades assigned by compute_scaled_fades must never exceed 40% of duration.
 
-        Excludes placements modified by the end-of-song fade-out pass, which
-        legitimately sets fade_out > duration for progressive tier staggering.
+        Excludes placements modified by the end-of-song fade-out pass. That
+        pass sets fade_out on whichever placement(s) end latest within each
+        eligible group of the FINAL section only, capped at the placement's
+        own duration (`min(fadeout_ms, duration)`) -- so it can legitimately
+        produce fade_out anywhere up to and including 100% of that
+        placement's duration. Identifying these directly (final section +
+        last-ending placement per group) rather than inferring "was this
+        end-of-song-affected" from fade_out > duration is required because
+        the cap means fade_out == duration exactly is just as valid an
+        end-of-song outcome as fade_out > duration -- a fade_out <= duration
+        proxy alone can't distinguish a legitimately-capped end-of-song fade
+        from a real 40%-budget violation.
         """
-        scenario = build_pop_anthem()
-        fade_data = self._collect_fades(scenario, tmp_path, duration_scaling=True, transition_mode="none")
+        effect_lib = load_effect_library()
+        from src.variants.library import load_variant_library
+        variant_lib = load_variant_library(effect_library=effect_lib)
+        theme_lib = load_theme_library(effect_library=effect_lib, variant_library=variant_lib)
 
-        # Exclude placements where fade > duration (applied by end-of-song fade-out, not us)
-        our_fades = [(d, fi, fo) for d, fi, fo in fade_data if fi <= d and fo <= d]
-        violations = [
-            (d, fi, fo) for d, fi, fo in our_fades
-            if fi + fo > 0.40 * d
-        ]
+        scenario = build_pop_anthem()
+        config = scenario.make_config(tmp_path)
+        config.duration_scaling = True
+        config.transition_mode = "none"
+        plan = build_plan(
+            config, scenario.hierarchy, scenario.props, scenario.groups,
+            effect_lib, theme_lib,
+        )
+
+        final_section_end_of_song_placement_ids: set[int] = set()
+        if plan.sections:
+            final = plan.sections[-1]
+            for placements in final.group_effects.values():
+                if not placements:
+                    continue
+                latest_end = max(p.end_ms for p in placements)
+                for p in placements:
+                    if p.end_ms == latest_end:
+                        final_section_end_of_song_placement_ids.add(id(p))
+
+        violations = []
+        for assignment in plan.sections:
+            for placements in assignment.group_effects.values():
+                for p in placements:
+                    if id(p) in final_section_end_of_song_placement_ids:
+                        continue
+                    dur = p.end_ms - p.start_ms
+                    if p.fade_in_ms + p.fade_out_ms > 0.40 * dur:
+                        violations.append((dur, p.fade_in_ms, p.fade_out_ms))
+
         assert not violations, (
             f"Found {len(violations)} placements where duration-scaling fades exceed 40%: "
             f"{violations[:3]}"
