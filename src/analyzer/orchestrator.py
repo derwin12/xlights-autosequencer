@@ -507,7 +507,9 @@ def run_orchestrator(
     bar_algo_names = {"qm_bars", "librosa_bars", "madmom_downbeats"}
     bar_candidates = [t for t in analysis.timing_tracks if t.algorithm_name in bar_algo_names]
     onset_times = _collect_onset_times(tracks_by_name)
-    bars, bar_losers = select_best_bar_track_with_candidates(bar_candidates, onset_times)
+    bars, bar_losers = select_best_bar_track_with_candidates(
+        bar_candidates, onset_times, meta.duration_ms,
+    )
     if bars:
         print(f"L2 Bars: {bars.mark_count} marks ({bars.algorithm_name}, "
               f"{bars.mark_count / (meta.duration_ms / 1000):.2f} Hz)")
@@ -1619,7 +1621,7 @@ def _select_beat_with_bpm_check(
     """
     from src.analyzer.selector import rank_tracks
 
-    ranked = rank_tracks(candidates, onset_times)
+    ranked = rank_tracks(candidates, onset_times, duration_ms)
     if not ranked:
         return None, []
 
