@@ -328,6 +328,7 @@ def run_orchestrator(
     from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack, ValueCurve
     from src.analyzer.runner import AnalysisRunner
     from src.analyzer.selector import (
+        _coverage,
         annotate_agreement_confidence,
         rank_tracks,
         select_best_bar_track_with_candidates,
@@ -513,9 +514,6 @@ def run_orchestrator(
     if bars:
         print(f"L2 Bars: {bars.mark_count} marks ({bars.algorithm_name}, "
               f"{bars.mark_count / (meta.duration_ms / 1000):.2f} Hz)")
-        # Snap L1 section boundaries to nearest bar now that we have the bar track
-        if sections:
-            sections = _snap_sections_to_bars(sections, bars)
         # Annotate per-mark cross-tracker agreement (L2). When no losers are
         # available (single-tracker fallback) this is a no-op and the
         # validator's track-level scalar takes over downstream.
@@ -540,6 +538,31 @@ def run_orchestrator(
             annotate_agreement_confidence(beats, beat_losers, window_ms=35)
     else:
         warnings.append("L3 Beats: no beat track produced")
+
+    # L2.1: every dedicated bar-tracking algorithm (qm_bars, librosa_bars,
+    # madmom_downbeats) prefers the "drums" stem, same as the beat trackers
+    # -- so on a song with a drum-less intro, ALL of them can share the same
+    # coverage gap the L3 fold-down fix (bug-760) specifically solved for
+    # beats. Coverage-aware L2 selection alone can't rescue this: there's no
+    # better-coverage bar candidate to promote when they're all equally
+    # blind to the same silence. When that happens, derive bars directly
+    # from the (now more reliably full-coverage) winning beat track instead
+    # -- guarantees bars stay in lockstep with beats rather than
+    # disagreeing, which is worse than no improvement at all.
+    if beats and beats.marks:
+        bar_coverage = _coverage(bars, meta.duration_ms) if bars else 0.0
+        beat_coverage = _coverage(beats, meta.duration_ms)
+        if beat_coverage - bar_coverage > _BAR_FROM_BEATS_COVERAGE_GAP:
+            derived_bars = _derive_bars_from_beats(beats)
+            print(f"  L2 Bars: derived from beats ({derived_bars.mark_count} marks) -- "
+                  f"{bars.algorithm_name if bars else 'no bar track'} coverage "
+                  f"{bar_coverage:.2f} vs beats coverage {beat_coverage:.2f}")
+            bars = derived_bars
+
+    # Snap L1 section boundaries to nearest bar now that the final bar track
+    # (possibly beat-derived, per the coverage check above) is settled.
+    if sections and bars:
+        sections = _snap_sections_to_bars(sections, bars)
 
     # L4: events per stem — group aubio_onset tracks by stem_source
     events: dict[str, "TimingTrack"] = {}
@@ -1543,6 +1566,34 @@ def _derive_eighth_notes(beats: "TimingTrack") -> "list":
                                      label=off_label))
 
     return result
+
+
+# Minimum coverage advantage (beats over bars) required before replacing
+# the dedicated bar track with one derived from beats. Deliberately not 0 --
+# a small coverage difference is normal tracker noise, not evidence the bar
+# track shares the beat track's specific silence-during-intro blind spot.
+_BAR_FROM_BEATS_COVERAGE_GAP = 0.15
+
+
+def _derive_bars_from_beats(beats: "TimingTrack") -> "TimingTrack":
+    """Derive a bar track from the winning beat track by taking every 4th
+    beat -- matches LibrosaBarAlgorithm's own convention (src/analyzer/
+    algorithms/librosa_beats.py). Used when every dedicated bar-tracking
+    candidate has materially worse coverage than the beat track (see the
+    coverage check at the L2/L3 handoff in run_orchestrator): guarantees
+    bars stay in lockstep with the beats they're meant to group, rather
+    than two independently-tracked signals disagreeing on where the song's
+    rhythm actually is.
+    """
+    from src.analyzer.result import TimingTrack
+
+    return TimingTrack(
+        name="bars_from_beats",
+        algorithm_name="derived_from_beats",
+        element_type="bar",
+        marks=list(beats.marks[::4]),
+        quality_score=beats.quality_score,
+    )
 
 
 def _fold_doubled_track(
