@@ -1158,6 +1158,31 @@ def _serialize_effect_params(
         except ValueError:
             defaults["E_SLIDER_Pinwheel_Thickness"] = str(min_thickness)
 
+    # Spirals thickness floor (user request, 2026-08-04, found via a real
+    # exported .xsq: several mined presets -- e.g. _SPIRALS_MIRROR_MATRIX_2A/
+    # 2B -- bake E_SLIDER_Spirals_Thickness=0, an invisible spiral. Same
+    # "guards every producer" precedent as the Pinwheel thickness floor
+    # above. Never render a flat/plain Spirals either (user request,
+    # same session): when a mined preset leaves all four of 3D/Blend/Grow/
+    # Shrink off, turn them all on -- mirrors the existing "never render a
+    # flat/plain Pinwheel" 3D-ban precedent above, same idiom applied to
+    # Spirals' own set of shape/texture toggles.
+    if placement.effect_name == "Spirals":
+        try:
+            if float(defaults.get("E_SLIDER_Spirals_Thickness", 0)) < 1:
+                defaults["E_SLIDER_Spirals_Thickness"] = "1"
+        except ValueError:
+            defaults["E_SLIDER_Spirals_Thickness"] = "1"
+        spirals_flags = (
+            "E_CHECKBOX_Spirals_3D",
+            "E_CHECKBOX_Spirals_Blend",
+            "E_CHECKBOX_Spirals_Grow",
+            "E_CHECKBOX_Spirals_Shrink",
+        )
+        if all(defaults.get(flag, "0") == "0" for flag in spirals_flags):
+            for flag in spirals_flags:
+                defaults[flag] = "1"
+
     # Pinwheel speed-by-energy (user request, 2026-08-03: see module-level
     # comment on _PINWHEEL_SPEED_* above). Overrides even a variant's own
     # baked Speed value, same "guards every producer" precedent as the

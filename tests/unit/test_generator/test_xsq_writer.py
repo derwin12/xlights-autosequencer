@@ -1037,6 +1037,94 @@ class TestPinwheelThicknessFloor:
         params = _serialize_effect_params(p)
         assert self._param(params, "E_SLIDER_Pinwheel_Thickness") == "40"
 
+
+class TestSpiralsThicknessAndFlagsFloor:
+    """A Spirals below Thickness=1 renders invisibly (user request,
+    2026-08-04, found via a real exported .xsq: mined presets like
+    _SPIRALS_MIRROR_MATRIX_2A/2B bake Thickness=0). Same session: a Spirals
+    with all four of 3D/Blend/Grow/Shrink off renders flat/plain -- turn
+    them all on, mirroring the existing "never render a flat/plain
+    Pinwheel" 3D-ban precedent."""
+
+    def _param(self, serialized: str, key: str) -> str:
+        for part in serialized.split(","):
+            if part.startswith(f"{key}="):
+                return part.split("=", 1)[1]
+        raise AssertionError(f"{key} missing from serialized params: {serialized}")
+
+    def test_zero_thickness_floors_to_1(self):
+        p = EffectPlacement(
+            effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Spirals_Thickness": "0"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Spirals_Thickness") == "1"
+
+    def test_missing_thickness_keeps_existing_nonzero_default(self):
+        # E_SLIDER_Spirals_Thickness already defaults to 50 via
+        # _XLIGHTS_EFFECT_DEFAULTS when a producer never sets it at all --
+        # the floor only needs to catch an explicit 0, which it does above.
+        p = EffectPlacement(
+            effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Spirals_Count": "1"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Spirals_Thickness") == "50"
+
+    def test_thickness_above_floor_is_untouched(self):
+        p = EffectPlacement(
+            effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Spirals_Thickness": "33"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_SLIDER_Spirals_Thickness") == "33"
+
+    def test_all_flags_off_are_turned_on(self):
+        p = EffectPlacement(
+            effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={
+                "E_CHECKBOX_Spirals_3D": "0", "E_CHECKBOX_Spirals_Blend": "0",
+                "E_CHECKBOX_Spirals_Grow": "0", "E_CHECKBOX_Spirals_Shrink": "0",
+            },
+        )
+        params = _serialize_effect_params(p)
+        for flag in (
+            "E_CHECKBOX_Spirals_3D", "E_CHECKBOX_Spirals_Blend",
+            "E_CHECKBOX_Spirals_Grow", "E_CHECKBOX_Spirals_Shrink",
+        ):
+            assert self._param(params, flag) == "1"
+
+    def test_missing_flags_are_treated_as_off_and_turned_on(self):
+        p = EffectPlacement(
+            effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={"E_SLIDER_Spirals_Count": "1"},
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHECKBOX_Spirals_3D") == "1"
+        assert self._param(params, "E_CHECKBOX_Spirals_Blend") == "1"
+
+    def test_one_flag_already_on_leaves_the_rest_alone(self):
+        p = EffectPlacement(
+            effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=1000, parameters={
+                "E_CHECKBOX_Spirals_3D": "1", "E_CHECKBOX_Spirals_Blend": "0",
+                "E_CHECKBOX_Spirals_Grow": "0", "E_CHECKBOX_Spirals_Shrink": "0",
+            },
+        )
+        params = _serialize_effect_params(p)
+        assert self._param(params, "E_CHECKBOX_Spirals_3D") == "1"
+        assert self._param(params, "E_CHECKBOX_Spirals_Blend") == "0"
+        assert self._param(params, "E_CHECKBOX_Spirals_Grow") == "0"
+        assert self._param(params, "E_CHECKBOX_Spirals_Shrink") == "0"
+
+    def test_does_not_apply_to_other_effects(self):
+        p = EffectPlacement(
+            effect_name="Fire", xlights_id="Fire", model_or_group="Model1",
+            start_ms=0, end_ms=2000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_SLIDER_Spirals_Thickness" not in params
+
     def test_thickness_above_40_on_all_group_is_untouched(self):
         p = EffectPlacement(
             effect_name="Pinwheel", xlights_id="eff_PINWHEEL", model_or_group="01_BASE_All",
