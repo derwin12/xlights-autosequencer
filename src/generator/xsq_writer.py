@@ -583,6 +583,14 @@ def write_xsq(
     # future tier convention change ever puts BEAT groups on "Default".
     _ALWAYS_PREVIEW_GROUPS = {"04_BEAT_1", "04_BEAT_2", "04_BEAT_3", "04_BEAT_4"}
 
+    # Topper groups (e.g. "08_HERO_Mega_Topper") always get the Preview
+    # variant too (user request, 2026-08-04, found via a real generated
+    # .xsq: Pinwheel on the topper rendered "Per Model Default" -- same tier
+    # convention every other tier>=4 group falls back to, but Topper is a
+    # small enough model that it needs the per-preview render like Shockwave
+    # and the BEAT groups already get). Matched by substring, not an exact
+    # group-name set, so it also covers any future topper-family group.
+
     def _buffer_style_for_placement(group_name: str, effect_name: str, override: str | None) -> str | None:
         # A placement-level override (e.g. the snowflake Single Strand
         # render-style rotation) takes precedence over tier convention --
@@ -593,7 +601,11 @@ def write_xsq(
             base = "Per Model Default"
         else:
             base = _buffer_style_for_group(group_name)
-        if effect_name == "Shockwave" or group_name in _ALWAYS_PREVIEW_GROUPS:
+        if (
+            effect_name == "Shockwave"
+            or group_name in _ALWAYS_PREVIEW_GROUPS
+            or "topper" in group_name.lower()
+        ):
             return _PREVIEW_VARIANT.get(base, "Per Model Per Preview")
         return base
 
@@ -1216,10 +1228,14 @@ def _serialize_effect_params(
     # way. zlib.crc32, not hash(), for reproducibility across runs (same
     # rationale as the flat-Pinwheel 3D-style pick above). Skipped entirely
     # if a producer already set PinwheelXC itself, so this never overrides
-    # an intentional value.
+    # an intentional value. Also skipped on Topper groups (user request,
+    # 2026-08-04, found via a real generated .xsq: "we dont want the
+    # movement left to right on such a small model") -- a full-width pan
+    # reads fine on a matrix or tree but not on a small topper prop.
     if (
         placement.effect_name == "Pinwheel"
         and (placement.end_ms - placement.start_ms) >= _PINWHEEL_SWEEP_MIN_DURATION_MS
+        and "topper" not in placement.model_or_group.lower()
         and "E_VALUECURVE_PinwheelXC" not in defaults
         and "E_SLIDER_PinwheelXC" not in defaults
     ):

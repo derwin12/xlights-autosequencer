@@ -542,6 +542,35 @@ class TestXsqWriter:
         ref = int(group_el.find("EffectLayer").find("Effect").get("ref"))
         assert "B_CHOICE_BufferStyle=Per Model Default" in effectdb[ref]
 
+    def test_topper_group_gets_per_model_per_preview_for_every_effect(self, tmp_path: Path) -> None:
+        """Any group name containing "topper" gets the preview variant too
+        (user request, 2026-08-04, found via a real generated .xsq:
+        Pinwheel on "08_HERO_Mega_Topper" rendered "Per Model Default" like
+        any other tier>=4 group, but the user wanted the same Per-Preview
+        treatment Shockwave/BEAT groups already get). A non-topper tier-8
+        group in the same file keeps the ordinary style, confirming this
+        is topper-specific, not a tier-8-wide change."""
+        plan = _make_plan()
+        for name in ("08_HERO_Mega_Topper", "08_HERO_Test"):
+            plan.sections[0].group_effects[name] = [
+                EffectPlacement(
+                    effect_name="Pinwheel", xlights_id="Pinwheel", model_or_group=name,
+                    start_ms=0, end_ms=1000, parameters={},
+                    color_palette=["#FFFFFF"],
+                ),
+            ]
+        root = _write_and_parse(plan, tmp_path)
+        effectdb = [ef.text or "" for ef in root.find("EffectDB")]
+        effects_el = root.find("ElementEffects")
+
+        group_el = next(e for e in effects_el if e.get("name") == "08_HERO_Mega_Topper")
+        ref = int(group_el.find("EffectLayer").find("Effect").get("ref"))
+        assert "B_CHOICE_BufferStyle=Per Model Per Preview" in effectdb[ref]
+
+        group_el = next(e for e in effects_el if e.get("name") == "08_HERO_Test")
+        ref = int(group_el.find("EffectLayer").find("Effect").get("ref"))
+        assert "B_CHOICE_BufferStyle=Per Model Default" in effectdb[ref]
+
     def test_tier_1_to_3_non_override_groups_get_no_buffer_style_key(self, tmp_path: Path) -> None:
         """Tiers 01-03 (other than the 01_BASE_All(_FADES) override
         canvases) render as a unified group with no explicit buffer style
@@ -1105,6 +1134,18 @@ class TestPinwheelHorizontalSweep:
     def test_does_not_apply_to_other_effects(self):
         p = EffectPlacement(
             effect_name="Spirals", xlights_id="eff_SPIRALS", model_or_group="06_PROP_Matrix",
+            start_ms=0, end_ms=3000,
+        )
+        params = _serialize_effect_params(p)
+        assert "E_VALUECURVE_PinwheelXC" not in params
+
+    def test_topper_group_never_sweeps_even_on_a_firing_seed(self):
+        # Same (group-token, start) shape as the left-to-right fire case
+        # above, but on a topper group -- user request, 2026-08-04: no
+        # left-right movement on such a small model.
+        p = EffectPlacement(
+            effect_name="Pinwheel", xlights_id="eff_PINWHEEL",
+            model_or_group="08_HERO_Mega_Topper",
             start_ms=0, end_ms=3000,
         )
         params = _serialize_effect_params(p)
