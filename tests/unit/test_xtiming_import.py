@@ -93,6 +93,15 @@ class TestParseXTimingLyrics:
         assert [p["label"] for p in phonemes] == ["E", "L", "WQ", "etc"]
         assert lines == [{"label": "full phrase", "start_ms": 0, "end_ms": 2000}]
 
+    def test_bare_timing_root_without_timings_wrapper(self):
+        # xLights' "export just this track" option writes the <timing>
+        # element as the document root directly, with no <timings> wrapper
+        # -- confirmed 2026-08-08 against a real user-exported file.
+        words, phonemes, lines = parse_xtiming_lyrics(_THREE_LAYER_UNNAMED.encode())
+        assert [w["label"] for w in words] == ["HELLO", "WORLD"]
+        assert [p["label"] for p in phonemes] == ["E", "L", "WQ", "etc"]
+        assert lines == [{"label": "full phrase", "start_ms": 0, "end_ms": 2000}]
+
     def test_two_layer_track_derives_phonemes_from_words(self):
         words, phonemes, _ = parse_xtiming_lyrics(_xtiming(_TWO_LAYER_NO_PHONEMES))
         assert [w["label"] for w in words] == ["HELLO", "WORLD"]
@@ -117,6 +126,51 @@ class TestParseXTimingLyrics:
         words, _, _ = parse_xtiming_lyrics(_xtiming(_FLOAT_TIMESTAMPS))
         assert words[0]["start_ms"] == 20390
         assert words[0]["end_ms"] == round(20530.5)  # Python 3 banker's rounding
+
+    def test_two_lyric_tracks_merged_by_name_keyword(self):
+        # Lead + backup singer each exported as their own timing track --
+        # real shape confirmed against a user-supplied file, 2026-08-08.
+        lead = _THREE_LAYER_UNNAMED.replace("shakethesnowglobegwenstefani", "Lyrics (Lead)")
+        backup = (
+            _THREE_LAYER_UNNAMED
+            .replace("shakethesnowglobegwenstefani", "Lyrics (Backup)")
+            .replace("HELLO", "FOO").replace("WORLD", "BAR")
+            .replace('starttime="0" endtime="500"', 'starttime="2000" endtime="2500"')
+            .replace('starttime="600" endtime="1000"', 'starttime="2600" endtime="3000"')
+        )
+        words, phonemes, _ = parse_xtiming_lyrics(_xtiming(backup, lead))
+        assert [(w["label"], w["speaker"]) for w in words] == [
+            ("HELLO", 0), ("WORLD", 0), ("FOO", 1), ("BAR", 1),
+        ]
+        # Words stay sorted by start_ms across both tracks regardless of
+        # which track appeared first in the document.
+        assert [w["start_ms"] for w in words] == sorted(w["start_ms"] for w in words)
+        assert len(phonemes) > 0
+
+    def test_two_lyric_tracks_fall_back_to_word_count_when_names_dont_disambiguate(self):
+        # Neither track's name says "lead" or "backup" -- majority word
+        # count decides, matching vocal_diarization's own convention.
+        bigger = _THREE_LAYER_UNNAMED.replace("shakethesnowglobegwenstefani", "Lyrics Track A")
+        smaller = (
+            '<timing name="Lyrics Track B" SourceVersion="2024.01">'
+            '<EffectLayer><Effect label="full phrase" starttime="0" endtime="500" /></EffectLayer>'
+            '<EffectLayer><Effect label="SOLO" starttime="0" endtime="500" /></EffectLayer>'
+            '<EffectLayer><Effect label="S" starttime="0" endtime="500" /></EffectLayer>'
+            '</timing>'
+        )
+        words, _, _ = parse_xtiming_lyrics(_xtiming(bigger, smaller))
+        speakers = {w["label"]: w["speaker"] for w in words}
+        assert speakers["HELLO"] == 0
+        assert speakers["WORLD"] == 0
+        assert speakers["SOLO"] == 1
+
+    def test_three_lyric_named_tracks_raises(self):
+        tracks = [
+            _THREE_LAYER_UNNAMED.replace("shakethesnowglobegwenstefani", f"Lyrics {i}")
+            for i in range(3)
+        ]
+        with pytest.raises(XTimingImportError, match="at most two"):
+            parse_xtiming_lyrics(_xtiming(*tracks))
 
     def test_ambiguous_multiple_unnamed_multilayer_tracks_raises(self):
         with pytest.raises(XTimingImportError, match="Multiple timing tracks"):
