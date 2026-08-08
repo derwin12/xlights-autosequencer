@@ -4624,14 +4624,21 @@ def _place_lyric_text(
     ``_small_lyric_word_placement``). Words longer than
     ``_LYRIC_TEXT_SMALL_LONG_WORD_CHARS`` scroll via a vector
     (``E_CHOICE_Text_Dir="vector"``) since they won't fit statically on
-    the small font. A "small" target always renders every word (the full
-    "Lyrics - Words" track) -- it is a size variant of the primary lyric
-    display, not a second singer's display, so it is never subject to the
-    diarization backup-speaker split below (user report 2026-08-07: a
-    "Lyrics Matrix"/"Lyrics Matrix Small" pair previously split one
-    continuous vocal track in half between the two displays). Every other
-    (non-small) target keeps the original region-based placement, one per
-    contiguous vocal region.
+    the small font. A "small" target always renders every word -- it is a
+    size variant of the primary lyric display, not a second singer's
+    display, so it is never subject to the diarization backup-speaker
+    split below (user report 2026-08-07: a "Lyrics Matrix"/"Lyrics Matrix
+    Small" pair previously split one continuous vocal track in half
+    between the two displays). Each word still individually points at
+    whichever timing track it actually lives in -- "Lyrics - Words" for a
+    speaker-0 word, "Lyrics - Backup - Words" for a speaker-1 word, since
+    ``xsq_writer._build_lyric_layers`` splits the underlying word marks
+    the same way regardless of which target (if any) is treated as the
+    backup singer target (follow-up fix, user report 2026-08-07: pointing
+    every small-target word at "Lyrics - Words" left speaker-1 words
+    blank, since that track never contains them). Every other (non-small)
+    target keeps the original region-based placement, one per contiguous
+    vocal region.
 
     When ``vocal_diarization`` is on and at least two NON-SMALL targets
     exist, the second one (by the same order as above) renders only
@@ -4670,8 +4677,20 @@ def _place_lyric_text(
 
     lead_regions = _vocal_regions(lead_words)
     backup_regions = _vocal_regions(backup_words) if backup_target is not None else []
-    all_spans = _word_spans(vocal_words)
-    if not lead_regions and not backup_regions and not all_spans:
+    # A "small" target always shows every word (see comment above), but each
+    # word must reference whichever timing track xsq_writer actually put it
+    # in: xsq_writer._build_lyric_layers() splits the underlying "Lyrics" /
+    # "Lyrics - Backup" 3-layer tracks by the SAME lead_only_words/
+    # backup_words speaker split used here (independent of which target, if
+    # any, became backup_target) -- a speaker-1 word simply does not exist
+    # in the primary "Lyrics" track's word layer, so a placement pointed at
+    # "Lyrics - Words" for that word renders blank (user report 2026-08-07).
+    all_word_placements = sorted(
+        [(start, end, text, False) for start, end, text in _word_spans(lead_only_words)]
+        + [(start, end, text, True) for start, end, text in _word_spans(backup_words)],
+        key=lambda item: (item[0], item[1]),
+    )
+    if not lead_regions and not backup_regions and not all_word_placements:
         return result
 
     color = _lightest_color(theme_palette) if theme_palette else "#FFFFFF"
@@ -4681,10 +4700,10 @@ def _place_lyric_text(
         is_small = "small" in target.name.lower()
 
         if is_small:
-            if not all_spans:
+            if not all_word_placements:
                 continue
-            placements = [_small_lyric_word_placement(target.name, start, end, text, False, color)
-                          for start, end, text in all_spans]
+            placements = [_small_lyric_word_placement(target.name, start, end, text, word_is_backup, color)
+                          for start, end, text, word_is_backup in all_word_placements]
             result[target.name] = placements
             logger.info(
                 "lyric_text: per-word Text placed on small matrix '%s' over %d word(s)",

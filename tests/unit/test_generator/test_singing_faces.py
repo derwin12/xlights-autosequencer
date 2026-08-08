@@ -281,13 +281,17 @@ class TestLyricTextDiarization:
             for p in result["Lyrics Matrix"]
         )
         # "Lyrics Matrix Small" gets one per-word placement per word,
-        # covering the whole song via the primary (non-backup) track.
+        # covering the whole song -- but each word points at whichever
+        # timing track xsq_writer actually put it in: speaker-0 words
+        # ("HELLO", "WORLD") are in the primary "Lyrics" track, the
+        # speaker-1 word ("AGAIN") only exists in "Lyrics - Backup" (a
+        # placement pointed at "Lyrics - Words" for it would render
+        # blank -- 2026-08-07 follow-up user report).
         small = result["Lyrics Matrix Small"]
         assert len(small) == 3
-        assert all(
-            p.parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
-            for p in small
-        )
+        assert small[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"  # HELLO
+        assert small[1].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"  # WORLD
+        assert small[2].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"  # AGAIN
         assert "E_TEXTCTRL_Text" not in small[0].parameters
 
     def test_backup_speaker_routes_to_second_non_small_matrix(self):
