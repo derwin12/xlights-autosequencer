@@ -544,11 +544,13 @@ def _analyze_in_background(state: "_RunState", source_path: str, song_id: str,
             lib_artist = (lib_song or {}).get("artist")
             with _lyrics_cache_lock:
                 cached_lyrics_text = _lyrics_cache.get((lib_title, lib_artist))
+            lyrics_cache_path = src.parent / src.stem / f"{src.stem}_synced_lyrics.json"
             story = build_song_story(
                 hierarchy.to_dict(), str(src),
                 title_override=lib_title,
                 artist_override=lib_artist,
                 lyrics_text_override=cached_lyrics_text,
+                lyrics_cache_path=lyrics_cache_path,
             )
             story_sections = story.get("sections", [])
             # Surface Step-15c capability skips (one entry per skipped fix

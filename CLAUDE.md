@@ -248,6 +248,61 @@ preconditions, and 16-song corpus results.
 
 ## Future Work / TODOs
 
+### Use uploaded .xtiming as boundary-refinement input (preferred over synced-lyrics fetch)
+- User-confirmed follow-up (2026-08-08) to the synced-lyrics disk-cache fix
+  (bug-804, see docs/segment-classification-changelog.md's 2026-08-08 entry)
+  — "using the xtiming, when provided is a good solution to implement."
+  User wants to test the disk-cache fix first before this is built.
+- The gap: `build_song_story()` (drives `boundary_refinement.py` Fix 1/2)
+  runs at `analysis.py:547`, completely independent of the `.xtiming`
+  override, which is only read later in the same function
+  (`analysis.py:739`) and only feeds Faces/Text-effect word tracks
+  downstream. A user's uploaded `.xtiming` currently has zero influence on
+  section classification.
+- Why this is a real improvement, not just an alternative: the network
+  synced-lyrics path (`fetch_synced_lyrics` → `lines_to_word_marks`) only
+  has LRC line-level timestamps and evenly splits each line's duration
+  across its words — a crude approximation. A user's `.xtiming` has real,
+  word-accurate timing (that's the point of uploading it), so when
+  available it's a strictly better `forced_marks` source than the network
+  fetch, with zero network dependency. `chorus_body` (used by Fix 2 to
+  catch a mislabeled bridge) can equally be derived from the `.xtiming`'s
+  own phrase/line layer (`parse_xtiming_lyrics`'s "lines" output,
+  `src/analyzer/xtiming_import.py`) instead of LRC text — same shape of
+  data (text + timing per line).
+- Proposed approach: thread the xtiming override into `build_song_story`
+  (new parameter, e.g. `xtiming_words_override`/`xtiming_lines_override`)
+  and prefer it over both `lyrics_text_override` and the disk-cached/fresh
+  network fetch when present. The now-cached network-fetch path (bug-804)
+  becomes the fallback for songs without a user-supplied `.xtiming`, not
+  the primary path for everyone.
+- Touches the same files as bug-804 (`src/story/builder.py`,
+  `src/analyzer/`, `src/review/api/v1/analysis.py`) — needs the same
+  Design-First Gate treatment before implementation.
+
+### Section-Classifier Debug Timing Track
+- User request (2026-08-08), arising from a real investigation: "why did
+  Moving Head effects place at 4:20s, right near the end of the song?"
+  Diagnosing it required manually cross-referencing three separate sources —
+  the exported "Sections" role-label timing track in the `.xsq`, the raw
+  `place_moving_head_pattern_accents` placement logic in
+  `src/generator/moving_head.py`, and finally `docker exec`-ing into the
+  devcontainer to read `character.energy_score` straight out of the song's
+  `_story.json` — a ~20-minute archaeology dig to confirm the outro section
+  (254.6-265.5s) legitimately scored `energy_score: 0` (vocals inactive,
+  guitar-only tail-out) rather than being a scoring bug.
+- Proposal: an optional debug timing track (e.g. `"Section Debug"`, gated
+  behind a `GenerationConfig` flag so it's off by default and doesn't
+  clutter a normal export) with one mark per section labeled with its role
+  + `energy_score` + `energy_level` (e.g. `outro E=0 (low)`), built
+  alongside the existing "Sections"/"Themes" timing tracks in
+  `src/generator/xsq_writer.py` (see `_section_role_marks`/
+  `_section_theme_marks` for the existing precedent this would extend).
+  Would turn this exact class of question into a 10-second look at the
+  timeline instead of a multi-source manual dig.
+- Touches `src/generator/` (shared module) — needs the full Design-First
+  Gate before implementation, not yet designed.
+
 ### Intelligent Effect Rotation (Tier 6-7)
 - Current implementation cycles through `_PROP_EFFECT_POOL` in round-robin order per group.
 - Future improvement: weight effect selection by section energy, mood, and tempo. High-energy

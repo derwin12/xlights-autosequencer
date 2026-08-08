@@ -160,6 +160,7 @@ def build_song_story(
     title_override: str | None = None,
     artist_override: str | None = None,
     lyrics_text_override: str | None = None,
+    lyrics_cache_path: str | Path | None = None,
 ) -> dict:
     """Orchestrate all foundational modules to produce a complete song story dict.
 
@@ -180,6 +181,18 @@ def build_song_story(
         lookup in the review UI) — used directly instead of a fresh
         synced-lyrics search, avoiding a second independent network
         round-trip against a potentially flaky provider.
+    lyrics_cache_path:
+        When given, and ``lyrics_text_override`` is absent, the synced-lyrics
+        fetch result (found or not) for this exact ``source_hash`` is
+        persisted to/read from this path — a REanalyze of the same song then
+        reuses the same text instead of a fresh network round-trip that
+        could return something different (confirmed 2026-08-08: a fresh
+        fetch changed which lines Fix 1/2 saw, collapsing a 14-section
+        breakdown into 7 — see docs/segment-classification-changelog.md).
+        Left ``None`` (the default), no disk caching happens and behavior
+        is unchanged from before this parameter existed — every fixture in
+        tests/unit/test_builder.py and friends shares one dummy audio path,
+        so caching there would cross-pollute unrelated tests.
 
     Returns
     -------
@@ -213,11 +226,28 @@ def build_song_story(
 
     raw_sections: list[dict] = hierarchy.get("sections") or []
     raw_boundaries: list[int] = [int(s["time_ms"]) for s in raw_sections if "time_ms" in s]
-    # Build a time→label map so we can propagate labels through merging
+    # Build a time→label map so we can propagate labels through merging.
+    # "qm_boundary" is excluded -- it's a synthetic placeholder the L1 merge
+    # stamps onto a QM-segmenter boundary segmentino didn't detect and that
+    # has no real label of its own (src.analyzer.orchestrator's
+    # _merge_qm_boundaries: `if not new_mark.label: new_mark.label =
+    # "qm_boundary"`), NOT a genuine segmentino repetition-group identity
+    # like "A"/"B"/"N9". Two acoustically unrelated merged sections can each
+    # land nearest a "qm_boundary" marker purely by boundary-timing
+    # coincidence; treating that shared placeholder as a real recurring
+    # label in _classify_by_labels' most-repeated-label chorus heuristic
+    # corrupts (or ties-and-flips) chorus_label selection, which every
+    # section's role then depends on -- confirmed 2026-08-08 as the
+    # dominant cause of wildly different section counts (7/9/11/14) between
+    # identical-audio analyze runs whose raw boundary timestamps only
+    # differed by tens of ms (see docs/segment-classification-changelog.md).
+    # Excluding it here makes _dominant_label fall back to None for such a
+    # section, the same already-handled path as a section with no nearby
+    # label at all.
     boundary_label: dict[int, str] = {
         int(s["time_ms"]): s["label"]
         for s in raw_sections
-        if "time_ms" in s and s.get("label")
+        if "time_ms" in s and s.get("label") and s["label"] != "qm_boundary"
     }
     boundaries_ms: list[int] = sorted(set([0] + raw_boundaries))
 
@@ -557,7 +587,10 @@ def build_song_story(
     # docs/segment-classification-changelog.md) since the retired Genius
     # integration no longer supplies them.
     from src.analyzer.phonemes import WordMark
-    from src.analyzer.synced_lyrics import get_boundary_refinement_inputs
+    from src.analyzer.synced_lyrics import (
+        fetch_synced_lyrics, get_boundary_refinement_inputs,
+        load_cached_lyrics_text, save_cached_lyrics_text,
+    )
     from src.story.boundary_refinement import refine_section_boundaries
 
     free_words_raw = _try_free_transcription(audio_path, duration_ms)
@@ -565,8 +598,34 @@ def build_song_story(
         WordMark(label=w["label"], start_ms=int(w["start_ms"]), end_ms=int(w["end_ms"]))
         for w in free_words_raw
     ]
+    # Resolve the lyrics text ONCE and, when a cache path was supplied,
+    # persist it to disk keyed by source_hash — fetch_synced_lyrics() hits
+    # an external multi-provider network service with no other persistence,
+    # so without this a song's section classification could shift between
+    # analyze runs purely from provider variance rather than any real change
+    # to the audio (confirmed 2026-08-08, see
+    # docs/segment-classification-changelog.md). An explicit
+    # lyrics_text_override (from a prior "Check Lyrics"/paste action) still
+    # always wins and is never persisted here — the review UI already owns
+    # caching that one in its own in-memory _lyrics_cache. Callers that don't
+    # pass lyrics_cache_path (e.g. every existing test fixture, which shares
+    # one dummy audio path) get the pre-existing always-fetch-fresh
+    # behavior, unchanged.
+    lyrics_text_resolved = lyrics_text_override
+    if lyrics_text_resolved is None and lyrics_cache_path is not None:
+        cache_hit, cached_text = load_cached_lyrics_text(Path(lyrics_cache_path), source_hash)
+        if cache_hit:
+            lyrics_text_resolved = cached_text
+        else:
+            lyrics_text_resolved = fetch_synced_lyrics(title, artist)
+            save_cached_lyrics_text(
+                Path(lyrics_cache_path), source_hash, title, artist, lyrics_text_resolved,
+            )
+    # else: lyrics_cache_path not supplied — get_boundary_refinement_inputs
+    # below performs its own fresh fetch when lyrics_text stays None,
+    # exactly like before this parameter existed.
     forced_marks, chorus_body, lyric_line_marks = get_boundary_refinement_inputs(
-        title, artist, duration_ms, lyrics_text=lyrics_text_override,
+        title, artist, duration_ms, lyrics_text=lyrics_text_resolved,
     )
     sections_out, refinement_notes = refine_section_boundaries(
         sections_out,

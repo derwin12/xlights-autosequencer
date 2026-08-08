@@ -14,7 +14,9 @@ docs/segment-classification-changelog.md, 2026-07-11 entry).
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Optional
 
 from src.analyzer.phonemes import WordMark
@@ -301,6 +303,48 @@ def check_synced_lyrics_available(title: str, artist: str, duration_ms: Optional
     """
     result, _text = check_synced_lyrics_with_text(title, artist, duration_ms)
     return result
+
+
+def load_cached_lyrics_text(cache_path: Path, source_hash: str) -> tuple[bool, Optional[str]]:
+    """Read a disk-cached synced-lyrics result written by
+    :func:`save_cached_lyrics_text`, keyed to ``source_hash`` (the same
+    MD5 key ``_hierarchy.json`` uses).
+
+    Returns ``(hit, lyrics_text)``. ``hit`` is ``True`` whenever a
+    previous fetch for this exact ``source_hash`` was recorded — including
+    a confirmed "no lyrics found" result, in which case ``lyrics_text`` is
+    ``None``. ``hit`` is ``False`` (with ``lyrics_text=None``) when the
+    cache file is absent, unreadable, or belongs to a different
+    ``source_hash`` (a re-imported/replaced audio file), so the caller
+    knows to perform a fresh lookup rather than mistaking "never fetched"
+    for "fetched and found nothing".
+    """
+    try:
+        data = json.loads(cache_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False, None
+    if data.get("source_hash") != source_hash:
+        return False, None
+    return True, data.get("lyrics_text")
+
+
+def save_cached_lyrics_text(
+    cache_path: Path, source_hash: str, title: str, artist: str, lyrics_text: Optional[str],
+) -> None:
+    """Persist a synced-lyrics fetch result (found or not) to disk so a
+    future analysis of the same song (matched by ``source_hash``) reuses
+    this exact text instead of performing another network lookup —
+    ``fetch_synced_lyrics`` hits an external multi-provider service with no
+    other persistence, so without this a song's section classification
+    could shift between runs purely from provider variance (confirmed
+    2026-08-08: a reanalyze collapsed a 14-section breakdown into 7 after a
+    fresh lyrics fetch changed what boundary_refinement's Fix 1/2 saw)."""
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "source_hash": source_hash, "title": title, "artist": artist,
+        "found": lyrics_text is not None, "lyrics_text": lyrics_text,
+    }
+    cache_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def get_boundary_refinement_inputs(

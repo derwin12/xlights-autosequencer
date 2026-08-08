@@ -279,3 +279,140 @@ def test_lyrics_text_found_false_when_nothing_available(hierarchy, monkeypatch):
     result = build_song_story(hierarchy, AUDIO_PATH)
     assert result["lyrics"] == []
     assert result["lyrics_text_found"] is False
+
+
+def test_lyrics_cache_path_writes_disk_cache_on_first_fetch(hierarchy, monkeypatch, tmp_path):
+    """When lyrics_cache_path is supplied, a fresh fetch's result is
+    persisted to disk keyed by the hierarchy's own source_hash."""
+    from src.analyzer import synced_lyrics as sl
+
+    fetch_calls = []
+
+    def _fetch(title, artist):
+        fetch_calls.append((title, artist))
+        return "[00:01.00]fetched line one\n"
+
+    monkeypatch.setattr(sl, "fetch_synced_lyrics", _fetch)
+    cache_path = tmp_path / "song_synced_lyrics.json"
+    result = build_song_story(hierarchy, AUDIO_PATH, lyrics_cache_path=cache_path)
+
+    assert len(fetch_calls) == 1
+    assert [line["text"] for line in result["lyrics"]] == ["fetched line one"]
+    hit, cached_text = sl.load_cached_lyrics_text(cache_path, FIXTURE_HASH)
+    assert hit is True
+    assert cached_text == "[00:01.00]fetched line one\n"
+
+
+def test_lyrics_cache_path_reuses_cached_text_without_refetching(hierarchy, monkeypatch, tmp_path):
+    """A second build_song_story call for the same source_hash must reuse
+    the disk-cached lyrics text instead of hitting the network again --
+    this is the actual determinism fix (2026-08-08)."""
+    from src.analyzer import synced_lyrics as sl
+
+    cache_path = tmp_path / "song_synced_lyrics.json"
+    sl.save_cached_lyrics_text(
+        cache_path, FIXTURE_HASH, "Title", "Artist", "[00:01.00]cached line one\n",
+    )
+
+    def _should_not_be_called(title, artist):
+        raise AssertionError("fetch_synced_lyrics should not be called on a cache hit")
+
+    monkeypatch.setattr(sl, "fetch_synced_lyrics", _should_not_be_called)
+    result = build_song_story(hierarchy, AUDIO_PATH, lyrics_cache_path=cache_path)
+    assert [line["text"] for line in result["lyrics"]] == ["cached line one"]
+
+
+def test_lyrics_cache_path_ignored_when_lyrics_text_override_given(hierarchy, monkeypatch, tmp_path):
+    """An explicit Check-Lyrics override still wins over the disk cache, and
+    is never written into it (that cache is owned by the automatic-fetch
+    path only)."""
+    from src.analyzer import synced_lyrics as sl
+
+    def _should_not_be_called(title, artist):
+        raise AssertionError("fetch_synced_lyrics should not be called when override is set")
+
+    monkeypatch.setattr(sl, "fetch_synced_lyrics", _should_not_be_called)
+    cache_path = tmp_path / "song_synced_lyrics.json"
+    lrc = "[00:01.00]override line one\n"
+    result = build_song_story(
+        hierarchy, AUDIO_PATH, lyrics_text_override=lrc, lyrics_cache_path=cache_path,
+    )
+    assert [line["text"] for line in result["lyrics"]] == ["override line one"]
+    assert not cache_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# "qm_boundary" placeholder must not count as a real repetition label
+# ---------------------------------------------------------------------------
+
+def _qm_boundary_bug_hierarchy():
+    """9 raw sections, 10s each (90s song): 'A' repeats 3x with 'qm_boundary'
+    placeholders interleaved between each repeat, 'B' repeats 2x, 'N1' once
+    (non-vocal outro). 'qm_boundary'-labeled spans are deliberately given
+    HIGHER energy than the real 'A' spans -- if "qm_boundary" is wrongly
+    treated as a real repeating label (pre-fix), it ties 'A' at count=3 and
+    wins the energy tie-break as chorus_label, so no 'A' section is ever
+    classified chorus. Post-fix, 'qm_boundary' positions correctly fall back
+    to the preceding real label ('A'), giving 'A' an unambiguous count=6
+    with no tie at all -- confirmed 2026-08-08 as the real-world cause of a
+    14/9/11/7-section swing between identical-audio analyze runs whose raw
+    boundaries only shifted by tens of ms (see
+    docs/segment-classification-changelog.md).
+    """
+    from tests.fixtures.story_fixture import make_hierarchy_dict
+
+    d = make_hierarchy_dict(duration_ms=90_000)
+    d["sections"] = [
+        {"time_ms": 0, "label": "A"},
+        {"time_ms": 10_000, "label": "qm_boundary"},
+        {"time_ms": 20_000, "label": "A"},
+        {"time_ms": 30_000, "label": "qm_boundary"},
+        {"time_ms": 40_000, "label": "A"},
+        {"time_ms": 50_000, "label": "qm_boundary"},
+        {"time_ms": 60_000, "label": "B"},
+        {"time_ms": 70_000, "label": "B"},
+        {"time_ms": 80_000, "label": "N1"},
+    ]
+
+    def _energy_at(t_sec: float) -> float:
+        if t_sec < 60:
+            # A: 0-10, 20-30, 40-50 = 0.5; qm_boundary: 10-20, 30-40, 50-60 = 0.9
+            return 0.9 if int(t_sec // 10) % 2 == 1 else 0.5
+        if t_sec < 80:
+            return 0.3  # B
+        return 0.1  # N1 (outro)
+
+    def _vocals_at(t_sec: float) -> float:
+        return 0.6 if t_sec < 80 else 0.0  # N1 section is non-vocal
+
+    frames = 900  # 90s * 10fps
+    d["energy_curves"] = {
+        "full_mix": {
+            "sample_rate": 10.0,
+            "values": [round(_energy_at(i / 10), 3) for i in range(frames)],
+        },
+        "vocals": {
+            "sample_rate": 10.0,
+            "values": [round(_vocals_at(i / 10), 3) for i in range(frames)],
+        },
+    }
+    return d
+
+
+def test_qm_boundary_placeholder_not_counted_as_repeating_label():
+    hierarchy = _qm_boundary_bug_hierarchy()
+    result = build_song_story(hierarchy, AUDIO_PATH)
+    sections = result["sections"]
+
+    # The 3 real 'A' spans must all end up inside chorus-role section(s) --
+    # they must NOT lose the chorus tie-break to the meaningless
+    # 'qm_boundary' placeholder despite it having higher raw energy.
+    a_span_midpoints_ms = [5_000, 25_000, 45_000]
+    for t_ms in a_span_midpoints_ms:
+        matching = [s for s in sections if s["start"] * 1000 <= t_ms < s["end"] * 1000]
+        assert matching, f"no section covers t={t_ms}ms"
+        assert matching[0]["role"] == "chorus", (
+            f"t={t_ms}ms (a real 'A' repeat) got role {matching[0]['role']!r}, "
+            "expected 'chorus' -- 'qm_boundary' likely won the chorus "
+            "tie-break instead of the real repeating label"
+        )

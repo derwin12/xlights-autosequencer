@@ -476,3 +476,145 @@ caches.
 itself** — this entry qualifies for the log because the orchestrator change
 affects whether any beat/bar/section data reaches the story builder at all,
 not because the classification rules changed.
+
+---
+
+## 2026-08-08 — Synced-lyrics fetch cached to disk (Fix 1/2 input determinism)
+
+**Files:** `src/analyzer/synced_lyrics.py`, `src/story/builder.py`,
+`src/review/api/v1/analysis.py`
+
+**Problem:** User re-analyzed "Dream On" (Aerosmith) after deleting its
+cache and got a dramatically different section breakdown: 14 well-
+differentiated sections (verse/chorus/instrumental_break/interlude/
+pre_chorus alternation matching the song's real structure) before, only 7
+after — most strikingly, a single 130-second span (124.9s-254.6s) that used
+to contain 2 choruses, an interlude, an instrumental break, and a
+pre_chorus collapsed into one giant "verse". Traced the raw QM/segmentino
+boundary candidates for the post-delete run and confirmed they still had
+~25 distinct boundaries in that exact span — the low-level detectors found
+plenty of structure, so the collapse happened downstream, in
+`boundary_refinement.py`'s Fix 1 (merge short post_chorus tails) and Fix 2
+(relabel/split bridges opening with the chorus hook).
+
+**Root cause:** `build_song_story` → `get_boundary_refinement_inputs` →
+`fetch_synced_lyrics(title, artist)` hits an external multi-provider
+network lookup (`syncedlyrics`) with **no persistence** beyond an
+in-memory, per-process `_lyrics_cache` in `analysis.py` that's only
+populated by an explicit "Check Lyrics"/paste user action — the automatic
+path used by every ordinary analyze run always re-fetches fresh, with
+nothing pinning the result to `source_hash`. Two separate fetches for the
+identical song can legitimately return different LRC text/timing (a
+different provider answering, timing revisions, transient failures), and
+Fix 1/2 feed directly off whatever text came back — a different fetch
+result is a completely different set of merge/relabel decisions, not a
+subtle numerical wobble. Ruled out the user's own `.xtiming` upload as a
+cause first: traced the exact code path and confirmed `build_song_story`
+runs *before* the xtiming-override cache is even read in `analysis.py`,
+and neither Fix 1/2 (`fetch_synced_lyrics`) nor Fix 3
+(`_try_free_transcription`, its own standalone WhisperX pass) consume the
+xtiming words at all.
+
+**Fix:** `build_song_story` gained an optional `lyrics_cache_path`
+parameter (`src/story/builder.py`). When supplied and no explicit
+`lyrics_text_override` is given, the resolved lyrics text (found or
+confirmed not-found) is persisted to a small JSON sidecar keyed by
+`source_hash` — `<audio_stem>_synced_lyrics.json`, matching the existing
+`_hierarchy.json`/`_story.json` naming convention — via new
+`load_cached_lyrics_text`/`save_cached_lyrics_text` helpers in
+`src/analyzer/synced_lyrics.py`. `get_boundary_refinement_inputs` itself is
+unchanged. `analysis.py`'s `/analyze` handler now passes
+`lyrics_cache_path=src.parent / src.stem / f"{src.stem}_synced_lyrics.json"`
+so every ordinary analyze (including a "force" reanalyze — the cache
+persists through force by explicit design choice, since lyrics for a given
+song don't change and force is about re-running signal analysis, not
+re-rolling lyrics-provider variance) reuses the same text once fetched
+once. A confirmed "not found" result is cached too, to avoid hammering the
+free provider lookup on every reanalyze of an unmatched song — deliberate
+tradeoff: a song whose lyrics get indexed by a provider *later* won't pick
+that up automatically without deleting the cache file.
+
+Left the new parameter opt-in (default `None` = old always-fetch-fresh
+behavior) rather than deriving the cache path automatically from
+`audio_path` inside `build_song_story` — the first implementation attempt
+did that and it silently wrote real cache files into a shared `/tmp`-style
+directory from `tests/unit/test_builder.py` and 4 other test files that all
+reuse one fixed dummy `AUDIO_PATH` constant across dozens of tests, which
+would have cross-polluted unrelated tests sharing that same fixture (caught
+before merge — see `tests/unit/test_synced_lyrics.py`'s
+`test_lyrics_cache_*` tests and `tests/unit/test_builder.py`'s
+`test_lyrics_cache_path_*` tests for the isolation-safe version). No
+existing test's behavior changed as a result.
+
+---
+
+## 2026-08-08 — "qm_boundary" placeholder wrongly counted as a real repetition label
+
+**Files:** `src/story/builder.py`
+
+**Problem:** Direct continuation of the synced-lyrics caching fix above.
+After that fix landed, the user re-analyzed the exact same "Dream On"
+audio (`source_hash` unchanged) twice more and still got different section
+counts each time (11, then 9) — proving the lyrics fetch wasn't the only
+(or even the dominant) source of instability. Compared the two runs'
+`_hierarchy.json` raw segmentino/QM boundary lists directly: timestamps
+only differed by tens-to-low-hundreds of ms (e.g. `61765ms → 60987ms`,
+`94714ms → 95800ms`) — real jitter, but small. Ran the actual
+`merge_sections()` + dominant-label logic from `builder.py` against both
+raw boundary sets by hand and found the true amplifier: the first run's
+merged sections had segmentino-repetition-label counts `A:4, B:3,
+qm_boundary:2` (clean plurality for "A"), while the second run's came out
+`A:3, qm_boundary:3, B:3` — a three-way tie, with the meaningless
+`"qm_boundary"` placeholder tied for the lead.
+
+**Root cause:** `build_song_story`'s `boundary_label` map (feeding
+`_dominant_label`, which tells `_classify_by_labels` which segmentino
+repetition-group each merged section belongs to) included raw entries
+labeled `"qm_boundary"` as if they were genuine repetition-group
+identities like `"A"`/`"B"`/`"N9"`. They are not: `"qm_boundary"` is a
+synthetic placeholder `src.analyzer.orchestrator`'s `_merge_qm_boundaries`
+stamps onto a QM-segmenter-only boundary that segmentino never assigned a
+real label to (`if not new_mark.label: new_mark.label = "qm_boundary"`) —
+it carries no repetition semantics at all. Multiple acoustically unrelated
+merged sections can each land nearest a `"qm_boundary"` marker purely by
+boundary-timing coincidence, and `_classify_by_labels`'s most-repeated-
+label chorus heuristic (`chorus_label = max(chorus_candidates, key=...
+energy)`) then treats that shared placeholder string as if those sections
+were a real recurring structural block — capable of tying or beating the
+song's actual chorus label. Since every section's role is decided relative
+to `chorus_label`, one flipped tie-break (which raw boundary jitter of a
+few tens of ms can easily cause, by shifting which raw marker lands
+nearest a given merged section) cascades into a completely different role
+assignment for the *entire* song, not just one section — explaining swings
+as large as 7 vs. 9 vs. 11 vs. 14 final sections from the same audio.
+
+**Fix:** Excluded `"qm_boundary"` when building `boundary_label` in
+`build_song_story` — a merged section whose only nearby raw marker is a
+placeholder now correctly falls back to the *preceding real label* (via
+`_dominant_label`'s existing backward-fallback branch, already there for
+genuinely label-less gaps) instead of being miscounted as sharing an
+identity with every other `qm_boundary`-adjacent section in the song.
+Verified against the real old/new boundary sets by hand: post-fix, the
+first run's counts became a clean `A:4, B:3, C:2` (no `qm_boundary` entry
+at all) and the second run's became `A:3, C:3, B:3` — note a **residual**
+smaller tie can still occur here between two *real* labels ("C" now
+appears via the backward-fallback absorbing what used to be
+`qm_boundary`-only gaps) — this fix removes the specific "meaningless
+placeholder masquerading as a real label" failure mode, not every possible
+source of tie-break sensitivity in `_dominant_label`'s backward-fallback.
+Scoped to exactly what was asked (not a broader hysteresis/smoothing pass
+that was also considered and explicitly deferred).
+
+Added `test_qm_boundary_placeholder_not_counted_as_repeating_label` to
+`tests/unit/test_builder.py` — a 9-section synthetic hierarchy where a
+real 3x-repeating label ("A") is interleaved with 3x `"qm_boundary"`
+placeholders given deliberately *higher* energy, so pre-fix the fake label
+wins the chorus tie-break and the real "A" sections get demoted to
+"verse". Confirmed the test fails without the fix (temporarily reverted
+the exclusion clause, reran, got the expected `AssertionError`) and passes
+with it. 125 tests pass across `test_builder.py`,
+`test_builder_refinement_warnings.py`, `test_story_builder_refinement.py`,
+`test_story_serialization.py`, `test_story_pipeline.py`,
+`test_synced_lyrics.py`; full `tests/unit` suite: 3027 passed (9
+pre-existing, unrelated Windows path-separator failures in
+`test_paths.py`, 4 pre-existing xpassed, 17 skipped).

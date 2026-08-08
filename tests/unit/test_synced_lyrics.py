@@ -549,3 +549,41 @@ def test_get_boundary_refinement_inputs_plain_text_no_timestamps(monkeypatch):
     assert forced_words == []
     assert chorus_body == "la la placeholder line one la la placeholder line two"
     assert line_marks == []
+
+
+# ---------------------------------------------------------------------------
+# load_cached_lyrics_text / save_cached_lyrics_text
+# ---------------------------------------------------------------------------
+
+def test_lyrics_cache_round_trips_found_text(tmp_path):
+    cache_path = tmp_path / "song_synced_lyrics.json"
+    sl.save_cached_lyrics_text(cache_path, "abc123", "Title", "Artist", "la la placeholder")
+    hit, text = sl.load_cached_lyrics_text(cache_path, "abc123")
+    assert hit is True
+    assert text == "la la placeholder"
+
+
+def test_lyrics_cache_round_trips_not_found_result(tmp_path):
+    """A confirmed 'no lyrics found' result is cached too (a hit with None
+    text), not indistinguishable from 'never fetched'."""
+    cache_path = tmp_path / "song_synced_lyrics.json"
+    sl.save_cached_lyrics_text(cache_path, "abc123", "Title", "Artist", None)
+    hit, text = sl.load_cached_lyrics_text(cache_path, "abc123")
+    assert hit is True
+    assert text is None
+
+
+def test_lyrics_cache_miss_when_file_absent(tmp_path):
+    hit, text = sl.load_cached_lyrics_text(tmp_path / "nonexistent.json", "abc123")
+    assert hit is False
+    assert text is None
+
+
+def test_lyrics_cache_miss_when_source_hash_differs(tmp_path):
+    """A re-imported/replaced audio file at the same path must not reuse a
+    stale cache written for a different source_hash."""
+    cache_path = tmp_path / "song_synced_lyrics.json"
+    sl.save_cached_lyrics_text(cache_path, "old_hash", "Title", "Artist", "la la placeholder")
+    hit, text = sl.load_cached_lyrics_text(cache_path, "new_hash")
+    assert hit is False
+    assert text is None
