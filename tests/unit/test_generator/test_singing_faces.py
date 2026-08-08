@@ -274,12 +274,21 @@ class TestLyricTextDiarization:
             _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
         ]
         result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
-        # Neither target is backup -- "Lyrics Matrix" gets both regions.
-        assert len(result["Lyrics Matrix"]) == 2
-        assert all(
-            p.parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
-            for p in result["Lyrics Matrix"]
-        )
+        # Neither target is backup -- "Lyrics Matrix" gets both regions, but
+        # each region still points at whichever track actually contains its
+        # words: the HELLO/WORLD region is speaker-0 (primary "Lyrics"
+        # track), the AGAIN region is speaker-1 ("Lyrics - Backup" track) --
+        # pointing every region at the primary track (the original bug)
+        # would leave the AGAIN region blank, since that word doesn't exist
+        # in the primary track's word layer at all (2026-08-07 follow-up
+        # user report: the region-based main matrix had the same class of
+        # bug already fixed for the small matrix's per-word path).
+        main = result["Lyrics Matrix"]
+        assert len(main) == 2
+        assert main[0].start_ms == 1000 and main[0].end_ms == 2000
+        assert main[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+        assert main[1].start_ms == 9000 and main[1].end_ms == 9500
+        assert main[1].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
         # "Lyrics Matrix Small" gets one per-word placement per word,
         # covering the whole song -- but each word points at whichever
         # timing track xsq_writer actually put it in: speaker-0 words

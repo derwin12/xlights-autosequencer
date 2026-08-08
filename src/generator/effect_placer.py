@@ -4675,12 +4675,18 @@ def _place_lyric_text(
 
     When ``vocal_diarization`` is on and at least two NON-SMALL targets
     exist, the second one (by the same order as above) renders only
-    speaker-1 words on a second "Lyrics - Backup - Words" track (see
+    speaker-1 regions on a second "Lyrics - Backup - Words" track (see
     ``_place_singing_faces`` for the matching Faces behavior); the first
-    non-small target renders only speaker-0 words. Degrades to the
-    original behavior — every non-small target gets every word — with
-    fewer than two non-small targets or no confidently-detected second
-    voice.
+    non-small target renders only speaker-0 regions. With fewer than two
+    non-small targets, the sole non-small target instead renders BOTH
+    speaker-0 and speaker-1 regions -- there's no second prop to show the
+    backup regions on, so each region still points at whichever track its
+    own words actually live in rather than being silently dropped or
+    mispointed (follow-up fix, user report 2026-08-07: the region-based
+    path had the same bug already fixed for the small-matrix per-word
+    path -- a region built by merging the full unsplit word list could
+    contain only speaker-1 words yet still be tagged with the primary
+    "Lyrics - Words" track, rendering blank).
     """
     result: dict[str, list[EffectPlacement]] = {}
     matrix_props = [p for p in props if getattr(p, "display_as", "") == "Matrix"]
@@ -4706,10 +4712,21 @@ def _place_lyric_text(
     # continuous vocal track in half across the two displays).
     non_small_targets = [t for t in targets if "small" not in t.name.lower()]
     backup_target = non_small_targets[1] if (backup_words and len(non_small_targets) >= 2) else None
-    lead_words = vocal_words if backup_target is None else lead_only_words
 
-    lead_regions = _vocal_regions(lead_words)
-    backup_regions = _vocal_regions(backup_words) if backup_target is not None else []
+    # Always split regions by the SAME lead_only_words/backup_words speaker
+    # split xsq_writer._build_lyric_layers() uses to build the underlying
+    # "Lyrics"/"Lyrics - Backup" tracks -- never merge them into one region
+    # set from the full vocal_words (follow-up to the small-matrix fix,
+    # user report 2026-08-07: the main "Lyrics Matrix" had the identical
+    # bug -- when there's only one non-small target, backup_target is None,
+    # so this used to fall back to _vocal_regions(vocal_words), merging
+    # lead and backup words into shared regions and pointing ALL of them at
+    # the primary "Lyrics - Words" track. Any region containing only
+    # speaker-1 words doesn't exist in that track at all and rendered
+    # blank -- the region-based path needs the same per-word track
+    # awareness the small-matrix per-word path already got).
+    lead_regions = _vocal_regions(lead_only_words)
+    backup_regions = _vocal_regions(backup_words) if backup_words else []
     # A "small" target always shows every word (see comment above), but each
     # word must reference whichever timing track xsq_writer actually put it
     # in: xsq_writer._build_lyric_layers() splits the underlying "Lyrics" /
@@ -4744,30 +4761,40 @@ def _place_lyric_text(
             )
             continue
 
-        regions = backup_regions if is_backup else lead_regions
-        if not regions:
+        if is_backup:
+            tagged_regions = [(start, end, True) for start, end in backup_regions]
+        else:
+            # The sole non-small target (no dedicated backup_target this
+            # song) also carries the backup regions, correctly tagged --
+            # there's no second prop to show them on, so this one must
+            # render everything rather than silently dropping speaker-1
+            # regions the way pointing everything at the lead track would.
+            tagged_regions = [(start, end, False) for start, end in lead_regions]
+            if backup_target is None:
+                tagged_regions += [(start, end, True) for start, end in backup_regions]
+            tagged_regions.sort(key=lambda r: r[0])
+        if not tagged_regions:
             continue
-        parameters: dict[str, Any] = {
-            "E_CHOICE_Text_LyricTrack": (
-                _LYRIC_TEXT_BACKUP_TIMING_TRACK if is_backup else _LYRIC_TEXT_TIMING_TRACK
-            ),
-        }
         placements = []
-        for start, end in regions:
+        for start, end, region_is_backup in tagged_regions:
             placements.append(EffectPlacement(
                 effect_name="Text",
                 xlights_id="Text",
                 model_or_group=target.name,
                 start_ms=start,
                 end_ms=end,
-                parameters=dict(parameters),
+                parameters={
+                    "E_CHOICE_Text_LyricTrack": (
+                        _LYRIC_TEXT_BACKUP_TIMING_TRACK if region_is_backup else _LYRIC_TEXT_TIMING_TRACK
+                    ),
+                },
                 color_palette=[color],
             ))
         result[target.name] = placements
 
         logger.info(
             "lyric_text: Text/LyricTrack placed on matrix '%s' over %d vocal region(s)",
-            target.name, len(regions),
+            target.name, len(tagged_regions),
         )
     return result
 
