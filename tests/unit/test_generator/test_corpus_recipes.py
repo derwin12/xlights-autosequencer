@@ -2286,11 +2286,13 @@ class TestMatrixMotionRotation:
             if p.effect_name not in ("On", "Spirals")
         }
 
-    def test_rotation_walks_the_fourteen_slot_pool(self) -> None:
-        # Seed fallback path: seed s -> slot (s // 2) % 14. The pool
+    def test_rotation_walks_the_fifteen_slot_pool(self) -> None:
+        # Seed fallback path: seed s -> slot (s // 2) % 15. The pool
         # interleaves Shockwave/Pinwheel/Ripple/Color Wash/Shape/VU Meter
         # preset variants; Lightning was moved to the crash-accent pass
-        # (2026-07-18); Color Wash + Shape + VU Meter added 2026-07-23.
+        # (2026-07-18); Color Wash + Shape + VU Meter added 2026-07-23. A
+        # second Color Wash slot (reusing the same _COLOR_WASH_MATRIX
+        # preset) was appended 2026-08-08, growing the pool from 14 to 15.
         # VU Meter slots need both the effect in the library AND their
         # mapped timing track populated on the hierarchy, else they fall
         # back to the primary Shockwave.
@@ -2310,7 +2312,8 @@ class TestMatrixMotionRotation:
         assert self._motion_effects(22, library=full_lib, hierarchy=full_hierarchy) == {"VU Meter"}
         assert self._motion_effects(24, library=full_lib, hierarchy=full_hierarchy) == {"VU Meter"}
         assert self._motion_effects(26, library=full_lib, hierarchy=full_hierarchy) == {"VU Meter"}
-        assert self._motion_effects(28) == {"Shockwave"}  # cycle repeats
+        assert self._motion_effects(28) == {"Color Wash"}  # new 15th slot
+        assert self._motion_effects(30) == {"Shockwave"}  # cycle repeats
 
     def test_vu_meter_slot_falls_back_without_its_mapped_track(self) -> None:
         # Slot 7 (occurrence 7, seed 14) is VU Meter mapped to Kick Hits.

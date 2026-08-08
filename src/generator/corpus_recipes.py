@@ -1700,6 +1700,11 @@ CORPUS_RECIPES: tuple[PropFamilyRecipe, ...] = (
             ("VU Meter", _VUMETER_BASS),
             ("VU Meter", _VUMETER_MELODY),
             ("VU Meter", _VUMETER_FLOURISHES),
+            # Second Color Wash slot added 2026-08-08 (user request: give the
+            # "Color Wash Full Fade" look -- H+V fade + Layered blend, same
+            # as the mined _COLOR_WASH_MATRIX preset above -- its own
+            # rotation occurrence rather than relying on a single slot).
+            ("Color Wash", _COLOR_WASH_MATRIX),
         ),
         secondary_effect_name="Spirals",
         secondary_parameter_overrides=_SPIRALS_MATRIX,
