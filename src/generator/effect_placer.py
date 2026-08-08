@@ -5645,7 +5645,10 @@ def _place_star_bursts(
     Song-scoped like ``_place_crash_accents``, not routed through the
     per-section pipeline. Layered above the star group's regular recipe
     content (layer -1) so it reads as a distinct one-off pop rather than
-    blending into the family's normal Shockwave rotation.
+    blending into the family's normal Shockwave rotation. Every member of
+    every star group also gets a whole-song Off backdrop on layer 5 (behind
+    the recipe's own layers 0-2), regardless of whether that particular
+    member won a burst in this song's rotation -- see the loop below.
     """
     result: dict[str, list[EffectPlacement]] = {}
     if not hierarchy.riff_bursts:
@@ -5707,7 +5710,14 @@ def _place_star_bursts(
     # One continuous Off spanning the whole song, not per-section like the
     # corpus-recipe version -- these accents are song-scoped and rare, so a
     # single backdrop per member covers every gap between bursts.
-    for member in list(result):
+    #
+    # Applied to every star member, not just the ones that happened to win a
+    # burst in the round-robin above (user report 2026-08-07): with few riff
+    # marks, most members never receive a burst placement at all, so keying
+    # this loop off `result`'s membership left them with zero gap protection
+    # even though they have the exact same rotation-plan leading gap as the
+    # members that did get a burst.
+    for member in star_members:
         backdrop = EffectPlacement(
             effect_name="Off",
             xlights_id="Off",
@@ -5717,9 +5727,18 @@ def _place_star_bursts(
             parameters={},
             color_palette=["#000000"],
         )
-        # Below the bursts (layer -1), above the recipe's own layers 0-2.
-        backdrop.layer = 0
-        result[member].append(backdrop)
+        # Must render BEHIND the recipe's own layers 0-2, not level with
+        # them (lower layer number = renders in FRONT, models.py:144). The
+        # previous `layer = 0` put this backdrop on the exact same layer as
+        # the recipe's own base Pinwheel content, so xsq_writer's per-layer
+        # overlap trim (_remove_overlaps, a single greedy pass sorted by
+        # start time) collapsed this whole-song placement down to just the
+        # first gap before the recipe's first effect, and dropped it for
+        # every later gap between recipe placements entirely (user report
+        # 2026-08-07 -- follow-up to the round-robin-membership bug above).
+        # 5 leaves headroom above the recipe's highest known layer (2).
+        backdrop.layer = 5
+        result.setdefault(member, []).append(backdrop)
 
     return result
 
