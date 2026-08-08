@@ -263,22 +263,46 @@ class TestSingingFacesDiarization:
 
 
 class TestLyricTextDiarization:
-    def test_backup_speaker_routes_to_second_matrix(self):
+    def test_small_target_never_becomes_backup_and_gets_every_word(self):
+        # A "*Small*" target is a size variant of the primary lyric display,
+        # not a second singer's display -- with only one non-small target,
+        # there's no backup_target at all, so both targets render every
+        # word (2026-08-07 user report: this pair previously split one
+        # continuous vocal track in half between the two displays).
         props = [
             _prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
             _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
         ]
         result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
-        # Lead target ("Lyrics Matrix") is not "small" -- unchanged region path.
+        # Neither target is backup -- "Lyrics Matrix" gets both regions.
+        assert len(result["Lyrics Matrix"]) == 2
+        assert all(
+            p.parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+            for p in result["Lyrics Matrix"]
+        )
+        # "Lyrics Matrix Small" gets one per-word placement per word,
+        # covering the whole song via the primary (non-backup) track.
+        small = result["Lyrics Matrix Small"]
+        assert len(small) == 3
+        assert all(
+            p.parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+            for p in small
+        )
+        assert "E_TEXTCTRL_Text" not in small[0].parameters
+
+    def test_backup_speaker_routes_to_second_non_small_matrix(self):
+        # Two non-small lyric matrices (a genuine same-size duet display
+        # pair) still split lead/backup by diarization.
+        props = [
+            _prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
+            _prop("Lyrics Matrix Backup", display_as="Matrix", pixels=4800),
+        ]
+        result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
         assert len(result["Lyrics Matrix"]) == 1
         assert result["Lyrics Matrix"][0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
-        # Backup target ("Lyrics Matrix Small") is "small" -- per-word path,
-        # rendering only the backup speaker's word ("AGAIN"), via the
-        # backup LyricTrack.
-        small = result["Lyrics Matrix Small"]
-        assert len(small) == 1
-        assert small[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
-        assert "E_TEXTCTRL_Text" not in small[0].parameters
+        backup = result["Lyrics Matrix Backup"]
+        assert len(backup) == 1 and backup[0].start_ms == 9000 and backup[0].end_ms == 9500
+        assert backup[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
 
     def test_single_target_degrades_to_all_words(self):
         props = [_prop("Matrix Big", display_as="Matrix", pixels=4800)]

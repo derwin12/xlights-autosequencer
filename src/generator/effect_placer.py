@@ -4624,16 +4624,23 @@ def _place_lyric_text(
     ``_small_lyric_word_placement``). Words longer than
     ``_LYRIC_TEXT_SMALL_LONG_WORD_CHARS`` scroll via a vector
     (``E_CHOICE_Text_Dir="vector"``) since they won't fit statically on
-    the small font. Every other target keeps the original region-based
-    placement, one per contiguous vocal region.
+    the small font. A "small" target always renders every word (the full
+    "Lyrics - Words" track) -- it is a size variant of the primary lyric
+    display, not a second singer's display, so it is never subject to the
+    diarization backup-speaker split below (user report 2026-08-07: a
+    "Lyrics Matrix"/"Lyrics Matrix Small" pair previously split one
+    continuous vocal track in half between the two displays). Every other
+    (non-small) target keeps the original region-based placement, one per
+    contiguous vocal region.
 
-    When ``vocal_diarization`` is on and at least two targets exist, the
-    second target (by the same order as above) renders only speaker-1
-    words on a second "Lyrics - Backup - Words" track (see
-    ``_place_singing_faces`` for the matching Faces behavior); every other
-    target renders only speaker-0 words. Degrades to the original
-    behavior — every target gets every word — with one target or no
-    confidently-detected second voice.
+    When ``vocal_diarization`` is on and at least two NON-SMALL targets
+    exist, the second one (by the same order as above) renders only
+    speaker-1 words on a second "Lyrics - Backup - Words" track (see
+    ``_place_singing_faces`` for the matching Faces behavior); the first
+    non-small target renders only speaker-0 words. Degrades to the
+    original behavior — every non-small target gets every word — with
+    fewer than two non-small targets or no confidently-detected second
+    voice.
     """
     result: dict[str, list[EffectPlacement]] = {}
     matrix_props = [p for p in props if getattr(p, "display_as", "") == "Matrix"]
@@ -4650,14 +4657,21 @@ def _place_lyric_text(
         lead_only_words, backup_words = _split_words_by_speaker(vocal_words)
     else:
         lead_only_words, backup_words = vocal_words, []
-    backup_target = targets[1] if (backup_words and len(targets) >= 2) else None
+    # A "small" target is a size variant of the primary lyric display, not a
+    # second singer's display -- it always renders the full lyric track
+    # (below) and is never eligible to become the backup-singer target
+    # (user report 2026-08-07: a real "Lyrics Matrix"/"Lyrics Matrix Small"
+    # pair only has ONE non-small target, so this makes backup_target None
+    # and both targets render every word, instead of splitting one
+    # continuous vocal track in half across the two displays).
+    non_small_targets = [t for t in targets if "small" not in t.name.lower()]
+    backup_target = non_small_targets[1] if (backup_words and len(non_small_targets) >= 2) else None
     lead_words = vocal_words if backup_target is None else lead_only_words
 
     lead_regions = _vocal_regions(lead_words)
     backup_regions = _vocal_regions(backup_words) if backup_target is not None else []
-    lead_spans = _word_spans(lead_words)
-    backup_spans = _word_spans(backup_words) if backup_target is not None else []
-    if not lead_regions and not backup_regions:
+    all_spans = _word_spans(vocal_words)
+    if not lead_regions and not backup_regions and not all_spans:
         return result
 
     color = _lightest_color(theme_palette) if theme_palette else "#FFFFFF"
@@ -4667,11 +4681,10 @@ def _place_lyric_text(
         is_small = "small" in target.name.lower()
 
         if is_small:
-            spans = backup_spans if is_backup else lead_spans
-            if not spans:
+            if not all_spans:
                 continue
-            placements = [_small_lyric_word_placement(target.name, start, end, text, is_backup, color)
-                          for start, end, text in spans]
+            placements = [_small_lyric_word_placement(target.name, start, end, text, False, color)
+                          for start, end, text in all_spans]
             result[target.name] = placements
             logger.info(
                 "lyric_text: per-word Text placed on small matrix '%s' over %d word(s)",
