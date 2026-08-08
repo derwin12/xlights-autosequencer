@@ -150,9 +150,15 @@ class TestRadialPlacement:
         )
 
         # Beat 0 → Ring 1, Beat 1 → Ring 2, Beat 2 → Ring 3 — the bloom.
-        ring1_starts = sorted(p.start_ms for p in result.get("Snowflake/Ring 1", []))
-        ring2_starts = sorted(p.start_ms for p in result.get("Snowflake/Ring 2", []))
-        ring3_starts = sorted(p.start_ms for p in result.get("Snowflake/Ring 3", []))
+        # Excludes each ring's own section-spanning Off backdrop (start_ms=0
+        # for every active ring), which would otherwise flatten this
+        # ordering check to a tie.
+        def _chase_starts(ring: str) -> list[int]:
+            return sorted(p.start_ms for p in result.get(ring, []) if p.effect_name != "Off")
+
+        ring1_starts = _chase_starts("Snowflake/Ring 1")
+        ring2_starts = _chase_starts("Snowflake/Ring 2")
+        ring3_starts = _chase_starts("Snowflake/Ring 3")
 
         assert ring1_starts and ring1_starts[0] < (ring2_starts[0] if ring2_starts else 99999)
         assert ring2_starts and ring2_starts[0] < (ring3_starts[0] if ring3_starts else 99999)
@@ -188,3 +194,73 @@ class TestRadialPlacement:
         # No per-ring placements emitted in the fallback.
         for ring in ("Snowflake/Ring 1", "Snowflake/Ring 2", "Snowflake/Ring 3"):
             assert ring not in result
+
+
+class TestRadialChaseOffBackdrop:
+    """Every ring that receives at least one beat this section also gets a
+    section-spanning Off behind its own chase placements (user request
+    2026-08-07, spotted on the star family's Star 1-4 during verse_3):
+    outside its own turn, a ring has nothing placed at all and is
+    unprotected from bleed-through -- unlike the corpus-recipe path's own
+    off_backdrop idiom, which this beat-chase fallback never had."""
+
+    def test_each_active_ring_gets_a_section_spanning_off(self):
+        beat_times = [0, 500, 1000, 1500]
+        hierarchy = _hierarchy_with_beats(beat_times)
+        section = SectionEnergy(
+            label="chorus", start_ms=0, end_ms=2000,
+            energy_score=80, mood_tier="structural", impact_count=0,
+        )
+        assignment = SectionAssignment(
+            section=section,
+            theme=_theme(),
+            active_tiers=frozenset({6}),
+        )
+        result = place_effects(
+            assignment=assignment,
+            groups=[_radial_group()],
+            effect_library=_library(),
+            hierarchy=hierarchy,
+            variant_library=_variant_library(),
+        )
+
+        for ring in ("Snowflake/Ring 1", "Snowflake/Ring 2", "Snowflake/Ring 3"):
+            offs = [p for p in result[ring] if p.effect_name == "Off"]
+            assert len(offs) == 1
+            assert offs[0].start_ms == 0
+            assert offs[0].end_ms == 2000
+            # Behind this ring's own chase placements (layer 0 default) AND
+            # behind _place_drum_accents' small-radial-prop Shockwave accents
+            # (layer 1, same models) -- layer 1 here would put the backdrop
+            # level with those accents and get clipped against them by
+            # xsq_writer's per-layer overlap trim instead of sitting cleanly
+            # behind (user report 2026-08-07, follow-up same session).
+            chase = next(p for p in result[ring] if p.effect_name != "Off")
+            assert offs[0].layer > chase.layer
+            assert offs[0].layer == 5
+
+    def test_no_beats_fallback_gets_no_per_ring_off(self):
+        # The fallback path (no beats track) never reaches the per-ring
+        # backdrop loop -- it returns a single parent-level placement.
+        hierarchy = HierarchyResult(
+            schema_version="2.0.0", source_file="test.mp3",
+            source_hash="abc123", duration_ms=5000, estimated_bpm=120.0,
+            beats=None,
+        )
+        section = SectionEnergy(
+            label="verse", start_ms=0, end_ms=5000,
+            energy_score=80, mood_tier="structural", impact_count=0,
+        )
+        assignment = SectionAssignment(
+            section=section,
+            theme=_theme(),
+            active_tiers=frozenset({6}),
+        )
+        result = place_effects(
+            assignment=assignment,
+            groups=[_radial_group()],
+            effect_library=_library(),
+            hierarchy=hierarchy,
+            variant_library=_variant_library(),
+        )
+        assert not any(p.effect_name == "Off" for p in result["06_PROP_Snowflake_Rings"])

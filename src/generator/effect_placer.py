@@ -2313,6 +2313,17 @@ def _place_radial_chase_on_subgroup(
     Falls back to a single section-span placement on the whole group
     name when the hierarchy has no beats track.  This keeps the radial
     group from going dark in songs that lack reliable beat detection.
+
+    Each member that receives at least one beat this section also gets a
+    section-spanning Off behind its own chase placements (user request
+    2026-08-07, verse_3 example on the star family's Star 1-4): outside
+    this function, only ONE member is ever active at a time (whichever
+    beat's turn it is), so every other member has nothing placed at all
+    for the rest of the section and is unprotected from bleed-through --
+    unlike the corpus-recipe path's own ``off_backdrop`` idiom, which this
+    fallback path never had. Scoped to just this one section, mirroring
+    the corpus-recipe backdrop rather than the whole-song version that
+    caused trouble for the star-burst accents (see bug-796 in buglog.json).
     """
     members = group.members
     if not members:
@@ -2336,6 +2347,7 @@ def _place_radial_chase_on_subgroup(
         )]
 
     placements: list[EffectPlacement] = []
+    active_members: set[str] = set()
     for i, mark in enumerate(marks):
         member = members[i % len(members)]
         beat_start = mark.time_ms
@@ -2350,6 +2362,27 @@ def _place_radial_chase_on_subgroup(
             direction_cycle=direction_cycle,
             instance_index=i,
         ))
+        active_members.add(member)
+
+    for member in active_members:
+        backdrop = EffectPlacement(
+            effect_name="Off",
+            xlights_id="Off",
+            model_or_group=member,
+            start_ms=section.start_ms,
+            end_ms=section.end_ms,
+            parameters={},
+            color_palette=["#000000"],
+        )
+        # Behind this member's own beat-chase placements (layer 0 default)
+        # AND behind _place_drum_accents' small-radial-prop Shockwave accents
+        # (layer 1, same models -- user report 2026-08-07: layer 1 put this
+        # backdrop level with those accents, so xsq_writer's per-layer
+        # overlap trim clipped the Off right up against them instead of
+        # sitting cleanly behind. 5 matches the same safe-headroom value
+        # already established for the star-burst Off (see bug-795/796).
+        backdrop.layer = 5
+        placements.append(backdrop)
     return placements
 
 
