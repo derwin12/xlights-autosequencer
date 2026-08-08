@@ -5606,14 +5606,6 @@ def _place_crash_accents(
 # over the placement via value curve, red/yellow/orange palette.
 _STAR_BURST_DURATION_MS = 1050
 _STAR_BURST_VOCAL_EXCLUSION_MS = 500
-# How far ahead of each burst's own start to black the model out, so the
-# burst pops out of black instead of interrupting mid-frame (user request
-# 2026-08-07, replacing an earlier whole-song Off backdrop that blacked out
-# the star family GROUP's own per-section content for the entire song --
-# see the 2026-08-07 buglog entries for why a member-level Off, even off on
-# its own internal layer, still overrides the group's rendering for that
-# member's pixels for as long as it's active).
-_STAR_BURST_OFF_LEAD_MS = 500
 _STAR_BURST_PARAMS: dict[str, str] = {
     "B_CHOICE_BufferStyle": "Per Model Per Preview",
     "E_CHECKBOX_Pinwheel_Rotation": "0",
@@ -5654,11 +5646,13 @@ def _place_star_bursts(
     per-section pipeline. Layered above the star group's regular recipe
     content (layer -1) so it reads as a distinct one-off pop rather than
     blending into the family's normal Shockwave rotation. Each burst also
-    gets a short ``_STAR_BURST_OFF_LEAD_MS`` Off immediately before it on
-    layer 5, local to that one burst -- NOT a whole-song backdrop (see the
-    loop below for why a member-level placement, even a brief one, still
-    overrides the star family GROUP's own per-section rendering on that
-    member's pixels for as long as it's active).
+    gets an Off on layer 5 with the SAME start/end as the burst itself, so
+    nothing bleeds through from another source wherever the Pinwheel
+    doesn't fully cover the buffer during the burst's own window. Scoped
+    to exactly that window, NOT a whole-song backdrop and NOT a lead-in
+    before it (see the loop below for why a member-level placement, even a
+    brief one, still overrides the star family GROUP's own per-section
+    rendering on that member's pixels for as long as it's active).
     """
     result: dict[str, list[EffectPlacement]] = {}
     if not hierarchy.riff_bursts:
@@ -5714,35 +5708,35 @@ def _place_star_bursts(
         p.layer = -1
         result.setdefault(member, []).append(p)
 
-        # A short Off immediately before the burst so it pops out of black
-        # instead of interrupting mid-frame (user request 2026-08-04).
-        # Deliberately local to this one burst, NOT a whole-song backdrop --
-        # an earlier version spanned start_ms=0 to end_ms=hierarchy.duration_ms
-        # on every member, which (user report 2026-08-07) blacked out the
-        # star family GROUP's own per-section content (verse 3 and beyond)
-        # for the ENTIRE song: an individual member model renders AFTER the
-        # group in the sequencer's element order, so any effect placed
-        # directly on the member -- Off included, regardless of its own
-        # internal layer number -- overrides the group's rendering on that
-        # member's pixels for as long as it's active. Keeping this window
-        # short and burst-adjacent limits that override to the moment it's
-        # actually needed. A member that wins no burst this song gets no Off
-        # at all, same as before any of today's fixes.
-        off_start = max(0, start_ms - _STAR_BURST_OFF_LEAD_MS)
-        if off_start < start_ms:
-            backdrop = EffectPlacement(
-                effect_name="Off",
-                xlights_id="Off",
-                model_or_group=member,
-                start_ms=off_start,
-                end_ms=start_ms,
-                parameters={},
-                color_palette=["#000000"],
-            )
-            # Behind the burst (layer -1) but otherwise irrelevant here since
-            # this window doesn't overlap the burst's own start_ms/end_ms.
-            backdrop.layer = 5
-            result[member].append(backdrop)
+        # An Off directly beneath the burst, same start/end, so nothing
+        # bleeds through from another source during the burst itself
+        # wherever the Pinwheel doesn't fully cover the buffer (user
+        # request 2026-08-04, corrected 2026-08-07 to match the burst's own
+        # window exactly rather than a lead-in before it). Deliberately
+        # scoped to just this one burst's window, NOT a whole-song backdrop
+        # -- an earlier version spanned start_ms=0 to
+        # end_ms=hierarchy.duration_ms on every member, which (user report
+        # 2026-08-07) blacked out the star family GROUP's own per-section
+        # content (verse 3 and beyond) for the ENTIRE song: an individual
+        # member model renders AFTER the group in the sequencer's element
+        # order, so any effect placed directly on the member -- Off
+        # included, regardless of its own internal layer number --
+        # overrides the group's rendering on that member's pixels for as
+        # long as it's active. Matching the burst's own window keeps that
+        # override limited to exactly the moment it's needed. A member that
+        # wins no burst this song gets no Off at all.
+        backdrop = EffectPlacement(
+            effect_name="Off",
+            xlights_id="Off",
+            model_or_group=member,
+            start_ms=start_ms,
+            end_ms=end_ms,
+            parameters={},
+            color_palette=["#000000"],
+        )
+        # Behind the burst (layer -1) and the recipe's own layers (0-2).
+        backdrop.layer = 5
+        result[member].append(backdrop)
 
     return result
 
