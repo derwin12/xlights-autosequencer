@@ -6,6 +6,7 @@ from __future__ import annotations
 from src.analyzer.result import HierarchyResult, TimingMark
 from src.generator.effect_placer import (
     _STAR_BURST_DURATION_MS,
+    _STAR_BURST_OFF_LEAD_MS,
     _STAR_BURST_VOCAL_EXCLUSION_MS,
     _place_star_bursts,
 )
@@ -45,9 +46,10 @@ class TestPlaceStarBursts:
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000]), vocal_words=None,
         )
-        # "Star 2" also appears -- it gets the whole-song Off backdrop even
-        # though it didn't win a burst this round (see TestStarBurstOffBackdrop).
-        assert set(result) == {"Star 1", "Star 2"}
+        # "Star 2" never won a burst this round, so it doesn't appear at all
+        # -- the Off pre-roll is local to each burst, not a whole-song
+        # backdrop (see TestStarBurstOffBackdrop).
+        assert set(result) == {"Star 1"}
         pinwheels = [p for p in result["Star 1"] if p.effect_name == "Pinwheel"]
         assert len(pinwheels) == 1
         p = pinwheels[0]
@@ -65,9 +67,10 @@ class TestPlaceStarBursts:
             vocal_words=None,
         )
         assert set(result) == {"Star 1", "Star 2"}
-        assert result["Star 1"][0].start_ms == 10_000
-        assert result["Star 2"][0].start_ms == 33_000
-        assert result["Star 1"][1].start_ms == 60_000
+        star1_pinwheels = [p.start_ms for p in result["Star 1"] if p.effect_name == "Pinwheel"]
+        star2_pinwheels = [p.start_ms for p in result["Star 2"] if p.effect_name == "Pinwheel"]
+        assert star1_pinwheels == [10_000, 60_000]
+        assert star2_pinwheels == [33_000]
 
     def test_renders_above_recipe_layers(self):
         result = _place_star_bursts(
@@ -77,17 +80,12 @@ class TestPlaceStarBursts:
         assert all(p.layer < 0 for p in bursts)
 
     def test_vocal_word_near_mark_excludes_it(self):
-        # The mark is filtered, so no Pinwheel burst is placed anywhere --
-        # but every star member still gets its Off backdrop, since that
-        # protection is about the family's rotation-plan gaps in general,
-        # not contingent on this song actually landing a burst.
         vocal_words = [{"start_ms": 32_900, "end_ms": 33_100}]
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000]),
             vocal_words=vocal_words,
         )
-        assert not any(p.effect_name == "Pinwheel" for placements in result.values() for p in placements)
-        assert set(result) == {"Star 1", "Star 2"}
+        assert result == {}
 
     def test_vocal_exclusion_boundary_is_exact(self):
         vocal_words = [{"start_ms": 0, "end_ms": 1000}]
@@ -119,22 +117,27 @@ class TestPlaceStarBursts:
 
 
 class TestStarBurstOffBackdrop:
-    """A backdrop Off beneath the bursts keeps the star model black in the
-    gaps instead of picking up bleed from elsewhere (user request,
-    2026-08-04), same idiom as the corpus-recipe off_backdrop pattern."""
+    """A short Off immediately before each burst keeps the star model black
+    right up to the pop instead of interrupting mid-frame (user request,
+    2026-08-04). Deliberately local to that one burst, not a whole-song
+    backdrop -- an earlier whole-song version blacked out the star family
+    GROUP's own per-section content for the entire song, since an
+    individual member model renders after (and overrides) the group for
+    its own pixels whenever it has ANY effect active (user report,
+    2026-08-07)."""
 
-    def test_member_with_a_burst_gets_an_off_backdrop(self):
+    def test_member_with_a_burst_gets_a_local_off_pre_roll(self):
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000], duration_ms=200_000),
             vocal_words=None,
         )
         off = [p for p in result["Star 1"] if p.effect_name == "Off"]
         assert len(off) == 1
-        assert off[0].start_ms == 0
-        assert off[0].end_ms == 200_000
+        assert off[0].start_ms == 33_000 - _STAR_BURST_OFF_LEAD_MS
+        assert off[0].end_ms == 33_000
         assert off[0].model_or_group == "Star 1"
 
-    def test_off_backdrop_renders_below_the_bursts_and_the_recipe(self):
+    def test_off_pre_roll_renders_below_the_bursts_and_the_recipe(self):
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000]), vocal_words=None,
         )
@@ -142,31 +145,35 @@ class TestStarBurstOffBackdrop:
         off = next(p for p in result["Star 1"] if p.effect_name == "Off")
         assert off.layer > burst.layer
         # Must render behind the star recipe's own layers (0-2), not level
-        # with them -- a lower layer number renders in FRONT (models.py:144),
-        # so `layer = 0` previously put this backdrop on the exact same
-        # layer as the recipe's own base Pinwheel content, and xsq_writer's
-        # per-layer overlap trim silently collapsed the whole-song backdrop
-        # down to just the first gap (user report 2026-08-07).
+        # with them -- a lower layer number renders in FRONT (models.py:144).
         assert off.layer == 5
 
-    def test_member_never_hit_still_gets_an_off_backdrop(self):
-        # Only "Star 1" receives the single mark, but "Star 2" (never a burst
-        # target this round) has the exact same rotation-plan leading gap and
-        # needs the same bleed-through protection (user report 2026-08-07:
-        # previously this loop only covered members that happened to win a
-        # burst, leaving every other member with zero gap protection).
+    def test_off_pre_roll_clamped_to_song_start(self):
+        result = _place_star_bursts(
+            groups=[_star_group()], hierarchy=_hierarchy([100]), vocal_words=None,
+        )
+        off = [p for p in result["Star 1"] if p.effect_name == "Off"]
+        assert len(off) == 1
+        assert off[0].start_ms == 0
+        assert off[0].end_ms == 100
+
+    def test_burst_at_time_zero_gets_no_off_pre_roll(self):
+        result = _place_star_bursts(
+            groups=[_star_group()], hierarchy=_hierarchy([0]), vocal_words=None,
+        )
+        assert not any(p.effect_name == "Off" for p in result["Star 1"])
+
+    def test_member_never_hit_gets_no_off_pre_roll(self):
+        # Only "Star 1" receives the single mark, so "Star 2" (never a burst
+        # target) shouldn't appear in the result at all -- there's no burst
+        # to protect a pop for.
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([33_000], duration_ms=200_000),
             vocal_words=None,
         )
-        assert "Star 2" in result
-        off = [p for p in result["Star 2"] if p.effect_name == "Off"]
-        assert len(off) == 1
-        assert off[0].start_ms == 0
-        assert off[0].end_ms == 200_000
-        assert not any(p.effect_name == "Pinwheel" for p in result["Star 2"])
+        assert "Star 2" not in result
 
-    def test_no_riff_marks_gets_no_off_backdrop_either(self):
+    def test_no_riff_marks_gets_no_off_pre_roll_either(self):
         result = _place_star_bursts(
             groups=[_star_group()], hierarchy=_hierarchy([]), vocal_words=None,
         )
