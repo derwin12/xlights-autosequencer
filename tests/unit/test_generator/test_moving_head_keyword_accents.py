@@ -307,6 +307,76 @@ class TestPlaceMovingHeadKeywordAccents:
         assert "MH1" in result and "MH2" in result  # spin
 
 
+class TestManualTriggers:
+    """manual_triggers: Extras screen's mm:ss entries, independent of any lyric word."""
+
+    def test_fires_with_no_words_or_keywords_at_all(self):
+        # A manual trigger must work even for a song with no usable word
+        # transcript -- it doesn't derive from vocal_words/keyword_motions.
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_keyword_accents(
+            layout, None, {}, 200_000,
+            manual_triggers=[{"start_ms": 46_675, "motion": "shake"}],
+        )
+        assert set(result) == {"MH GRP"}
+        punch = next(p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"])
+        assert punch.start_ms == frame_align(46_675)
+
+    def test_no_moving_head_group_returns_empty(self):
+        layout = parse_layout(FIXTURES / "simple_layout.xml")
+        result = place_moving_head_keyword_accents(
+            layout, None, {}, 200_000,
+            manual_triggers=[{"start_ms": 1_000, "motion": "shake"}],
+        )
+        assert result == {}
+
+    def test_invalid_motion_is_skipped(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_keyword_accents(
+            layout, None, {}, 200_000,
+            manual_triggers=[{"start_ms": 1_000, "motion": "wiggle"}],
+        )
+        assert result == {}
+
+    def test_missing_start_ms_is_skipped(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_keyword_accents(
+            layout, None, {}, 200_000,
+            manual_triggers=[{"motion": "shake"}],
+        )
+        assert result == {}
+
+    def test_merges_with_word_derived_triggers_in_time_order(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        words = [_word("shake", 10_000, 10_300)]
+        result = place_moving_head_keyword_accents(
+            layout, words, DEFAULT_KEYWORDS, 200_000,
+            manual_triggers=[{"start_ms": 60_000, "motion": "spin"}],
+        )
+        assert "MH GRP" in result  # word-derived shake
+        assert "MH1" in result and "MH2" in result  # manual spin
+
+    def test_manual_spin_places_per_head(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_keyword_accents(
+            layout, None, {}, 200_000,
+            manual_triggers=[{"start_ms": 20_000, "motion": "spin"}],
+        )
+        assert "MH1" in result and "MH2" in result
+
+    def test_two_manual_triggers_both_place(self):
+        layout = parse_layout(FIXTURES / "moving_head_layout.xml")
+        result = place_moving_head_keyword_accents(
+            layout, None, {}, 200_000,
+            manual_triggers=[
+                {"start_ms": 10_000, "motion": "shake"},
+                {"start_ms": 50_000, "motion": "bounce"},
+            ],
+        )
+        punches = [p for p in result["MH GRP"] if "Shutter: On" in p.parameters["E_TEXTCTRL_MH1_Settings"]]
+        assert len(punches) == 2
+
+
 class TestPlaceMovingHeadMovesRespectsKeywordAccents:
     """place_moving_head_moves must skip a section's move entirely when a
     keyword accent already occupies part of that section's natural move

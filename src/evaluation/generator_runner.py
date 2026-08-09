@@ -40,6 +40,8 @@ def run(
     image_occurrence_overrides: Optional[list[dict]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
     shadow_text_occurrences: Optional[list[dict]] = None,
+    image_manual_occurrences: Optional[list[dict]] = None,
+    moving_head_manual_triggers: Optional[list[dict]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -94,6 +96,15 @@ def run(
                     Pictures screen — fires a two-layer Shadow Text effect
                     for that one occurrence
                     (GenerationConfig.shadow_text_occurrences).
+        image_manual_occurrences: Optional manual Pictures bursts
+                    ({"start_ms", "image_id"}) pinned to an explicit
+                    timestamp from the Extras screen, independent of any
+                    transcribed lyric word
+                    (GenerationConfig.image_manual_occurrences).
+        moving_head_manual_triggers: Optional manual Moving Head accents
+                    ({"start_ms", "motion"}) pinned to an explicit timestamp
+                    from the Extras screen, independent of any lyric keyword
+                    (GenerationConfig.moving_head_manual_triggers).
         include_extra_timing: When False, the Chords and per-stem Onsets (...)
                     timing tracks are omitted from the .xsq (display-only
                     tracks; effect placement is unaffected).
@@ -159,6 +170,8 @@ def run(
                               image_occurrence_overrides=image_occurrence_overrides,
                               moving_head_keyword_motions=moving_head_keyword_motions,
                               shadow_text_occurrences=shadow_text_occurrences,
+                              image_manual_occurrences=image_manual_occurrences,
+                              moving_head_manual_triggers=moving_head_manual_triggers,
                               include_extra_timing=include_extra_timing,
                               title_override=title_override, artist_override=artist_override,
                               vocal_diarization=vocal_diarization,
@@ -186,6 +199,8 @@ def _run_pipeline(
     image_occurrence_overrides: Optional[list[dict]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
     shadow_text_occurrences: Optional[list[dict]] = None,
+    image_manual_occurrences: Optional[list[dict]] = None,
+    moving_head_manual_triggers: Optional[list[dict]] = None,
     include_extra_timing: bool = True,
     title_override: Optional[str] = None,
     artist_override: Optional[str] = None,
@@ -251,6 +266,8 @@ def _run_pipeline(
                 else {"shake": "shake", "spin": "spin", "bounce": "bounce"}
             ),
             shadow_text_occurrences=shadow_text_occurrences,
+            image_manual_occurrences=image_manual_occurrences,
+            moving_head_manual_triggers=moving_head_manual_triggers,
             title_override=title_override,
             artist_override=artist_override,
         )

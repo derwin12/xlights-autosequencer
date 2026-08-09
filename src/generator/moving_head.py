@@ -1515,6 +1515,7 @@ _KEYWORD_ACCENT_DURATION_MS: dict[str, int] = {
     "bounce": 900,
     "flash": 500,  # user request 2026-08-04, was 900
 }
+_VALID_KEYWORD_MOTIONS = {"shake", "bounce", "spin", "flash"}
 # Small buffer left between two consecutive same-keyword pulses so they
 # read as distinct quick hits rather than one continuous blur.
 _KEYWORD_PULSE_GAP_MS = 20
@@ -1629,6 +1630,7 @@ def place_moving_head_keyword_accents(
     keyword_motions: dict[str, str],
     duration_ms: int,
     existing_placements: Optional[dict[str, list[EffectPlacement]]] = None,
+    manual_triggers: Optional[list[dict]] = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place a Moving Head accent every time a user-curated keyword is sung
     (see the module comment above for the design/validation caveats).
@@ -1640,14 +1642,32 @@ def place_moving_head_keyword_accents(
     lyrics, each assigned one of the existing motions, rather than only
     ever recognizing the three literal built-in words).
 
-    Returns ``{}`` when the layout has no moving-head group, there are no
-    words, or no keyword ever matches."""
-    mh_groups = find_moving_head_groups(layout)
-    if not mh_groups or not vocal_words or not keyword_motions:
-        return {}
+    ``manual_triggers`` (review UI's Extras screen, 2026-08-09), each
+    ``{"start_ms": int, "motion": str}``, pins an accent to an explicit
+    timestamp independent of any lyric word -- folded into the same sorted
+    trigger stream as the word-derived ones (each given a unique synthetic
+    "keyword" internally) so they share identical overlap/pulse-gap
+    scheduling with zero duplicated logic.
 
-    triggers = _keyword_triggers(vocal_words, keyword_motions)
-    if not triggers:
+    Returns ``{}`` when the layout has no moving-head group, or there are no
+    triggers at all (no words/no keyword ever matches, and no manual
+    triggers)."""
+    mh_groups = find_moving_head_groups(layout)
+    effective_keyword_motions = dict(keyword_motions or {})
+    triggers = (
+        _keyword_triggers(vocal_words, keyword_motions)
+        if vocal_words and keyword_motions else []
+    )
+    for i, entry in enumerate(manual_triggers or []):
+        motion = entry.get("motion")
+        start_ms = entry.get("start_ms")
+        if motion not in _VALID_KEYWORD_MOTIONS or start_ms is None:
+            continue
+        pseudo_keyword = f"__manual_{i}"
+        effective_keyword_motions[pseudo_keyword] = motion
+        triggers.append((pseudo_keyword, int(start_ms)))
+    triggers.sort(key=lambda h: h[1])
+    if not mh_groups or not triggers:
         return {}
 
     existing_placements = existing_placements or {}
@@ -1658,9 +1678,11 @@ def place_moving_head_keyword_accents(
         relevant_keys = (mh_group.name, *mh_group.head_names)
 
         for trigger_index, (keyword, mark_ms) in enumerate(triggers):
-            motion = keyword_motions[keyword]
+            motion = effective_keyword_motions[keyword]
             start_ms = mark_ms
-            end_ms = _keyword_trigger_end_ms(triggers, trigger_index, duration_ms, keyword_motions)
+            end_ms = _keyword_trigger_end_ms(
+                triggers, trigger_index, duration_ms, effective_keyword_motions,
+            )
             if end_ms <= start_ms:
                 continue
 

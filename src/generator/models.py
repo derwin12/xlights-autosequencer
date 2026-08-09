@@ -459,6 +459,21 @@ class GenerationConfig:
     # it -- on the same Matrix/Mega Tree targets picture_effects uses.
     # Case-insensitive on "word". See effect_placer._place_shadow_text_effects.
     shadow_text_occurrences: Optional[list[dict]] = None
+    # Manual Pictures bursts pinned to an explicit timestamp (review UI's
+    # Extras screen, 2026-08-09), each {"start_ms": int, "image_id": str},
+    # independent of any transcribed lyric word -- for a moment the word
+    # transcript doesn't capture (missed/mistimed word, instrumental
+    # passage). Merged into word_image_matches in plan.py as synthetic
+    # matches; consumed by the same effect_placer._place_picture_effects
+    # pipeline as ordinary lyric-matched bursts.
+    image_manual_occurrences: Optional[list[dict]] = None
+    # Manual Moving Head accents pinned to an explicit timestamp (review
+    # UI's Extras screen, 2026-08-09), each {"start_ms": int, "motion": str},
+    # independent of any lyric keyword. Folded into the same trigger stream
+    # as moving_head_keyword_motions in
+    # moving_head.place_moving_head_keyword_accents, sharing its overlap
+    # scheduling. motion must be one of "shake"/"bounce"/"spin"/"flash".
+    moving_head_manual_triggers: Optional[list[dict]] = None
     # Caller-supplied title/artist (e.g. the review library's corrected
     # values) that win over read_song_metadata()'s raw ID3/filename-stem
     # result — written into the .xsq's <song>/<artist> Meta Data fields.

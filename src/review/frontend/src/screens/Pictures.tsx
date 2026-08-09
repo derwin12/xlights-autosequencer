@@ -17,6 +17,18 @@ interface ImageTopic {
   end_ms: number;
 }
 
+// A Pictures burst or Moving Head accent pinned to an explicit mm:ss
+// timestamp, independent of any transcribed lyric word.
+interface ManualOccurrence {
+  start_ms: number;
+  image_id: string;
+}
+
+interface ManualTrigger {
+  start_ms: number;
+  motion: string;
+}
+
 interface Song {
   song_id: string;
   title: string;
@@ -77,6 +89,18 @@ function formatTimestamp(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+// Parses "m:ss" / "mm:ss" (optional fractional seconds, e.g. "1:23.5") into
+// milliseconds. Returns null for anything that doesn't match -- callers
+// show an inline error rather than silently accepting garbage input.
+function parseTimestamp(value: string): number | null {
+  const match = value.trim().match(/^(\d+):([0-5]?\d)(?:\.(\d{1,3}))?$/);
+  if (!match) return null;
+  const minutes = parseInt(match[1], 10);
+  const seconds = parseInt(match[2], 10);
+  const millis = match[3] ? parseInt(match[3].padEnd(3, '0'), 10) : 0;
+  return minutes * 60_000 + seconds * 1_000 + millis;
+}
+
 function buildImagePrompt(word: string): string {
   return `Subject: ${word.toLowerCase()}.
 Style: Minimalist 2D flat 8-bit pixel art illustration. Non-anthropomorphic (no faces or eyes), clean edges, simple cel-shading, limited vibrant color palette, no gradients. Perfectly horizontal and vertical pixel lines.
@@ -118,6 +142,14 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
   // image_id -> filename, so an override (which only carries an id) can be
   // shown to the user without a round-trip per row.
   const [imageLibrary, setImageLibrary] = useState<Record<string, string>>({});
+  // Manual timestamp entries (Extras screen, 2026-08-09) -- pinned by
+  // mm:ss, independent of any transcribed lyric word.
+  const [manualOccurrences, setManualOccurrences] = useState<ManualOccurrence[]>([]);
+  const [manualTriggers, setManualTriggers] = useState<ManualTrigger[]>([]);
+  const [newManualPictureTime, setNewManualPictureTime] = useState('');
+  const [newManualTriggerTime, setNewManualTriggerTime] = useState('');
+  const [newManualMotion, setNewManualMotion] = useState<MotionType>('shake');
+  const [manualUploading, setManualUploading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/v1/songs/${song.song_id}/ignored-images`)
@@ -151,6 +183,20 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetch(`/api/v1/songs/${song.song_id}/image-manual-occurrences`)
+      .then((r) => (r.ok ? r.json() : { occurrences: [] }))
+      .then((body) => setManualOccurrences(body.occurrences ?? []))
+      .catch(() => {});
+  }, [song.song_id]);
+
+  useEffect(() => {
+    fetch(`/api/v1/songs/${song.song_id}/moving-head-timestamps`)
+      .then((r) => (r.ok ? r.json() : { triggers: [] }))
+      .then((body) => setManualTriggers(body.triggers ?? []))
+      .catch(() => {});
+  }, [song.song_id]);
 
   // The row's normal matched_file, unless either (a) this specific
   // occurrence has an override pinning it to a different library image, or
@@ -400,6 +446,108 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
     }
   }
 
+  // Uploads a new image and pins it to an explicit mm:ss timestamp,
+  // independent of any transcribed lyric word (Extras screen, 2026-08-09).
+  // Mirrors handleUpload's upload-then-PUT sequencing, just against the
+  // manual-occurrences endpoint (keyed by start_ms, not word+start_ms) and
+  // without an ignore to lift (a manual entry was never a lyric match to
+  // begin with).
+  async function handleManualUpload(startMs: number, file: File) {
+    setManualUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      form.append('tag', 'manual');
+      const res = await fetch('/api/v1/images', { method: 'POST', body: form });
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Upload failed');
+        return;
+      }
+      const imageId = body?.image?.id;
+      const filename = body?.image?.filename;
+      if (!imageId) return;
+      const putRes = await fetch(`/api/v1/songs/${song.song_id}/image-manual-occurrences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start_ms: startMs, image_id: imageId }),
+      }).catch(() => null);
+      if (putRes?.ok) {
+        setManualOccurrences((prev) => [...prev.filter((o) => o.start_ms !== startMs), { start_ms: startMs, image_id: imageId }]);
+        if (filename) setImageLibrary((prev) => ({ ...prev, [imageId]: filename }));
+        setNewManualPictureTime('');
+      } else {
+        setError('Image uploaded, but pinning it to this timestamp failed — try again.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setManualUploading(false);
+    }
+  }
+
+  async function removeManualOccurrence(startMs: number) {
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/songs/${song.song_id}/image-manual-occurrences/${startMs}`,
+        { method: 'DELETE' },
+      );
+      if (!res.ok) {
+        const body = await res.json();
+        setError(body?.error?.message ?? 'Failed to remove');
+        return;
+      }
+      setManualOccurrences((prev) => prev.filter((o) => o.start_ms !== startMs));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
+
+  async function addManualTrigger(timeStr: string, motion: MotionType) {
+    const startMs = parseTimestamp(timeStr);
+    if (startMs === null) {
+      setError('Enter a time as m:ss, e.g. 1:23');
+      return;
+    }
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/songs/${song.song_id}/moving-head-timestamps`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start_ms: startMs, motion }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Failed to add');
+        return;
+      }
+      setManualTriggers(body.triggers ?? []);
+      setNewManualTriggerTime('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
+
+  async function removeManualTrigger(startMs: number) {
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/songs/${song.song_id}/moving-head-timestamps/${startMs}`,
+        { method: 'DELETE' },
+      );
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Failed to remove');
+        return;
+      }
+      setManualTriggers(body.triggers ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  }
+
   const remainingTopics = imageTopics.filter((t) => !uploaded.has(t.word));
   const activeSuggestions = imageSuggestions.filter(
     (s) => !ignored.has(occKey(s.word, s.start_ms)),
@@ -637,6 +785,64 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
       )}
 
       <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>Pictures at a specific time</h3>
+        <p className={styles.sectionHint}>
+          Pin an image to an exact moment (m:ss) instead of a lyric word — useful for an
+          instrumental passage or a word the transcript missed.
+        </p>
+        {manualOccurrences.length === 0 ? (
+          <p className={styles.empty}>No manual timestamps for this song.</p>
+        ) : (
+          <ul className={styles.topicList}>
+            {manualOccurrences.map((o) => (
+              <li key={`manual-pic-${o.start_ms}`} className={styles.topicItem}>
+                <span className={styles.topicTime}>{formatTimestamp(o.start_ms)}</span>
+                <span className={styles.matchedFile}>{imageLibrary[o.image_id] ?? o.image_id}</span>
+                <button
+                  type="button"
+                  aria-label="Remove manual picture"
+                  className={styles.createImageBtn}
+                  onClick={() => removeManualOccurrence(o.start_ms)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className={styles.topicItem} style={{ marginTop: 12 }}>
+          <input
+            type="text"
+            placeholder="m:ss"
+            aria-label="Time for manual picture"
+            value={newManualPictureTime}
+            onChange={(e) => setNewManualPictureTime(e.target.value)}
+            className={styles.createImageBtn}
+            style={{ flex: 1 }}
+          />
+          <label className={styles.uploadLabel}>
+            {manualUploading ? 'Uploading…' : 'Choose image'}
+            <input
+              type="file"
+              accept=".gif,.png,.bmp,.jpg,.jpeg"
+              className={styles.uploadInput}
+              disabled={manualUploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                const startMs = parseTimestamp(newManualPictureTime);
+                if (startMs === null) {
+                  setError('Enter a time as m:ss, e.g. 1:23');
+                } else if (file) {
+                  handleManualUpload(startMs, file);
+                }
+                e.target.value = '';
+              }}
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Moving Head Triggers</h3>
         <p className={styles.sectionHint}>
           These lyric words trigger a Moving Head accent when sung. Uncheck a built-in to disable it
@@ -721,6 +927,57 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
             type="button"
             className={styles.createImageBtn}
             onClick={() => addKeyword(newWord, newMotion)}
+          >
+            Add
+          </button>
+        </div>
+
+        <p className={styles.sectionHint} style={{ marginTop: 16 }}>
+          Or trigger an accent at a specific time (m:ss), independent of any lyric word:
+        </p>
+        {manualTriggers.length > 0 && (
+          <ul className={styles.topicList}>
+            {manualTriggers.map((t) => (
+              <li key={`manual-mh-${t.start_ms}`} className={styles.topicItem}>
+                <span className={styles.topicTime}>{formatTimestamp(t.start_ms)}</span>
+                <span className={styles.matchedFile}>{t.motion}</span>
+                <button
+                  type="button"
+                  aria-label="Remove manual trigger"
+                  className={styles.createImageBtn}
+                  onClick={() => removeManualTrigger(t.start_ms)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className={styles.topicItem} style={{ marginTop: 12 }}>
+          <input
+            type="text"
+            placeholder="m:ss"
+            aria-label="Time for manual Moving Head trigger"
+            value={newManualTriggerTime}
+            onChange={(e) => setNewManualTriggerTime(e.target.value)}
+            className={styles.createImageBtn}
+            style={{ flex: 1 }}
+          />
+          <select
+            aria-label="Motion for manual trigger"
+            className={styles.createImageBtn}
+            value={newManualMotion}
+            onChange={(e) => setNewManualMotion(e.target.value as MotionType)}
+          >
+            {MOTIONS.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            aria-label="Add manual trigger"
+            className={styles.createImageBtn}
+            onClick={() => addManualTrigger(newManualTriggerTime, newManualMotion)}
           >
             Add
           </button>

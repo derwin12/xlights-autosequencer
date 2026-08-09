@@ -33,7 +33,7 @@ from src.generator.effect_placer import (
     restrain_palette,
 )
 from src.generator.corpus_recipes import CORPUS_RECIPES, section_qualifies
-from src.generator.image_catalog import suggest_images_for_words
+from src.generator.image_catalog import load_image_library, suggest_images_for_words
 from src.generator.plan_validator import validate_plan
 from src.generator.energy import derive_section_energies
 from src.generator.moving_head import (
@@ -100,6 +100,35 @@ def read_song_metadata(audio_path: Path, hierarchy: Optional[HierarchyResult] = 
         duration_ms=duration_ms,
         estimated_bpm=estimated_bpm,
     )
+
+
+def _manual_picture_matches(manual_occurrences: list[dict]) -> list[dict]:
+    """Turn ``config.image_manual_occurrences`` into synthetic word-match dicts.
+
+    Resolves each entry's ``image_id`` to its library ``stored_path`` so the
+    result slots directly into ``word_image_matches`` alongside ordinary
+    lyric-matched entries -- ``effect_placer._place_picture_effects`` treats
+    them identically (zero word_duration floors to its usual minimum burst
+    length). Entries whose ``image_id`` no longer exists in the library are
+    skipped rather than raising, matching ``suggest_images_for_words``'
+    treatment of a stale override.
+    """
+    if not manual_occurrences:
+        return []
+    library_by_id = {e["id"]: e for e in load_image_library() if e.get("id")}
+    matches: list[dict] = []
+    for entry in manual_occurrences:
+        image = library_by_id.get(entry.get("image_id"))
+        start_ms = entry.get("start_ms")
+        if image is None or start_ms is None:
+            continue
+        matches.append({
+            "word": "",
+            "start_ms": start_ms,
+            "end_ms": start_ms,
+            "stored_path": image.get("stored_path"),
+        })
+    return matches
 
 
 def _first_tag(audio, key: str, default: str) -> str:
@@ -392,9 +421,12 @@ def build_plan(
     # accent; every other pass below treats these placements as already-
     # occupied via existing_placements/existing_mh.
     keyword_head_effects: dict[str, list] = {}
-    if config.moving_head_effects and layout is not None and config.moving_head_keyword_motions:
+    if config.moving_head_effects and layout is not None and (
+        config.moving_head_keyword_motions or config.moving_head_manual_triggers
+    ):
         keyword_head_effects = place_moving_head_keyword_accents(
             layout, config.vocal_words, config.moving_head_keyword_motions, hierarchy.duration_ms,
+            manual_triggers=config.moving_head_manual_triggers,
         )
 
     # 5d0. DMX moving-head fixture groups (config.moving_head_effects) --
@@ -552,11 +584,19 @@ def build_plan(
                     existing_layers[gname] = p.layer
 
     picture_effects: dict[str, list] = {}
-    if config.picture_effects and config.vocal_words:
-        word_image_matches = suggest_images_for_words(
-            config.vocal_words,
-            ignored_occurrences=config.ignored_image_occurrences,
-            overrides=config.image_occurrence_overrides,
+    if config.picture_effects:
+        word_image_matches = []
+        if config.vocal_words:
+            word_image_matches = suggest_images_for_words(
+                config.vocal_words,
+                ignored_occurrences=config.ignored_image_occurrences,
+                overrides=config.image_occurrence_overrides,
+            )
+        # Manual timestamp entries (review UI's Extras screen) work even for
+        # a song with no usable word transcript at all -- they don't derive
+        # from vocal_words, so they must not be gated behind it.
+        word_image_matches = word_image_matches + _manual_picture_matches(
+            config.image_manual_occurrences or []
         )
         if word_image_matches:
             picture_effects = _place_picture_effects(

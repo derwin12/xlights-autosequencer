@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Pictures } from '../../src/screens/Pictures';
 
 const mockFetch = vi.fn();
@@ -146,5 +146,128 @@ describe('Pictures screen', () => {
       expect(screen.getByText('dream2.png')).toBeTruthy();
       expect(screen.queryByText('override.png')).toBeNull();
     });
+  });
+
+  it('adds a manual Moving Head trigger at a typed mm:ss timestamp', async () => {
+    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === `/api/v1/songs/${song.song_id}/moving-head-timestamps` && opts?.method === 'PUT') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ triggers: [{ start_ms: 46675, motion: 'shake' }] }),
+        });
+      }
+      return defaultFetchImpl(url);
+    });
+
+    render(
+      <Pictures song={song} imageSuggestions={[]} imageTopics={[]} onContinue={() => {}} />
+    );
+    await waitFor(() => expect(screen.getByLabelText(/time for manual moving head trigger/i)).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText(/time for manual moving head trigger/i), {
+      target: { value: '0:46.675' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /add manual trigger/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/v1/songs/${song.song_id}/moving-head-timestamps`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ start_ms: 46675, motion: 'shake' }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      const row = screen.getByText('0:46').closest('li');
+      expect(row).toBeTruthy();
+      expect(within(row as HTMLElement).getByText('shake')).toBeTruthy();
+    });
+  });
+
+  it('rejects an unparseable manual trigger timestamp without calling the API', async () => {
+    render(
+      <Pictures song={song} imageSuggestions={[]} imageTopics={[]} onContinue={() => {}} />
+    );
+    await waitFor(() => expect(screen.getByLabelText(/time for manual moving head trigger/i)).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText(/time for manual moving head trigger/i), {
+      target: { value: 'not-a-time' },
+    });
+    mockFetch.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: /add manual trigger/i }));
+
+    await waitFor(() => expect(screen.getByText(/enter a time as m:ss/i)).toBeTruthy());
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/moving-head-timestamps'),
+      expect.anything(),
+    );
+  });
+
+  it('removes a manual Moving Head trigger', async () => {
+    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === `/api/v1/songs/${song.song_id}/moving-head-timestamps`) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ triggers: [{ start_ms: 46675, motion: 'shake' }] }),
+        });
+      }
+      if (url === `/api/v1/songs/${song.song_id}/moving-head-timestamps/46675` && opts?.method === 'DELETE') {
+        return Promise.resolve({ ok: true, json: async () => ({ triggers: [] }) });
+      }
+      return defaultFetchImpl(url);
+    });
+
+    render(
+      <Pictures song={song} imageSuggestions={[]} imageTopics={[]} onContinue={() => {}} />
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /remove manual trigger/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /remove manual trigger/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/v1/songs/${song.song_id}/moving-head-timestamps/46675`,
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+  });
+
+  it('uploads and pins a manual Pictures occurrence at a typed mm:ss timestamp', async () => {
+    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/v1/images' && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ image: { id: 'manual-img-1', filename: 'sunset.png' } }),
+        });
+      }
+      if (url === `/api/v1/songs/${song.song_id}/image-manual-occurrences` && opts?.method === 'PUT') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ occurrences: [{ start_ms: 46675, image_id: 'manual-img-1' }] }),
+        });
+      }
+      return defaultFetchImpl(url);
+    });
+
+    render(
+      <Pictures song={song} imageSuggestions={[]} imageTopics={[]} onContinue={() => {}} />
+    );
+    await waitFor(() => expect(screen.getByLabelText(/time for manual picture/i)).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText(/time for manual picture/i), { target: { value: '0:46.675' } });
+    const file = new File(['bytes'], 'sunset.png', { type: 'image/png' });
+    const fileInput = screen.getByLabelText(/choose image/i) as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/v1/songs/${song.song_id}/image-manual-occurrences`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ start_ms: 46675, image_id: 'manual-img-1' }),
+        }),
+      );
+    });
+    await waitFor(() => expect(screen.getByText('sunset.png')).toBeTruthy());
   });
 });

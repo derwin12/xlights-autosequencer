@@ -362,3 +362,91 @@ class TestImageOverrides:
         session = load_session(self.SONG)
         assert session["sections"] == [{"label": "verse"}]
         assert session["image_occurrence_overrides"] == [{"word": "sing", "start_ms": 2000, "image_id": image_id}]
+
+
+class TestManualPictureOccurrences:
+    """Pictures at an explicit mm:ss timestamp, independent of any lyric word."""
+
+    SONG = "cafe0123deadbeef"
+
+    def _upload(self, client, tag: str, filename: str = "a.gif") -> str:
+        resp = client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(b"bytes"), filename), "tag": tag},
+            content_type="multipart/form-data",
+        )
+        return resp.get_json()["image"]["id"]
+
+    def test_empty_by_default(self, client):
+        resp = client.get(f"/api/v1/songs/{self.SONG}/image-manual-occurrences")
+        assert resp.status_code == 200
+        assert resp.get_json()["occurrences"] == []
+
+    def test_set_adds_occurrence(self, client):
+        image_id = self._upload(client, "manual")
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"start_ms": 46675, "image_id": image_id},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["occurrences"] == [{"start_ms": 46675, "image_id": image_id}]
+        listed = client.get(f"/api/v1/songs/{self.SONG}/image-manual-occurrences").get_json()
+        assert listed["occurrences"] == [{"start_ms": 46675, "image_id": image_id}]
+
+    def test_set_replaces_existing_entry_at_same_timestamp(self, client):
+        first_id = self._upload(client, "manual", "first.gif")
+        second_id = self._upload(client, "manual", "second.gif")
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"start_ms": 5000, "image_id": first_id},
+        )
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"start_ms": 5000, "image_id": second_id},
+        )
+        assert resp.get_json()["occurrences"] == [{"start_ms": 5000, "image_id": second_id}]
+
+    def test_missing_start_ms_returns_400(self, client):
+        image_id = self._upload(client, "manual")
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"image_id": image_id},
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_start_ms"
+
+    def test_missing_image_id_returns_400(self, client):
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"start_ms": 1000},
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_image_id"
+
+    def test_unknown_image_id_returns_404(self, client):
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"start_ms": 1000, "image_id": "nope"},
+        )
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "image_not_found"
+
+    def test_clear_removes_only_that_timestamp(self, client):
+        image_id = self._upload(client, "manual")
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"start_ms": 1000, "image_id": image_id},
+        )
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-manual-occurrences",
+            json={"start_ms": 2000, "image_id": image_id},
+        )
+        resp = client.delete(f"/api/v1/songs/{self.SONG}/image-manual-occurrences/1000")
+        assert resp.status_code == 200
+        listed = client.get(f"/api/v1/songs/{self.SONG}/image-manual-occurrences").get_json()
+        assert listed["occurrences"] == [{"start_ms": 2000, "image_id": image_id}]
+
+    def test_clear_unknown_timestamp_returns_404(self, client):
+        resp = client.delete(f"/api/v1/songs/{self.SONG}/image-manual-occurrences/9999")
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "not_found"

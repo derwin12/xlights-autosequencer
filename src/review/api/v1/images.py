@@ -21,6 +21,15 @@ occurrences. Stored as ``image_occurrence_overrides`` (each ``{"word",
 export time (``GenerationConfig.image_occurrence_overrides``) — same
 per-occurrence, per-song-override pattern as ``ignored_image_occurrences``
 above, just carrying a chosen value instead of a boolean.
+
+And per-song manual occurrences (``/songs/<song_id>/image-manual-occurrences``,
+2026-08-09): pins a Pictures burst to an explicit ``mm:ss`` timestamp
+independent of any transcribed lyric word (Extras screen). Unlike an
+override, there's no existing lyric-matched occurrence to pin -- this
+creates a wholly new one, keyed purely on ``start_ms``. Stored as
+``image_manual_occurrences`` (each ``{"start_ms", "image_id"}``) and merged
+into ``word_image_matches`` at export time (see ``plan.py``'s
+``_manual_picture_matches``, ``GenerationConfig.image_manual_occurrences``).
 """
 from __future__ import annotations
 
@@ -230,3 +239,67 @@ def clear_image_override(song_id: str, word: str, start_ms: int):
     overrides = [o for o in overrides if not (o["word"] == token and o["start_ms"] == start_ms)]
     _save_image_overrides(song_id, overrides)
     return jsonify({"cleared": True, "overrides": overrides}), 200
+
+
+def _load_manual_occurrences(song_id: str) -> list[dict]:
+    from src.review.storage.assignments import load_session
+
+    session = load_session(song_id) or {}
+    return [
+        {"start_ms": o.get("start_ms"), "image_id": o.get("image_id")}
+        for o in session.get("image_manual_occurrences", [])
+    ]
+
+
+def _save_manual_occurrences(song_id: str, occurrences: list[dict]) -> None:
+    from src.review.storage.assignments import load_session, save_full_session
+
+    session = load_session(song_id) or {}
+    session["image_manual_occurrences"] = occurrences
+    save_full_session(song_id, session)
+
+
+@api_v1.route("/songs/<song_id>/image-manual-occurrences", methods=["GET"])
+def list_manual_occurrences(song_id: str):
+    return jsonify({"occurrences": _load_manual_occurrences(song_id)}), 200
+
+
+@api_v1.route("/songs/<song_id>/image-manual-occurrences", methods=["PUT"])
+def set_manual_occurrence(song_id: str):
+    """Pin a Pictures burst to an explicit timestamp (Extras screen's mm:ss
+    entry), independent of any transcribed lyric word -- for a moment the
+    word transcript doesn't capture. Unlike ``image-overrides`` (which pins
+    an EXISTING lyric-matched occurrence to a different image), this creates
+    a wholly new occurrence keyed purely on ``start_ms`` since there's no
+    word to key on. Idempotent: PUT-ing the same ``start_ms`` again replaces
+    the prior entry rather than duplicating it.
+    """
+    body = request.get_json(silent=True) or {}
+    start_ms = body.get("start_ms")
+    image_id = str(body.get("image_id") or "").strip()
+    if start_ms is None:
+        return jsonify({"error": {"code": "missing_start_ms", "message": "start_ms is required"}}), 400
+    if not image_id:
+        return jsonify({"error": {"code": "missing_image_id", "message": "image_id is required"}}), 400
+
+    library_ids = {e.get("id") for e in load_image_library()}
+    if image_id not in library_ids:
+        return jsonify({"error": {"code": "image_not_found",
+                                   "message": f"No library image with id '{image_id}'"}}), 404
+
+    occurrences = [o for o in _load_manual_occurrences(song_id) if o["start_ms"] != start_ms]
+    occurrences.append({"start_ms": start_ms, "image_id": image_id})
+    occurrences.sort(key=lambda o: o["start_ms"])
+    _save_manual_occurrences(song_id, occurrences)
+    return jsonify({"set": True, "occurrences": occurrences}), 200
+
+
+@api_v1.route("/songs/<song_id>/image-manual-occurrences/<int:start_ms>", methods=["DELETE"])
+def clear_manual_occurrence(song_id: str, start_ms: int):
+    occurrences = _load_manual_occurrences(song_id)
+    if not any(o["start_ms"] == start_ms for o in occurrences):
+        return jsonify({"error": {"code": "not_found",
+                                   "message": f"No manual occurrence at {start_ms}ms"}}), 404
+    occurrences = [o for o in occurrences if o["start_ms"] != start_ms]
+    _save_manual_occurrences(song_id, occurrences)
+    return jsonify({"cleared": True, "occurrences": occurrences}), 200

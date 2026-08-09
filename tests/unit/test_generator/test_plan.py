@@ -9,7 +9,7 @@ import pytest
 from src.analyzer.result import HierarchyResult, TimingMark, TimingTrack, ValueCurve
 from src.effects.library import load_effect_library
 from src.generator.models import GenerationConfig, SequencePlan
-from src.generator.plan import build_plan, read_song_metadata
+from src.generator.plan import _manual_picture_matches, build_plan, read_song_metadata
 from src.generator.xsq_writer import write_xsq
 from src.grouper.grouper import PowerGroup
 from src.grouper.layout import Prop
@@ -94,6 +94,50 @@ def _make_groups() -> list[PowerGroup]:
         PowerGroup(name="01_BASE_All", tier=1, members=["ArchLeft", "MatrixCenter"]),
         PowerGroup(name="08_HERO_Matrix", tier=8, members=["MatrixCenter"]),
     ]
+
+
+class TestManualPictureMatches:
+    """_manual_picture_matches: config.image_manual_occurrences -> synthetic word_image_matches entries."""
+
+    def test_empty_input_returns_empty(self):
+        assert _manual_picture_matches([]) == []
+
+    def test_resolves_image_id_to_stored_path(self, tmp_path, monkeypatch):
+        from src.generator.image_catalog import save_image_to_library
+
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        entry = save_image_to_library(tag="manual", filename="a.png", data=b"bytes", uploaded_at="t1")
+
+        matches = _manual_picture_matches([{"start_ms": 46675, "image_id": entry["id"]}])
+        assert len(matches) == 1
+        assert matches[0]["start_ms"] == 46675
+        assert matches[0]["end_ms"] == 46675
+        assert matches[0]["stored_path"] == entry["stored_path"]
+        assert matches[0]["word"] == ""
+
+    def test_unknown_image_id_is_skipped(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        assert _manual_picture_matches([{"start_ms": 1000, "image_id": "nope"}]) == []
+
+    def test_missing_start_ms_is_skipped(self, tmp_path, monkeypatch):
+        from src.generator.image_catalog import save_image_to_library
+
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        entry = save_image_to_library(tag="manual", filename="a.png", data=b"bytes", uploaded_at="t1")
+        assert _manual_picture_matches([{"image_id": entry["id"]}]) == []
+
+    def test_multiple_entries_all_resolved(self, tmp_path, monkeypatch):
+        from src.generator.image_catalog import save_image_to_library
+
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        first = save_image_to_library(tag="manual", filename="a.png", data=b"1", uploaded_at="t1")
+        second = save_image_to_library(tag="manual", filename="b.png", data=b"2", uploaded_at="t2")
+
+        matches = _manual_picture_matches([
+            {"start_ms": 1000, "image_id": first["id"]},
+            {"start_ms": 2000, "image_id": second["id"]},
+        ])
+        assert {m["start_ms"] for m in matches} == {1000, 2000}
 
 
 @pytest.mark.xfail(reason="US2: builtin_themes.json still uses old EffectLayer format; passes after US2 migration", strict=False)
