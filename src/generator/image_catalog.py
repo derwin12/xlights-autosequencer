@@ -196,9 +196,17 @@ def suggest_images_for_words(
         raw = str(word.get("label") or word.get("word") or "")
         match = _WORD_RE.fullmatch(raw.lower())
         token = match.group(0) if match else ""
-        if len(token) < _MIN_WORD_LEN or (token, word.get("start_ms")) in ignored_pairs:
-            continue
 
+        # Checked BEFORE the ignore-skip below (and before _MIN_WORD_LEN) --
+        # an explicit per-occurrence override is a stronger, more specific
+        # signal of user intent than a broader ignore, and the two can
+        # legitimately coexist in stored data (e.g. a client-side race
+        # between the "un-ignore" and "set override" requests fired when
+        # choosing a new image for a previously-unmapped occurrence) --
+        # confirmed 2026-08-08: an occurrence stuck in both lists produced
+        # NO suggestion at all under the old ignore-first ordering, silently
+        # dropping it from generation entirely despite the user having just
+        # picked an image for it.
         override_entry = entry_by_id.get(override_by_pair.get((token, word.get("start_ms"))))
         if override_entry is not None:
             suggestions.append({
@@ -211,6 +219,9 @@ def suggest_images_for_words(
                 "image_id": override_entry.get("id"),
                 "score": 1.0,
             })
+            continue
+
+        if len(token) < _MIN_WORD_LEN or (token, word.get("start_ms")) in ignored_pairs:
             continue
 
         best_entry: dict | None = None

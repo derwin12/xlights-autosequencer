@@ -800,6 +800,23 @@ class TestSuggestImagesForWords:
         assert len(suggest_images_for_words(words, library, overrides=None)) == 1
         assert len(suggest_images_for_words(words, library, overrides=[])) == 1
 
+    def test_override_wins_even_when_occurrence_is_also_ignored(self):
+        # An occurrence can end up in both lists at once (e.g. a client-side
+        # race between the "un-ignore" and "set override" requests fired
+        # when choosing a new image for a previously-unmapped occurrence,
+        # 2026-08-08 user report). The explicit override must still win --
+        # under the old ignore-first ordering this produced NO suggestion
+        # at all, silently dropping the occurrence from generation.
+        words = [{"label": "sing", "start_ms": 5000, "end_ms": 5400}]
+        library = [{"id": "chosen-id", "tag": "sing", "filename": "sing2.png", "stored_path": "/lib/sing2.png"}]
+        result = suggest_images_for_words(
+            words, library,
+            ignored_occurrences=[{"word": "sing", "start_ms": 5000}],
+            overrides=[{"word": "sing", "start_ms": 5000, "image_id": "chosen-id"}],
+        )
+        assert len(result) == 1
+        assert result[0]["matched_file"] == "sing2.png"
+
 
 class TestFindUnmatchedTopics:
     def test_no_words_returns_empty(self):

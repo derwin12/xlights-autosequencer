@@ -324,7 +324,17 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
       setUploaded((prev) => new Set(prev).add(topic.word));
       // Re-uploading an image for an unmapped occurrence means the user
       // wants it matched again — lift the per-occurrence ignore automatically.
-      if (ignored.has(occKey(topic.word, topic.start_ms))) restoreMatch(topic.word, topic.start_ms);
+      // Awaited (not fire-and-forget) so it fully completes before the
+      // override PUT below starts: both routes independently do a
+      // read-session -> modify-one-field -> write-whole-session round trip,
+      // so firing them concurrently let the override PUT's write silently
+      // clobber this un-ignore with its own stale copy of the ignored list
+      // (2026-08-08 user report: occurrence stayed ignored on reload even
+      // though the override had visibly saved -- backend now also treats
+      // an override as taking priority over a stale ignore regardless, see
+      // image_catalog.suggest_images_for_words, but sequencing here removes
+      // the race at its source instead of only papering over the result).
+      if (ignored.has(occKey(topic.word, topic.start_ms))) await restoreMatch(topic.word, topic.start_ms);
       // Scope the new image to THIS occurrence only -- it's still saved to
       // the shared library under the word's tag (future songs/occurrences
       // can still fuzzy-match it normally), but this specific row won't
