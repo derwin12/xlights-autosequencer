@@ -276,17 +276,31 @@ def build_song_story(
     roles = classify_section_roles(sections_ms, hierarchy, section_labels)
 
     # ── Step 4b: Merge consecutive same-role sections ─────────────────────
+    # Label-aware: two adjacent same-role sections are only merged when they
+    # don't carry genuinely different segmentino labels. A None label (no
+    # nearby boundary label) is treated as compatible with anything, since
+    # there's no evidence there of a distinct underlying block. See
+    # docs/segment-classification-changelog.md 2026-08-08 entry.
     merged_sections: list[tuple[int, int]] = []
     merged_roles: list[dict] = []
-    for sec, role in zip(sections_ms, roles):
-        if merged_sections and merged_roles[-1]["role"] == role["role"]:
+    merged_labels: list[str | None] = []
+    for sec, role, label in zip(sections_ms, roles, section_labels):
+        same_role = merged_sections and merged_roles[-1]["role"] == role["role"]
+        compatible_label = (
+            merged_labels
+            and (merged_labels[-1] is None or label is None or merged_labels[-1] == label)
+        )
+        if same_role and compatible_label:
             prev_start = merged_sections[-1][0]
             merged_sections[-1] = (prev_start, sec[1])
             if role["confidence"] > merged_roles[-1]["confidence"]:
                 merged_roles[-1] = role
+            if merged_labels[-1] is None:
+                merged_labels[-1] = label
         else:
             merged_sections.append(sec)
             merged_roles.append(role)
+            merged_labels.append(label)
 
     sections_ms = merged_sections
     roles = merged_roles

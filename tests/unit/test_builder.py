@@ -416,3 +416,75 @@ def test_qm_boundary_placeholder_not_counted_as_repeating_label():
             "expected 'chorus' -- 'qm_boundary' likely won the chorus "
             "tie-break instead of the real repeating label"
         )
+
+
+# ---------------------------------------------------------------------------
+# Step 4b merge must be label-aware -- adjacent same-role sections that carry
+# genuinely different segmentino labels must NOT be silently glued together.
+# ---------------------------------------------------------------------------
+
+def _distinct_labels_same_role_hierarchy():
+    """70s song: A repeats 2x (chorus), B repeats 2x, D repeats 2x, N1 outro.
+
+    B and D are both classified 'verse' by the energy-ratio heuristic (same
+    role) but are genuinely distinct segmentino blocks. Pre-fix, Step 4b
+    only compared role and merged them into one 20-60s 'verse' section,
+    discarding the real B/D distinction. Post-fix, the differing label
+    blocks the merge and B, D remain separate sections.
+    """
+    from tests.fixtures.story_fixture import make_hierarchy_dict
+
+    d = make_hierarchy_dict(duration_ms=70_000)
+    d["sections"] = [
+        {"time_ms": 0, "label": "A"},
+        {"time_ms": 10_000, "label": "A"},
+        {"time_ms": 20_000, "label": "B"},
+        {"time_ms": 30_000, "label": "B"},
+        {"time_ms": 40_000, "label": "D"},
+        {"time_ms": 50_000, "label": "D"},
+        {"time_ms": 60_000, "label": "N1"},
+    ]
+
+    def _energy_at(t_sec: float) -> float:
+        if t_sec < 20:
+            return 0.9  # A (chorus)
+        if t_sec < 60:
+            return 0.5  # B, D (verse-energy)
+        return 0.1  # N1 (outro)
+
+    def _vocals_at(t_sec: float) -> float:
+        return 0.6 if t_sec < 60 else 0.0  # N1 is non-vocal
+
+    frames = 700  # 70s * 10fps
+    d["energy_curves"] = {
+        "full_mix": {
+            "sample_rate": 10.0,
+            "values": [round(_energy_at(i / 10), 3) for i in range(frames)],
+        },
+        "vocals": {
+            "sample_rate": 10.0,
+            "values": [round(_vocals_at(i / 10), 3) for i in range(frames)],
+        },
+    }
+    return d
+
+
+def test_step4b_merge_does_not_glue_different_labels_sharing_a_role():
+    hierarchy = _distinct_labels_same_role_hierarchy()
+    result = build_song_story(hierarchy, AUDIO_PATH)
+    sections = result["sections"]
+
+    # B (20-40s) and D (40-60s) both classify as 'verse' but are distinct
+    # segmentino blocks -- there must be a section boundary at 40s, not one
+    # merged 20-60s verse section.
+    boundary_at_40s = [s for s in sections if s["end"] == 40]
+    assert boundary_at_40s, (
+        f"expected a section boundary at 40s separating B from D, got "
+        f"sections={[(s['start'], s['end'], s['role']) for s in sections]}"
+    )
+
+    verse_sections = [s for s in sections if s["role"] == "verse"]
+    assert len(verse_sections) == 2, (
+        "expected B and D to remain two separate 'verse' sections despite "
+        f"sharing a role, got {[(s['start'], s['end']) for s in verse_sections]}"
+    )

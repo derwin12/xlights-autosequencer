@@ -29,6 +29,7 @@ from src.generator.image_catalog import (
     catalog_images,
     find_unmatched_topics,
     load_image_library,
+    replace_image_in_library,
     save_image_to_library,
     suggest_images_for_words,
 )
@@ -137,6 +138,34 @@ class TestPlacePictureEffects:
         # Lyric Track text effect, not image placement.
         result = _place_picture_effects(
             props=[_prop("Lyrics Matrix", "Matrix"), _prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
+        )
+        assert set(result) == {"Matrix1"}
+
+    def test_pixel_forest_excluded_despite_matrix_display_type(self):
+        # Pixel Forest stakes are configured DisplayAs="Matrix" in real
+        # layouts despite being small stake props, not an actual 2D display
+        # matrix -- image overlay content doesn't read on that shape (hard
+        # rule, user request 2026-08-08).
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Pixel Forest 1", "Matrix"), _prop("Matrix1", "Matrix")],
+            groups=[],
+            effect_library=library,
+            duration_ms=60_000,
+            variation_seed=0,
+            word_image_matches=[_match("snowman", 1000)],
+        )
+        assert set(result) == {"Matrix1"}
+
+    def test_pixel_forest_excluded_with_underscored_naming(self):
+        library = load_effect_library()
+        result = _place_picture_effects(
+            props=[_prop("Pixel_Forest_1", "Matrix"), _prop("Matrix1", "Matrix")],
             groups=[],
             effect_library=library,
             duration_ms=60_000,
@@ -588,6 +617,59 @@ class TestImageLibraryStorage:
         assert len(catalog_images()) == 2
 
 
+class TestReplaceImageInLibrary:
+    """Replacing an entry keeps its id and stored_path -- every occurrence
+    already matched to that id (fuzzy-tag or per-occurrence override) picks
+    up the new bytes immediately, unlike a fresh upload which always
+    creates a separate new entry (2026-08-08: "sing.png is used quite a
+    bit" -- fixing a shared asset shouldn't require N per-occurrence overrides)."""
+
+    def test_replace_overwrites_bytes_and_keeps_id(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        original = save_image_to_library(
+            tag="fool", filename="fool.png", data=b"old bytes",
+            uploaded_at="2026-07-15T00:00:00Z",
+        )
+        updated = replace_image_in_library(
+            image_id=original["id"], filename="fool_v2.png", data=b"new bytes",
+            uploaded_at="2026-08-08T00:00:00Z",
+        )
+        assert updated is not None
+        assert updated["id"] == original["id"]
+        assert updated["filename"] == "fool_v2.png"
+        assert updated["stored_path"] == original["stored_path"]
+        assert Path(original["stored_path"]).read_bytes() == b"new bytes"
+
+    def test_replace_does_not_create_a_new_entry(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        entry = save_image_to_library(
+            tag="fool", filename="fool.png", data=b"old", uploaded_at="t1",
+        )
+        replace_image_in_library(
+            image_id=entry["id"], filename="fool.png", data=b"new", uploaded_at="t2",
+        )
+        assert len(load_image_library()) == 1
+
+    def test_replace_unknown_id_returns_none(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        result = replace_image_in_library(
+            image_id="does-not-exist", filename="x.png", data=b"data", uploaded_at="t1",
+        )
+        assert result is None
+
+    def test_replace_does_not_affect_other_entries(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path))
+        fool = save_image_to_library(tag="fool", filename="fool.png", data=b"fool-old", uploaded_at="t1")
+        other = save_image_to_library(tag="books", filename="books.png", data=b"books-bytes", uploaded_at="t2")
+        replace_image_in_library(image_id=fool["id"], filename="fool.png", data=b"fool-new", uploaded_at="t3")
+
+        library = load_image_library()
+        assert len(library) == 2
+        other_after = next(e for e in library if e["id"] == other["id"])
+        assert other_after["filename"] == "books.png"
+        assert Path(other_after["stored_path"]).read_bytes() == b"books-bytes"
+
+
 class TestSuggestImagesForWords:
     def test_no_words_returns_empty(self):
         library = [_library_entry("snowman")]
@@ -661,6 +743,62 @@ class TestSuggestImagesForWords:
         library = [_library_entry("snowman")]
         assert len(suggest_images_for_words(words, library, ignored_occurrences=None)) == 1
         assert len(suggest_images_for_words(words, library, ignored_occurrences=[])) == 1
+
+    def test_override_pins_one_occurrence_to_a_chosen_image(self):
+        words = [{"label": "sing", "start_ms": 5000, "end_ms": 5400}]
+        library = [
+            {"id": "default-id", "tag": "sing", "filename": "sing.png", "stored_path": "/lib/sing.png"},
+            {"id": "chosen-id", "tag": "sing", "filename": "sing2.png", "stored_path": "/lib/sing2.png"},
+        ]
+        result = suggest_images_for_words(
+            words, library,
+            overrides=[{"word": "sing", "start_ms": 5000, "image_id": "chosen-id"}],
+        )
+        assert len(result) == 1
+        assert result[0]["matched_file"] == "sing2.png"
+        assert result[0]["stored_path"] == "/lib/sing2.png"
+        assert result[0]["score"] == 1.0
+
+    def test_override_leaves_other_occurrences_of_same_word_on_default_match(self):
+        words = [
+            {"label": "sing", "start_ms": 5000, "end_ms": 5400},
+            {"label": "sing", "start_ms": 6000, "end_ms": 6400},
+        ]
+        library = [
+            {"id": "default-id", "tag": "sing", "filename": "sing.png", "stored_path": "/lib/sing.png"},
+            {"id": "chosen-id", "tag": "sing", "filename": "sing2.png", "stored_path": "/lib/sing2.png"},
+        ]
+        result = suggest_images_for_words(
+            words, library,
+            overrides=[{"word": "sing", "start_ms": 5000, "image_id": "chosen-id"}],
+        )
+        by_start = {s["start_ms"]: s["matched_file"] for s in result}
+        assert by_start[5000] == "sing2.png"
+        assert by_start[6000] == "sing.png"
+
+    def test_override_is_case_insensitive_on_word(self):
+        words = [{"label": "Sing", "start_ms": 5000, "end_ms": 5400}]
+        library = [{"id": "chosen-id", "tag": "sing", "filename": "sing2.png", "stored_path": "/lib/sing2.png"}]
+        result = suggest_images_for_words(
+            words, library,
+            overrides=[{"word": "SING", "start_ms": 5000, "image_id": "chosen-id"}],
+        )
+        assert result[0]["matched_file"] == "sing2.png"
+
+    def test_override_to_missing_image_id_falls_back_to_normal_match(self):
+        words = [{"label": "sing", "start_ms": 5000, "end_ms": 5400}]
+        library = [{"id": "default-id", "tag": "sing", "filename": "sing.png", "stored_path": "/lib/sing.png"}]
+        result = suggest_images_for_words(
+            words, library,
+            overrides=[{"word": "sing", "start_ms": 5000, "image_id": "does-not-exist"}],
+        )
+        assert result[0]["matched_file"] == "sing.png"
+
+    def test_no_overrides_matches_everything_normally(self):
+        words = [{"label": "snowman", "start_ms": 0, "end_ms": 500}]
+        library = [_library_entry("snowman")]
+        assert len(suggest_images_for_words(words, library, overrides=None)) == 1
+        assert len(suggest_images_for_words(words, library, overrides=[])) == 1
 
 
 class TestFindUnmatchedTopics:

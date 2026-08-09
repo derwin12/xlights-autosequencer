@@ -37,6 +37,7 @@ def run(
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
     ignored_image_occurrences: Optional[list[dict]] = None,
+    image_occurrence_overrides: Optional[list[dict]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
     shadow_text_occurrences: Optional[list[dict]] = None,
     include_extra_timing: bool = True,
@@ -77,6 +78,12 @@ def run(
                     user unmapped on the Pictures screen — suppresses the
                     lyric-matched Pictures burst for that one occurrence
                     (GenerationConfig.ignored_image_occurrences).
+        image_occurrence_overrides: Optional lyric occurrences
+                    ({"word", "start_ms", "image_id"}) the user pinned to a
+                    specific library image on the Pictures screen, distinct
+                    from whatever that word's normal fuzzy-tag match
+                    resolves to for its other occurrences
+                    (GenerationConfig.image_occurrence_overrides).
         moving_head_keyword_motions: Optional {word: motion} map overriding
                     the default shake/spin/bounce Moving Head keyword
                     triggers with the user's own per-song additions/removals
@@ -149,6 +156,7 @@ def run(
                               lyrics=lyrics, words=words, phonemes=phonemes,
                               genre=genre, occasion=occasion, video_path=video_path,
                               ignored_image_occurrences=ignored_image_occurrences,
+                              image_occurrence_overrides=image_occurrence_overrides,
                               moving_head_keyword_motions=moving_head_keyword_motions,
                               shadow_text_occurrences=shadow_text_occurrences,
                               include_extra_timing=include_extra_timing,
@@ -175,6 +183,7 @@ def _run_pipeline(
     occasion: str = "general",
     video_path: Optional[Path | str] = None,
     ignored_image_occurrences: Optional[list[dict]] = None,
+    image_occurrence_overrides: Optional[list[dict]] = None,
     moving_head_keyword_motions: Optional[dict[str, str]] = None,
     shadow_text_occurrences: Optional[list[dict]] = None,
     include_extra_timing: bool = True,
@@ -235,6 +244,7 @@ def _run_pipeline(
             story_path=story_path,
             video_path=video_path,
             ignored_image_occurrences=ignored_image_occurrences,
+            image_occurrence_overrides=image_occurrence_overrides,
             moving_head_keyword_motions=(
                 moving_head_keyword_motions
                 if moving_head_keyword_motions is not None

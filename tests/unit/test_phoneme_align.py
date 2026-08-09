@@ -91,3 +91,54 @@ class TestWarningsPropagation:
         )
         _, _, warnings = phoneme_align.align_words_and_phonemes("song.mp3")
         assert warnings == []
+
+
+class TestDuplicateMarkDedup:
+    """Guards against every word/phoneme mark being returned twice — the
+    2026-08-08 "Extras" page bug where the word list showed 2-4 stacked
+    entries at the same timestamp (session.json had every word duplicated
+    with identical text/timing, differing only by diarization speaker)."""
+
+    def test_duplicate_words_collapsed(self, monkeypatch):
+        monkeypatch.setattr(phoneme_align, "_discover_vocals_stem", lambda audio_path: None)
+        dup_words = [
+            {"label": "DREAM", "start_ms": 195450, "end_ms": 195875},
+            {"label": "DREAM", "start_ms": 195450, "end_ms": 195875},
+            {"label": "ON", "start_ms": 195875, "end_ms": 196425},
+            {"label": "ON", "start_ms": 195875, "end_ms": 196425},
+        ]
+        monkeypatch.setattr(
+            phoneme_align, "_run_in_process",
+            lambda audio_path, lyrics_path: (dup_words, [], []),
+        )
+        words, _, _ = phoneme_align.align_words_and_phonemes("song.mp3")
+        assert [w["label"] for w in words] == ["DREAM", "ON"]
+
+    def test_duplicate_phonemes_collapsed(self, monkeypatch):
+        monkeypatch.setattr(phoneme_align, "_discover_vocals_stem", lambda audio_path: None)
+        dup_phonemes = [
+            {"label": "AI", "start_ms": 100, "end_ms": 150},
+            {"label": "AI", "start_ms": 100, "end_ms": 150},
+        ]
+        monkeypatch.setattr(
+            phoneme_align, "_run_in_process",
+            lambda audio_path, lyrics_path: ([], dup_phonemes, []),
+        )
+        _, phonemes, _ = phoneme_align.align_words_and_phonemes("song.mp3")
+        assert len(phonemes) == 1
+
+    def test_repeated_word_at_different_timestamps_kept(self, monkeypatch):
+        """Legitimate repeats (e.g. 'dream on dream on') must survive --
+        only exact same-label-same-start_ms duplicates are collapsed."""
+        monkeypatch.setattr(phoneme_align, "_discover_vocals_stem", lambda audio_path: None)
+        repeated_words = [
+            {"label": "DREAM", "start_ms": 196900, "end_ms": 197350},
+            {"label": "DREAM", "start_ms": 198000, "end_ms": 198275},
+            {"label": "DREAM", "start_ms": 198775, "end_ms": 199125},
+        ]
+        monkeypatch.setattr(
+            phoneme_align, "_run_in_process",
+            lambda audio_path, lyrics_path: (repeated_words, [], []),
+        )
+        words, _, _ = phoneme_align.align_words_and_phonemes("song.mp3")
+        assert [w["start_ms"] for w in words] == [196900, 198000, 198775]

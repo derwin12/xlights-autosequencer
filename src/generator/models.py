@@ -445,6 +445,13 @@ class GenerationConfig:
     # removing the image from the shared library or affecting any other
     # occurrence of the same word. Case-insensitive on "word".
     ignored_image_occurrences: Optional[list[dict]] = None
+    # Specific lyric occurrences the user pinned to a particular library
+    # image on the Pictures screen (per-song override), each {"word": str,
+    # "start_ms": int, "image_id": str}. Overrides that ONE occurrence's
+    # normal fuzzy-tag match without affecting any other occurrence of the
+    # same word. Case-insensitive on "word". See
+    # image_catalog.suggest_images_for_words.
+    image_occurrence_overrides: Optional[list[dict]] = None
     # User-curated lyric occurrences (review UI's Extras section), each
     # {"word": str, "start_ms": int}, that trigger a two-layer "Shadow"
     # Text effect for that ONE occurrence -- the word rendered in the

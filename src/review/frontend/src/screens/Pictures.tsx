@@ -7,6 +7,7 @@ interface ImageSuggestion {
   end_ms: number;
   matched_file: string;
   matched_tag: string;
+  image_id?: string;
   score: number;
 }
 
@@ -99,6 +100,9 @@ async function openExternal(url: string) {
 export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onContinue }: PicturesScreenProps) {
   const [uploaded, setUploaded] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState<string | null>(null);
+  // image_id currently mid-Replace, or null. Distinct from `uploading`
+  // (word-keyed, for the per-occurrence Choose image flow).
+  const [replacing, setReplacing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [promptWord, setPromptWord] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -108,6 +112,12 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
   const [candidateMotions, setCandidateMotions] = useState<Record<string, MotionType>>({});
   const [newWord, setNewWord] = useState('');
   const [newMotion, setNewMotion] = useState<MotionType>('shake');
+  // occKey -> image_id chosen for that ONE lyric occurrence, distinct from
+  // whatever the word's normal fuzzy-tag match resolves to elsewhere.
+  const [overrides, setOverrides] = useState<Map<string, string>>(new Map());
+  // image_id -> filename, so an override (which only carries an id) can be
+  // shown to the user without a round-trip per row.
+  const [imageLibrary, setImageLibrary] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch(`/api/v1/songs/${song.song_id}/ignored-images`)
@@ -115,6 +125,46 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
       .then((body) => setIgnored(occKeysFromOccurrences(body.occurrences ?? [])))
       .catch(() => {});
   }, [song.song_id]);
+
+  useEffect(() => {
+    fetch(`/api/v1/songs/${song.song_id}/image-overrides`)
+      .then((r) => (r.ok ? r.json() : { overrides: [] }))
+      .then((body) => {
+        const map = new Map<string, string>();
+        for (const o of body.overrides ?? []) {
+          if (o.word && o.start_ms != null && o.image_id) map.set(occKey(o.word, o.start_ms), o.image_id);
+        }
+        setOverrides(map);
+      })
+      .catch(() => {});
+  }, [song.song_id]);
+
+  useEffect(() => {
+    fetch('/api/v1/images')
+      .then((r) => (r.ok ? r.json() : { images: [] }))
+      .then((body) => {
+        const map: Record<string, string> = {};
+        for (const img of body.images ?? []) {
+          if (img.id && img.filename) map[img.id] = img.filename;
+        }
+        setImageLibrary(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  // The row's normal matched_file, unless either (a) this specific
+  // occurrence has an override pinning it to a different library image, or
+  // (b) the shared library entry itself (rowImageId) was replaced in
+  // place -- imageLibrary is refreshed after both a per-occurrence
+  // override upload and a library-wide Replace, so a Replace's filename
+  // update is picked up here automatically by every row sharing that
+  // image_id, not just the row the Replace button was clicked from.
+  function displayedFile(word: string, startMs: number, fallback: string, rowImageId?: string): string {
+    const overrideId = overrides.get(occKey(word, startMs));
+    if (overrideId) return imageLibrary[overrideId] ?? fallback;
+    if (rowImageId) return imageLibrary[rowImageId] ?? fallback;
+    return fallback;
+  }
 
   useEffect(() => {
     fetch(`/api/v1/songs/${song.song_id}/moving-head-keywords`)
@@ -275,10 +325,58 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
       // Re-uploading an image for an unmapped occurrence means the user
       // wants it matched again — lift the per-occurrence ignore automatically.
       if (ignored.has(occKey(topic.word, topic.start_ms))) restoreMatch(topic.word, topic.start_ms);
+      // Scope the new image to THIS occurrence only -- it's still saved to
+      // the shared library under the word's tag (future songs/occurrences
+      // can still fuzzy-match it normally), but this specific row won't
+      // silently start sharing whatever OTHER occurrences of the same word
+      // later match to (2026-08-08: "Choose image" previously affected the
+      // word globally despite being laid out per-occurrence).
+      const imageId = body?.image?.id;
+      const filename = body?.image?.filename;
+      if (imageId) {
+        const overrideRes = await fetch(`/api/v1/songs/${song.song_id}/image-overrides`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ word: topic.word, start_ms: topic.start_ms, image_id: imageId }),
+        }).catch(() => null);
+        if (overrideRes?.ok) {
+          setOverrides((prev) => new Map(prev).set(occKey(topic.word, topic.start_ms), imageId));
+          if (filename) setImageLibrary((prev) => ({ ...prev, [imageId]: filename }));
+        } else {
+          setError('Image uploaded, but assigning it to this occurrence failed — try Choose image again.');
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     } finally {
       setUploading(null);
+    }
+  }
+
+  // Overwrites the shared library entry's file in place (same image_id) --
+  // every occurrence already matched to it (fuzzy-tag or per-occurrence
+  // override) picks up the new image immediately, unlike Choose image
+  // above (which scopes to one occurrence via a new separate entry).
+  // Intended for fixing a shared asset used across many occurrences
+  // (2026-08-08 user request: "sing.png is used quite a bit").
+  async function handleReplace(imageId: string, file: File) {
+    setReplacing(imageId);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      const res = await fetch(`/api/v1/images/${imageId}`, { method: 'PUT', body: form });
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Replace failed');
+        return;
+      }
+      const filename = body?.image?.filename;
+      if (filename) setImageLibrary((prev) => ({ ...prev, [imageId]: filename }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setReplacing(null);
     }
   }
 
@@ -289,9 +387,14 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
   // Unmapped occurrences go back to "Suggested topics" — one row per
   // unmapped occurrence, not deduped by word (each occurrence is unmapped
   // independently now, so other occurrences of the same word may still be
-  // mapped and appear in "Already matched").
+  // mapped and appear in "Already matched"). Deliberately NOT filtered on
+  // `uploaded` (word-level) -- resolving one occurrence already removes
+  // just that occKey from `ignored` via restoreMatch below, which is
+  // enough to drop it from this list; a word-level check here previously
+  // hid every other ignored occurrence of the same word the moment ANY
+  // one of them got a new image (2026-08-08 user report).
   const ignoredTopics = imageSuggestions.filter(
-    (s) => ignored.has(occKey(s.word, s.start_ms)) && !uploaded.has(s.word),
+    (s) => ignored.has(occKey(s.word, s.start_ms)),
   );
 
   return (
@@ -412,7 +515,9 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                 <span className={styles.topicTime}>{formatTimestamp(s.start_ms)}</span>
                 <span className={styles.topicWord}>&ldquo;{s.word}&rdquo;</span>
                 <span className={styles.matchedArrow}>&rarr;</span>
-                <span className={styles.matchedFile}>{s.matched_file}</span>
+                <span className={styles.matchedFile}>
+                  {displayedFile(s.word, s.start_ms, s.matched_file, s.image_id)}
+                </span>
                 <button
                   type="button"
                   className={styles.createImageBtn}
@@ -442,6 +547,25 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
                     }}
                   />
                 </label>
+                {s.image_id && (
+                  <label
+                    className={styles.uploadLabel}
+                    title="Replace this shared image everywhere it's used, not just this occurrence"
+                  >
+                    {replacing === s.image_id ? 'Replacing…' : 'Replace'}
+                    <input
+                      type="file"
+                      accept=".gif,.png,.bmp,.jpg,.jpeg"
+                      className={styles.uploadInput}
+                      disabled={replacing === s.image_id}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && s.image_id) handleReplace(s.image_id, file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
                 <button
                   type="button"
                   className={styles.createImageBtn}

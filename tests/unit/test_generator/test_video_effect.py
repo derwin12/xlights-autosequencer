@@ -44,9 +44,8 @@ class TestPlaceVideoEffect:
         result = _place_video_effect(props, "/tmp/video.mp4", 90000)
         assert set(result) == {"Matrix Video"}
         placements = result["Matrix Video"]
-        assert len(placements) == 1
-        p = placements[0]
-        assert p.effect_name == "Video"
+        assert len(placements) == 2
+        p = next(pl for pl in placements if pl.effect_name == "Video")
         assert p.start_ms == 0
         assert p.end_ms == 90000
         assert p.parameters["E_FILEPICKERCTRL_Video_Filename"] == "/tmp/video.mp4"
@@ -57,5 +56,19 @@ class TestPlaceVideoEffect:
         # instead of fading in like other effects (user request, 2026-08-04).
         props = [_prop("Matrix Video", display_as="Matrix", pixels=256)]
         result = _place_video_effect(props, "/tmp/video.mp4", 90000)
-        p = result["Matrix Video"][0]
+        p = next(pl for pl in result["Matrix Video"] if pl.effect_name == "Video")
         assert p.fade_in_ms >= 1000
+
+    def test_off_backdrop_placed_directly_behind_video(self):
+        # User request 2026-08-08: an Off effect underneath the video so
+        # nothing shows through for its duration.
+        props = [_prop("Matrix Video", display_as="Matrix", pixels=256)]
+        result = _place_video_effect(props, "/tmp/video.mp4", 90000)
+        placements = result["Matrix Video"]
+        assert len(placements) == 2
+        video = next(pl for pl in placements if pl.effect_name == "Video")
+        off = next(pl for pl in placements if pl.effect_name == "Off")
+        assert off.start_ms == 0
+        assert off.end_ms == 90000
+        assert off.color_palette == ["#000000"]
+        assert off.layer > video.layer

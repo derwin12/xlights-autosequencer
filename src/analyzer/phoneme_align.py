@@ -162,6 +162,8 @@ def align_words_and_phonemes(
     align_audio = str(vocals) if vocals is not None else str(audio_path)
 
     words, phonemes, warnings = _run_alignment(align_audio, lyric_lines, lyrics_text)
+    words = _dedupe_marks(words)
+    phonemes = _dedupe_marks(phonemes)
 
     if words and vocals is not None:
         from src.analyzer.vocal_diarization import diarize_words
@@ -170,6 +172,26 @@ def align_words_and_phonemes(
         words = [{**w, "speaker": 0} for w in words]
 
     return words, phonemes, warnings
+
+
+def _dedupe_marks(marks: list[dict]) -> list[dict]:
+    """Collapse consecutive marks sharing the same ``label`` and ``start_ms``.
+
+    Guards against duplicate word/phoneme marks reaching the persisted
+    session — seen in practice as every lyric word appearing twice with
+    identical timing (2026-08-08 user report: "Extras" page word list
+    showed 2-4 stacked entries at the same timestamp). The exact upstream
+    trigger (a race between overlapping analyze runs, e.g. clearing the
+    analysis cache while a run is in flight) wasn't pinned down, so this
+    dedupes defensively at the point marks are returned rather than
+    depending on preventing the race itself.
+    """
+    deduped: list[dict] = []
+    for m in marks:
+        if deduped and deduped[-1]["label"] == m["label"] and deduped[-1]["start_ms"] == m["start_ms"]:
+            continue
+        deduped.append(m)
+    return deduped
 
 
 def _run_alignment(

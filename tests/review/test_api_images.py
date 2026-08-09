@@ -50,6 +50,67 @@ class TestUploadImage:
         assert resp.get_json()["error"]["code"] == "unsupported_format"
 
 
+class TestReplaceImage:
+    """PUT /api/v1/images/<id> overwrites an existing entry's bytes in
+    place, keeping its id -- unlike POST, which always creates a new,
+    separate entry."""
+
+    def _upload(self, client, tag: str, filename: str = "a.gif", data: bytes = b"original") -> dict:
+        resp = client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(data), filename), "tag": tag},
+            content_type="multipart/form-data",
+        )
+        return resp.get_json()["image"]
+
+    def test_returns_200_and_updated_entry(self, client):
+        entry = self._upload(client, "fool", "fool.png", b"old bytes")
+        resp = client.put(
+            f"/api/v1/images/{entry['id']}",
+            data={"image": (io.BytesIO(b"new bytes"), "fool_v2.png")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["replaced"] is True
+        assert body["image"]["id"] == entry["id"]
+        assert body["image"]["filename"] == "fool_v2.png"
+
+    def test_library_entry_count_unchanged(self, client):
+        entry = self._upload(client, "fool")
+        client.put(
+            f"/api/v1/images/{entry['id']}",
+            data={"image": (io.BytesIO(b"new bytes"), "fool.png")},
+            content_type="multipart/form-data",
+        )
+        assert len(client.get("/api/v1/images").get_json()["images"]) == 1
+
+    def test_unknown_id_returns_404(self, client):
+        resp = client.put(
+            "/api/v1/images/does-not-exist",
+            data={"image": (io.BytesIO(b"data"), "x.png")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "image_not_found"
+
+    def test_missing_file_returns_400(self, client):
+        entry = self._upload(client, "fool")
+        resp = client.put(f"/api/v1/images/{entry['id']}", data={}, content_type="multipart/form-data")
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_file"
+
+    def test_unsupported_extension_returns_400(self, client):
+        entry = self._upload(client, "fool")
+        resp = client.put(
+            f"/api/v1/images/{entry['id']}",
+            data={"image": (io.BytesIO(b"data"), "notes.txt")},
+            content_type="multipart/form-data",
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "unsupported_format"
+
+
 class TestListImages:
     def test_empty_library_returns_empty_list(self, client):
         resp = client.get("/api/v1/images")
@@ -134,3 +195,127 @@ class TestIgnoredImages:
         session = load_session(self.SONG)
         assert session["sections"] == [{"label": "verse"}]
         assert session["ignored_image_occurrences"] == [{"word": "snowman", "start_ms": 1000}]
+
+
+class TestImageOverrides:
+    SONG = "cafe0123deadbeef"
+
+    def _upload(self, client, tag: str, filename: str = "a.gif") -> str:
+        resp = client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(b"bytes"), filename), "tag": tag},
+            content_type="multipart/form-data",
+        )
+        return resp.get_json()["image"]["id"]
+
+    def test_empty_by_default(self, client):
+        resp = client.get(f"/api/v1/songs/{self.SONG}/image-overrides")
+        assert resp.status_code == 200
+        assert resp.get_json()["overrides"] == []
+
+    def test_set_adds_override_word_lowercased(self, client):
+        image_id = self._upload(client, "sing")
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "Sing", "start_ms": 2000, "image_id": image_id},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["overrides"] == [{"word": "sing", "start_ms": 2000, "image_id": image_id}]
+        listed = client.get(f"/api/v1/songs/{self.SONG}/image-overrides").get_json()
+        assert listed["overrides"] == [{"word": "sing", "start_ms": 2000, "image_id": image_id}]
+
+    def test_set_replaces_existing_override_for_same_occurrence(self, client):
+        first_id = self._upload(client, "sing", "first.gif")
+        second_id = self._upload(client, "sing", "second.gif")
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 2000, "image_id": first_id},
+        )
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 2000, "image_id": second_id},
+        )
+        overrides = resp.get_json()["overrides"]
+        assert overrides == [{"word": "sing", "start_ms": 2000, "image_id": second_id}]
+
+    def test_setting_one_occurrence_leaves_other_occurrences_of_same_word(self, client):
+        image_id = self._upload(client, "sing")
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 2000, "image_id": image_id},
+        )
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 3000, "image_id": image_id},
+        )
+        overrides = resp.get_json()["overrides"]
+        assert {"word": "sing", "start_ms": 2000, "image_id": image_id} in overrides
+        assert {"word": "sing", "start_ms": 3000, "image_id": image_id} in overrides
+        assert len(overrides) == 2
+
+    def test_missing_word_returns_400(self, client):
+        image_id = self._upload(client, "sing")
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"start_ms": 2000, "image_id": image_id},
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_word"
+
+    def test_missing_start_ms_returns_400(self, client):
+        image_id = self._upload(client, "sing")
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "image_id": image_id},
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_start_ms"
+
+    def test_missing_image_id_returns_400(self, client):
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 2000},
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "missing_image_id"
+
+    def test_unknown_image_id_returns_404(self, client):
+        resp = client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 2000, "image_id": "does-not-exist"},
+        )
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "image_not_found"
+
+    def test_clear_removes_only_that_occurrence(self, client):
+        image_id = self._upload(client, "sing")
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 2000, "image_id": image_id},
+        )
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 3000, "image_id": image_id},
+        )
+        resp = client.delete(f"/api/v1/songs/{self.SONG}/image-overrides/sing/2000")
+        assert resp.status_code == 200
+        listed = client.get(f"/api/v1/songs/{self.SONG}/image-overrides").get_json()
+        assert listed["overrides"] == [{"word": "sing", "start_ms": 3000, "image_id": image_id}]
+
+    def test_clear_unknown_occurrence_returns_404(self, client):
+        resp = client.delete(f"/api/v1/songs/{self.SONG}/image-overrides/nothere/1000")
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "not_overridden"
+
+    def test_set_preserves_existing_session_fields(self, client):
+        from src.review.storage.assignments import load_session, save_full_session
+
+        image_id = self._upload(client, "sing")
+        save_full_session(self.SONG, {"sections": [{"label": "verse"}], "words": []})
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "sing", "start_ms": 2000, "image_id": image_id},
+        )
+        session = load_session(self.SONG)
+        assert session["sections"] == [{"label": "verse"}]
+        assert session["image_occurrence_overrides"] == [{"word": "sing", "start_ms": 2000, "image_id": image_id}]

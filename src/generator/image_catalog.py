@@ -100,6 +100,37 @@ def save_image_to_library(tag: str, filename: str, data: bytes, uploaded_at: str
     return entry
 
 
+def replace_image_in_library(image_id: str, filename: str, data: bytes, uploaded_at: str) -> dict | None:
+    """Overwrite an existing library entry's file in place, keeping its ``id``.
+
+    Unlike a fresh upload (``save_image_to_library``, which always creates a
+    new entry with a new id, leaving the old one orphaned), this replaces
+    the SAME entry's bytes at its existing ``stored_path`` -- every
+    occurrence already matched to this entry (via normal fuzzy-tag matching
+    or a per-occurrence override, both of which key on ``image_id``) picks
+    up the new image immediately, with no per-occurrence re-work needed
+    (2026-08-08: "sing.png is used quite a bit" -- fixing a shared asset via
+    N per-occurrence overrides doesn't scale).
+
+    Returns the updated entry, or ``None`` if no entry with ``image_id``
+    exists. ``tag`` is left unchanged; only ``filename``/the file bytes/
+    ``uploaded_at`` are updated. The stored file's on-disk name is NOT
+    renamed to match a new ``filename`` -- only ``stored_path`` (not the
+    filename) is ever used to resolve the actual bytes, so a mismatch
+    between the stored name and the (display-only) ``filename`` field is
+    harmless.
+    """
+    images = load_image_library()
+    for entry in images:
+        if entry.get("id") == image_id:
+            Path(entry["stored_path"]).write_bytes(data)
+            entry["filename"] = filename
+            entry["uploaded_at"] = uploaded_at
+            _save_manifest(images)
+            return entry
+    return None
+
+
 def catalog_images() -> list[str]:
     """Return the stored absolute path of every uploaded library image."""
     return [e["stored_path"] for e in load_image_library() if e.get("stored_path")]
@@ -112,6 +143,7 @@ def suggest_images_for_words(
     words: list[dict] | None,
     library: list[dict] | None = None,
     ignored_occurrences: list[dict] | None = None,
+    overrides: list[dict] | None = None,
 ) -> list[dict]:
     """Fuzzy-match lyric words against the image library's tags.
 
@@ -128,10 +160,20 @@ def suggest_images_for_words(
     word case-insensitive) suppresses matches for the SPECIFIC lyric
     occurrences the user unmapped on the review UI's Pictures screen — a
     per-occurrence, per-song ignore (other occurrences of the same word,
-    and the library entry itself, stay available). Returns ``[]`` for no
-    words or an empty library. Each suggestion includes ``stored_path``
-    (the matched entry's absolute file path) so callers can resolve
-    straight to the image file.
+    and the library entry itself, stay available). ``overrides`` (each
+    ``{"word", "start_ms", "image_id"}``, word case-insensitive) pins a
+    SPECIFIC lyric occurrence to a chosen library entry instead of
+    whatever the word's normal fuzzy-tag match would pick — other
+    occurrences of the same word are unaffected (2026-08-08: the review
+    UI's per-row "Choose image" button implied per-occurrence control
+    that didn't actually exist; this makes it real). Checked before, and
+    independent of, ``_MIN_MATCH_RATIO``/``_MIN_WORD_LEN`` — an explicit
+    user choice always wins. An override whose ``image_id`` no longer
+    exists in ``library`` (e.g. the entry was deleted) falls back to
+    normal fuzzy matching for that occurrence rather than dropping it.
+    Returns ``[]`` for no words or an empty library. Each suggestion
+    includes ``stored_path`` (the matched entry's absolute file path) so
+    callers can resolve straight to the image file.
     """
     if library is None:
         library = load_image_library()
@@ -143,6 +185,11 @@ def suggest_images_for_words(
         (str(o.get("word", "")).lower(), o.get("start_ms"))
         for o in (ignored_occurrences or [])
     }
+    override_by_pair = {
+        (str(o.get("word", "")).lower(), o.get("start_ms")): o.get("image_id")
+        for o in (overrides or [])
+    }
+    entry_by_id = {entry["id"]: entry for entry in library if entry.get("id")}
 
     suggestions: list[dict] = []
     for word in words:
@@ -150,6 +197,20 @@ def suggest_images_for_words(
         match = _WORD_RE.fullmatch(raw.lower())
         token = match.group(0) if match else ""
         if len(token) < _MIN_WORD_LEN or (token, word.get("start_ms")) in ignored_pairs:
+            continue
+
+        override_entry = entry_by_id.get(override_by_pair.get((token, word.get("start_ms"))))
+        if override_entry is not None:
+            suggestions.append({
+                "word": raw,
+                "start_ms": word.get("start_ms"),
+                "end_ms": word.get("end_ms"),
+                "matched_file": override_entry["filename"],
+                "matched_tag": override_entry["tag"],
+                "stored_path": override_entry.get("stored_path"),
+                "image_id": override_entry.get("id"),
+                "score": 1.0,
+            })
             continue
 
         best_entry: dict | None = None
@@ -167,6 +228,7 @@ def suggest_images_for_words(
                 "matched_file": best_entry["filename"],
                 "matched_tag": best_entry["tag"],
                 "stored_path": best_entry.get("stored_path"),
+                "image_id": best_entry.get("id"),
                 "score": round(best_ratio, 3),
             })
 

@@ -3,6 +3,7 @@ user-tagged words, targeting the same Matrix/Mega Tree props as Pictures."""
 from __future__ import annotations
 
 from src.generator.effect_placer import (
+    _SHADOW_TEXT_MATRIX_SHORT_WORD_MAX_LEN,
     _SHADOW_TEXT_MATRIX_SUBBUFFER,
     _SHADOW_TEXT_MIN_BURST_MS,
     _SHADOW_TEXT_TREE_SUBBUFFER,
@@ -324,6 +325,53 @@ class TestPlaceShadowTextEffects:
         for placement in (front, shadow):
             assert placement.parameters["E_SLIDER_Text_XStart"] == "-3"
             assert placement.parameters["E_SLIDER_Text_XEnd"] == "-3"
+
+    def test_matrix_short_word_uses_larger_bold_font(self):
+        # 2026-08-08: a word of 6 characters or fewer on a non-"small"
+        # Matrix target renders at 12-15x15 Bold instead of the default
+        # 10-12x12 Bold.
+        result = _place_shadow_text_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            duration_ms=60_000,
+            variation_seed=0,
+            vocal_words=[_word("fire", 5_000)],
+            shadow_occurrences=[{"word": "fire", "start_ms": 5_000}],
+        )
+        front, shadow = sorted(result["Matrix1"], key=lambda p: p.layer)
+        for placement in (front, shadow):
+            assert placement.parameters["E_CHOICE_Text_Font"] == "12-15x15 Bold"
+
+    def test_matrix_long_word_keeps_default_font(self):
+        word = "fireworks"
+        assert len(word) > _SHADOW_TEXT_MATRIX_SHORT_WORD_MAX_LEN
+        result = _place_shadow_text_effects(
+            props=[_prop("Matrix1", "Matrix")],
+            groups=[],
+            duration_ms=60_000,
+            variation_seed=0,
+            vocal_words=[_word(word, 5_000)],
+            shadow_occurrences=[{"word": word, "start_ms": 5_000}],
+        )
+        front, shadow = sorted(result["Matrix1"], key=lambda p: p.layer)
+        for placement in (front, shadow):
+            assert "E_CHOICE_Text_Font" not in placement.parameters
+
+    def test_small_matrix_short_word_keeps_small_font_not_larger_bold(self):
+        # A "small"-named matrix's 5-5x5 Mono is deliberately tiny for a
+        # physically small display -- short words must NOT get bumped to
+        # 12-15x15 Bold there.
+        result = _place_shadow_text_effects(
+            props=[_prop("Matrix Small", "Matrix")],
+            groups=[],
+            duration_ms=60_000,
+            variation_seed=0,
+            vocal_words=[_word("fire", 5_000)],
+            shadow_occurrences=[{"word": "fire", "start_ms": 5_000}],
+        )
+        front, shadow = sorted(result["Matrix Small"], key=lambda p: p.layer)
+        for placement in (front, shadow):
+            assert placement.parameters["E_CHOICE_Text_Font"] == "5-5x5 Mono"
 
     def test_mega_tree_shadow_text_never_rotates(self):
         # 2026-08-02: Mega Tree shadow text must never carry a rotation

@@ -618,3 +618,60 @@ with it. 125 tests pass across `test_builder.py`,
 `test_synced_lyrics.py`; full `tests/unit` suite: 3027 passed (9
 pre-existing, unrelated Windows path-separator failures in
 `test_paths.py`, 4 pre-existing xpassed, 17 skipped).
+
+---
+
+## 2026-08-08 — Step 4b section merge made label-aware
+
+**Files:** `src/story/builder.py`
+
+**Problem:** Same day as the `qm_boundary` fix above (previous entry), fixing that
+bug removed the classifier's random tie-flip but exposed a separate, deterministic
+issue: `build_song_story`'s Step 4b (`# ── Step 4b: Merge consecutive same-role
+sections ──`) merges any two adjacent sections that share the same assigned
+`role`, with no awareness of the segmentino label(s) they came from. On a
+real song, three musically distinct blocks (segmentino labels `B`, `D`, `N12`,
+etc., all genuinely different repetition groups) landed in the same
+energy-based role bucket ("verse") and were silently glued into one giant
+section, collapsing a 14-section breakdown the user preferred down to a
+coarse 7-section one. This is a real regression risk distinct from the
+`qm_boundary` fix: even with zero ties in `_classify_by_labels`'s chorus
+selection, role-only merging still discards real structural detail whenever
+two adjacent non-chorus blocks happen to share an energy-derived role.
+
+**Root cause:** Step 4b's merge condition (`src/story/builder.py`, previously
+`if merged_sections and merged_roles[-1]["role"] == role["role"]`) only
+compared `role`, never the section's underlying segmentino label
+(`section_labels`, computed earlier in the same function at Step 3 via
+`_dominant_label`). Two sections with different labels but the same
+heuristic role were indistinguishable to the merge step.
+
+**Fix:** Carry `section_labels` alongside `roles`/`sections_ms` through Step 4b
+and add a label-compatibility check: merge only when the previous and
+current section share the same role **and** either share the same label or
+at least one side has no label (`None`, meaning no evidence of a distinct
+block — kept mergeable to preserve prior behavior for unlabeled runs). When
+a `None`-labeled section merges into a labeled one, the merged label is
+kept (not reset to `None`) so a subsequent same-label section can still
+merge into it. Two genuinely different non-`None` labels now block the
+merge even when the role matches.
+
+**Not touched:** `_classify_by_labels` and `classify_section_roles`
+(`src/story/section_classifier.py`) are unchanged — this fix is purely in
+the merge step's decision of *whether* to combine two already-classified
+sections, not in how a role is assigned. `merge_sections`
+(`src/story/section_merger.py`, the raw-boundary-to-segment step) is also
+unchanged — it has no concept of labels or roles at all.
+
+**Test:** Added `test_step4b_merge_does_not_glue_different_labels_sharing_a_role`
+to `tests/unit/test_builder.py` — a 70s synthetic hierarchy with a 2x-repeating
+chorus label (`A`), then a 2x-repeating `B` block and a 2x-repeating `D` block
+that both classify as `"verse"` by the energy-ratio heuristic despite being
+distinct segmentino labels, then a non-vocal `N1` outro. Confirmed the test
+fails without the fix (reverted `builder.py`, reran: got the merged
+`(20.0, 60.0, 'verse')` single section instead of two separate ones) and
+passes with it. Full regression sweep: `test_builder.py`,
+`test_story_history.py`, `test_builder_refinement_warnings.py`,
+`test_story_builder_refinement.py` (integration), `test_story_serialization.py`,
+`test_story_builder_ssm_validator.py`, `test_story_pipeline.py` (integration)
+— 102 passed, no regressions.

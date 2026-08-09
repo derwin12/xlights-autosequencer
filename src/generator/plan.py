@@ -553,7 +553,9 @@ def build_plan(
     picture_effects: dict[str, list] = {}
     if config.picture_effects and config.vocal_words:
         word_image_matches = suggest_images_for_words(
-            config.vocal_words, ignored_occurrences=config.ignored_image_occurrences,
+            config.vocal_words,
+            ignored_occurrences=config.ignored_image_occurrences,
+            overrides=config.image_occurrence_overrides,
         )
         if word_image_matches:
             picture_effects = _place_picture_effects(

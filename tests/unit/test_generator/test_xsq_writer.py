@@ -1,6 +1,7 @@
 """Tests for XSQ writer — xLights .xsq XML serialization."""
 from __future__ import annotations
 
+import base64
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -1488,11 +1489,16 @@ class TestVideoEffectPortability:
         assert found, "Expected bare filename in the serialized Video EffectDB entry"
 
 
-class TestPictureFilenamePortability:
-    """Pictures effect filenames must resolve to the user's original upload
-    name, not the id-prefixed name used internally to avoid collisions inside
-    the image library folder (bug reported 2026-07-15: exported filename
-    showed as '<id>_books.png' instead of 'books.png')."""
+class TestPictureImageEmbedding:
+    """Pictures effect images are embedded directly into the .xsq (xLights'
+    native <SequenceMedia><Image path="..."><Data>base64</Data></Image>
+    format, confirmed against the real xLights source 2026-08-08) instead
+    of being copied next to the output and rewritten to a bare filename —
+    avoids missing-file/subfolder/bundling gaps the copy-based approach had.
+    Filename keys still resolve to the user's original upload name, not the
+    id-prefixed name used internally to avoid collisions inside the image
+    library folder (bug reported 2026-07-15: exported filename showed as
+    '<id>_books.png' instead of 'books.png')."""
 
     def _picture_plan(self, stored_path: str) -> SequencePlan:
         plan = _make_plan()
@@ -1528,9 +1534,63 @@ class TestPictureFilenamePortability:
 
         placement = plan.picture_effects["Matrix1"][0]
         assert placement.parameters["E_TEXTCTRL_Pictures_Filename"] == "books.png"
-        assert (out_dir / "books.png").exists()
+        # No sibling file — the image lives inside the .xsq now.
+        assert not (out_dir / "books.png").exists()
 
-    def test_colliding_original_names_fall_back_to_stored_name(
+    def test_image_embedded_as_sequence_media_with_original_bytes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path / "state"))
+        from src.generator.image_catalog import save_image_to_library
+
+        entry = save_image_to_library(
+            tag="books", filename="books.png", data=b"fake image bytes",
+            uploaded_at="2026-07-15T00:00:00Z",
+        )
+        plan = self._picture_plan(entry["stored_path"])
+        out_path = tmp_path / "output" / "test.xsq"
+        out_path.parent.mkdir()
+        write_xsq(plan, out_path)
+
+        root = ET.parse(out_path).getroot()
+        media_el = root.find("SequenceMedia")
+        assert media_el is not None
+        image_el = media_el.find("Image")
+        assert image_el is not None
+        assert image_el.get("path") == "books.png"
+        data_el = image_el.find("Data")
+        assert data_el is not None
+        assert base64.b64decode(data_el.text) == b"fake image bytes"
+
+    def test_sequence_media_is_sibling_of_effectdb(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path / "state"))
+        from src.generator.image_catalog import save_image_to_library
+
+        entry = save_image_to_library(
+            tag="books", filename="books.png", data=b"fake image bytes",
+            uploaded_at="2026-07-15T00:00:00Z",
+        )
+        plan = self._picture_plan(entry["stored_path"])
+        out_path = tmp_path / "output" / "test.xsq"
+        out_path.parent.mkdir()
+        write_xsq(plan, out_path)
+
+        root = ET.parse(out_path).getroot()
+        children = list(root)
+        effectdb_idx = next(i for i, c in enumerate(children) if c.tag == "EffectDB")
+        media_idx = next(i for i, c in enumerate(children) if c.tag == "SequenceMedia")
+        assert media_idx == effectdb_idx + 1
+
+    def test_no_picture_effects_means_no_sequence_media_element(self, tmp_path: Path) -> None:
+        plan = _make_plan()
+        out_path = tmp_path / "output" / "test.xsq"
+        out_path.parent.mkdir()
+        write_xsq(plan, out_path)
+
+        root = ET.parse(out_path).getroot()
+        assert root.find("SequenceMedia") is None
+
+    def test_colliding_original_names_get_a_numbered_suffix(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("XLIGHT_STATE_HOME", str(tmp_path / "state"))
@@ -1563,17 +1623,33 @@ class TestPictureFilenamePortability:
             ]
         }
 
-        out_dir = tmp_path / "output"
-        out_dir.mkdir()
-        write_xsq(plan, out_dir / "test.xsq")
+        out_path = tmp_path / "output" / "test.xsq"
+        out_path.parent.mkdir()
+        write_xsq(plan, out_path)
 
         first_name = plan.picture_effects["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"]
         second_name = plan.picture_effects["Matrix1"][1].parameters["E_TEXTCTRL_Pictures_Filename"]
         assert first_name == "books.png"
-        assert second_name == Path(second["stored_path"]).name
-        assert first_name != second_name
-        assert (out_dir / first_name).read_bytes() == b"image one"
-        assert (out_dir / second_name).read_bytes() == b"image two"
+        assert second_name == "books (2).png"
+
+        root = ET.parse(out_path).getroot()
+        media_el = root.find("SequenceMedia")
+        images = {img.get("path"): img.find("Data").text for img in media_el.findall("Image")}
+        assert base64.b64decode(images[first_name]) == b"image one"
+        assert base64.b64decode(images[second_name]) == b"image two"
+
+    def test_missing_source_file_skips_embedding_without_raising(self, tmp_path: Path) -> None:
+        plan = self._picture_plan(str(tmp_path / "does_not_exist.png"))
+        out_path = tmp_path / "output" / "test.xsq"
+        out_path.parent.mkdir()
+        write_xsq(plan, out_path)  # must not raise
+
+        root = ET.parse(out_path).getroot()
+        assert root.find("SequenceMedia") is None
+        # Filename left unresolved -- same "xLights won't find it" outcome
+        # the prior copy-based path had for a missing source.
+        placement = plan.picture_effects["Matrix1"][0]
+        assert placement.parameters["E_TEXTCTRL_Pictures_Filename"] == str(tmp_path / "does_not_exist.png")
 
 
 class TestScopedPreviewParams:

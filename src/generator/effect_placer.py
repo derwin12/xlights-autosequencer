@@ -4919,11 +4919,28 @@ def _place_video_effect(
         fade_in_ms=_VIDEO_FADE_IN_MS,
     )
 
+    # Off backdrop directly behind the video (layer 1 -- lower numbers
+    # render in front, see EffectPlacement.layer's docstring) so nothing
+    # else can show through for the video's duration (user request
+    # 2026-08-08). This is the only function that places content on the
+    # video-target matrix, so there's no known layer-1 occupant to dodge,
+    # unlike the layer=5 "safe headroom" used elsewhere in this file.
+    backdrop = EffectPlacement(
+        effect_name="Off",
+        xlights_id="Off",
+        model_or_group=target.name,
+        start_ms=0,
+        end_ms=duration_ms,
+        parameters={},
+        color_palette=["#000000"],
+    )
+    backdrop.layer = 1
+
     logger.info(
         "video_effect: Video placed on matrix '%s' from '%s'",
         target.name, video_path,
     )
-    return {target.name: [placement]}
+    return {target.name: [placement, backdrop]}
 
 
 # How long a lyric-matched image stays on screen per burst, and the minimum
@@ -5085,9 +5102,9 @@ _MEGATREE_NAME_TOKENS = ("megatree", "mega_tree", "mega tree")
 
 
 def _matrix_megatree_targets(props: list[Any], groups: list[PowerGroup]) -> dict[str, str]:
-    """Resolve each Matrix/Mega Tree prop (excluding lyric-display matrices)
-    to its target group name for a song-scoped overlay burst (Pictures,
-    Shadow Text).
+    """Resolve each Matrix/Mega Tree prop (excluding lyric-display matrices
+    and Pixel Forest stakes) to its target group name for a song-scoped
+    overlay burst (Pictures, Shadow Text).
 
     Each eligible prop is redirected to its most specific enclosing tier
     group (looked up in ``groups`` by membership) rather than placed on its
@@ -5095,6 +5112,17 @@ def _matrix_megatree_targets(props: list[Any], groups: list[PowerGroup]) -> dict
     bug-184 rationale (group and direct-model content don't blend) and the
     bug-243 rationale for excluding tier-1 whole-house canvas groups. A prop
     with no such enclosing group falls back to its own row directly.
+
+    "Pixel Forest" stakes are excluded by name (hard rule, user request
+    2026-08-08): they're small stake props configured with
+    ``DisplayAs="Matrix"`` in the real layout despite not being an actual
+    2D display matrix, so the plain ``display_as == "Matrix"`` check alone
+    lets them slip through -- image/text overlay content doesn't read on a
+    prop that shape. The same name-based mismatch already bit
+    ``_select_video_target_matrix`` once (a Video import landed on "Pixel
+    Forest 5" instead of the intended matrix); that function sidesteps it
+    by requiring "video" in the name, but Pictures/Shadow Text have no
+    equivalent positive name requirement, so this needs its own exclusion.
 
     Returns ``{}`` when no Matrix/Mega Tree prop is eligible.
     """
@@ -5105,6 +5133,10 @@ def _matrix_megatree_targets(props: list[Any], groups: list[PowerGroup]) -> dict
             or any(tok in getattr(p, "name", "").lower() for tok in _MEGATREE_NAME_TOKENS)
         )
         and "lyric" not in getattr(p, "name", "").lower()
+        # Matches both the individual props' spaced naming ("Pixel Forest 1")
+        # and the tier-6 group's underscored convention ("06_PROP_Pixel_Forest"),
+        # in case a future layout names the props themselves with underscores.
+        and "pixel forest" not in getattr(p, "name", "").lower().replace("_", " ")
     ]
     if not eligible:
         return {}
@@ -5354,6 +5386,13 @@ _SHADOW_TEXT_ROTATION_KEYS = ("B_SLIDER_Rotations", "B_VALUECURVE_Rotation")
 # larger size and reads more clearly (user request, 2026-08-02).
 _SHADOW_TEXT_TREE_SHORT_WORD_FONT = "10-12x12 Bold"
 _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN = 5
+# Same idea for non-"small" Matrix targets: a 6-character-or-fewer word
+# fits fine at a larger size than the default 10-12x12 Bold and reads more
+# clearly (user request, 2026-08-08). Excludes "small"-named matrix
+# targets -- their 5-5x5 Mono is deliberately tiny for a physically small
+# display; a much taller font there would defeat that.
+_SHADOW_TEXT_MATRIX_SHORT_WORD_FONT = "12-15x15 Bold"
+_SHADOW_TEXT_MATRIX_SHORT_WORD_MAX_LEN = 6
 
 
 def _is_shadow_text_tree_target(target_name: str) -> bool:
@@ -5456,10 +5495,14 @@ def _place_shadow_text_effects(
                 {"E_CHOICE_Text_Font": _LYRIC_TEXT_SMALL_FONT}
                 if not is_tree and "small" in target_name.lower() else {}
             )
-            short_word_font_params = (
-                {"E_CHOICE_Text_Font": _SHADOW_TEXT_TREE_SHORT_WORD_FONT}
-                if is_tree and len(text) <= _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN else {}
-            )
+            is_small_matrix = not is_tree and "small" in target_name.lower()
+            if is_tree and len(text) <= _SHADOW_TEXT_TREE_SHORT_WORD_MAX_LEN:
+                short_word_font_params = {"E_CHOICE_Text_Font": _SHADOW_TEXT_TREE_SHORT_WORD_FONT}
+            elif (not is_tree and not is_small_matrix
+                    and len(text) <= _SHADOW_TEXT_MATRIX_SHORT_WORD_MAX_LEN):
+                short_word_font_params = {"E_CHOICE_Text_Font": _SHADOW_TEXT_MATRIX_SHORT_WORD_FONT}
+            else:
+                short_word_font_params = {}
             motion_params = _PICTURE_MOTIONS[motion]
             if is_tree:
                 motion_params = {

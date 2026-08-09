@@ -1,6 +1,7 @@
 """XSQ writer — serializes a SequencePlan to xLights .xsq XML format."""
 from __future__ import annotations
 
+import base64
 import logging
 import xml.etree.ElementTree as ET
 import zlib
@@ -305,6 +306,104 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
 }
 
 
+def _embed_picture_images(
+    picture_effects: dict[str, list[EffectPlacement]],
+) -> list[ET.Element]:
+    """Embed each Pictures placement's referenced library image directly
+    into the .xsq as xLights' native ``<SequenceMedia><Image path="...">
+    <Data>base64</Data></Image>`` block, instead of copying the file next
+    to the output and rewriting the filename to a bare basename.
+
+    Reads the ORIGINAL file bytes verbatim — no re-encoding, no Pillow
+    dependency. xLights' own loader (``ImageCacheEntry::LoadFromData``,
+    ``SequenceMedia.cpp``) sniffs the magic bytes to detect an animated
+    GIF/WebP and decodes multi-frame playback internally, so a single
+    ``<Data>`` blob round-trips an animated image correctly without the
+    generator needing to split frames itself. Confirmed against the real
+    xLights source (``SequenceMedia.cpp``/``SequenceFile.cpp``,
+    ``H:\\XlightsSourceDir\\xLights\\src-core\\render\\``, 2026-08-08) —
+    ``<SequenceMedia>`` is a sibling of ``<EffectDB>`` directly under the
+    ``<xsequence>`` root, and ``PicturesEffect.cpp`` resolves
+    ``E_TEXTCTRL_Pictures_Filename`` as a lookup key into this cache, so the
+    key need not be a real filesystem path.
+
+    Multiple placements commonly reference the same library file (e.g.
+    every 20s segment of one prop's rotation before it cycles to the next
+    image), so each source is only read/embedded once. The key reuses the
+    library's original upload filename (falling back to the stored,
+    id-prefixed name on a collision between two different entries that
+    share an original filename) so the exported EffectDB entry stays
+    human-readable, matching the prior copy-based behavior's naming.
+
+    A source that can't be read (missing file, permission error) is
+    skipped with a warning rather than aborting the whole export — the
+    placement's filename parameter is left pointing at the unresolvable
+    stored_path, the same "xLights won't find it" outcome the old
+    copy-based path had for a missing source.
+    """
+    original_filenames = {
+        e["stored_path"]: e["filename"]
+        for e in load_image_library()
+        if e.get("stored_path") and e.get("filename")
+    }
+    embedded_b64_by_key: dict[str, str] = {}
+    key_by_src: dict[str, str] = {}
+    used_keys: set[str] = set()
+
+    for placements in picture_effects.values():
+        for placement in placements:
+            src = placement.parameters.get("E_TEXTCTRL_Pictures_Filename")
+            if not src:
+                continue
+            if src in key_by_src:
+                placement.parameters["E_TEXTCTRL_Pictures_Filename"] = key_by_src[src]
+                continue
+            src_path = Path(src)
+            if not src_path.exists():
+                logger.warning(
+                    "picture_effect: source '%s' does not exist — xLights won't "
+                    "find the embedded image", src_path,
+                )
+                continue
+            try:
+                data = src_path.read_bytes()
+            except OSError as exc:
+                logger.warning("picture_effect: could not read '%s': %s", src_path, exc)
+                continue
+
+            # A collision between two different library entries sharing an
+            # original upload filename (e.g. two separate "sing.png"
+            # uploads, see the per-occurrence image override feature)
+            # numbers the disambiguated ones -- "sing (2).png", not the
+            # internal id-prefixed stored name, which reads as a
+            # meaningless hex string in xLights' own Media panel
+            # (user report 2026-08-08).
+            key = original_filenames.get(src, src_path.name)
+            if key in used_keys:
+                stem, suffix = src_path.with_name(key).stem, src_path.with_name(key).suffix
+                n = 2
+                while f"{stem} ({n}){suffix}" in used_keys:
+                    n += 1
+                key = f"{stem} ({n}){suffix}"
+            used_keys.add(key)
+            key_by_src[src] = key
+            embedded_b64_by_key[key] = base64.b64encode(data).decode("ascii")
+            placement.parameters["E_TEXTCTRL_Pictures_Filename"] = key
+            logger.info(
+                "picture_effect: embedded '%s' as '%s' (%d bytes)",
+                src_path, key, len(data),
+            )
+
+    media_elements: list[ET.Element] = []
+    for key, b64 in embedded_b64_by_key.items():
+        image_el = ET.Element("Image")
+        image_el.set("path", key)
+        data_el = ET.SubElement(image_el, "Data")
+        data_el.text = b64
+        media_elements.append(image_el)
+    return media_elements
+
+
 def write_xsq(
     plan: SequencePlan,
     output_path: Path,
@@ -402,55 +501,19 @@ def write_xsq(
     # Song-scoped Pictures placements (image library entries cycling on
     # Matrix/Mega Tree props) — same rationale as vocal_effects. Filenames
     # hold absolute paths into the container-local image library
-    # (~/.xlight/library/images/), unusable by xLights on the host — copied
-    # next to output_path and rewritten to a bare filename, same treatment
-    # as plan.video_effects below. Multiple placements commonly reference
-    # the same library file (e.g. every 20s segment of one prop's rotation
-    # before it cycles to the next image), so each source is only copied once.
-    #
-    # The stored filename is `<id>_<original>` (id prefix added purely to
-    # avoid collisions inside the library folder, see image_catalog.py) — the
-    # exported name should be the original upload name so users recognize it
-    # in xLights, falling back to the id-prefixed name only if two different
-    # library entries in this song share the same original filename.
-    _original_filenames = {
-        e["stored_path"]: e["filename"]
-        for e in load_image_library()
-        if e.get("stored_path") and e.get("filename")
-    }
-    _copied_pictures: dict[str, str] = {}
-    _used_dest_names: set[str] = set()
+    # (~/.xlight/library/images/), unusable by xLights on the host. Embedded
+    # directly into the .xsq (see _embed_picture_images) rather than copied
+    # next to output_path, unlike plan.video_effects below — xLights' own
+    # SequenceMedia format only supports embedding for images, not video
+    # (confirmed against the real xLights source, SequenceMedia.cpp: "Videos
+    # are path-only (not embedded)"). Embedding sidesteps the copy step's
+    # portability gaps entirely: no sibling file to go missing, no ShowFolder/
+    # subfolder path to lose, and no dependency on the "Save Bundle" .xsqz
+    # zip (export.py) happening to include it, which it didn't before this
+    # change (user request 2026-08-08).
     for group_name, placements in plan.picture_effects.items():
         unordered.setdefault(group_name, []).extend(placements)
-        for placement in placements:
-            src = placement.parameters.get("E_TEXTCTRL_Pictures_Filename")
-            if not src:
-                continue
-            if src in _copied_pictures:
-                placement.parameters["E_TEXTCTRL_Pictures_Filename"] = _copied_pictures[src]
-                continue
-            src_path = Path(src)
-            dest_name = _original_filenames.get(src, src_path.name)
-            if dest_name in _used_dest_names:
-                dest_name = src_path.name
-            dest = output_path.parent / dest_name
-            if dest.exists():
-                logger.info(
-                    "picture_effect: '%s' already present at '%s' — skipping copy",
-                    dest_name, dest,
-                )
-            elif src_path.exists():
-                import shutil
-                shutil.copy2(src_path, dest)
-                logger.info("picture_effect: copied '%s' -> '%s'", src_path, dest)
-            else:
-                logger.warning(
-                    "picture_effect: source '%s' does not exist — xLights won't "
-                    "find '%s'", src_path, dest_name,
-                )
-            _used_dest_names.add(dest_name)
-            _copied_pictures[src] = dest_name
-            placement.parameters["E_TEXTCTRL_Pictures_Filename"] = dest_name
+    picture_media_elements = _embed_picture_images(plan.picture_effects)
 
     # Song-scoped Shadow Text placements (two-layer word-in-shadow Text
     # effect on user-tagged words) -- same rationale as vocal_effects. No
@@ -699,6 +762,14 @@ def write_xsq(
     for effect_str in effect_db_list:
         ef = ET.SubElement(effectdb_el, "Effect")
         ef.text = effect_str
+
+    # <SequenceMedia> — embedded Pictures images (see _embed_picture_images).
+    # Sibling of <EffectDB>, matching xLights' own document ordering
+    # (SequenceFile.cpp::BuildDocument).
+    if picture_media_elements:
+        media_el = ET.SubElement(root, "SequenceMedia")
+        for image_el in picture_media_elements:
+            media_el.append(image_el)
 
     # <DisplayElements> — only include groups/models that have effects
     display_el = ET.SubElement(root, "DisplayElements")
