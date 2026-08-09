@@ -143,7 +143,21 @@ def ignore_image_word(song_id: str):
     if not any(o["word"] == word and o["start_ms"] == start_ms for o in occurrences):
         occurrences.append({"word": word, "start_ms": start_ms})
         _save_ignored_occurrences(song_id, occurrences)
-    return jsonify({"ignored": True, "occurrences": occurrences}), 200
+
+    # A per-occurrence override always wins over an ignore at export time
+    # (image_catalog.suggest_images_for_words), so an override left over
+    # from a previous "Choose image"/upload must be cleared here too --
+    # otherwise "unmap" looks like it worked (the UI shows "unmapped") but
+    # the overridden image still renders at export (2026-08-09 user report:
+    # a stray override survived an unmap and kept firing at that occurrence).
+    overrides = _load_image_overrides(song_id)
+    filtered_overrides = [
+        o for o in overrides if not (o["word"] == word and o["start_ms"] == start_ms)
+    ]
+    if len(filtered_overrides) != len(overrides):
+        _save_image_overrides(song_id, filtered_overrides)
+
+    return jsonify({"ignored": True, "occurrences": occurrences, "overrides": filtered_overrides}), 200
 
 
 @api_v1.route("/songs/<song_id>/ignored-images/<word>/<int:start_ms>", methods=["DELETE"])

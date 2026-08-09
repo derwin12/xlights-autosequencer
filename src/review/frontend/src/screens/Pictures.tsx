@@ -266,6 +266,16 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
         return;
       }
       setIgnored((prev) => new Set(prev).add(occKey(token, startMs)));
+      // The backend also clears any standing per-occurrence override for
+      // this word/start_ms (an override always wins over an ignore at
+      // export time otherwise) -- mirror that here so the UI doesn't keep
+      // showing a stale "Choose image" selection for a row that's now
+      // actually unmapped.
+      setOverrides((prev) => {
+        const next = new Map(prev);
+        next.delete(occKey(token, startMs));
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     }

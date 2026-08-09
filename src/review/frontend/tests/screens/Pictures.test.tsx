@@ -80,4 +80,71 @@ describe('Pictures screen', () => {
       expect(screen.getByRole('button', { name: /restore match/i })).toBeTruthy();
     });
   });
+
+  it('unmapping an occurrence with a standing override clears it locally too', async () => {
+    // Regression for a 2026-08-09 user report: an occurrence pinned via
+    // "Choose image" to a different library entry kept firing that
+    // override at export even after being unmapped on this screen, because
+    // the ignore and the override were two independent flags and only the
+    // ignore got cleared. The backend now clears both together; this test
+    // guards the frontend actually reflects that instead of keeping the
+    // stale override in local state until a full reload.
+    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === `/api/v1/songs/${song.song_id}/image-overrides` && !opts) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            overrides: [{ word: 'dream', start_ms: 182000, image_id: 'override-id' }],
+          }),
+        });
+      }
+      if (url === '/api/v1/images') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ images: [{ id: 'override-id', filename: 'override.png' }] }),
+        });
+      }
+      if (url === `/api/v1/songs/${song.song_id}/ignored-images` && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            occurrences: [{ word: 'dream', start_ms: 182000 }],
+            overrides: [],
+          }),
+        });
+      }
+      return defaultFetchImpl(url);
+    });
+
+    render(
+      <Pictures song={song} imageSuggestions={imageSuggestions} imageTopics={[]} onContinue={() => {}} />
+    );
+    // Before unmapping: the overridden filename shows instead of the
+    // row's normal matched_file.
+    await waitFor(() => expect(screen.getByText('override.png')).toBeTruthy());
+
+    const unmapButtons = screen.getAllByRole('button', { name: /^unmap$/i });
+    fireEvent.click(unmapButtons[0]);
+
+    await waitFor(() => {
+      // Row moved to "Suggested topics"; its "unmapped from" note uses the
+      // ORIGINAL matched_file, not the override, since it's a fixed label.
+      expect(screen.getByText(/unmapped from dream2\.png/i)).toBeTruthy();
+    });
+
+    // Restoring the match should now fall back to the normal matched_file,
+    // not silently resurrect the cleared override.
+    mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url.includes('/ignored-images/') && opts?.method === 'DELETE') {
+        return Promise.resolve({ ok: true, json: async () => ({ occurrences: [] }) });
+      }
+      return defaultFetchImpl(url);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /restore match/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('dream2.png')).toBeTruthy();
+      expect(screen.queryByText('override.png')).toBeNull();
+    });
+  });
 });

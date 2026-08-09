@@ -196,6 +196,49 @@ class TestIgnoredImages:
         assert session["sections"] == [{"label": "verse"}]
         assert session["ignored_image_occurrences"] == [{"word": "snowman", "start_ms": 1000}]
 
+    def test_ignore_clears_a_standing_override_on_the_same_occurrence(self, client):
+        # A per-occurrence override always wins over an ignore at export
+        # time (image_catalog.suggest_images_for_words), so unmapping must
+        # clear any override left over from a previous "Choose image" pick
+        # -- otherwise the row shows "unmapped" but the overridden image
+        # still fires at export (2026-08-09 user report).
+        upload = client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(b"bytes"), "face.png"), "tag": "face"},
+            content_type="multipart/form-data",
+        )
+        image_id = upload.get_json()["image"]["id"]
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "face", "start_ms": 46675, "image_id": image_id},
+        )
+        resp = client.post(
+            f"/api/v1/songs/{self.SONG}/ignored-images",
+            json={"word": "face", "start_ms": 46675},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["overrides"] == []
+        overrides = client.get(f"/api/v1/songs/{self.SONG}/image-overrides").get_json()["overrides"]
+        assert overrides == []
+
+    def test_ignore_leaves_overrides_on_other_occurrences_alone(self, client):
+        upload = client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(b"bytes"), "face.png"), "tag": "face"},
+            content_type="multipart/form-data",
+        )
+        image_id = upload.get_json()["image"]["id"]
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "face", "start_ms": 5000, "image_id": image_id},
+        )
+        client.post(
+            f"/api/v1/songs/{self.SONG}/ignored-images",
+            json={"word": "face", "start_ms": 46675},
+        )
+        overrides = client.get(f"/api/v1/songs/{self.SONG}/image-overrides").get_json()["overrides"]
+        assert overrides == [{"word": "face", "start_ms": 5000, "image_id": image_id}]
+
 
 class TestImageOverrides:
     SONG = "cafe0123deadbeef"
