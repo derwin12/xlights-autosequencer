@@ -17,8 +17,36 @@ from src.generator.effect_placer import (
     _PICTURE_MOTIONS,
     _PICTURE_SCALE_PERCENT,
     _PICTURE_SPEED_RANGE,
+    _find_free_stack_layers,
     _place_picture_effects,
 )
+
+
+class TestFindFreeStackLayers:
+    def test_base_layer_free_on_first_use(self):
+        assert _find_free_stack_layers({}, base_layer=-1, width=1, start=1000) == [-1]
+
+    def test_occupied_base_layer_bumps_to_next_stack_level(self):
+        # Base layer -1 is occupied until ms 2000; a burst starting at 1500
+        # must stack one level higher instead of colliding.
+        assert _find_free_stack_layers({-1: 2000}, base_layer=-1, width=1, start=1500) == [-2]
+
+    def test_free_once_the_occupying_burst_has_ended(self):
+        assert _find_free_stack_layers({-1: 1000}, base_layer=-1, width=1, start=1000) == [-1]
+
+    def test_paired_width_keeps_both_indices_together(self):
+        # Neither half of the base pair (0, -1) is free -- both must move
+        # to the next pair down (-2, -3) as a unit.
+        assert _find_free_stack_layers(
+            {0: 5000, -1: 5000}, base_layer=0, width=2, start=1000,
+        ) == [-2, -3]
+
+    def test_paired_width_only_moves_when_either_half_is_busy(self):
+        # Front (-1) is free but shadow (0) isn't -- the pair must move
+        # together, not split.
+        assert _find_free_stack_layers(
+            {0: 5000}, base_layer=0, width=2, start=1000,
+        ) == [-2, -3]
 
 # Worst-case (largest possible) burst length for a word at/under the floor --
 # safe upper bound for tests that need bursts guaranteed apart regardless of
@@ -391,13 +419,13 @@ class TestPlacePictureEffects:
         )
         assert result == {}
 
-    def test_close_matches_deduped_by_min_gap(self):
+    def test_close_matches_stack_on_a_higher_layer_instead_of_dropping(self):
         library = load_effect_library()
         # Second match's burst window (starts 2000-1000=1000, per the lead-in)
         # would literally overlap the first burst's window (0-at least
-        # _PICTURE_MIN_BURST_MS) -- two different pictures can't be on
-        # screen at once regardless of image, so this must be dropped no
-        # matter which files are involved.
+        # _PICTURE_MIN_BURST_MS) -- rather than dropping the second picture,
+        # it renders one layer higher (smaller index) so both blend
+        # together (user request, 2026-08-09).
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
             _match("fool", 2_000, stored_path="/lib/fool.gif"),
@@ -410,8 +438,13 @@ class TestPlacePictureEffects:
             variation_seed=0,
             word_image_matches=matches,
         )
-        assert len(result["Matrix1"]) == 1
-        assert result["Matrix1"][0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/love.gif"
+        placements = sorted(result["Matrix1"], key=lambda p: p.start_ms)
+        assert len(placements) == 2
+        assert placements[0].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/love.gif"
+        assert placements[1].parameters["E_TEXTCTRL_Pictures_Filename"] == "/lib/fool.gif"
+        # The later, overlapping burst stacks one layer above (smaller index
+        # renders on top) rather than sharing the first burst's layer.
+        assert placements[1].layer < placements[0].layer
 
     def test_different_image_fires_soon_after_without_waiting_for_min_gap(self):
         library = load_effect_library()

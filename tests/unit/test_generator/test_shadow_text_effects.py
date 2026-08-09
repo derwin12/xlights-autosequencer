@@ -199,7 +199,7 @@ class TestPlaceShadowTextEffects:
         for p in result["Matrix1"]:
             assert p.end_ms <= 5_500
 
-    def test_two_occurrences_do_not_overlap(self):
+    def test_two_close_occurrences_stack_on_a_higher_layer_pair(self):
         result = _place_shadow_text_effects(
             props=[_prop("Matrix1", "Matrix")],
             groups=[],
@@ -212,9 +212,16 @@ class TestPlaceShadowTextEffects:
         )
         placements = sorted(result["Matrix1"], key=lambda p: p.start_ms)
         # Second occurrence starts before the first burst (padded to the
-        # minimum) ends, so it must be skipped -- only one occurrence's
-        # two layers survive.
-        assert len(placements) == 2
+        # minimum) ends -- rather than being dropped, its front/shadow pair
+        # stacks on the next layer pair up (user request, 2026-08-09), so
+        # all four placements (two occurrences x front+shadow) survive.
+        assert len(placements) == 4
+        first_pair_layers = {p.layer for p in placements[:2]}
+        second_pair_layers = {p.layer for p in placements[2:]}
+        assert first_pair_layers.isdisjoint(second_pair_layers)
+        # The second occurrence's pair renders above (smaller indices than)
+        # the first's.
+        assert max(second_pair_layers) < min(first_pair_layers)
 
     def test_reserves_layers_below_existing_content(self):
         result = _place_shadow_text_effects(

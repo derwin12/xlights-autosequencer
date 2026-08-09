@@ -4,6 +4,7 @@ from __future__ import annotations
 from src.generator.effect_placer import (
     _best_face_definition,
     _lightest_color,
+    _pad_vocal_regions,
     _place_lyric_text,
     _place_singing_faces,
     _vocal_regions,
@@ -46,6 +47,30 @@ class TestVocalRegions:
         assert _vocal_regions(shuffled) == [(1000, 2000), (9000, 9500)]
 
 
+class TestPadVocalRegions:
+    def test_full_pad_when_plenty_of_room(self):
+        # Isolated region far from 0/song end/neighbors gets the full 3s pad.
+        assert _pad_vocal_regions([(10000, 11000)], 20000) == [(7000, 14000)]
+
+    def test_clamped_to_song_boundaries(self):
+        # Can't pad past 0 at the start or past the song's end.
+        assert _pad_vocal_regions([(1000, 500 + 19000)], 20000) == [(0, 20000)]
+
+    def test_tight_gap_between_regions_splits_evenly(self):
+        # Only a 2000ms gap between regions -- less than 2x the 3000ms pad,
+        # so each side gets half (1000ms) rather than colliding.
+        assert _pad_vocal_regions([(5000, 6000), (8000, 9000)], None) == [
+            (2000, 7000),
+            (7000, 12000),
+        ]
+
+    def test_no_song_duration_pads_freely_at_the_end(self):
+        assert _pad_vocal_regions([(5000, 6000)], None) == [(2000, 9000)]
+
+    def test_empty(self):
+        assert _pad_vocal_regions([], 20000) == []
+
+
 class TestPlaceSingingFaces:
     def test_places_per_region_on_face_props_only(self):
         props = [
@@ -59,9 +84,13 @@ class TestPlaceSingingFaces:
         assert all(p.effect_name == "Faces" for p in placements)
         assert placements[0].parameters["E_CHOICE_Faces_FaceDefinition"] == "SingingFace"
         assert placements[0].parameters["E_CHOICE_Faces_TimingTrack"] == "Lyrics"
-        # Frame-aligned to the first vocal region
-        assert placements[0].start_ms == 1000
-        assert placements[0].end_ms == 2000
+        # Padded 3s on each side (where space allows) for the Fade checkbox
+        # to have room to play; the song start isn't a competing neighbor so
+        # the first region gets the full pad, clamped to 0. The 7000ms gap
+        # to the next region splits evenly (3000ms each way, still within
+        # the pad amount).
+        assert placements[0].start_ms == 0
+        assert placements[0].end_ms == 5000
 
     def test_no_words_no_placements(self):
         props = [_prop("Singing Face", faces=["SingingFace"])]
@@ -232,9 +261,12 @@ class TestSingingFacesDiarization:
         assert set(result) == {"Lead Face", "Backup Face"}
         lead = result["Lead Face"]
         backup = result["Backup Face"]
-        assert len(lead) == 1 and lead[0].start_ms == 1000 and lead[0].end_ms == 2000
+        # Lead/backup regions are padded independently (different props, no
+        # shared timeline to avoid colliding with); each is its own
+        # track's sole region so both edges get the full pad.
+        assert len(lead) == 1 and lead[0].start_ms == 0 and lead[0].end_ms == 5000
         assert lead[0].parameters["E_CHOICE_Faces_TimingTrack"] == "Lyrics"
-        assert len(backup) == 1 and backup[0].start_ms == 9000 and backup[0].end_ms == 9500
+        assert len(backup) == 1 and backup[0].start_ms == 6000 and backup[0].end_ms == 12500
         assert backup[0].parameters["E_CHOICE_Faces_TimingTrack"] == "Lyrics - Backup"
 
     def test_flag_off_ignores_speaker_tag(self):

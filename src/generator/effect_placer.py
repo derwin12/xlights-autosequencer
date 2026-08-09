@@ -4458,6 +4458,11 @@ def _place_whole_house_composite(
 # this gap belong to the same vocal region; larger gaps split regions so no
 # Faces effect sits over long instrumental passages.
 _FACES_VOCAL_GAP_MS = 5000
+# Each vocal region is padded this much on both ends (where space allows) so
+# the Faces effect's Fade checkbox has room to actually fade in/out instead
+# of snapping on/off exactly at the first/last sung word (user request,
+# 2026-08-09).
+_FACES_FADE_PAD_MS = 3000
 # xLights consumes lyrics as one 3-layer timing track named "Lyrics"
 # (phrases/words/phonemes — see xsq_writer._build_lyric_layers). Faces takes
 # the track name; Text takes "<track> - Words" to select the word layer.
@@ -4488,6 +4493,7 @@ def _place_singing_faces(
     props: list[Any],
     vocal_words: Optional[list[dict]],
     vocal_diarization: bool = False,
+    song_duration_ms: Optional[int] = None,
 ) -> dict[str, list[EffectPlacement]]:
     """Place xLights Faces effects on dedicated singing props over vocal regions.
 
@@ -4498,7 +4504,10 @@ def _place_singing_faces(
     merged across gaps < ``_FACES_VOCAL_GAP_MS``), each pointed at the
     3-layer "Lyrics" timing track; xLights renders the matching mouth per
     phoneme-layer label. Effect settings are copied verbatim from a
-    user-verified working effect.
+    user-verified working effect. Each region is padded by
+    ``_FACES_FADE_PAD_MS`` on both ends (see ``_pad_vocal_regions``) so the
+    Fade checkbox has room to actually fade in/out; ``song_duration_ms``
+    clamps the last region's padding to the song's end.
 
     When ``vocal_diarization`` is on, ``vocal_words`` carries WhisperX marks
     tagged with a ``speaker`` key (0=lead, 1=featured/backup — see
@@ -4528,8 +4537,12 @@ def _place_singing_faces(
     backup_prop = face_props[1] if (backup_words and len(face_props) >= 2) else None
     lead_words = vocal_words if backup_prop is None else lead_only_words
 
-    lead_regions = _vocal_regions(lead_words)
-    backup_regions = _vocal_regions(backup_words) if backup_prop is not None else []
+    lead_regions = _pad_vocal_regions(_vocal_regions(lead_words), song_duration_ms)
+    backup_regions = (
+        _pad_vocal_regions(_vocal_regions(backup_words), song_duration_ms)
+        if backup_prop is not None
+        else []
+    )
     if not lead_regions and not backup_regions:
         return result
 
@@ -5153,6 +5166,27 @@ def _matrix_megatree_targets(props: list[Any], groups: list[PowerGroup]) -> dict
     return targets
 
 
+def _find_free_stack_layers(
+    layer_ends: dict[int, int], base_layer: int, width: int, start: int
+) -> list[int]:
+    """Find ``width`` consecutive descending layer indices, all free at ``start``.
+
+    Extras (Pictures bursts, Shadow Text pairs) used to silently drop a
+    burst that started before the previous one on the same target finished
+    (user request, 2026-08-09: stack instead of dropping). A lower
+    ``EffectLayer`` index renders on top (bug-243), so "stack above the
+    preceding effect" means searching downward from ``base_layer`` in steps
+    of ``width`` -- keeping paired layers (e.g. Shadow Text's front+shadow)
+    aligned as a unit -- until a slot whose recorded end is at or before
+    ``start`` is found. A never-used index defaults to "free" (``-inf``), so
+    this always terminates: worst case it opens one brand-new stack level.
+    """
+    top = base_layer
+    while not all(layer_ends.get(top - i, float("-inf")) <= start for i in range(width)):
+        top -= width
+    return [top - i for i in range(width)]
+
+
 def _place_picture_effects(
     props: list[Any],
     groups: list[PowerGroup],
@@ -5229,6 +5263,11 @@ def _place_picture_effects(
     adds a buffer-transform motion on top — explode (zoom ramp), shake
     (rotation sine), or explode+spin — with plain "normal" dominating so the
     motions stay an accent (user request, 2026-07-18).
+
+    A burst that starts before the previous one on the same target ends is
+    never dropped: it stacks onto the next layer up instead (see
+    ``_find_free_stack_layers``), so overlapping bursts blend into each
+    other rather than one silently vanishing (user request, 2026-08-09).
     """
     if duration_ms <= 0:
         return {}
@@ -5258,7 +5297,7 @@ def _place_picture_effects(
         return {}
 
     result: dict[str, list[EffectPlacement]] = {}
-    scheduled_end_by_target: dict[str, int] = {}
+    layer_ends_by_target: dict[str, dict[int, int]] = {}
     last_end_by_target_and_file: dict[tuple[str, str], int] = {}
     for match in matches:
         word_start = int(match["start_ms"])
@@ -5285,21 +5324,25 @@ def _place_picture_effects(
             f"{variation_seed}:speed:{match.get('word')}:{word_start}"
         ).uniform(*_PICTURE_SPEED_RANGE), 1)
         for target_name in set(targets.values()):
-            # Bursts on the same target may never overlap in time regardless
-            # of image, but the _PICTURE_MIN_GAP_MS cooldown only applies to
-            # *repeating the same image* (bug, 2026-07-15): a word that
-            # recurs often in the lyrics (e.g. a repeated chorus line) used
-            # to monopolize every nearby slot and silently crowd out a rarer,
-            # differently-imaged match that fell within the same gap window,
-            # even though showing a different picture back-to-back doesn't
-            # read as flicker the way repeating one does.
-            last_end = scheduled_end_by_target.get(target_name)
-            if last_end is not None and start < last_end:
-                continue
+            # The _PICTURE_MIN_GAP_MS cooldown only applies to *repeating the
+            # same image* (bug, 2026-07-15): a word that recurs often in the
+            # lyrics (e.g. a repeated chorus line) used to monopolize every
+            # nearby slot and silently crowd out a rarer, differently-imaged
+            # match that fell within the same gap window, even though
+            # showing a different picture back-to-back doesn't read as
+            # flicker the way repeating one does.
             last_same_file_end = last_end_by_target_and_file.get((target_name, filename))
             if last_same_file_end is not None and start - last_same_file_end < _PICTURE_MIN_GAP_MS:
                 continue
-            scheduled_end_by_target[target_name] = end
+            # Bursts that land too close in time to stack on the target's
+            # base layer render one layer higher instead of being dropped
+            # (user request, 2026-08-09) -- they blend into each other
+            # rather than one silently disappearing.
+            target_layer_ends = layer_ends_by_target.setdefault(target_name, {})
+            (layer,) = _find_free_stack_layers(
+                target_layer_ends, picture_layer_by_target[target_name], 1, start,
+            )
+            target_layer_ends[layer] = end
             last_end_by_target_and_file[(target_name, filename)] = end
             result.setdefault(target_name, []).append(EffectPlacement(
                 effect_name="Pictures",
@@ -5322,7 +5365,7 @@ def _place_picture_effects(
                     **_PICTURE_MOTIONS[motion],
                 },
                 color_palette=["#FFFFFF"],
-                layer=picture_layer_by_target[target_name],
+                layer=layer,
                 fade_in_ms=_PICTURE_FADE_MS,
                 fade_out_ms=_PICTURE_FADE_MS,
             ))
@@ -5428,6 +5471,12 @@ def _place_shadow_text_effects(
     ``_SHADOW_TEXT_TREE_PARAMS``/``_SHADOW_TEXT_TREE_SUBBUFFER`` instead of
     the matrix defaults -- see the constants' comment for why.
 
+    An occurrence that starts before the previous one's front/shadow pair on
+    the same target ends is never dropped: its pair stacks onto the next
+    layer pair up instead (see ``_find_free_stack_layers``), so overlapping
+    occurrences blend into each other rather than one silently vanishing
+    (user request, 2026-08-09).
+
     Returns ``{}`` when there are no eligible targets, no words, or no
     tagged occurrence ever matches.
     """
@@ -5458,17 +5507,16 @@ def _place_shadow_text_effects(
     color1 = "#FFFFFF"
     color2 = accent_palette[0] if accent_palette else color1
 
-    front_layer_by_target: dict[str, int] = {
-        target_name: (existing_layers or {}).get(target_name, 1) - 2
-        for target_name in set(targets.values())
-    }
-    shadow_layer_by_target: dict[str, int] = {
+    # Base of each stack level's search: _find_free_stack_layers returns
+    # [top, top-1] for width=2, so shadow (the larger/bottom-of-pair index)
+    # comes first and front (smaller, renders on top of the shadow) second.
+    shadow_base_by_target: dict[str, int] = {
         target_name: (existing_layers or {}).get(target_name, 1) - 1
         for target_name in set(targets.values())
     }
 
     result: dict[str, list[EffectPlacement]] = {}
-    scheduled_end_by_target: dict[str, int] = {}
+    layer_ends_by_target: dict[str, dict[int, int]] = {}
     for word_start, word_end, text in spans:
         burst_ms = max(_SHADOW_TEXT_MIN_BURST_MS, word_end - word_start)
         # The burst is centered on the WORD's own midpoint (user request,
@@ -5484,10 +5532,17 @@ def _place_shadow_text_effects(
             f"{variation_seed}:shadow:motion:{text}:{word_start}"
         ).choices(_PICTURE_MOTION_NAMES, weights=_PICTURE_MOTION_WEIGHTS)[0]
         for target_name in set(targets.values()):
-            last_end = scheduled_end_by_target.get(target_name)
-            if last_end is not None and start < last_end:
-                continue
-            scheduled_end_by_target[target_name] = end
+            # An occurrence that lands too close in time to stack on the
+            # target's base front/shadow pair renders one pair higher
+            # instead of being dropped (user request, 2026-08-09) -- it
+            # blends into the preceding occurrence rather than one silently
+            # disappearing.
+            target_layer_ends = layer_ends_by_target.setdefault(target_name, {})
+            shadow_layer, front_layer = _find_free_stack_layers(
+                target_layer_ends, shadow_base_by_target[target_name], 2, start,
+            )
+            target_layer_ends[front_layer] = end
+            target_layer_ends[shadow_layer] = end
             is_tree = _is_shadow_text_tree_target(target_name)
             family_params = _SHADOW_TEXT_TREE_PARAMS if is_tree else _SHADOW_TEXT_MATRIX_PARAMS
             subbuffer = _SHADOW_TEXT_TREE_SUBBUFFER if is_tree else _SHADOW_TEXT_MATRIX_SUBBUFFER
@@ -5524,7 +5579,7 @@ def _place_shadow_text_effects(
                     **motion_params,
                 },
                 color_palette=[color1],
-                layer=front_layer_by_target[target_name],
+                layer=front_layer,
                 fade_in_ms=_SHADOW_TEXT_FADE_MS,
                 fade_out_ms=_SHADOW_TEXT_FADE_MS,
             ))
@@ -5544,7 +5599,7 @@ def _place_shadow_text_effects(
                     **motion_params,
                 },
                 color_palette=[color2],
-                layer=shadow_layer_by_target[target_name],
+                layer=shadow_layer,
                 fade_in_ms=_SHADOW_TEXT_FADE_MS,
                 fade_out_ms=_SHADOW_TEXT_FADE_MS,
             ))
@@ -5583,6 +5638,39 @@ def _vocal_regions(vocal_words: Optional[list[dict]]) -> list[tuple[int, int]]:
         else:
             regions.append((start, end))
     return regions
+
+
+def _pad_vocal_regions(
+    regions: list[tuple[int, int]], song_duration_ms: Optional[int]
+) -> list[tuple[int, int]]:
+    """Extend each region by ``_FACES_FADE_PAD_MS`` on both sides, where space allows.
+
+    Gives the Faces effect's Fade checkbox room to actually fade in/out
+    instead of snapping on/off exactly at the first/last sung word. Never
+    overlaps a neighboring region: a gap tighter than ``2 *
+    _FACES_FADE_PAD_MS`` between two regions is split evenly rather than
+    colliding. The song boundaries (0 and ``song_duration_ms``) aren't a
+    competing neighbor, so the first/last region gets the full pad, only
+    clamped to not go negative or past the song's end.
+    """
+    if not regions:
+        return regions
+    padded: list[tuple[int, int]] = []
+    for i, (start, end) in enumerate(regions):
+        if i > 0:
+            left_room = max(0, (start - regions[i - 1][1]) // 2)
+        else:
+            left_room = _FACES_FADE_PAD_MS
+        if i + 1 < len(regions):
+            right_room = max(0, (regions[i + 1][0] - end) // 2)
+        else:
+            right_room = _FACES_FADE_PAD_MS
+        padded_start = max(0, start - min(_FACES_FADE_PAD_MS, left_room))
+        padded_end = end + min(_FACES_FADE_PAD_MS, right_room)
+        if song_duration_ms:
+            padded_end = min(song_duration_ms, padded_end)
+        padded.append((padded_start, padded_end))
+    return padded
 
 
 # Rare whole-house crash accent (see src/analyzer/crash_accents.py). A short

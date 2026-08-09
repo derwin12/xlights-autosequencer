@@ -370,6 +370,7 @@ def build_plan(
     if config.vocal_words:
         vocal_effects = _place_singing_faces(
             effect_props, config.vocal_words, config.vocal_diarization,
+            song_duration_ms=hierarchy.duration_ms,
         )
         for gname, placements in _place_lyric_text(
             effect_props, config.vocal_words, config.vocal_diarization,

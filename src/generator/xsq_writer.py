@@ -246,15 +246,16 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
     # FaceDefinition and TimingTrack are per-placement parameters set by
     # effect_placer._place_singing_faces.
     "Faces": {
-        "E_CHECKBOX_Faces_Fade": "0",
+        "E_CHECKBOX_Faces_Fade": "1",
         "E_CHECKBOX_Faces_Outline": "1",
         "E_CHECKBOX_Faces_SuppressShimmer": "0",
-        "E_CHECKBOX_Faces_SuppressWhenNotSinging": "0",
+        "E_CHECKBOX_Faces_SuppressWhenNotSinging": "1",
         "E_CHECKBOX_Faces_TransparentBlack": "0",
         "E_CHOICE_Faces_EyeBlinkDuration": "Normal",
         "E_CHOICE_Faces_EyeBlinkFrequency": "Normal",
         "E_CHOICE_Faces_Eyes": "Auto",
         "E_CHOICE_Faces_UseState": "",
+        "E_SPINCTRL_Faces_LeadFrames": "120",
         "E_TEXTCTRL_Faces_TransparentBlack": "0",
         "T_CHECKBOX_LayerMorph": "0",
         "T_CHOICE_LayerMethod": "Normal",
