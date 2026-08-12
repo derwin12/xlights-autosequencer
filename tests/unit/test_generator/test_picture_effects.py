@@ -13,7 +13,6 @@ from src.generator.effect_placer import (
     _PICTURE_FADE_MS,
     _PICTURE_LEAD_MS,
     _PICTURE_MIN_BURST_MS,
-    _PICTURE_MIN_GAP_MS,
     _PICTURE_MOTIONS,
     _PICTURE_SCALE_PERCENT,
     _PICTURE_SPEED_RANGE,
@@ -446,17 +445,12 @@ class TestPlacePictureEffects:
         # renders on top) rather than sharing the first burst's layer.
         assert placements[1].layer < placements[0].layer
 
-    def test_different_image_fires_soon_after_without_waiting_for_min_gap(self):
+    def test_different_image_fires_soon_after_without_waiting(self):
         library = load_effect_library()
-        # bug (2026-07-15): a word that recurs often in the lyrics (e.g. a
-        # repeated chorus line) used to crowd out a rarer, differently-imaged
-        # match that fell within _PICTURE_MIN_GAP_MS of it, even though a
-        # DIFFERENT picture right after the first doesn't read as flicker.
         # First burst: word_start=1_000 -> placed 0-_MAX_FLOORED_BURST_MS
-        # (worst case). Second word_start chosen so its placed start (500ms
-        # after the first burst's latest possible end) is well inside the
-        # old min-gap window but doesn't overlap in time regardless of the
-        # actual seeded jitter.
+        # (worst case). Second word_start chosen so its placed start is
+        # well after the first burst's latest possible end but still soon
+        # after it -- must fire immediately, no cooldown of any kind.
         second_word_start = _MAX_FLOORED_BURST_MS + 500 + _PICTURE_LEAD_MS
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
@@ -473,11 +467,14 @@ class TestPlacePictureEffects:
         files = [p.parameters["E_TEXTCTRL_Pictures_Filename"] for p in result["Matrix1"]]
         assert files == ["/lib/love.gif", "/lib/fool.gif"]
 
-    def test_same_image_repeat_still_waits_out_the_min_gap(self):
+    def test_same_image_repeat_fires_every_time_no_cooldown(self):
         library = load_effect_library()
-        # Same setup as the different-image test above, but both matches
-        # point at the same file -- the cooldown must still apply so the
-        # identical picture doesn't flicker back on right after it left.
+        # There is no same-image cooldown (removed 2026-08-11, user report):
+        # a short, repetitive-lyric song with a small image catalog hit the
+        # old 90s cooldown on every image's first occurrence and then
+        # silently dropped every later repeat for the rest of the song.
+        # Every match that reaches this function already passed through the
+        # user's own Extras/Pictures review, so it fires every time.
         second_word_start = _MAX_FLOORED_BURST_MS + 500 + _PICTURE_LEAD_MS
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
@@ -491,12 +488,12 @@ class TestPlacePictureEffects:
             variation_seed=0,
             word_image_matches=matches,
         )
-        assert len(result["Matrix1"]) == 1
+        assert len(result["Matrix1"]) == 2
 
     def test_far_apart_matches_both_fire(self):
         library = load_effect_library()
         first_placed_end = max(0, 1_000 - _PICTURE_LEAD_MS) + _MAX_FLOORED_BURST_MS
-        second_start = first_placed_end + _PICTURE_LEAD_MS + _PICTURE_MIN_GAP_MS + 1_000
+        second_start = first_placed_end + _PICTURE_LEAD_MS + 200_000
         matches = [
             _match("love", 1_000, stored_path="/lib/love.gif"),
             _match("fool", second_start, stored_path="/lib/fool.gif"),

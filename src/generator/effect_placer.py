@@ -5000,25 +5000,30 @@ def _place_video_effect(
     return {target.name: [placement, backdrop]}
 
 
-# How long a lyric-matched image stays on screen per burst, and the minimum
-# cooldown before the *same* image can repeat on a target (distinct images
-# only need to not overlap in time -- see the placement loop below). A word
-# that recurs often across the song (e.g. "sing" through a repeated chorus)
-# can generate a match every single time it's sung; a short cooldown just
-# thinned out the closest repeats and still let one image dominate the whole
-# song. User request (2026-07-15): stay selective -- the same picture should
-# resurface only a handful of times across a whole song, not every time its
-# word comes up.
-# Burst duration scales with the matched word's own duration
-# (match["end_ms"] - match["start_ms"]) instead of a flat length, so a
-# quick word doesn't trigger a picture that visibly outlives it (user
-# request, 2026-07-21). Floored so very short words still give the image
-# enough screen time to register, and jittered per-burst (seeded, same
-# pattern as direction/motion/speed below) so same-length words don't all
-# produce identically-sized bursts.
+# How long a lyric-matched image stays on screen per burst. Burst duration
+# scales with the matched word's own duration (match["end_ms"] -
+# match["start_ms"]) instead of a flat length, so a quick word doesn't
+# trigger a picture that visibly outlives it (user request, 2026-07-21).
+# Floored so very short words still give the image enough screen time to
+# register, and jittered per-burst (seeded, same pattern as direction/
+# motion/speed below) so same-length words don't all produce identically-
+# sized bursts.
+#
+# There is deliberately no same-image cooldown (removed 2026-08-11; had
+# been 90s, raised from an original 5s on 2026-07-15 "stay selective"
+# request): every match that survives to word_image_matches already passed
+# through the review UI's Extras/Pictures screen, where the user can see
+# and Unmap any occurrence they don't want. A short/repetitive-lyric song
+# with a small image catalog (e.g. a novelty song repeating the same few
+# words) hit the 90s cooldown on every image's very first placement and
+# then silently dropped every later occurrence for the rest of the song --
+# effectively killing the whole feature past the first ~35s. Per explicit
+# user decision: if it's shown (and not unmapped) in Extras, place it --
+# don't second-guess the user's own curated list with an internal cooldown.
+# Bursts that land close enough to literally overlap in time still stack
+# onto a higher layer instead of colliding (see the placement loop below).
 _PICTURE_MIN_BURST_MS = 3_000
 _PICTURE_BURST_JITTER_MS = 1_500
-_PICTURE_MIN_GAP_MS = 90_000
 _PICTURE_FADE_MS = 800
 # Start the burst this far ahead of the matched word's own start time, so the
 # image (plus its fade-in) is already fully visible by the moment the lyric
@@ -5342,7 +5347,6 @@ def _place_picture_effects(
 
     result: dict[str, list[EffectPlacement]] = {}
     layer_ends_by_target: dict[str, dict[int, int]] = {}
-    last_end_by_target_and_file: dict[tuple[str, str], int] = {}
     for match in matches:
         word_start = int(match["start_ms"])
         start = max(0, word_start - _PICTURE_LEAD_MS)
@@ -5368,26 +5372,17 @@ def _place_picture_effects(
             f"{variation_seed}:speed:{match.get('word')}:{word_start}"
         ).uniform(*_PICTURE_SPEED_RANGE), 1)
         for target_name in set(targets.values()):
-            # The _PICTURE_MIN_GAP_MS cooldown only applies to *repeating the
-            # same image* (bug, 2026-07-15): a word that recurs often in the
-            # lyrics (e.g. a repeated chorus line) used to monopolize every
-            # nearby slot and silently crowd out a rarer, differently-imaged
-            # match that fell within the same gap window, even though
-            # showing a different picture back-to-back doesn't read as
-            # flicker the way repeating one does.
-            last_same_file_end = last_end_by_target_and_file.get((target_name, filename))
-            if last_same_file_end is not None and start - last_same_file_end < _PICTURE_MIN_GAP_MS:
-                continue
             # Bursts that land too close in time to stack on the target's
             # base layer render one layer higher instead of being dropped
             # (user request, 2026-08-09) -- they blend into each other
-            # rather than one silently disappearing.
+            # rather than one silently disappearing. No same-image cooldown
+            # (see the constants block above) -- every match here already
+            # passed through the user's own Extras/Pictures review.
             target_layer_ends = layer_ends_by_target.setdefault(target_name, {})
             (layer,) = _find_free_stack_layers(
                 target_layer_ends, picture_layer_by_target[target_name], 1, start,
             )
             target_layer_ends[layer] = end
-            last_end_by_target_and_file[(target_name, filename)] = end
             result.setdefault(target_name, []).append(EffectPlacement(
                 effect_name="Pictures",
                 xlights_id="Pictures",
