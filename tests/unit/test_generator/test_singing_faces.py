@@ -293,12 +293,29 @@ class TestSingingFacesDiarization:
         assert len(result["Lead Face"]) == 2
         assert len(result["Backup Face"]) == 2
 
+    def test_every_prop_past_the_first_becomes_backup(self):
+        # Only the first face prop (by layout order) is the lead singer --
+        # ALL remaining face props are backup, not just the second one
+        # (2026-08-11 user report: a 4-face-prop layout had props 3 and 4
+        # incorrectly rendering lead-only content, since only prop 2 was
+        # ever treated as backup).
+        props = [
+            _prop("Lead Face", faces=["Face1"]),
+            _prop("Backup Face A", faces=["Face2"]),
+            _prop("Backup Face B", faces=["Face3"]),
+            _prop("Backup Face C", faces=["Face4"]),
+        ]
+        result = _place_singing_faces(props, DUET_WORDS, vocal_diarization=True)
+        assert result["Lead Face"][0].parameters["E_CHOICE_Faces_TimingTrack"] == "Lyrics"
+        for name in ("Backup Face A", "Backup Face B", "Backup Face C"):
+            assert result[name][0].parameters["E_CHOICE_Faces_TimingTrack"] == "Lyrics - Backup"
+
 
 class TestLyricTextDiarization:
     def test_small_target_never_becomes_backup_and_gets_every_word(self):
         # A "*Small*" target is a size variant of the primary lyric display,
         # not a second singer's display -- with only one non-small target,
-        # there's no backup_target at all, so both targets render every
+        # there are no backup_targets at all, so both targets render every
         # word (2026-08-07 user report: this pair previously split one
         # continuous vocal track in half between the two displays).
         props = [
@@ -306,21 +323,23 @@ class TestLyricTextDiarization:
             _prop("Lyrics Matrix Small", display_as="Matrix", pixels=512),
         ]
         result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
-        # Neither target is backup -- "Lyrics Matrix" gets both regions, but
-        # each region still points at whichever track actually contains its
-        # words: the HELLO/WORLD region is speaker-0 (primary "Lyrics"
-        # track), the AGAIN region is speaker-1 ("Lyrics - Backup" track) --
-        # pointing every region at the primary track (the original bug)
-        # would leave the AGAIN region blank, since that word doesn't exist
-        # in the primary track's word layer at all (2026-08-07 follow-up
-        # user report: the region-based main matrix had the same class of
-        # bug already fixed for the small matrix's per-word path).
+        # "Lyrics Matrix" is the sole non-small target, so it carries both
+        # speakers -- placed per-word (like the small matrix), not as merged
+        # regions, since merged lead/backup regions can overlap in time and
+        # silently truncate one another on a single layer (2026-08-11 user
+        # report, real song: a near-continuous backup region spanning most
+        # of the song against several shorter lead regions elsewhere lost
+        # ~70s of backup lyrics this way).
         main = result["Lyrics Matrix"]
-        assert len(main) == 2
-        assert main[0].start_ms == 1000 and main[0].end_ms == 2000
+        assert len(main) == 3
+        assert main[0].start_ms == 1000 and main[0].end_ms == 1400  # HELLO
         assert main[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
-        assert main[1].start_ms == 9000 and main[1].end_ms == 9500
-        assert main[1].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
+        assert main[1].start_ms == 1600 and main[1].end_ms == 2000  # WORLD
+        assert main[1].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+        assert main[2].start_ms == 9000 and main[2].end_ms == 9500  # AGAIN
+        assert main[2].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
+        # The non-small path never forces the small bitmap font.
+        assert "E_CHOICE_Text_Font" not in main[0].parameters
         # "Lyrics Matrix Small" gets one per-word placement per word,
         # covering the whole song -- but each word points at whichever
         # timing track xsq_writer actually put it in: speaker-0 words
@@ -349,7 +368,21 @@ class TestLyricTextDiarization:
         assert len(backup) == 1 and backup[0].start_ms == 9000 and backup[0].end_ms == 9500
         assert backup[0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
 
+    def test_every_non_small_target_past_the_first_becomes_backup(self):
+        # Only the first non-small target is the lead display -- ALL
+        # remaining non-small targets are backup, not just the second one
+        # (2026-08-11 user decision, mirrors _place_singing_faces).
+        props = [
+            _prop("Lyrics Matrix", display_as="Matrix", pixels=4800),
+            _prop("Lyrics Matrix Backup A", display_as="Matrix", pixels=4800),
+            _prop("Lyrics Matrix Backup B", display_as="Matrix", pixels=4800),
+        ]
+        result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
+        assert result["Lyrics Matrix"][0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Words"
+        for name in ("Lyrics Matrix Backup A", "Lyrics Matrix Backup B"):
+            assert result[name][0].parameters["E_CHOICE_Text_LyricTrack"] == "Lyrics - Backup - Words"
+
     def test_single_target_degrades_to_all_words(self):
         props = [_prop("Matrix Big", display_as="Matrix", pixels=4800)]
         result = _place_lyric_text(props, DUET_WORDS, vocal_diarization=True)
-        assert len(result["Matrix Big"]) == 2
+        assert len(result["Matrix Big"]) == 3

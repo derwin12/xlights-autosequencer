@@ -284,7 +284,8 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",
     },
-    # Copied verbatim from a user-verified working effect (2026-07-14).
+    # Copied verbatim from a user-verified working effect (2026-07-14),
+    # except C_SLIDER_Brightness (200 -> 150, user request 2026-08-11).
     # Video_Filename and Duration are per-placement parameters set by
     # effect_placer._place_video_effect.
     "Video": {
@@ -299,7 +300,7 @@ _XLIGHTS_EFFECT_DEFAULTS: dict[str, dict[str, str]] = {
         "E_TEXTCTRL_Video_CropTop": "100",
         "E_TEXTCTRL_Video_Starttime": "0.0",
         "E_TEXTCTRL_Video_TransparentBlack": "0",
-        "C_SLIDER_Brightness": "200",
+        "C_SLIDER_Brightness": "150",
         "T_CHECKBOX_LayerMorph": "0",
         "T_CHOICE_LayerMethod": "Normal",
         "T_SLIDER_EffectLayerMix": "0",

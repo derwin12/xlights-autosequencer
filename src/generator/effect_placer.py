@@ -4512,11 +4512,17 @@ def _place_singing_faces(
     When ``vocal_diarization`` is on, ``vocal_words`` carries WhisperX marks
     tagged with a ``speaker`` key (0=lead, 1=featured/backup — see
     ``src.analyzer.vocal_diarization``), and at least two face-capable props
-    exist, the second face prop (by layout order — no per-song "which prop
-    is the backup singer" config, per explicit user choice 2026-07-21)
-    renders only the speaker-1 words on a second "Lyrics - Backup" timing
-    track, while every other face prop renders only speaker-0 words. With
-    only one face prop, or no confidently-detected second voice
+    exist, the FIRST face prop (by layout order — no per-song "which prop
+    is the lead singer" config, per explicit user choice 2026-07-21) renders
+    only speaker-0 words on the primary "Lyrics" timing track, while EVERY
+    OTHER face prop renders only speaker-1 words on the "Lyrics - Backup"
+    timing track (2026-08-11 user decision: exactly one prop is the lead
+    singer; every remaining face prop is a backup singer, not just the
+    second one — a layout with more than two face props previously left
+    every prop past the second rendering lead-only content, e.g. a real
+    song where two "backup singer" bulb props were incorrectly getting the
+    lead track while only the very next prop in layout order got backup).
+    With only one face prop, or no confidently-detected second voice
     (``vocal_diarization.diarize_words`` collapses everyone to speaker 0),
     this degrades to the original behavior: every face prop gets every word.
 
@@ -4534,20 +4540,22 @@ def _place_singing_faces(
         lead_only_words, backup_words = _split_words_by_speaker(vocal_words)
     else:
         lead_only_words, backup_words = vocal_words, []
-    backup_prop = face_props[1] if (backup_words and len(face_props) >= 2) else None
-    lead_words = vocal_words if backup_prop is None else lead_only_words
+    # Every face prop past the first is a backup singer (2026-08-11 user
+    # decision) -- not just the second one.
+    backup_props = face_props[1:] if (backup_words and len(face_props) >= 2) else []
+    lead_words = vocal_words if not backup_props else lead_only_words
 
     lead_regions = _pad_vocal_regions(_vocal_regions(lead_words), song_duration_ms)
     backup_regions = (
         _pad_vocal_regions(_vocal_regions(backup_words), song_duration_ms)
-        if backup_prop is not None
+        if backup_props
         else []
     )
     if not lead_regions and not backup_regions:
         return result
 
     for prop in face_props:
-        is_backup = prop is backup_prop
+        is_backup = prop in backup_props
         regions = backup_regions if is_backup else lead_regions
         if not regions:
             continue
@@ -4572,7 +4580,7 @@ def _place_singing_faces(
 
     logger.info(
         "singing_faces: %d face prop(s) placed%s",
-        len(result), " (with backup singer track)" if backup_prop is not None else "",
+        len(result), f" (with {len(backup_props)} backup singer track(s))" if backup_props else "",
     )
     return result
 
@@ -4687,19 +4695,25 @@ def _place_lyric_text(
     vocal region.
 
     When ``vocal_diarization`` is on and at least two NON-SMALL targets
-    exist, the second one (by the same order as above) renders only
-    speaker-1 regions on a second "Lyrics - Backup - Words" track (see
-    ``_place_singing_faces`` for the matching Faces behavior); the first
-    non-small target renders only speaker-0 regions. With fewer than two
-    non-small targets, the sole non-small target instead renders BOTH
-    speaker-0 and speaker-1 regions -- there's no second prop to show the
-    backup regions on, so each region still points at whichever track its
-    own words actually live in rather than being silently dropped or
-    mispointed (follow-up fix, user report 2026-08-07: the region-based
-    path had the same bug already fixed for the small-matrix per-word
-    path -- a region built by merging the full unsplit word list could
-    contain only speaker-1 words yet still be tagged with the primary
-    "Lyrics - Words" track, rendering blank).
+    exist, the FIRST one (by the same layout order as above) renders only
+    speaker-0 regions on "Lyrics - Words"; EVERY OTHER non-small target
+    renders only speaker-1 regions on "Lyrics - Backup - Words" (2026-08-11
+    user decision: exactly one prop is the lead display, all remaining
+    lyric-display props are treated as backup -- mirrors
+    ``_place_singing_faces``, which applies the same one-lead/rest-backup
+    rule). With fewer than two non-small targets, the sole non-small target
+    instead renders BOTH speaker-0 and speaker-1 words -- there's no second
+    display to show the backup words on. That combined case is placed
+    per-word (not per-region, see ``_per_word_lyric_placement``): merged
+    lead/backup *regions* can span overlapping time ranges (e.g. a
+    near-continuous backup region spanning most of the song against several
+    shorter lead regions elsewhere), and two overlapping Text placements on
+    one layer silently truncate one another, dropping large stretches of
+    lyrics (2026-08-11 user report, real song: ~70s of backup lyrics never
+    rendered because a giant backup region got truncated by the next
+    lead region's start time). Per-word placements are each sized to their
+    own word, so only a genuine same-instant lead/backup overlap (a real
+    duet moment) can still collide, instead of losing a whole merged region.
     """
     result: dict[str, list[EffectPlacement]] = {}
     matrix_props = [p for p in props if getattr(p, "display_as", "") == "Matrix"]
@@ -4718,26 +4732,23 @@ def _place_lyric_text(
         lead_only_words, backup_words = vocal_words, []
     # A "small" target is a size variant of the primary lyric display, not a
     # second singer's display -- it always renders the full lyric track
-    # (below) and is never eligible to become the backup-singer target
+    # (below) and is never eligible to become a backup-singer target
     # (user report 2026-08-07: a real "Lyrics Matrix"/"Lyrics Matrix Small"
-    # pair only has ONE non-small target, so this makes backup_target None
+    # pair only has ONE non-small target, so this makes backup_targets empty
     # and both targets render every word, instead of splitting one
     # continuous vocal track in half across the two displays).
     non_small_targets = [t for t in targets if "small" not in t.name.lower()]
-    backup_target = non_small_targets[1] if (backup_words and len(non_small_targets) >= 2) else None
+    lead_target = non_small_targets[0] if non_small_targets else None
+    # ALL non-small targets after the first are backup displays (2026-08-11
+    # user decision) -- not just the second. Order-based selection can only
+    # ever designate a SINGLE lead display; every remaining lyric-display
+    # prop is treated as backup so none of them is left showing lead-only
+    # content by omission.
+    backup_targets = non_small_targets[1:] if (backup_words and len(non_small_targets) >= 2) else []
+    # With only one non-small target, it must carry both speakers -- placed
+    # per-word below (see docstring) rather than as merged regions.
+    solo_target_carries_both = bool(backup_words) and lead_target is not None and not backup_targets
 
-    # Always split regions by the SAME lead_only_words/backup_words speaker
-    # split xsq_writer._build_lyric_layers() uses to build the underlying
-    # "Lyrics"/"Lyrics - Backup" tracks -- never merge them into one region
-    # set from the full vocal_words (follow-up to the small-matrix fix,
-    # user report 2026-08-07: the main "Lyrics Matrix" had the identical
-    # bug -- when there's only one non-small target, backup_target is None,
-    # so this used to fall back to _vocal_regions(vocal_words), merging
-    # lead and backup words into shared regions and pointing ALL of them at
-    # the primary "Lyrics - Words" track. Any region containing only
-    # speaker-1 words doesn't exist in that track at all and rendered
-    # blank -- the region-based path needs the same per-word track
-    # awareness the small-matrix per-word path already got).
     lead_regions = _vocal_regions(lead_only_words)
     backup_regions = _vocal_regions(backup_words) if backup_words else []
     # A "small" target always shows every word (see comment above), but each
@@ -4759,7 +4770,7 @@ def _place_lyric_text(
     color = _lightest_color(theme_palette) if theme_palette else "#FFFFFF"
 
     for target in targets:
-        is_backup = target is backup_target
+        is_backup = target in backup_targets
         is_small = "small" in target.name.lower()
 
         if is_small:
@@ -4774,18 +4785,29 @@ def _place_lyric_text(
             )
             continue
 
-        if is_backup:
-            tagged_regions = [(start, end, True) for start, end in backup_regions]
-        else:
-            # The sole non-small target (no dedicated backup_target this
-            # song) also carries the backup regions, correctly tagged --
-            # there's no second prop to show them on, so this one must
-            # render everything rather than silently dropping speaker-1
-            # regions the way pointing everything at the lead track would.
-            tagged_regions = [(start, end, False) for start, end in lead_regions]
-            if backup_target is None:
-                tagged_regions += [(start, end, True) for start, end in backup_regions]
-            tagged_regions.sort(key=lambda r: r[0])
+        if target is lead_target and solo_target_carries_both:
+            # Sole non-small target must carry both speakers -- per-word,
+            # not merged regions, to avoid the overlap-truncation bug (see
+            # docstring).
+            if not all_word_placements:
+                continue
+            placements = [
+                _per_word_lyric_placement(target.name, start, end, text, word_is_backup, color, small_font=False)
+                for start, end, text, word_is_backup in all_word_placements
+            ]
+            result[target.name] = placements
+            logger.info(
+                "lyric_text: per-word Text placed on '%s' (sole non-small target, carries both speakers) "
+                "over %d word(s)",
+                target.name, len(placements),
+            )
+            continue
+
+        tagged_regions = (
+            [(start, end, True) for start, end in backup_regions]
+            if is_backup
+            else [(start, end, False) for start, end in lead_regions]
+        )
         if not tagged_regions:
             continue
         placements = []
@@ -4832,23 +4854,45 @@ def _small_lyric_word_placement(
     scroll distance grows with word length, see
     ``_LYRIC_TEXT_SMALL_VECTOR_BASE_XSTART``/``..._PER_EXTRA_CHAR``.
     """
+    return _per_word_lyric_placement(target_name, start_ms, end_ms, text, is_backup, color, small_font=True)
+
+
+def _per_word_lyric_placement(
+    target_name: str, start_ms: int, end_ms: int, text: str, is_backup: bool = False,
+    color: str = "#FFFFFF", small_font: bool = True,
+) -> EffectPlacement:
+    """Build one per-word ``Text`` placement, optionally forcing the small bitmap font.
+
+    ``small_font=True`` is the original small-matrix behavior (see
+    ``_small_lyric_word_placement``). ``small_font=False`` is used for a
+    sole non-small lyric matrix that must carry BOTH lead and backup words
+    (2026-08-11 user report: merged lead/backup vocal *regions* can overlap
+    in time -- e.g. a near-continuous backup region spanning the whole song
+    against several shorter lead regions -- and two overlapping Text
+    placements on the same layer silently truncate one another, dropping
+    large stretches of backup lyrics. Per-word placements are each sized to
+    their own word's timing, so only genuine same-instant lead/backup word
+    overlaps (rare -- a real duet moment) can still collide, instead of
+    losing an entire merged region).
+    """
     parameters: dict[str, Any] = {
         "E_CHOICE_Text_LyricTrack": (
             _LYRIC_TEXT_BACKUP_TIMING_TRACK if is_backup else _LYRIC_TEXT_TIMING_TRACK
         ),
-        "E_CHOICE_Text_Font": _LYRIC_TEXT_SMALL_FONT,
     }
-    if len(text) > _LYRIC_TEXT_SMALL_LONG_WORD_CHARS:
-        extra_chars = len(text) - (_LYRIC_TEXT_SMALL_LONG_WORD_CHARS + 1)
-        xstart = _LYRIC_TEXT_SMALL_VECTOR_BASE_XSTART + _LYRIC_TEXT_SMALL_VECTOR_PER_EXTRA_CHAR * extra_chars
-        xend = _LYRIC_TEXT_SMALL_VECTOR_BASE_XEND - _LYRIC_TEXT_SMALL_VECTOR_PER_EXTRA_CHAR * extra_chars
-        parameters["E_CHOICE_Text_Dir"] = "vector"
-        parameters["E_NOTEBOOK"] = "Start Position"
-        parameters["E_CHECKBOX_Text_PixelOffsets"] = "1"
-        parameters["E_SLIDER_Text_XStart"] = str(xstart)
-        parameters["E_SLIDER_Text_XEnd"] = str(xend)
-        parameters["E_SLIDER_Text_YStart"] = "0"
-        parameters["E_SLIDER_Text_YEnd"] = "0"
+    if small_font:
+        parameters["E_CHOICE_Text_Font"] = _LYRIC_TEXT_SMALL_FONT
+        if len(text) > _LYRIC_TEXT_SMALL_LONG_WORD_CHARS:
+            extra_chars = len(text) - (_LYRIC_TEXT_SMALL_LONG_WORD_CHARS + 1)
+            xstart = _LYRIC_TEXT_SMALL_VECTOR_BASE_XSTART + _LYRIC_TEXT_SMALL_VECTOR_PER_EXTRA_CHAR * extra_chars
+            xend = _LYRIC_TEXT_SMALL_VECTOR_BASE_XEND - _LYRIC_TEXT_SMALL_VECTOR_PER_EXTRA_CHAR * extra_chars
+            parameters["E_CHOICE_Text_Dir"] = "vector"
+            parameters["E_NOTEBOOK"] = "Start Position"
+            parameters["E_CHECKBOX_Text_PixelOffsets"] = "1"
+            parameters["E_SLIDER_Text_XStart"] = str(xstart)
+            parameters["E_SLIDER_Text_XEnd"] = str(xend)
+            parameters["E_SLIDER_Text_YStart"] = "0"
+            parameters["E_SLIDER_Text_YEnd"] = "0"
     return EffectPlacement(
         effect_name="Text",
         xlights_id="Text",
