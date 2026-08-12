@@ -43,8 +43,6 @@ interface VocalWord {
 
 interface PicturesScreenProps {
   song: Song;
-  imageSuggestions: ImageSuggestion[];
-  imageTopics: ImageTopic[];
   vocalWords?: VocalWord[];
   onContinue: () => void;
 }
@@ -121,7 +119,13 @@ async function openExternal(url: string) {
   }
 }
 
-export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onContinue }: PicturesScreenProps) {
+export function Pictures({ song, vocalWords, onContinue }: PicturesScreenProps) {
+  // Fetched live from /image-matches (rather than trusted from the
+  // analyze-time session snapshot) so images uploaded after analyzing show
+  // up against every one of their lyric occurrences, not just the one
+  // present when the song was first analyzed (2026-08-09).
+  const [imageSuggestions, setImageSuggestions] = useState<ImageSuggestion[]>([]);
+  const [imageTopics, setImageTopics] = useState<ImageTopic[]>([]);
   const [uploaded, setUploaded] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState<string | null>(null);
   // image_id currently mid-Replace, or null. Distinct from `uploading`
@@ -150,6 +154,21 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
   const [newManualTriggerTime, setNewManualTriggerTime] = useState('');
   const [newManualMotion, setNewManualMotion] = useState<MotionType>('shake');
   const [manualUploading, setManualUploading] = useState(false);
+
+  function fetchImageMatches() {
+    return fetch(`/api/v1/songs/${song.song_id}/image-matches`)
+      .then((r) => (r.ok ? r.json() : { suggestions: [], topics: [] }))
+      .then((body) => {
+        setImageSuggestions(body.suggestions ?? []);
+        setImageTopics(body.topics ?? []);
+      })
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    fetchImageMatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.song_id]);
 
   useEffect(() => {
     fetch(`/api/v1/songs/${song.song_id}/ignored-images`)
@@ -412,6 +431,10 @@ export function Pictures({ song, imageSuggestions, imageTopics, vocalWords, onCo
           setError('Image uploaded, but assigning it to this occurrence failed — try Choose image again.');
         }
       }
+      // New library tag can now fuzzy-match every OTHER occurrence of this
+      // word later in the song too — refresh the live match list so those
+      // show up immediately instead of staying invisible until reanalyze.
+      await fetchImageMatches();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     } finally {

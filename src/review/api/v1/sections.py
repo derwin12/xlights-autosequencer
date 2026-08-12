@@ -172,6 +172,7 @@ def split_section(song_id: str):
     new_assignments = _sync_assignments(new_sections, assignments, new_themes)
 
     save_full_session(song_id, {
+        **session,
         "sections": new_sections,
         "detected_sections": session.get("detected_sections", session.get("sections", [])),
         "assignments": new_assignments,
@@ -238,6 +239,7 @@ def merge_sections(song_id: str):
     new_assignments = _sync_assignments(new_sections, assignments, new_themes)
 
     save_full_session(song_id, {
+        **session,
         "sections": new_sections,
         "detected_sections": session.get("detected_sections", session.get("sections", [])),
         "assignments": new_assignments,
@@ -330,6 +332,7 @@ def promote_ghost(song_id: str):
     new_ghosts = [g for g in ghost_boundaries if abs(g["at_ms"] - at_ms) > _TOLERANCE_MS]
 
     save_full_session(song_id, {
+        **session,
         "sections": new_sections,
         "detected_sections": session.get("detected_sections", session.get("sections", [])),
         "assignments": new_assignments,
@@ -391,6 +394,7 @@ def delete_section(song_id: str, section_index: int):
     new_assignments = _sync_assignments(new_sections, assignments, new_themes)
 
     save_full_session(song_id, {
+        **session,
         "sections": new_sections,
         "detected_sections": session.get("detected_sections", session.get("sections", [])),
         "assignments": new_assignments,
@@ -436,6 +440,7 @@ def rename_section(song_id: str, section_index: int):
 
     sections[section_index]["label"] = label
     save_full_session(song_id, {
+        **session,
         "sections": sections,
         "detected_sections": session.get("detected_sections", sections),
         "assignments": assignments,

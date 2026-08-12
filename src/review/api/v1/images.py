@@ -30,6 +30,15 @@ creates a wholly new one, keyed purely on ``start_ms``. Stored as
 ``image_manual_occurrences`` (each ``{"start_ms", "image_id"}``) and merged
 into ``word_image_matches`` at export time (see ``plan.py``'s
 ``_manual_picture_matches``, ``GenerationConfig.image_manual_occurrences``).
+
+And ``GET /songs/<song_id>/image-matches`` (2026-08-09): recomputes
+per-occurrence matches/unmatched-topics live against the CURRENT image
+library, rather than the ``image_suggestions``/``image_topics`` snapshot
+``analysis.py`` writes once at analyze time and never refreshes — a word
+uploaded an image for after analyzing would otherwise never show its
+other occurrences on the Pictures screen even though export-time
+generation (which also reruns this matching fresh) already handles it
+correctly.
 """
 from __future__ import annotations
 
@@ -39,7 +48,13 @@ from pathlib import Path
 from flask import jsonify, request
 
 from . import api_v1
-from src.generator.image_catalog import load_image_library, replace_image_in_library, save_image_to_library
+from src.generator.image_catalog import (
+    find_unmatched_topics,
+    load_image_library,
+    replace_image_in_library,
+    save_image_to_library,
+    suggest_images_for_words,
+)
 
 _ALLOWED_IMAGE_EXTENSIONS = {".gif", ".png", ".bmp", ".jpg", ".jpeg"}
 _MAX_BYTES = 50 * 1024 * 1024  # 50 MB
@@ -303,3 +318,29 @@ def clear_manual_occurrence(song_id: str, start_ms: int):
     occurrences = [o for o in occurrences if o["start_ms"] != start_ms]
     _save_manual_occurrences(song_id, occurrences)
     return jsonify({"cleared": True, "occurrences": occurrences}), 200
+
+
+@api_v1.route("/songs/<song_id>/image-matches", methods=["GET"])
+def get_image_matches(song_id: str):
+    """Recompute per-occurrence image matches and unmatched topics live.
+
+    ``session["image_suggestions"]``/``["image_topics"]`` are a one-time
+    snapshot written at analyze time — they never reflect images uploaded
+    to the (shared, cross-song) library afterward, so the Pictures screen
+    would keep showing a word as "needs an image" (or miss its later
+    occurrences entirely) forever after the user uploads one. This
+    endpoint reruns the same matching functions generation itself already
+    reruns fresh at export time (``plan.py``), against the *current*
+    library, so the review screen and the generated .xsq never disagree.
+    """
+    from src.review.storage.assignments import load_session
+
+    session = load_session(song_id) or {}
+    words = session.get("words") or []
+    library = load_image_library()
+    ignored = _load_ignored_occurrences(song_id)
+    overrides = _load_image_overrides(song_id)
+
+    suggestions = suggest_images_for_words(words, library, ignored, overrides)
+    topics = find_unmatched_topics(words, library)
+    return jsonify({"suggestions": suggestions, "topics": topics}), 200

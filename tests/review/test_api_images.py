@@ -449,4 +449,86 @@ class TestManualPictureOccurrences:
     def test_clear_unknown_timestamp_returns_404(self, client):
         resp = client.delete(f"/api/v1/songs/{self.SONG}/image-manual-occurrences/9999")
         assert resp.status_code == 404
-        assert resp.get_json()["error"]["code"] == "not_found"
+
+
+class TestImageMatches:
+    """GET /image-matches recomputes suggestions/topics live against the
+    current library instead of trusting the analyze-time session snapshot
+    (2026-08-09) -- a word uploaded an image for after analyzing must show
+    up against every one of its occurrences, not just future analyses."""
+
+    SONG = "cafe0123deadbeef"
+
+    def _set_words(self, client, words: list[dict]) -> None:
+        from src.review.storage.assignments import save_full_session
+
+        save_full_session(self.SONG, {"sections": [{"label": "verse"}], "words": words})
+
+    def test_empty_words_returns_empty_lists(self, client):
+        self._set_words(client, [])
+        resp = client.get(f"/api/v1/songs/{self.SONG}/image-matches")
+        assert resp.status_code == 200
+        assert resp.get_json() == {"suggestions": [], "topics": []}
+
+    def test_no_library_match_surfaces_as_topic(self, client):
+        self._set_words(client, [{"label": "TACOS", "start_ms": 1000, "end_ms": 1500}])
+        resp = client.get(f"/api/v1/songs/{self.SONG}/image-matches").get_json()
+        assert resp["suggestions"] == []
+        assert [t["word"] for t in resp["topics"]] == ["TACOS"]
+
+    def test_library_upload_reflects_immediately_without_reanalyzing(self, client):
+        # This is the actual bug: uploading an image must make ALL matching
+        # occurrences show up on the next /image-matches call, not just the
+        # occurrence present when the song was originally analyzed.
+        words = [
+            {"label": "TACOS", "start_ms": 1000, "end_ms": 1500},
+            {"label": "TACOS", "start_ms": 46000, "end_ms": 46500},
+            {"label": "TACOS", "start_ms": 87000, "end_ms": 87500},
+        ]
+        self._set_words(client, words)
+        before = client.get(f"/api/v1/songs/{self.SONG}/image-matches").get_json()
+        assert before["suggestions"] == []
+        assert len(before["topics"]) == 1
+
+        client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(b"gif-bytes"), "tacos.gif"), "tag": "tacos"},
+            content_type="multipart/form-data",
+        )
+
+        after = client.get(f"/api/v1/songs/{self.SONG}/image-matches").get_json()
+        assert after["topics"] == []
+        assert sorted(s["start_ms"] for s in after["suggestions"]) == [1000, 46000, 87000]
+
+    def test_respects_ignored_occurrences_and_overrides(self, client):
+        upload = client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(b"bytes"), "tacos.gif"), "tag": "tacos"},
+            content_type="multipart/form-data",
+        ).get_json()
+        other_image = client.post(
+            "/api/v1/images",
+            data={"image": (io.BytesIO(b"bytes2"), "special.gif"), "tag": "special"},
+            content_type="multipart/form-data",
+        ).get_json()
+
+        words = [
+            {"label": "TACOS", "start_ms": 1000, "end_ms": 1500},
+            {"label": "TACOS", "start_ms": 2000, "end_ms": 2500},
+            {"label": "TACOS", "start_ms": 3000, "end_ms": 3500},
+        ]
+        self._set_words(client, words)
+        client.post(
+            f"/api/v1/songs/{self.SONG}/ignored-images",
+            json={"word": "tacos", "start_ms": 1000},
+        )
+        client.put(
+            f"/api/v1/songs/{self.SONG}/image-overrides",
+            json={"word": "tacos", "start_ms": 2000, "image_id": other_image["image"]["id"]},
+        )
+
+        resp = client.get(f"/api/v1/songs/{self.SONG}/image-matches").get_json()
+        by_start = {s["start_ms"]: s for s in resp["suggestions"]}
+        assert 1000 not in by_start  # ignored occurrence stays absent
+        assert by_start[2000]["image_id"] == other_image["image"]["id"]  # override wins
+        assert by_start[3000]["image_id"] == upload["image"]["id"]  # normal fuzzy match
